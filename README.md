@@ -16,7 +16,7 @@ short_description: BRD to Engineering Plan Multi-Agent System
 [![Pinecone](https://img.shields.io/badge/RAG-Pinecone-purple)](https://pinecone.io)
 [![LangSmith](https://img.shields.io/badge/Observability-LangSmith-orange)](https://smith.langchain.com)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
-[![Jira](https://img.shields.io/badge/Push-Jira%20Cloud-0052CC)](https://www.atlassian.com/software/jira)
+[![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 
 > **EM Copilot** is a state-of-the-art, 7-agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle — plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting voice commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
@@ -74,7 +74,7 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 | **Critic Revision Loop** | Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (FM-1/2/3) | ✅ |
 | **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback | ✅ |
 | **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting numeric ratings and text feedback | ✅ |
-| **Jira Cloud Integration** | Direct issue generation using Atlassian Document Format (ADF) containing SVG embeds | ✅ |
+| **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable | ✅ |
 | **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs | ✅ |
 | **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts | ✅ |
 | **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency | ✅ |
@@ -118,7 +118,7 @@ BRD Upload ──► FastAP ──►│  File check → Parse → Injection Gua
                         ┌───────────────────────────┼───────────────────────────┐
                         │                           │                           │
                         ▼ Approved                  ▼ Rejected                  ▼
-                 Sheets + Jira + PDF       Sheets audit row only              (wait)
+          Sheets + Jira Epic (MCP) + PDF   Sheets audit row only              (wait)
 ```
 
 ---
@@ -153,6 +153,7 @@ To prevent the LLM Critic from being overly optimistic (a common LLM-as-Judge fa
 | **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, and non-blocking exports |
 | **Frontend UI** | Streamlit | Rapid UI prototyping displaying real-time execution graphs and progress logs |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL approvals |
+| **Tool Integration** | Model Context Protocol (MCP) | Standardized agent-to-tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 
 ---
 
@@ -224,7 +225,7 @@ For a complete breakdown of evaluation methods and the LangSmith trace logs, see
 
 The pipeline exposes four automated output integrations triggered only upon human approval:
 *   **Google Sheets Export:** Writes the complete state (summary, phases, schedule, stack) as a multi-tab row log using `gspread` to power a centralized historical insights dashboard. If credentials or network connection are missing, it falls back to writing CSV bundles locally in `logs/exports/<run_id>/`.
-*   **Jira Cloud Integration:** Automatically generates a comprehensive project ticket. Description body is constructed using Atlassian Document Format (ADF), containing the Critic's quality scores, architectural components, NFR mappings, and a link to the rendered Kroki architecture diagram.
+*   **Jira Epic Integration (MCP):** On approval, creates a Jira **Epic** by calling an `mcp-atlassian` MCP server over stdio transport (MCP handshake → `list_tools` → `jira_create_issue`). If the server cannot be spawned, it falls back to a direct REST call. Either path builds the Epic description in Atlassian Document Format (ADF), containing the Critic's quality scores, architectural components, NFR mappings, and a link to the rendered Kroki architecture diagram.
 *   **Kroki.io SVG Render:** Converts Mermaid markup into a rendered SVG schema. If Kroki is down, the Streamlit frontend falls back gracefully to local client-side `mermaid.js` rendering.
 *   **PDF Exporter (ReportLab):** Generates a structured PDF document containing the full engineering plan, phase breakdowns, and critic badges on a local endpoint (`/download/{run_id}`).
 
@@ -292,7 +293,8 @@ engineering-plan-agent/
 │   │   └── validator.py            ← 7-check security sanitization layers
 │   └── integrations/
 │       ├── sheets.py               ← Google Sheets gspread connector
-│       ├── jira.py                 ← Jira Cloud REST client
+│       ├── jira.py                 ← Jira Cloud REST client (fallback path)
+│       ├── jira_mcp.py             ← MCP-client Jira Epic integration (mcp-atlassian)
 │       ├── pdf_export.py           ← ReportLab PDF generator
 │       ├── voice.py                ← ElevenLabs webhook connector
 │       └── email.py                ← email notification handler
@@ -376,6 +378,7 @@ Access the application UI by visiting `http://localhost:8501`.
 *   **API Timeouts:** Covered by `tenacity` retry wrappers performing exponential backoffs (1s → 2s → 4s).
 *   **JSON Parse Failures:** Specialized agents perform schema recovery prompts on parse failure. If recovery fails, `_fallback()` returns a placeholder model, flagging low confidence (`0.20`), triggering Critic's **FM-3** Amber downgrading.
 *   **Missing Integrations Credentials:** If Google Sheets or Jira credentials are not found, the endpoints skip execution gracefully with warning logs. They write a local fallback zip/CSV copy to `logs/exports/` and allow the pipeline to proceed without throwing exceptions.
+*   **MCP Server Unavailable:** If the `mcp-atlassian` server cannot spawn or the `jira_create_issue` call fails, `/approve` automatically falls back to the REST Jira client — the Epic is still created, and the fallback reason is logged.
 *   **Unavailable Third-Party Endpoints:** If Kroki.io fails during SVG generation, the frontend defaults to client-side JS Rendering. If the GitHub API is unavailable, the tech stack agent ignores velocity signals and notes the dependency failure in its logs.
 
 ---
