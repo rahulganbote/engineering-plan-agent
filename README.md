@@ -25,7 +25,7 @@ short_description: BRD to Engineering Plan Multi-Agent System
 
 ## Table of Contents
 1. [Business Use Case & Solution](#business-use-case--solution)
-2. [Core Features](#core-features)
+2. [Core Features](#core-pillars)
 3. [Architectural Overview](#architectural-overview)
 4. [Agent Design Patterns](#agent-design-patterns)
 5. [Tech Stack Justification](#tech-stack-justification)
@@ -33,11 +33,14 @@ short_description: BRD to Engineering Plan Multi-Agent System
 7. [Vector DB & RAG Integration](#vector-db--rag-integration)
 8. [Evaluation Framework](#evaluation-framework)
 9. [Integrations & External Channels](#integrations--external-channels)
-10. [Project Directory Layout](#project-directory-layout)
-11. [Quick Start Guide](#quick-start-guide)
-12. [Failure Modes & Mitigations](#failure-modes--mitigations)
-13. [Observability & Tracing](#observability--tracing)
-14. [Token Usage & Execution Cost](#token-usage--execution-cost)
+10. [Token Usage & Execution Cost](#token-usage--execution-cost)
+11. [Project Directory Structure](#project-directory-structure)
+12. [Quick Start Guide](#quick-start-guide)
+13. [Failure Modes & Mitigations](#failure-modes--mitigations)
+14. [Observability & Tracing](#observability--tracing)
+15. [License](#license)
+16. [Author](#author)
+
 
 ---
 
@@ -60,7 +63,7 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 
 ---
 
-## Core Features
+## Core Pillars
 
 | Capability | Engineering Implementation | Status |
 |---|---|---|
@@ -82,37 +85,40 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 
 ```
                          ┌─────────────────────────────────────────────────┐
-                         │         SECURITY VALIDATION LAYER                │
-                         │  File check → Parse → Injection Guard (regex)   │
-                         │  → Injection Guard (LLM) → PII Redact → BRD ✓  │
-                         └─────────────────────────────────────────────────┘
+                         │         SECURITY VALIDATION LAYER               │
+BRD Upload ──► FastAP ──►│  File check → Parse → Injection Guard (regex)   │
+(Streamlit)     POST     │  → Injection Guard (LLM) → PII Redact → BRD ✓   │
+            run-pipeline └─────────────────────────────────────────────────┘
                                               │ validated BRD text
                                               ▼
-BRD Upload ──► FastAPI ──────────────► Orchestrator Agent
-(Streamlit)   POST /run-pipeline        (hub — parses, routes)
+                                    Orchestrator Agent
+                                    (hub — parses, routes sections)
                                               │
-                        ┌─────────────────────┼─────────────────────┐
-                        │ ThreadPoolExecutor  │  (parallel dispatch) │
-                        ▼                     ▼                      ▼
-               Plan Generator      Schedule Estimator      Solution Architect
-               (RAG + Reflect)     (RAG + timelines)       (RAG + Mermaid+Kroki)
-                        │                     │                      │
-                        └──────────┬──────────┘          PoC Planner │
-                                   │                     Tech Stack   │
-                                   ▼           ◄─────────────────────┘
-                            Critic Agent  ◄──── all 5 outputs together
-                            (LLM-judge + FM-1/2/3 caps)
+                                              ▼
+            ┌──────────────────────────────────────────────────────────────────────────┐
+            │ ThreadPoolExecutor  │ (parallel dispatch) │             │                │
+            ▼                     ▼                     ▼             ▼                ▼
+    Plan Generator     Schedule Estimator   Solution Architect   PoC Planner  Tech Stack Recommender
+    (RAG + Reflect)     (RAG + Timelines)     (RAG + Diagram)   (RAG + Timelines)  (RAG + Org Stds)
+            │                     │     (Mermaid+Kroki)    │                 │           │ 
+            ▼                     ▼                        ▼                 ▼           ▼ 
+            └─────────────────────└────────────────────────┘─────────────────└───────────┘
+                                    │                       
+                                    ▼       ◄──── all 5 outputs together  
+                             Critic Agent  
+                            (LLM-as-judge + FM-1/2/3 caps)
                                     │
-                     ┌──────────────┴──────────────┐
+                     ┌──────────────┴───────────────┐
                      │  score < threshold?          │
                      │  revision_count < 2?         │
                      ▼ yes                          ▼ no
               ↻ Targeted revision           HITL Approval Gate
-              (only flagged agents)         (Button OR Voice via ElevenLabs)
+              (only flagged Agents)         (Button OR Voice via ElevenLabs)
                                                     │
                         ┌───────────────────────────┼───────────────────────────┐
-                        ▼ approved                  ▼ rejected                  ▼
-                 Sheets + Jira + PDF       Sheets audit row only         (wait)
+                        │                           │                           │
+                        ▼ Approved                  ▼ Rejected                  ▼
+                 Sheets + Jira + PDF       Sheets audit row only              (wait)
 ```
 
 ---
@@ -224,7 +230,37 @@ The pipeline exposes four automated output integrations triggered only upon huma
 
 ---
 
-## Project Directory Layout
+## Token Usage & Execution Cost
+
+Below is the token usage and cost breakdown for a single full execution of the EM Copilot pipeline (using a standard 5-section BRD):
+
+### Models in Use & Rate Limits
+*   **Specialist Agents:** `gpt-4o` (optimal reasoning & schema compliance)
+    *   Max Response Tokens: 4096 per response
+    *   Rate Limit: 150,000 input tokens/minute (Tier 1 standard)
+*   **Orchestrator & Critic:** `gpt-4o-mini` (fast, highly cost-effective)
+    *   Max Response Tokens: 4096 per response
+    *   Rate Limit: 200,000 input tokens/minute
+
+### Detailed Token & Cost Breakdown per Call
+| Phase / Agent | Model | Input Tokens | Output Tokens | Total Tokens | Cost (USD) |
+|---|---|---|---|---|---|
+| **Security Validator** | `gpt-4o-mini` | ~1,000 | ~100 | ~1,100 | ~$0.0002 |
+| **Orchestrator Hub** | `gpt-4o-mini` | ~1,500 | ~500 | ~2,000 | ~$0.0005 |
+| **Plan Generator** | `gpt-4o` | ~5,000 | ~2,500 | ~7,500 | ~$0.0625 |
+| **Schedule Estimator** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
+| **Solution Architect** | `gpt-4o` | ~6,000 | ~3,000 | ~9,000 | ~$0.0750 |
+| **PoC Planner** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
+| **Tech Stack** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
+| **Critic Agent** | `gpt-4o-mini` | ~10,000 | ~1,000 | ~11,000 | ~$0.0021 |
+| **Total per Run** | — | **~39,500** | **~11,600** | **~51,100** | **~$0.31** |
+
+> [!TIP]
+> A full run costs approximately **$0.31 USD** end-to-end. This parallel execution is managed well within standard Tier 1 OpenAI rate limits (supporting up to 3 parallel pipeline runs per minute).
+
+---
+
+## Project Directory Structure
 
 ```
 engineering-plan-agent/
@@ -360,30 +396,12 @@ This captures prompt structures, latency figures, model versions, and token usag
 
 ---
 
-## Token Usage & Execution Cost
+## 📜 License
+MIT License - Feel free to use this project for learning and inspiration.
 
-Below is the token usage and cost breakdown for a single full execution of the EM Copilot pipeline (using a standard 5-section BRD):
 
-### Models in Use & Rate Limits
-*   **Specialist Agents:** `gpt-4o` (optimal reasoning & schema compliance)
-    *   Max Response Tokens: 4096 per response
-    *   Rate Limit: 150,000 input tokens/minute (Tier 1 standard)
-*   **Orchestrator & Critic:** `gpt-4o-mini` (fast, highly cost-effective)
-    *   Max Response Tokens: 4096 per response
-    *   Rate Limit: 200,000 input tokens/minute
+---
 
-### Detailed Token & Cost Breakdown per Call
-| Phase / Agent | Model | Input Tokens | Output Tokens | Total Tokens | Cost (USD) |
-|---|---|---|---|---|---|
-| **Security Validator** | `gpt-4o-mini` | ~1,000 | ~100 | ~1,100 | ~$0.0002 |
-| **Orchestrator Hub** | `gpt-4o-mini` | ~1,500 | ~500 | ~2,000 | ~$0.0005 |
-| **Plan Generator** | `gpt-4o` | ~5,000 | ~2,500 | ~7,500 | ~$0.0625 |
-| **Schedule Estimator** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
-| **Solution Architect** | `gpt-4o` | ~6,000 | ~3,000 | ~9,000 | ~$0.0750 |
-| **PoC Planner** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
-| **Tech Stack** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
-| **Critic Agent** | `gpt-4o-mini` | ~10,000 | ~1,000 | ~11,000 | ~$0.0021 |
-| **Total per Run** | — | **~39,500** | **~11,600** | **~51,100** | **~$0.31** |
-
-> [!TIP]
-> A full run costs approximately **$0.31 USD** end-to-end. This parallel execution is managed well within standard Tier 1 OpenAI rate limits (supporting up to 3 parallel pipeline runs per minute).
+## 📧 Author
+Author: Rahul Ganbote
+GitHub: @morya99
