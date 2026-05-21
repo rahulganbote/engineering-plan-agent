@@ -42,6 +42,8 @@ this module passes it — the SAME credentials the REST path already uses.
 from __future__ import annotations
 
 import json
+import os
+import sys
 from typing import Any
 
 from src.core.config import settings
@@ -61,11 +63,12 @@ log = get_logger(__name__)
 
 # ── MCP server launch configuration ──────────────────────────────────────────
 # How to start the `mcp-atlassian` MCP server as a stdio subprocess.
-# `python -m mcp_atlassian` is the most portable form (works after
-# `pip install mcp-atlassian`). If you use `uv`, set command="uvx",
-# args=["mcp-atlassian"] instead — no install required.
-MCP_SERVER_COMMAND: str = "python"
-MCP_SERVER_ARGS: list[str] = ["-m", "mcp_atlassian", "--transport", "stdio"]
+# `mcp-atlassian` 0.11.x ships no `__main__.py`, so `python -m mcp_atlassian`
+# fails. The package exposes a `main()` entry point — launch it with the current
+# interpreter (sys.executable) so it runs in the SAME venv where mcp-atlassian
+# is installed, with no PATH lookup needed.
+MCP_SERVER_COMMAND: str = sys.executable
+MCP_SERVER_ARGS: list[str] = ["-c", "from mcp_atlassian import main; main()", "--transport", "stdio"]
 
 # The Jira create-issue tool exposed by mcp-atlassian.
 MCP_CREATE_ISSUE_TOOL = "jira_create_issue"
@@ -118,6 +121,9 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
         args=MCP_SERVER_ARGS,
         # mcp-atlassian reads these env vars for Jira Cloud basic-auth.
         env={
+            # The MCP SDK passes this dict to the subprocess VERBATIM (no merge
+            # with the parent env), so inherit PATH / HOME / TLS-cert vars.
+            **os.environ,
             "JIRA_URL":        settings.jira_base_url,
             "JIRA_USERNAME":   settings.jira_email,
             "JIRA_API_TOKEN":  settings.jira_api_token,
@@ -197,8 +203,9 @@ async def _call_mcp_create_issue(
                     "summary":           summary[:255],
                     "issue_type":        "Epic",
                     "description":       description,
-                    # Labels + any custom fields ride in additional_fields.
-                    "additional_fields": json.dumps({"labels": labels}),
+                    # additional_fields must be a dict (dict[str, Any] | None),
+                    # not a JSON string — the mcp-atlassian tool validates type.
+                    "additional_fields": {"labels": labels},
                 },
             )
 
