@@ -95,13 +95,13 @@ BRD Upload ──► FastAP ──►│  File check → Parse → Injection Gua
                                     (hub — parses, routes sections)
                                               │
                                               ▼
-            ┌──────────────────────────────────────────────────────────────────────────┐
-            │ ThreadPoolExecutor  │ (parallel dispatch) │             │                │
-            ▼                     ▼                     ▼             ▼                ▼
-    Plan Generator     Schedule Estimator   Solution Architect   PoC Planner  Tech Stack Recommender
-    (RAG + Reflect)     (RAG + Timelines)     (RAG + Diagram)   (RAG + Timelines)  (RAG + Org Stds)
-            │                     │     (Mermaid+Kroki)    │                 │           │ 
-            ▼                     ▼                        ▼                 ▼           ▼ 
+            ┌─────────────────────────────────────────────────────────────────────────┐
+            │ ThreadPoolExecutor │ (parallel dispatch) │             │                │
+            ▼                    ▼                     ▼             ▼                ▼
+    Plan Generator    Schedule Estimator  Solution Architect  PoC Planner  Tech Stack Recommender
+    (RAG + Reflect)   (RAG + Timelines)   (RAG + Diagram)   (RAG + Timelines) (RAG + Org Stds)
+            │                     │    (Mermaid+Kroki) │                 │           │ 
+            ▼                     ▼                    ▼                 ▼           ▼ 
             └─────────────────────└────────────────────────┘─────────────────└───────────┘
                                     │                       
                                     ▼       ◄──── all 5 outputs together  
