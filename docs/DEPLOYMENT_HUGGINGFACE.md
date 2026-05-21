@@ -136,9 +136,18 @@ not an env var. On HF Spaces you have two choices:
 - **Simplest (recommended for the demo):** don't configure Sheets on HF. The
   pipeline's local-CSV fallback handles it — approvals still complete, artifacts
   still export (to the container's `logs/exports/`, viewable via the UI).
-- **Full Sheets on HF:** base64-encode the JSON, store it as a secret
-  `GOOGLE_SA_B64`, and add a few lines to `start.sh` to decode it back to a file
-  before launching. Ask if you want this — it's ~5 lines.
+- **Full Sheets on HF (built in):** `start.sh` decodes a base64-encoded key on
+  boot — no code changes needed. Encode your JSON key (macOS `base64 -i` emits a
+  single line):
+
+  ```bash
+  base64 -i secrets/google_service_account.json
+  ```
+
+  Add the output as a Space **Secret** named `GOOGLE_SA_B64`, and also add
+  `GOOGLE_SHEET_ID`. On startup `start.sh` writes the key back to
+  `secrets/google_service_account.json` before the API launches. A missing or
+  malformed `GOOGLE_SA_B64` is non-fatal — the pipeline falls back to local CSV.
 
 ---
 
@@ -183,7 +192,7 @@ But the voice agent's webhook needs to call back to your `/approve/{run_id}`
 endpoint. On HF that endpoint is internal-only (port 8000, not exposed).
 
 Two options:
-- **Demo voice locally** with ngrok (per `docs/DEMO_SCRIPT.md` Beat 6), and use
+- **Demo voice locally** with ngrok, and use
   HF only for the button-driven HITL flow.
 - **Expose the API on HF**: change `app_port` to 8000 and add an Nginx reverse
   proxy — significant extra work, not worth it for a capstone demo.
@@ -227,7 +236,7 @@ To restart without a code change (e.g., after adding a secret), use the Space's
 # One-time
 huggingface.co/new-space  → Docker SDK → CPU basic
 prepend YAML frontmatter to README.md
-git remote add hf https://huggingface.co/spaces/<user>/em-copilot
+git remote add hf https://huggingface.co/spaces/rganbote/em-copilot
 python scripts/ingest_kb.py          # populate Pinecone once
 
 # Deploy

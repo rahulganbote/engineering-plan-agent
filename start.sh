@@ -22,6 +22,24 @@ echo "   FastAPI backend : 0.0.0.0:${API_PORT}  (internal)"
 echo "   Streamlit UI    : 0.0.0.0:${PORT}      (public)"
 echo "──────────────────────────────────────────────"
 
+# ── 0. Materialize the Google service-account key (optional — for Sheets) ───
+# HuggingFace Spaces can't host the JSON key file, so it is injected as a
+# base64-encoded secret (GOOGLE_SA_B64). Decode it back to the path the app
+# expects BEFORE the API starts. A missing/bad secret is non-fatal — the
+# pipeline falls back to the local-CSV export.
+if [ -n "${GOOGLE_SA_B64:-}" ]; then
+    mkdir -p secrets
+    if echo "${GOOGLE_SA_B64}" | base64 -d > secrets/google_service_account.json 2>/dev/null; then
+        export GOOGLE_SERVICE_ACCOUNT_JSON="secrets/google_service_account.json"
+        echo "✓ Google service-account key decoded — Sheets export enabled."
+    else
+        rm -f secrets/google_service_account.json
+        echo "✗ GOOGLE_SA_B64 is set but failed to decode — using CSV fallback."
+    fi
+else
+    echo "• GOOGLE_SA_B64 not set — Sheets export uses the local-CSV fallback."
+fi
+
 # ── 1. FastAPI backend in the background ────────────────────────────────────
 uvicorn src.api.main:app \
     --host 0.0.0.0 \
