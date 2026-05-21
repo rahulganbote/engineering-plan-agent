@@ -1,0 +1,150 @@
+# Engineering Plan — Example
+# Project: Product Finance Reporting Agent (PFRA)
+# Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
+# Synced to Agent 2 (Engineering Plan Generator) contract v2.0
+# All contract fields present: citations, confidence_score, assumptions,
+# flagged_ambiguities, owner_role on all milestones, citation on all risks,
+# total_duration_weeks = sum of phases, reflection_notes populated
+
+## Output Contract Header
+agent_name:          engineering_plan_generator
+run_id:              pfra_2024_ex1
+citations:           [Engineering_Plan_Example1_PFRA_chunk_0, plan_templates_chunk_2, BRD_Example1_PFRA_chunk_1]
+confidence_score:    0.82
+assumptions:
+  - Assumed AWS cloud deployment based on org enterprise contract
+  - Assumed 2-week sprint cadence — BRD did not specify
+  - Assumed Domain Expert available 50% time for validation phases
+flagged_ambiguities:
+  - BRD does not specify whether PDF sources are ingested once or continuously refreshed
+  - Canary vs blue-green deployment preference not specified in BRD
+total_duration_weeks: 11
+
+## Phase 1: Discovery and Architecture
+duration_weeks: 2
+objectives:
+  - Stakeholder alignment on scope and success criteria
+  - Data Dictionary and Data Flow Diagram finalized
+  - PoC connectivity to all data sources confirmed
+  - Agent Logic Model v1.0 and prompt framework drafted
+  - System Architecture Document approved
+milestones:
+  - name: Scope sign-off
+    week: 1
+    deliverable: Data Dictionary and DFD signed by all stakeholders
+    owner_role: EM
+  - name: Data source PoC
+    week: 1
+    deliverable: Live API connectivity to Vector DB and Business Metrics DB confirmed
+    owner_role: Data Engineer
+  - name: Agent logic model v1.0
+    week: 2
+    deliverable: Decision tree and prompt framework documented and peer-reviewed
+    owner_role: AI Engineer
+  - name: SAD approved
+    week: 2
+    deliverable: System Architecture Document signed by Tech Lead and EM
+    owner_role: Tech Lead
+
+## Phase 2: Development and Integration
+duration_weeks: 5
+objectives:
+  - Automated ETL scripts complete — handles all source data variability
+  - Cross-correlation synthesis module generating narrative output
+  - Formatting and rendering module producing PDF and Markdown
+  - End-to-end pipeline runs on synthetic data
+milestones:
+  - name: ETL pipeline complete
+    week: 4
+    deliverable: All 5 data sources ingesting to staging with schema validation
+    owner_role: Data Engineer
+  - name: Synthesis module live
+    week: 5
+    deliverable: Cross-correlation narrative generating from structured + RAG context
+    owner_role: AI Engineer
+  - name: Formatting module complete
+    week: 6
+    deliverable: PDF and Markdown templates rendering correctly
+    owner_role: AI Engineer
+  - name: E2E pipeline run
+    week: 7
+    deliverable: Full pipeline run on synthetic data — zero errors, output reviewed
+    owner_role: Tech Lead
+
+## Phase 3: Validation and Testing
+duration_weeks: 3
+objectives:
+  - Unit tests at >= 80% code coverage
+  - Domain accuracy Pilot 1 — manual vs agent comparison
+  - Usability Pilot 2 — Product Owner feedback
+  - Model refinement based on pilot findings
+milestones:
+  - name: Unit test suite
+    week: 8
+    deliverable: Code coverage report >= 80%, bug fix log resolved
+    owner_role: QA Engineer
+  - name: Pilot 1 accuracy report
+    week: 9
+    deliverable: Manual vs agent narrative comparison — 4 of 5 scenarios rated accurate
+    owner_role: Domain Expert
+  - name: Prompt refinement complete
+    week: 10
+    deliverable: Iteration log showing before-after narrative quality improvement
+    owner_role: AI Engineer
+
+## Phase 4: Deployment and Handoff
+duration_weeks: 1
+objectives:
+  - Security audit signed off
+  - UAT completion report signed by all stakeholders
+  - User manual and maintenance runbook delivered
+  - Production system live and monitored
+milestones:
+  - name: Security audit
+    week: 11
+    deliverable: Security checklist signed by DevOps and Security Engineer
+    owner_role: Security Engineer
+  - name: UAT sign-off
+    week: 11
+    deliverable: Signed UAT completion report from all stakeholders
+    owner_role: EM
+  - name: Go-live
+    week: 11
+    deliverable: Production system live, monitored, hypercare started
+    owner_role: DevOps
+
+## Risks
+risks:
+  - description: External market report PDF formats are inconsistent — RAG chunking requires iteration
+    likelihood: high
+    impact: medium
+    mitigation: Spike on 5 sample documents in Week 1 before building pipeline
+    citation: BRD_Example1_PFRA_chunk_2
+  - description: LLM hallucination in financial narrative causes incorrect business decisions
+    likelihood: medium
+    impact: high
+    mitigation: Citation-back-to-source validation before every delivery — automated check
+    citation: org_engineering_standards_chunk_4
+  - description: Domain Expert unavailable during Pilot 1 — blocks accuracy validation
+    likelihood: medium
+    impact: medium
+    mitigation: Book Domain Expert time in Week 1, confirm commitment in project charter
+    citation: plan_templates_chunk_3
+
+## Team Composition
+team_composition:
+  AI Engineer: 2
+  Data Engineer: 1
+  QA Engineer: 1
+  DevOps: 0.5
+  EM: 0.5
+total_duration_weeks: 11
+
+## Reflection Notes
+reflection_notes: |
+  First draft did not address NFR-01 (pipeline must complete in < 15 min) in any
+  milestone or test criteria. Revised Phase 3 Pilot 1 milestone deliverable to include
+  explicit timing requirement: 3 consecutive runs must complete in < 15 minutes.
+  Also found that all 3 risks lacked citation fields — added citations per contract
+  requirement. Adjusted Phase 2 from 4 to 5 weeks after recognizing ETL complexity
+  for 5 disparate source formats was underestimated in first draft.

@@ -1,0 +1,23 @@
+# Business Requirements Document
+# Project: Something with AI
+# Version: draft
+
+## Overview
+We want to build an AI thing that helps with stuff. It should be smart and fast.
+The system needs to do many things and integrate with everything we have.
+
+## Requirements
+- It should work well
+- Users should like it
+- Must be secure somehow
+- Performance must be acceptable
+- Should integrate with our systems
+- Needs to be scalable for the future
+- AI features required
+- Mobile and web versions needed
+
+## Notes
+TBD - still figuring out the details
+Budget: unknown
+Timeline: ASAP
+Team: whoever is available

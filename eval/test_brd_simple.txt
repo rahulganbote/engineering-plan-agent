@@ -1,0 +1,34 @@
+# Business Requirements Document
+# Project: Employee Directory Mobile App
+# Domain: Internal Tools | Complexity: Simple
+
+## Background
+The company of 800 employees currently uses a static intranet page for the employee
+directory. It is updated manually, often out of date, and not accessible on mobile.
+HR has requested a mobile-friendly employee directory app.
+
+## Objectives
+1. Provide real-time employee directory accessible on iOS and Android
+2. Enable employees to update their own profiles without IT involvement
+3. Support search by name, department, location, and skill
+
+## Functional Requirements
+FR-01: Employees can search directory by name, title, department, and location
+FR-02: Each employee profile shows photo, title, team, manager, email, and Slack handle
+FR-03: Employees can update their own photo, bio, and skills
+FR-04: Managers can update team membership for their direct reports
+FR-05: Directory syncs with Okta SSO for login and deprovisioning
+
+## Non-Functional Requirements
+NFR-01: App loads directory search results in < 2 seconds
+NFR-02: Available on iOS 15+ and Android 11+
+NFR-03: 99.5% availability during business hours
+
+## Constraints
+- Team: 2 engineers, 8 weeks, no new infrastructure budget
+- Must integrate with Okta (existing SSO provider)
+- No PII stored outside existing AWS us-east-1 region
+
+## Risks
+- RISK-01 (LOW): Okta API rate limits during peak usage
+- RISK-02 (LOW): Employee photo upload size and storage costs

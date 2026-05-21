@@ -1,0 +1,17 @@
+project_id,project_name,domain,complexity,team_size,estimated_weeks,actual_weeks,variance_weeks,variance_pct,delay_reasons,sprint_velocity_avg,engineers,qa_engineers,devops
+P001,Payment Portal v2,fintech,medium,7,16,19,3,18.8,third-party API integration delays + PCI audit scheduling,32,5,1,1
+P002,Customer Data Platform,data,complex,10,24,28,4,16.7,data quality issues in legacy migration + team ramp-up on Spark,28,7,2,1
+P003,Mobile App Rewrite,mobile,medium,5,12,13,1,8.3,iOS App Store review delay,41,4,1,0
+P004,Internal Developer Platform,platform,complex,8,20,26,6,30.0,scope expansion approved mid-project + Kubernetes learning curve,24,6,1,1
+P005,Notification Service,backend,simple,3,6,6,0,0.0,on track - well-understood problem space,38,3,0,0
+P006,Order Management System,ecommerce,complex,9,22,25,3,13.6,ERP integration undocumented APIs + performance tuning for Black Friday load,29,6,2,1
+P007,SSO and Identity Platform,security,medium,4,10,11,1,10.0,compliance review took longer than estimated,35,3,1,0
+P008,Analytics Dashboard,data,simple,2,5,5,0,0.0,clean greenfield build,44,2,0,0
+P009,API Gateway Migration,infrastructure,medium,5,14,17,3,21.4,rollback incident during migration week 9 + additional security hardening,30,4,0,1
+P010,Recommendation Engine,ml,complex,6,18,22,4,22.2,model accuracy below threshold required 2 extra training iterations,25,4,1,1
+P011,Customer Support Portal,saas,medium,4,10,10,0,0.0,strong product spec + experienced team,40,3,1,0
+P012,Real-time Pricing Engine,fintech,complex,7,16,20,4,25.0,market data feed reliability issues + regulatory sign-off delays,27,5,1,1
+P013,Inventory Management,ecommerce,medium,5,12,14,2,16.7,warehouse system integration underdocumented,33,4,1,0
+P014,Developer Portal Docs,platform,simple,2,4,4,0,0.0,content-heavy low-risk project,42,2,0,0
+P015,Multi-region Failover,infrastructure,complex,6,14,16,2,14.3,DNS failover testing more complex than estimated,31,4,1,1
+P016,LegalTech SaaS Platform,legaltech,complex,13,24,27,3,12.5,SOC 2 evidence collection extended + pilot client UAT revealed Ethical Wall edge cases,26,8,2,1

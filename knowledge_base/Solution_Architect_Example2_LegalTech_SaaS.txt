@@ -1,0 +1,147 @@
+# Solution Architecture Design Document — Example
+# Project: LegalTech SaaS Platform — Practice Management and e-Discovery
+# Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 3.0
+# Synced to Agent 4 (Solution Architect) contract v2.0
+
+## Output Contract Header
+agent_name:          solution_architect
+run_id:              legaltech_2024_arch
+citations:           [arch_patterns_chunk_0, arch_patterns_chunk_4, Solution_Architect_Example2_LegalTech_SaaS_chunk_0, org_engineering_standards_chunk_3]
+confidence_score:    0.87
+assumptions:
+  - AWS cloud deployment — existing enterprise contract confirmed
+  - Pinecone not applicable for this workload — per-tenant Elasticsearch provides search isolation
+flagged_ambiguities:
+  - BRD does not specify whether Ethical Wall double-approval must be synchronous — assumed sequential
+
+## Pattern Selection
+pattern: Domain-driven microservices with event-sourced immutable audit ledger
+pattern_justification: |
+  Five distinct business domains (Matter, Document, Search, Billing, ACL) have
+  divergent scaling, compliance, and data residency requirements. Matter management
+  is low-volume transactional. OCR and indexing are bursty and compute-heavy.
+  Billing is event-driven. ACL must be always-on at 99.99% (NFR-03).
+  A modular monolith cannot satisfy these divergent NFRs simultaneously — OCR scale
+  events would impact Matter and Billing availability. Domain-driven decomposition
+  enforces strict ownership — no service reads another service's database.
+  Event sourcing on the audit ledger provides court-admissible, mathematically
+  verifiable chain-of-custody (NFR-07). Shared-nothing per-tenant enforces zero
+  cross-tenant leakage (NFR-02). Saga pattern considered for distributed transactions
+  but rejected — legal hold is the only cross-service transaction and it uses the
+  immutable ledger as coordinator, not a saga. Source: arch_patterns_chunk_0.
+
+## Components
+components:
+  - name: API Gateway
+    responsibility: JWT auth, tenant token routing, rate limiting, large-file resumable upload
+    technology: Kong on EKS + AWS WAF
+    interfaces: [HTTPS REST, WebSocket for SSE streaming]
+
+  - name: Access Control Service
+    responsibility: RBAC, matter-level permissions, Ethical Wall enforcement
+    technology: Python FastAPI + PostgreSQL per-tenant schema
+    interfaces: [REST API to API Gateway, gRPC to domain services]
+
+  - name: Matter Management Service
+    responsibility: Case lifecycle, status transitions, attorney assignments, conflict check
+    technology: Python FastAPI + PostgreSQL per-tenant schema
+    interfaces: [REST API, publishes events to Audit Ledger]
+
+  - name: Document Intake Service
+    responsibility: SHA-256 hash on upload, encrypted S3 write, Kafka trigger, audit event
+    technology: Python FastAPI + boto3 (S3) + Kafka producer
+    interfaces: [REST API multipart upload, S3 SDK, Kafka topic]
+
+  - name: OCR Pipeline
+    responsibility: Async text extraction from PDFs and scanned images, backpressure via queue
+    technology: Python workers + AWS Textract + Kafka consumer
+    interfaces: [Kafka consumer, Textract async API, Elasticsearch write]
+
+  - name: e-Discovery Search Service
+    responsibility: Per-tenant Boolean search across indexed documents, zero cross-tenant results
+    technology: Python FastAPI + AWS OpenSearch per-tenant index
+    interfaces: [REST API, OpenSearch SDK per-tenant index]
+
+  - name: Time and Billing Service
+    responsibility: 1/10th hour time tracking, LEDES format export
+    technology: Python FastAPI + PostgreSQL per-tenant schema
+    interfaces: [REST API, CSV/LEDES file export]
+
+  - name: Immutable Audit Ledger
+    responsibility: Append-only event store, SHA-256 hash chain, legal hold flag — no delete API
+    technology: PostgreSQL with write-only IAM role — no DELETE permission granted at any level
+    interfaces: [Write-only REST API — no GET except for authorized audit read]
+
+  - name: Legal Hold Service
+    responsibility: Immutable hold flag, overrides retention schedules on flagged documents
+    technology: Python FastAPI writes to Audit Ledger + S3 object tag
+    interfaces: [REST API, Audit Ledger write, S3 tag update]
+
+## Data Flow
+data_flow:
+  - "1. Attorney uploads PDF via client app → API Gateway validates JWT, resolves tenant ID"
+  - "2. API Gateway checks ACL Service → returns 403 Forbidden with zero data if Ethical Wall blocks attorney"
+  - "3. Document Intake Service: generates SHA-256 hash within 500ms, writes encrypted file to tenant S3 bucket (BYOK), emits audit event to Audit Ledger, publishes to Kafka OCR topic"
+  - "4. Audit Ledger: appends event {user_id, tenant_id, doc_hash, action: UPLOAD, timestamp} — immutable"
+  - "5. OCR Worker (async): consumes Kafka message, reads from S3, calls Textract, writes extracted text chunks to tenant OpenSearch index"
+  - "6. Attorney submits Boolean search: 'privileged AND contract NOT draft' → API Gateway resolves tenant, ACL confirms permission → Search Service queries tenant-isolated OpenSearch shard"
+  - "7. Failure path: If any source fails → Orchestrator logs failure with timestamp, returns error to API Gateway, does NOT proceed to partial processing"
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-02: Zero cross-tenant data access — single tenant bug must not expose any other tenant data"
+    architecture_decision: Per-tenant Kubernetes namespace + per-tenant S3 bucket policy + per-tenant OpenSearch index + circuit breaker halts routing on token mismatch. Three independent isolation layers.
+    citation: org_engineering_standards_chunk_3
+
+  - nfr: "NFR-03: Document storage and ACL microservices maintain 99.99% uptime"
+    architecture_decision: Multi-AZ EKS deployment. ACL and Document services on dedicated node groups — no shared dependency with compute-heavy OCR workers. Auto-scaling independent per service.
+    citation: arch_patterns_chunk_0
+
+  - nfr: "NFR-04: Search returns results for indexed documents in < 2 seconds"
+    architecture_decision: Per-tenant OpenSearch shard prevents noisy-neighbor. Async OCR prevents write contention with search reads. Index pre-warmed for active matters.
+    citation: arch_patterns_chunk_4
+
+  - nfr: "NFR-01: All stored files encrypted with separate tenant-specific keys (BYOK)"
+    architecture_decision: AWS KMS with customer-managed keys per tenant. Mandatory key escrow for enterprise tier. Separate KMS key ARN per S3 bucket and OpenSearch index.
+    citation: org_engineering_standards_chunk_3
+
+  - nfr: "NFR-07: All document events produce tamper-evident audit records verifiable by cryptographic hash chain"
+    architecture_decision: PostgreSQL append-only table with write-only IAM role. No DELETE permission granted at any layer including superadmin. SHA-256 hash chain verified by periodic Merkle tree snapshot.
+    citation: arch_patterns_chunk_0
+
+## Deployment Model
+deployment_model: Cloud (AWS EKS multi-AZ, us-east-1 primary with us-west-2 DR)
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    subgraph Clients [Law Firm and Corporate Client Layer]
+      A[Attorney or Paralegal] --> B
+    end
+    subgraph Gateway [API Gateway — Tenant Isolation Boundary]
+      B(Kong API Gateway: JWT Auth + Tenant Routing)
+      B --> ACL{ACL Service: Is this user allowed?}
+      ACL -->|Denied| E403[403 Forbidden — zero data in response]
+      ACL -->|Permitted| Router
+    end
+    subgraph Services [Domain Microservices — Shared Nothing per Tenant]
+      Router --> MM[Matter Management]
+      Router --> DI[Document Intake]
+      Router --> SE[e-Discovery Search]
+      Router --> TB[Time and Billing]
+      DI -->|async via Kafka| OCR[OCR Pipeline Workers]
+      OCR -->|indexed chunks| SE
+      DI -->|audit event| AL[Immutable Audit Ledger]
+      MM -->|audit event| AL
+    end
+    subgraph Storage [Per-Tenant Isolated Storage]
+      DI -->|BYOK encrypted| S3[AWS S3 per-tenant bucket]
+      SE -->|per-tenant index| ES[OpenSearch per-tenant shard]
+      MM --> PG[(PostgreSQL per-tenant schema)]
+      AL --> Ledger[(Append-only Event Store)]
+    end
+    style E403 fill:#FFB3B3,stroke:#CC0000,stroke-width:2px
+    style AL fill:#FFE4B5,stroke:#DAA520,stroke-width:2px
+
+## Diagram SVG
+diagram_svg: ""

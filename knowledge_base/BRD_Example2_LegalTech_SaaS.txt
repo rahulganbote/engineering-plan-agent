@@ -1,0 +1,135 @@
+# Business Requirements Document
+# Project: LegalTech SaaS Platform — Practice Management and e-Discovery System
+# Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 1.0
+# Architecture: Microservices | Tenancy: Multi-tenant B2B
+# Normalized from: LegalTech BRD document
+
+## Background and Business Context
+Law firms and corporate legal departments currently operate across fragmented,
+disconnected tools for matter management, document storage, billing, and discovery.
+Manual processes for document intake, chain-of-custody tracking, and billable hour
+compilation create compliance risk, court-inadmissible audit trails, and billing
+leakage. The organization requires a cloud-native, multi-tenant B2B SaaS platform
+built on microservices to consolidate legal workflows while guaranteeing
+attorney-client privilege, immutable document integrity, and defensible audit trails
+suitable for court presentation.
+
+## Objectives
+1. Guarantee 100% cross-tenant data isolation to honor attorney-client privilege
+   and satisfy GDPR and CCPA data residency requirements
+2. Scale resource-intensive services (OCR, e-Discovery indexing) dynamically during
+   large document dumps without idle compute cost during quiet periods
+3. Provide mathematically verifiable proof of document integrity and access logs
+   admissible as court evidence
+4. Reduce manual billing compilation time by 80% through automated LEDES export
+5. Enable Ethical Wall enforcement programmatically to prevent conflict-of-interest
+   data exposure within the same firm
+
+## Stakeholders
+- Product Owner: VP of Product, LegalTech Division
+- Technical Lead: Principal Architect, Platform Engineering
+- Primary Users: Law firm partners, associates, paralegals, billing administrators
+- Compliance: Data Privacy Officer, Regional Counsel (GDPR, CCPA)
+- Enterprise Clients: Corporate legal departments (Fortune 500)
+- External: LEDES standards body, cloud key management vendors (BYOK)
+
+## Scope Boundaries
+In Scope (Must Do):
+  - Matter Management microservice — case lifecycle, status, assignments
+  - Document Intake and OCR microservice — upload, hash generation, text extraction
+  - e-Discovery Search microservice — Boolean query, tenant-filtered indexing
+  - Time and Billing microservice — 1/10th hour tracking, LEDES export
+  - Access Control (ACL) microservice — role-based, matter-level, Ethical Wall
+  - Secure API Gateway — large-file handling, token-based auth, tenant routing
+  - Immutable audit ledger — append-only, cryptographically verifiable
+
+Out of Scope (Must NOT Do):
+  - Custom integrations for legacy on-premise courtroom management software
+  - Physical media shipping services for data intake — digital upload only
+  - Real-time courtroom transcription or stenography services
+
+## Functional Requirements
+FR-01: System shall generate a unique SHA-256 cryptographic hash for every uploaded
+       legal document immediately upon intake (before any processing begins)
+FR-02: Every user action that modifies, views, or exports a document shall be recorded
+       in an unalterable append-only audit log — no record may be deleted or modified
+FR-03: System shall automatically extract text via OCR from PDFs and scanned images
+       asynchronously using a message queue — processing must not block document intake
+FR-04: Search service shall support complex Boolean queries (AND, OR, NOT, proximity)
+       across millions of legal artifacts with strict tenant-permission filtering
+FR-05: Billing service shall track time in 1/10th hour (6-minute) increments aligned
+       with standard legal industry billing practices
+FR-06: Billing service shall compile approved time entries into LEDES format for
+       corporate client processing and export
+FR-07: System shall enforce Ethical Wall rules programmatically — blocking named
+       attorneys within the same firm from accessing conflicting matters
+FR-08: System shall support legal hold configurations that prevent deletion or
+       modification of documents flagged for active litigation, overriding all
+       standard retention schedules
+FR-09: API Gateway shall handle large file uploads (multi-GB) with resumable upload
+       support and token-based authentication per tenant
+FR-10: System shall support Bring Your Own Key (BYOK) encryption per enterprise tenant
+
+## Non-Functional Requirements (NFRs)
+NFR-01 Security:      All stored files encrypted with separate tenant-specific keys
+                      (BYOK support mandatory for enterprise tier)
+NFR-02 Isolation:     Zero cross-tenant data access — single tenant bug must not
+                      expose any other tenant data under any failure mode
+NFR-03 Availability:  Document storage and ACL microservices maintain 99.99% uptime
+                      SLA (maximum 52 minutes downtime per year)
+NFR-04 Performance:   Search returns results for indexed documents in < 2 seconds
+                      for standard Boolean queries
+NFR-05 Compliance:    GDPR Article 17 (right to erasure) with legal hold override,
+                      CCPA, SOC 2 Type II, attorney-client privilege preservation
+NFR-06 Scalability:   OCR and indexing microservices auto-scale horizontally during
+                      large discovery dumps (terabyte-scale ingestion events)
+NFR-07 Auditability:  All document events produce tamper-evident audit records
+                      verifiable by cryptographic hash chain — court-admissible
+NFR-08 Recoverability:RPO < 1 hour, RTO < 4 hours for any regional failure
+
+## Constraints
+- Team: 8 engineers, 2 QA, 1 DevOps, 1 Security Engineer — no additional hiring
+- Timeline: PoC in 6 weeks, MVP in 20 weeks, SOC 2 certification in 12 months
+- Technology: Must deploy on AWS (existing enterprise contract); Kubernetes required
+- Compliance: SOC 2 Type II audit must be completed before first enterprise client
+- Budget: $1.2M annual including infrastructure, security tooling, and compliance audit
+- Legal: Each microservice must have independent data residency configurable per region
+
+## Risks
+- RISK-01 (CRITICAL): Single bug in tenant-isolation layer or API Gateway routing
+  could expose confidential trial strategies to opposing counsel — catastrophic liability.
+  Mitigation: Mandatory penetration testing of isolation layer before any tenant
+  onboarding; circuit breaker that halts routing if tenant token mismatch detected.
+- RISK-02 (HIGH): Legal discovery can involve terabytes of unorganized data dumped
+  simultaneously — document parsing microservices must throttle via message queues
+  to prevent system-wide memory exhaustion.
+  Mitigation: Kafka-backed queue with backpressure; auto-scaling OCR workers with
+  hard memory limits per pod; load testing at 10TB ingestion simulation before launch.
+- RISK-03 (HIGH): BYOK key management complexity — if tenant loses encryption key,
+  all their data is permanently inaccessible.
+  Mitigation: Key escrow requirement for enterprise clients; documented recovery SLA.
+- RISK-04 (MEDIUM): Ethical Wall misconfiguration could create conflict-of-interest
+  exposure leading to disbarment of attorneys.
+  Mitigation: Double-approval workflow for all Ethical Wall configurations;
+  automated conflict check on every matter assignment.
+- RISK-05 (MEDIUM): Legal hold must survive system upgrades and schema migrations.
+  Mitigation: Legal hold flag stored in immutable ledger, not application database.
+
+## Acceptance Criteria
+- FR-01: Upload any PDF → system returns SHA-256 hash within 500ms; re-uploading
+  identical file produces identical hash; modified file produces different hash
+- FR-02: Delete attempt on audit log record returns 403 Forbidden under all user roles
+  including system admin; record count only ever increases
+- FR-04: Boolean query "privileged AND contract NOT draft" across 10M documents
+  returns results in < 2 seconds with zero cross-tenant results
+- FR-07: Attorney A blocked from Matter X via Ethical Wall → any API call by Attorney A
+  to Matter X data returns 403 with no data leakage in response body or error message
+- FR-08: Legal hold applied to document → delete and modify API calls both return 423
+  Locked regardless of user role, including superadmin
+
+## Success Criteria (Post-Launch KPIs)
+- Zero cross-tenant data incidents in first 12 months of operation
+- Search P95 latency < 2 seconds sustained over 30 days with 100 concurrent tenants
+- SOC 2 Type II certification achieved within 12 months of launch
+- Billing compilation time reduced from manual 3 hours to < 5 minutes automated
+- 99.99% availability SLA met for document storage and ACL services over first year

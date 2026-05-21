@@ -1,0 +1,331 @@
+# EM Copilot — System Design Reference
+**Use this file to onboard Claude Code without feeding the whole project.**
+Start every session: "Read Plan.md, Design.md, and State.md. Then [task]."
+
+---
+
+## System Overview
+
+**Product:** EM Copilot — BRD to Engineering Plan Multi-Agent AI System
+**Pattern:** Central Orchestrator Hub-and-Spoke (Orchestrator + 5 specialist agents + 1 Critic)
+**Protocol:** All specialist messages, Critic feedback, revisions, and HITL decisions route through the Orchestrator. Specialist agents never call each other. Critic never talks to agents directly.
+
+---
+
+## System Design
+```
+BRD upload
+  → Security Validator
+  → Orchestrator Hub
+      - parses BRD
+      - builds routing plan
+      - owns PipelineState
+      - dispatches specialist tasks
+  → Specialist Agents
+      - Engineering Plan Generator
+      - Schedule Estimator
+      - Solution Architect
+      - PoC Planner
+      - Tech Stack Recommender
+  → Orchestrator Aggregator
+      - collects all outputs
+      - validates Pydantic contracts
+      - forwards complete bundle to Critic
+  → Critic
+      - groundedness
+      - completeness
+      - consistency
+      - actionability
+      - cross-agent contradictions
+  → Orchestrator Decision Router
+      - if Green: HITL approval
+      - if Amber/Red and revision_count < 2: dispatch only affected agents
+      - if max revisions reached: flag to EM with Amber/Red
+  → HITL approval
+  → Export Run Summary /log/demo artifacts in Google Sheets
+  → Push artifacts to Jira
+  -> HITL rejection - end of pipeline.     #audit email
+    
+```
+  
+```
+Layer 1: BRD Ingestion & Parsing     → Parse uploaded BRDs, extract sections, classify requirements, tag metadata. Security Validator → Doc Parser → FastAPI
+Layer 2: Knowledge Augmentation (RAG)    → Ground all agent outputs in past BRDs, templates, patterns, org standards → Pinecone (text-embedding-3-large · dim=10124· top-k=4 · cosine 0.72)
+Layer 3: Multi-Agent Generation     → Orchestrator dispatches 5 independent specialist agents and aggregates their outputs
+Layer 4: Validation & Evaluation  →  Orchestrator forwards complete bundle to Critic; Critic scores, checks contradictions, and returns feedback to Orchestrator
+Layer 5: HITL              → Gate (approve/reject) → if appproved, export & ingest the BRD and all 5 artifacts. If rejected send email with notes from rejection along with BRD and all 5 artifacts.
+Layer 6: Output Delivery   → Google Sheets · Google Docs · Mermaid · Markdown · Jira
+```
+
+## Architecture — 7 Layers
+
+```
+Layer 1: BRD Ingestion     → Security Validator → Doc Parser → FastAPI
+Layer 2: RAG               → Pinecone (text-embedding-3-large · top-k=4 · cosine 0.72)
+Layer 3: Multi-Agent       → Orchestrator Hub → 5 Specialist Agents → Orchestrator Aggregator
+Layer 4: Validation        → Orchestrator → Critic → Orchestrator Decision Router
+Layer 5: HITL              → Gate (approve/reject) → if appproved, export Run Summary in Google Sheets & Push the BRD and all 5 artifacts to Jira. If rejected send email with notes + Critic — quality assessment from rejection along with BRD and all 5 artifacts.
+Layer 6: Output Delivery   → Google Sheets · Mermaid · Kroki · Jira
+Layer 7: Governance        → LangSmith · LangFuse · JSONL logs · security
+```
+
+##	Multi-Agents Architecture & Output Contracts 
+# Agent	→ Group	→ Primary Responsibility
+Agent 1: Orchestrator	→ Orchestration: Route BRD sections to specialist agents; manage state; handle errors and retries.
+Agent 2: Engineering Plan Generator	→ Planning: Phases, risks, milestones, team composition. Uses a Reflection self-review step.
+Agent 3: Schedule Estimator	→ Planning: Effort estimates, timelines, resource allocation. Aligns to the plan's phases.
+Agent 4: Solution Architect	→ Design:  High-level system design, components, data flow, NFR mapping.
+Agent 5: PoC Planner → Design: PoC scope, measurable success criteria, modular boundaries.
+Agent 6: Tech Stack Recommender	→ Design: 2–3 stack options with trade-offs (scalability, team familiarity, integration risk, cost).
+Agent 7: Critic	→ Validation: Score outputs on completeness, consistency, actionability, groundedness. Enforce the revision loop. 
+
+---
+
+## Project Structure
+
+```
+engineering-plan-agent/
+├── Plan.md                    ← 5-day sprint plan + rubric tracker
+├── Design.md                  ← THIS FILE — system design reference
+├── State.md                   ← daily progress log
+├── README.md                  ← portfolio README
+├── requirements.txt
+├── Dockerfile
+├── .env.example
+├── streamlit_app.py           ← UI entry point (NOT YET BUILT)
+│
+├── src/
+│   ├── core/
+│   │   ├── models.py          ← ALL Pydantic contracts (✅ COMPLETE)
+│   │   ├── config.py          ← pydantic-settings from .env (✅ COMPLETE)
+│   │   ├── logger.py          ← JSONL logging + success criteria (✅ COMPLETE)
+│   │   └── rag.py             ← Pinecone ingest + retrieve (✅ COMPLETE)
+│   ├── agents/
+│   │   ├── orchestrator.py    ← BRD parser + routing (✅ COMPLETE)
+│   │   ├── critic.py          ← Rubric scoring + revision loop (✅ COMPLETE)
+│   │   ├── plan_generator.py  ← BUILT
+│   │   ├── schedule.py        ← BUILT
+│   │   ├── architect.py       ← BUILT (includes Mermaid + Kroki tool)
+│   │   ├── poc_planner.py     ← BUILT
+│   │   ├── tech_stack.py      ← BUILT (includes GitHub API tool)
+│   │   └── pipeline.py        ← BUILT (LangGraph StateGraph)
+│   ├── api/
+│   │   └── main.py            ← FastAPI 5 endpoints (✅ COMPLETE)
+│   ├── security/
+│   │   └── validator.py       ← 7-check security layer (✅ COMPLETE)
+│   └── integrations/
+│       ├── sheets.py          ← Google Sheets write action (✅ COMPLETE)
+│       ├── email.py           ← audit email if rejected (❌ NOT BUILT, optional)
+│       └── voice.py           ← ElevenLabs for Voice Interface (✅ COMPLETE)
+│
+├── knowledge_base/            ← 6 RAG source docs (✅ COMPLETE)
+├── eval/                      ← Test BRDs (partial)
+├── scripts/
+│   └── ingest_kb.py           ← Pinecone KB population (✅ COMPLETE)
+└── tests/
+    └── unit/test_security.py  ← Security unit tests (✅ COMPLETE)
+```
+
+---
+
+## Communication Protocol (Hub-and-Spoke)
+
+```
+Step 1: Security Validator → Orchestrator Hub
+          validated BRD text + BRD hash
+
+Step 2: Orchestrator Hub → Specialist Agents
+          task + run_id + routing_plan + iteration_count + optional critic feedback
+
+Step 3: Specialist Agents → Orchestrator Aggregator
+          draft outputs only; specialists do not communicate with each other
+
+Step 4: Orchestrator Aggregator → Critic
+          complete artifact bundle after Pydantic validation
+
+Step 5: Critic → Orchestrator Decision Router
+          quality scores + badge + agent-specific feedback + consistency findings
+
+Step 6: Orchestrator Decision Router decides:
+          Green → HITL approval
+          Amber/Red + revision_count < 2 → dispatch only affected agents
+          Max revisions reached → flag to EM with Amber/Red and stop revising
+```
+
+**Rules:**
+- Specialist agents NEVER communicate directly with each other.
+- Critic NEVER communicates directly with specialist agents.
+- Every revision request is mediated by the Orchestrator.
+- The Orchestrator owns `PipelineState`, routing, aggregation, retry policy, and max loop enforcement.
+
+---
+
+## Key Models (src/core/models.py)
+
+All agents output Pydantic models inheriting from `AgentOutputBase`:
+```python
+class AgentOutputBase(BaseModel):
+    agent_name: str
+    run_id: str
+    citations: list[str]   # REQUIRED — min 1 RAG chunk ID
+    confidence_score: float
+    assumptions: list[str]
+    flagged_ambiguities: list[str]
+```
+
+| Agent | Output Model | Key Fields |
+|-------|-------------|-----------|
+| Orchestrator | OrchestratorOutput | brd_hash · sections · routing_plan |
+| Plan Generator | EngineeringPlanOutput | phases · risks · milestones · reflection_notes |
+| Schedule | ScheduleOutput | sprints · total_effort_days · critical_path |
+| Architect | ArchitectureOutput | pattern · components · nfr_mappings · diagram_svg |
+| PoC Planner | PoCOutput | poc_hypothesis · scope_in · success_criteria |
+| Tech Stack | TechStackOutput | options (2-3) · recommended_option |
+| Critic | CriticOutput | groundedness · completeness · consistency · actionability · badge |
+
+**PipelineState** is the single object flowing through LangGraph StateGraph.
+
+---
+
+## RAG Configuration
+
+```python
+PINECONE_INDEX = "brd-knowledge-base"
+VECTOR_DIM     = 1024          # text-embedding-3-large
+METRIC         = "cosine"
+TOP_K          = 4
+THRESHOLD      = 0.85
+REGION         = "us-east-1"   # free tier only
+```
+
+**6 Knowledge Base Sources:**
+| File | source_type | Used by |
+|------|-------------|---------|
+| brd_fintech_payment_portal.txt | brd | Plan Generator, PoC Planner |
+| brd_platform_idp.txt | brd | Plan Generator, PoC Planner |
+| arch_patterns.txt | arch_pattern | Solution Architect |
+| plan_templates.txt | plan_template | Plan Generator, Schedule |
+| project_timelines.csv | timeline | Schedule Estimator |
+| tech_decision_log.txt | tech_log | Tech Stack Recommender |
+| org_engineering_standards.txt | tech_log | Organization's Stadard Tech Stack |
+
+---
+
+## Critic Rubric Thresholds
+
+| Dimension | Threshold | What earns full score |
+|-----------|-----------|----------------------|
+| Groundedness | ≥ 3.75 | ≥75% of claims have RAG citation |
+| Completeness | ≥ 5.0 | 100% BRD sections addressed |
+| Consistency | ≥ 5.0 | Zero cross-agent contradictions |
+| Actionability | ≥ 4.0 | EM can act immediately |
+| **Overall GREEN** | ≥ 4.0 | All dimensions above threshold |
+
+---
+
+## HITL Gate Flow
+
+```
+Critic → badge assigned
+    ↓
+HITL Gate
+├── APPROVE → update Dashboard google sheet, export all formats, push to Jira → notify. Voice approval - decision recorded in 11ElevanLabs
+└── REJECT → update Dashboard google sheet, rejection_source="hitl" → audit email (all artifacts + both scores). Voice approval - decision recorded in 11ElevanLabs
+            → UI: "Email sent for further review"
+→ pipeline ends
+```
+
+---
+
+## External Tool Calls
+
+| Tool | Used by | Purpose | Auth |
+|------|---------|---------|------|
+| Pinecone | All 5 agents | RAG retrieval | API key |
+| OpenAI | All agents + Critic | LLM generation | API key |
+| Kroki.io | Solution Architect | Mermaid → SVG diagram | None (free) |
+| GitHub API | Tech Stack | Velocity data | None (public) |
+| Google Sheets | Pipeline export | Write artifacts | Service account |
+| Jira | Pipeline export | Formatted report | Service account |
+| ElevenLabs | HITL | Voice approval | API key (optional) |
+
+---
+
+## Security Layer (7 checks, in order)
+
+1. File format + size (Python, ~0ms)
+2. Document parse (pypdf/docx, ~50ms)
+3. Content length min 50 words (Python)
+4. Prompt injection — Layer 1: regex patterns (Python, ~1ms)
+5. Prompt injection — Layer 2: LLM semantic scan (gpt-4o-mini, ~800ms)
+6. PII detection + redaction (Python regex — WARNING not BLOCK)
+7. BRD completeness check (keyword matching)
+
+**BRD Storage Decision:** Option A — RAM only, never persisted. Only SHA256 hash logged.
+
+---
+
+## Environment Variables Required
+
+```bash
+# Core (required)
+OPENAI_API_KEY=
+PINECONE_API_KEY=
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=
+LANGCHAIN_PROJECT=em-copilot-brd-agent
+
+# Google (for export)
+GOOGLE_SERVICE_ACCOUNT_JSON=./secrets/google_service_account.json
+GOOGLE_SHEET_ID=
+
+# Optional
+ELEVENLABS_API_KEY=
+ELEVENLABS_AGENT_ID=
+LANGFUSE_SECRET_KEY=
+LANGFUSE_PUBLIC_KEY=
+```
+
+---
+
+## FastAPI Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | /run-pipeline | Upload BRD, start pipeline (background task) |
+| GET | /status/{run_id} | SSE stream of live agent progress |
+| POST | /approve/{run_id} | HITL decision (approved/rejected) |
+| GET | /results/{run_id} | Fetch final artifacts + scores |
+| GET | /health | Health check |
+
+---
+
+## How to Run Locally
+
+```bash
+# Terminal 1
+uvicorn src.api.main:app --reload --port 8000
+
+# Terminal 2
+streamlit run streamlit_app.py
+
+# Open: http://localhost:8501
+```
+
+---
+
+## Test Commands
+
+```bash
+# Unit tests
+pytest tests/ -v
+
+# KB population
+python scripts/ingest_kb.py
+
+# KB health check
+python scripts/ingest_kb.py --check-only
+
+# Retrieval test
+python scripts/ingest_kb.py --test-only
+```

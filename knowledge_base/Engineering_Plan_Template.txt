@@ -1,0 +1,134 @@
+# Engineering Plan Template
+# Source: EM Copilot Knowledge Base | Type: plan_template | source_type: plan_template
+# Version: 3.0 | Domain: Generic | Synced to Agent 2 (Engineering Plan Generator) contract v2.0
+#
+# CONTRACT FIELDS THIS TEMPLATE DEMONSTRATES:
+#   agent_name, run_id, citations[], confidence_score, assumptions[], flagged_ambiguities[],
+#   phases[{name, duration_weeks, objectives[], milestones[{name, week, deliverable, owner_role}]}],
+#   risks[{description, likelihood, impact, mitigation, citation}],
+#   team_composition{role: headcount}, total_duration_weeks, reflection_notes
+
+## Output Contract Header
+agent_name:          engineering_plan_generator
+citations:           [plan_templates_chunk_N, Engineering_Plan_Template_chunk_N]
+confidence_score:    [0.0-1.0 — set below 0.5 if BRD is ambiguous]
+assumptions:         [List every assumption made where BRD was silent]
+flagged_ambiguities: [List every unclear or missing BRD element]
+total_duration_weeks: [Sum of all phase duration_weeks — must match exactly]
+
+## Phase 1: Discovery and Architecture
+duration_weeks: 2
+objectives:
+  - Stakeholder alignment on scope and success criteria
+  - Architecture Decision Record approved before Phase 2 starts
+  - Top 2 technical risks spike-tested
+milestones:
+  - name: Kickoff complete
+    week: 1
+    deliverable: RACI document and team working agreements signed
+    owner_role: EM
+  - name: ADR approved
+    week: 2
+    deliverable: System Architecture Document signed by Tech Lead and EM
+    owner_role: Tech Lead
+  - name: Dev environment ready
+    week: 2
+    deliverable: CI/CD pipeline green, staging environment provisioned
+    owner_role: DevOps
+
+## Phase 2: Core Build MVP
+duration_weeks: 6
+objectives:
+  - Implement core functional requirements FR-01 through FR-N
+  - API contracts finalized by Sprint 2
+  - Weekly stakeholder demo
+milestones:
+  - name: API contracts finalized
+    week: 4
+    deliverable: OpenAPI spec committed and shared with dependent teams
+    owner_role: Tech Lead
+  - name: Core features code-complete
+    week: 7
+    deliverable: Unit test coverage >= 80%, all core FRs passing in staging
+    owner_role: Senior Engineer
+  - name: MVP in staging
+    week: 8
+    deliverable: End-to-end smoke tests passing, product owner demo delivered
+    owner_role: QA Engineer
+
+## Phase 3: Hardening and Integration
+duration_weeks: 3
+objectives:
+  - Integration testing with all dependent systems
+  - Performance testing at 2x expected peak load validates NFRs
+  - Security review completed
+milestones:
+  - name: Integration tests passing
+    week: 10
+    deliverable: All cross-service integration tests green in staging
+    owner_role: QA Engineer
+  - name: Load test complete
+    week: 11
+    deliverable: P95 latency validated against NFR-01 at 2x peak load
+    owner_role: DevOps
+  - name: Security review signed off
+    week: 11
+    deliverable: Security checklist approved by Security Engineer
+    owner_role: Security Engineer
+
+## Phase 4: Launch and Stabilization
+duration_weeks: 2
+objectives:
+  - Canary release 5% to 25% to 100% traffic migration
+  - On-call runbook completed before go-live
+  - Hypercare: daily check-in for first 2 weeks
+milestones:
+  - name: Go-no-go review
+    week: 12
+    deliverable: All stakeholders sign go-no-go checklist, zero open P1 issues
+    owner_role: EM
+  - name: 100% traffic migrated
+    week: 13
+    deliverable: Canary complete, legacy on standby, monitoring dashboards live
+    owner_role: DevOps
+
+## Risks
+# Each risk MUST include a citation field per Agent 2 contract
+# likelihood and impact values: low | medium | high
+risks:
+  - description: External API rate limits may slow integration in Phase 2
+    likelihood: medium
+    impact: medium
+    mitigation: Implement circuit breaker pattern on Day 1 of integration sprint
+    citation: org_engineering_standards_chunk_3
+  - description: Key person dependency on core business logic implementation
+    likelihood: medium
+    impact: high
+    mitigation: Pair programming and weekly cross-training sessions from Week 1
+    citation: plan_templates_chunk_4
+  - description: QA environment spec differs from production causing late-stage failures
+    likelihood: low
+    impact: high
+    mitigation: Staging deployed on identical container spec to production via IaC
+    citation: org_engineering_standards_chunk_2
+
+## Team Composition
+# Format: role_name: headcount (fractional for part-time)
+team_composition:
+  Engineering Lead: 1
+  Senior Engineer: 2
+  Engineer: 2
+  QA Engineer: 1
+  DevOps: 0.5
+  EM: 0.5
+total_duration_weeks: 13
+
+## Reflection Notes
+# REQUIRED — Agent 2 must populate this field documenting self-critique of first draft
+# Must not be empty. Reflects Reflection pattern: draft, self-critique, final output.
+reflection_notes: |
+  First draft did not address NFR-02 (availability) in Phase 3 milestones.
+  Revised to add explicit availability SLA validation milestone in Week 11.
+  Also identified that risks had no citation fields — added citations to all 3 risks
+  per contract requirement. Adjusted total_duration_weeks from 12 to 13 to match
+  corrected phase sum after extending Phase 4 from 1 to 2 weeks.

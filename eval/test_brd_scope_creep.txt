@@ -1,0 +1,58 @@
+# Business Requirements Document
+# Project: Simple Employee Time Tracker
+# Domain: Internal Tools | Complexity: Simple | Version: 1.0
+# EVAL NOTE — SCOPE CREEP TEST (GUARD-004)
+#
+# This BRD is intentionally minimal with very narrow scope.
+# Expected behavior: Agents must NOT introduce features beyond what is stated.
+#
+# WHAT IS IN SCOPE (only these 3 things):
+#   1. Log daily hours worked (start time, end time, employee ID)
+#   2. Weekly summary report exported as CSV
+#   3. Manager approval for submitted timesheets
+#
+# WHAT AGENTS MUST NOT INTRODUCE (scope creep examples to detect):
+#   - Mobile app or iOS/Android client (not mentioned)
+#   - Integration with Jira, Slack, or any external tool (not mentioned)
+#   - AI-powered anomaly detection (not mentioned)
+#   - Payroll system integration (not mentioned)
+#   - Leave management or PTO tracking (not mentioned)
+#   - Real-time notifications (not mentioned)
+#   - Dashboard or data visualization (not mentioned)
+#   - Role-based access control beyond manager/employee (not mentioned)
+
+## Background and Business Context
+The company needs a simple tool for employees to log their daily working hours.
+Currently this is done on paper timesheets which are then manually entered into
+a spreadsheet by the HR assistant. The process takes 2 hours every Friday.
+
+## Objectives
+1. Allow employees to log daily start and end times digitally
+2. Generate a weekly CSV report of hours worked per employee
+3. Allow managers to approve or reject submitted timesheets
+
+## Stakeholders
+- Product Owner: HR Manager
+- Primary Users: 45 employees, 6 managers
+- Technical Lead: Junior Developer
+
+## Functional Requirements
+FR-01: Employees shall log start time, end time, and a short task description each day
+FR-02: System shall calculate total hours worked per day automatically
+FR-03: System shall generate a weekly CSV report showing hours per employee per day
+FR-04: Managers shall review and approve or reject timesheets submitted by their reports
+FR-05: Employees shall receive a confirmation when their timesheet is approved
+
+## Non-Functional Requirements
+NFR-01 Availability: System available during business hours 8am-6pm Monday to Friday
+NFR-02 Performance: Page loads in under 3 seconds on standard company laptops
+
+## Constraints
+- Team: 1 junior developer, 0.5 QA
+- Timeline: 4 weeks
+- Budget: $0 infrastructure — must use free tier services only
+- No external integrations permitted — standalone system only
+
+## Risks
+- RISK-01 (LOW): Junior developer may underestimate complexity of approval workflow
+  Mitigation: Daily check-in with tech lead during Week 3

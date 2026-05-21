@@ -1,0 +1,105 @@
+# Architecture Patterns Reference
+# Source: Org Engineering Knowledge Base
+# Last updated: 2024-Q4
+
+## Pattern: Event-Driven Microservices
+Description: Services communicate asynchronously via an event bus (Kafka or SNS/SQS).
+Each service owns its data store and publishes domain events on state changes.
+Consumers subscribe to relevant events and react independently.
+
+Best suited for: High-throughput systems, decoupled teams, audit trail requirements,
+systems where eventual consistency is acceptable.
+
+Trade-offs:
+  Pros: High scalability, fault isolation, independent deployability, natural audit log
+  Cons: Complex debugging, eventual consistency requires careful design, higher operational overhead
+  
+NFR mapping: Suits availability >= 99.9%, throughput > 1000 TPS, team count > 5
+
+Org adoption: Used by Payments Platform, Notification Service, Order Management
+Decision log reference: ADR-2022-041
+
+## Pattern: Layered Monolith (Modular)
+Description: Single deployable unit with well-defined internal module boundaries.
+Modules communicate via internal interfaces, not network calls.
+Database may be shared but accessed only through module-owned repositories.
+
+Best suited for: Teams < 5 engineers, early-stage products, low traffic (<500 concurrent users),
+rapid iteration requirements, limited DevOps capacity.
+
+Trade-offs:
+  Pros: Simple deployment, easy debugging, low latency (in-process calls), low ops overhead
+  Cons: Scaling requires full-app scaling, tech stack lock-in, module coupling risk over time
+
+NFR mapping: Suits availability >= 99.5%, latency < 100ms internal, team size <= 4
+
+Org adoption: Customer Portal v1 (being replaced), Internal Admin Tools
+Decision log reference: ADR-2021-007
+
+## Pattern: CQRS (Command Query Responsibility Segregation)
+Description: Separate write model (commands, strong consistency) from read model
+(queries, optimised for reporting). Write side uses relational DB; read side uses
+denormalized read stores (Elasticsearch, Redis, read replicas).
+
+Best suited for: Systems with high read:write ratio (>10:1), complex reporting requirements,
+systems where write and read scaling needs differ significantly.
+
+Trade-offs:
+  Pros: Independently scalable read/write paths, optimised query performance
+  Cons: Eventual consistency on read side, increased complexity, two data stores to maintain
+
+NFR mapping: Suits read latency < 50ms, write throughput > 500 TPS, reporting SLA < 2s
+
+## Pattern: Strangler Fig (Migration Pattern)
+Description: Incrementally replace a legacy system by routing new traffic to new services
+while legacy handles remaining traffic. Use a facade/proxy to route based on feature flags.
+Decommission legacy modules one at a time as new equivalents are validated.
+
+Best suited for: Legacy modernization with zero-downtime requirement, risk-averse organizations,
+systems where big-bang migration is too risky.
+
+Trade-offs:
+  Pros: Low risk, reversible, production-validated incrementally
+  Cons: Dual system maintenance cost, routing complexity, timeline extends vs big-bang
+
+Org adoption: Payment Portal modernization (current), CRM migration (planned)
+Decision log reference: ADR-2023-018
+
+## Pattern: BFF (Backend for Frontend)
+Description: Dedicated backend service per client type (mobile app, web app, partner API).
+Each BFF aggregates and transforms data from internal microservices to match its client's needs.
+
+Best suited for: Multi-channel products (web + mobile + API), teams where frontend and
+backend are separate, reducing over/under-fetching of data.
+
+Trade-offs:
+  Pros: Client-optimised APIs, independent deployment per channel, clear ownership
+  Cons: Code duplication across BFFs, additional service to maintain per channel
+
+## Pattern: Saga (Distributed Transactions)
+Description: Manage multi-step business transactions across microservices using a sequence
+of local transactions with compensating transactions on failure.
+Choreography-based: services react to events. Orchestration-based: central coordinator.
+
+Best suited for: Multi-service business workflows (order + payment + inventory),
+systems where 2-phase commit is not feasible across service boundaries.
+
+Trade-offs:
+  Pros: Maintains data consistency without distributed locking
+  Cons: Complex rollback logic, difficult to debug, requires idempotent operations
+
+Org adoption: Order fulfillment workflow
+Decision log reference: ADR-2023-029
+
+## Pattern: Serverless Functions (FaaS)
+Description: Stateless functions triggered by events, executed on managed compute.
+No server management. Scale to zero when idle.
+
+Best suited for: Event-driven processing, variable/unpredictable traffic, background jobs,
+prototypes and MVPs, teams without DevOps capacity.
+
+Trade-offs:
+  Pros: Zero ops, auto-scaling, pay-per-execution cost model
+  Cons: Cold start latency, 15-min execution limit (AWS Lambda), vendor lock-in, hard to debug locally
+
+NFR mapping: Not suited for < 200ms latency SLA or > 15 min execution time

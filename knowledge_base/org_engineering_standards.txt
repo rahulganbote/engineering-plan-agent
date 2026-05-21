@@ -1,0 +1,288 @@
+# Org Engineering Standards
+# Source: Engineering Leadership — Approved Standards
+# Version: 4.2 | Last Updated: 2024-Q4
+# Authority: CTO Office + Architecture Review Board
+# Type: standard | Domain: generic | Complexity: reference
+
+## Purpose
+This document defines the engineering standards that all projects at this organization
+must follow. Every engineering plan, architecture design, and tech stack recommendation
+must be verified against these standards before implementation approval.
+Deviation requires written ADR with Architecture Review Board sign-off.
+
+---
+
+## 1. Approved Technology Stack (Current Org Baseline)
+
+### 1.1 Programming Languages
+| Language | Approved Use Cases | Not Approved For |
+|----------|-------------------|-----------------|
+| Python 3.11+ | Data pipelines, ML/AI services, scripting, FastAPI backends, agent frameworks | High-throughput transaction processing (use Java) |
+| TypeScript / Node.js | Frontend (React/Next.js), BFF services, real-time APIs | ML inference (use Python) |
+| Java 17+ | High-throughput transaction processing, legacy system integration, Spring services | New AI/ML features |
+| Go | Network-intensive services, CLI tooling, infrastructure services | General-purpose web APIs (use Python or Java) |
+| SQL | All relational data access — must use parameterized queries | Raw string concatenation (security violation) |
+
+### 1.2 Approved Databases
+| Category | Approved | Not Approved | Notes |
+|----------|---------|-------------|-------|
+| Relational | PostgreSQL 15+ | MySQL (legacy only), SQLite (dev only) | Default for new services |
+| Document | MongoDB 6+ | CouchDB | Only when schema is genuinely variable |
+| Cache | Redis 7+ | Memcached | Session, rate limiting, pub/sub |
+| Time-series | TimescaleDB | InfluxDB | Metrics and event data |
+| Vector | Pinecone Serverless, Qdrant | ChromaDB (dev only), FAISS (dev only) | Production RAG workloads only |
+| Analytics | Snowflake, BigQuery | MySQL for analytics | Not permitted to run OLAP on OLTP DBs |
+
+### 1.3 Approved Message Queues / Streaming
+| Use Case | Approved | Not Approved |
+|----------|---------|-------------|
+| High-throughput streaming (>10K msg/sec) | Apache Kafka (AWS MSK) | RabbitMQ (legacy only) |
+| Standard async messaging | AWS SQS/SNS | ActiveMQ |
+| Real-time data sync | Kafka + Debezium CDC | Custom polling loops |
+
+### 1.4 Approved AI / LLM Stack
+| Component | Approved | Notes |
+|-----------|---------|-------|
+| LLM — primary | OpenAI GPT-4o | Default for all production AI features |
+| LLM — secondary | Anthropic Claude Sonnet | Fallback for complex reasoning; also approved for evaluation |
+| LLM — cost optimization | OpenAI GPT-4o-mini | Approved for Critic scoring, classification, short completions |
+| Embeddings | text-embedding-3-large (1024-dim) | Default for precision; text-embedding-3-small only if cost is concern |
+| Agent framework | LangChain + LangGraph | Preferred for stateful multi-agent workflows |
+| Observability | LangSmith (primary), LangFuse (secondary) | Both required for production AI systems |
+| Prompt versioning | Required — all prompts must be versioned in git | No hardcoded prompts in application code |
+
+---
+
+## 2. Coding Standards
+
+### 2.1 Python Standards
+- Style: PEP 8 enforced via `ruff` linter — no exceptions
+- Type hints: Required on all function signatures; `mypy --strict` in CI
+- Docstrings: Required on all public functions and classes (Google style)
+- Dependencies: Pin all versions in `requirements.txt`; use `pip-compile` for lock files
+- Secrets: Never in code — use pydantic-settings + environment variables
+- Logging: Use structured logging (loguru or structlog) — never `print()` in production
+- Error handling: Explicit exception types only; never bare `except:` clauses
+
+### 2.2 API Design Standards
+- External APIs: RESTful with OpenAPI 3.0 spec generated and committed to repo
+- Internal APIs: gRPC preferred for service-to-service (40% lower latency than REST)
+- Auth: JWT tokens with < 24hr expiry; refresh token rotation; no API keys in URLs
+- Versioning: URL-based (`/api/v1/`) for external; header-based for internal
+- Rate limiting: Required on all public endpoints — 100 req/min default, configurable
+- Response format: `{"data": ..., "meta": {"request_id": ..., "timestamp": ...}}`
+- Error format: `{"error": {"code": "...", "message": "...", "details": [...]}}`
+
+### 2.3 Data Standards
+- PII: Never log raw PII; hash or mask before writing to any log or analytics system
+- Encryption: AES-256 at rest; TLS 1.2+ in transit — enforced by infrastructure policy
+- Data minimization: Collect only what is needed; document retention period per field
+- Migrations: All schema migrations via Alembic (Python) or Flyway (Java); never manual
+
+---
+
+## 3. CI/CD Pipeline Standards
+
+### 3.1 Required Pipeline Stages (in order)
+1. **Lint + format check** — ruff, mypy, prettier — fail fast, < 2 min
+2. **Unit tests** — pytest with coverage report — minimum 80% coverage required
+3. **Security scan** — Snyk dependency scan — block on HIGH or CRITICAL CVEs
+4. **Build** — Docker image build + push to ECR
+5. **Integration tests** — against staging environment — < 15 min
+6. **Deploy to staging** — automatic on main branch merge
+7. **Smoke tests** — 5 critical path checks — automatic post-deploy
+8. **Deploy to production** — manual approval required for production releases
+
+### 3.2 Branching Strategy
+- Main branch: protected; requires 2 approving reviews + all CI checks passing
+- Feature branches: `feature/ticket-id-description` — delete after merge
+- Hotfix branches: `hotfix/ticket-id` — direct merge to main with emergency approval
+- No direct commits to main — enforced by branch protection rules
+
+### 3.3 Container Standards
+- Base images: Official distroless or slim images only (no full OS images in prod)
+- Non-root user: All containers must run as non-root
+- Image scanning: Trivy scan in CI — block on CRITICAL vulnerabilities
+- Read-only root filesystem: Required for all production containers
+- Resource limits: CPU and memory limits required on all Kubernetes pods
+
+---
+
+## 4. Security Standards
+
+### 4.1 Authentication and Authorization
+- Authentication: OAuth 2.0 + OIDC for user auth; JWT for service-to-service
+- Password policy: Bcrypt hashing (cost factor 12); no MD5 or SHA-1 for passwords
+- Secrets management: HashiCorp Vault or AWS Secrets Manager — no .env files in production
+- RBAC: Role-based access control required on all services with user-facing data
+- Principle of least privilege: Every service account has only the permissions it needs
+
+### 4.2 Input Validation
+- All user inputs validated at API boundary using Pydantic v2 or equivalent
+- SQL injection: Parameterized queries only — enforced by ORM; raw SQL requires review
+- XSS: All output HTML-encoded; Content-Security-Policy header required
+- File uploads: Type validation, size limits, and virus scanning required
+- Prompt injection (AI systems): Two-layer detection — regex patterns + LLM semantic scan
+
+### 4.3 Compliance Requirements
+| Regulation | Applies When | Key Requirements |
+|-----------|-------------|-----------------|
+| GDPR | Any EU user data | Right to erasure, data residency, breach notification < 72hrs |
+| CCPA | California user data | Right to know, right to delete, opt-out of sale |
+| SOC 2 Type II | B2B enterprise clients | Annual audit, controls evidence, access logs 1 year retention |
+| HIPAA | Health data | BAA required, PHI encryption, audit logs |
+| PCI-DSS | Payment card data | Tokenize cards, no raw card storage, quarterly scans |
+
+### 4.4 Penetration Testing
+- New products: External pentest required before first production customer
+- Existing products: Annual pentest minimum; immediate pentest after major architecture change
+- Critical findings: Must be remediated before launch — no exceptions
+- High findings: Must be remediated within 30 days of report
+
+---
+
+## 5. Architecture Review Criteria
+
+### 5.1 When Architecture Review Board (ARB) Approval is Required
+- Any new microservice or standalone service
+- Any change to data residency or storage location
+- Any new external vendor or API dependency with access to user data
+- Any change to authentication or authorization design
+- Any AI/LLM integration handling non-public data
+- Any architecture handling > $100K/month in transactions
+
+### 5.2 ARB Review Checklist (must be satisfied before approval)
+
+Data and Privacy:
+  [ ] Data flow diagram complete — every data store, every external system shown
+  [ ] PII identified and handling documented — encryption, masking, retention
+  [ ] Data residency requirements satisfied per user geography
+  [ ] Retention and deletion policy defined per data type
+
+Security:
+  [ ] Threat model completed (STRIDE methodology)
+  [ ] Authentication and authorization design reviewed
+  [ ] Secrets management strategy documented
+  [ ] Input validation coverage confirmed
+  [ ] For AI systems: prompt injection mitigation documented
+
+Reliability:
+  [ ] SLA defined and achievable with proposed architecture
+  [ ] Failure modes identified (what fails, how it fails, recovery)
+  [ ] Backup and recovery plan with RPO/RTO targets
+  [ ] Load testing plan for NFR validation
+
+Operations:
+  [ ] Observability: metrics, tracing, logging, alerting all covered
+  [ ] Runbook exists or committed to be created before launch
+  [ ] On-call rotation defined
+  [ ] Rollback plan documented
+
+### 5.3 Architecture Pattern Selection Guidance
+| Team Size | Traffic | NFR Profile | Recommended Pattern |
+|-----------|---------|-------------|-------------------|
+| < 4 engineers | < 500 concurrent | Moderate | Modular monolith (see DL-2021-007) |
+| 4-8 engineers | 500-5000 concurrent | High availability | Domain-driven microservices |
+| 8+ engineers | > 5000 concurrent | Mission critical | Event-driven microservices + CQRS |
+| Any size | Batch/scheduled | Cost-optimized | Serverless (FaaS) |
+| Migration project | Any | Zero downtime | Strangler Fig pattern |
+
+Pattern must be justified in ADR against team size, traffic, and NFR profile.
+Choosing microservices for a 2-engineer team requires explicit ARB exception.
+
+---
+
+## 6. Observability Standards
+
+### 6.1 Required for All Production Services
+- Structured logging: JSON format, request_id propagated through all logs
+- Distributed tracing: OpenTelemetry instrumentation; all inter-service calls traced
+- Metrics: Latency (P50, P95, P99), error rate, throughput — exported to Datadog
+- Alerting: P1 alert fires if error rate > 1% for > 5 min or P95 latency > 3× baseline
+- Dashboards: Standard dashboard template required — latency, errors, saturation, traffic
+
+### 6.2 AI/Agent-Specific Observability
+- LangSmith: Required for all LangGraph/LangChain agents — every span traced
+- Prompt versioning: Logged with each LLM call — enables A/B comparison
+- Token usage: Logged per call — cost tracking and anomaly detection
+- Hallucination rate: Tracked per agent via Critic scores — weekly review
+- Revision cycle rate: If > 30% of runs require Critic revision → prompt engineering review
+
+---
+
+## 7. Documentation Standards
+
+### 7.1 Required Documentation Per Service
+- README: Purpose, architecture, local setup, environment variables, runbook link
+- Architecture Decision Records (ADRs): One per significant decision; stored in `docs/decisions/`
+- API documentation: OpenAPI spec for all REST endpoints; Protobuf comments for gRPC
+- Runbook: Incident response steps for all known failure modes
+
+### 7.2 ADR Format
+```
+# ADR-{ID}: {Decision Title}
+Status: {Proposed | Accepted | Deprecated | Superseded by ADR-{ID}}
+Context: {What is the situation requiring a decision?}
+Decision: {What was decided?}
+Rationale: {Why this option over alternatives?}
+Alternatives Considered: {What else was evaluated?}
+Consequences: {Trade-offs accepted by making this decision}
+Date: {YYYY-MM-DD}
+```
+
+---
+
+## 8. Agentic AI Safety Standards (applies to all AI agent systems)
+
+### 8.1 Ambiguity Handling Protocol
+When an AI agent encounters ambiguous, missing, or contradictory requirements in a BRD:
+
+RULE 1 — Flag, never guess:
+  Every agent MUST populate flagged_ambiguities[] with specific, named ambiguities.
+  Banned behavior: silently choosing an interpretation without recording the choice.
+  Required behavior: "BRD does not specify deployment region — see assumptions[]"
+
+RULE 2 — Conservative default:
+  When forced to choose between interpretations, ALWAYS default to:
+    - Lower scope (fewer features, narrower integration surface)
+    - Longer timeline (add buffer, not compress)
+    - Smaller team (don't assume headcount that wasn't mentioned)
+  Document the conservative choice in assumptions[] with format:
+    "Assumed [conservative choice] — BRD did not specify. Chose conservative
+     interpretation per org AI safety standard 8.1."
+
+RULE 3 — Surface contradictions to EM:
+  If the BRD contains internal contradictions (e.g., timeline says 8 weeks but
+  team size implies 16 weeks), the agent MUST:
+    1. Record both conflicting values in flagged_ambiguities[]
+    2. State which value was used and why (always the more conservative)
+    3. NOT silently pick one without recording the conflict
+  Example: "BRD states 8-week timeline (Section 5) but team of 2 engineers
+  implies 16 weeks for stated scope (Section 3). Used 16 weeks as conservative
+  estimate. EM review required."
+
+### 8.2 Scope Creep Prevention
+Agents must never introduce requirements not present in the BRD.
+
+Definition of scope creep in this context:
+  - A feature, integration, or capability appears in agent output that has no
+    corresponding FR, objective, or implicit constraint in the source BRD
+  - Timeline extended beyond BRD constraint without documented justification
+  - Team size recommended exceeds BRD constraint without documented justification
+
+Detection: The Critic agent runs _detect_scope_creep() to cross-check all agent
+  output claims against the BRD FR and objective list. Any claim without a BRD
+  anchor is flagged as potential scope creep.
+
+### 8.3 Confidentiality Requirements
+  - Raw BRD content MUST NOT appear in any log, trace, or external system
+  - Only SHA256 hash of BRD is logged for audit trail
+  - PII detected in BRD is redacted in-memory before any agent processes it
+  - BRD text passed to OpenAI API is transient — not stored (paid API default)
+  - Agent outputs may reference BRD section names but must not quote raw BRD text
+
+### 8.4 Schema Compliance at Agent Handoffs
+  Every agent output MUST be validated by Pydantic before entering PipelineState.
+  ValidationError at any handoff routes to the error node — pipeline does not proceed.
+  The Orchestrator is the only node that reads and writes PipelineState.
+  Schema compliance is structural (Pydantic) + semantic (Critic groundedness score).

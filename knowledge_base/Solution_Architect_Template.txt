@@ -1,0 +1,107 @@
+# Solution Architecture Design Document — Template
+# Source: EM Copilot Knowledge Base | Type: arch_pattern | Version: 3.0
+# Synced to Agent 4 (Solution Architect) contract v2.0
+#
+# CONTRACT FIELDS THIS TEMPLATE DEMONSTRATES:
+#   agent_name, citations[], confidence_score, assumptions[], flagged_ambiguities[],
+#   pattern, pattern_justification (must mention team_size + NFR + constraint + alternative),
+#   components[{name, responsibility, technology, interfaces[]}],
+#   data_flow[] (ordered steps, min 2),
+#   nfr_mappings[{nfr, architecture_decision, citation}],  # every BRD NFR must appear
+#   deployment_model, mermaid_diagram, diagram_svg
+
+## Output Contract Header
+agent_name:          solution_architect
+citations:           [arch_patterns_chunk_N, Solution_Architect_Template_chunk_N]
+confidence_score:    [0.0-1.0]
+assumptions:         [List every assumption made where BRD was silent]
+flagged_ambiguities: [List every NFR or constraint that was ambiguous]
+
+## Pattern Selection
+pattern: [Named pattern — must match a pattern documented in arch_patterns.txt]
+pattern_justification: |
+  [Why this pattern given team size, NFRs, and constraints.
+   Must mention at minimum: team size, primary NFR it satisfies, constraint it respects,
+   and at least one alternative pattern explicitly rejected with reason.]
+  Example: "Modular monolith chosen. Team size 3 engineers — microservices not justified
+  (DL-2021-007: microservices require 4+ teams). NFR-01 < 2s latency satisfied by
+  in-process calls eliminating network overhead. Event-driven rejected: no async fan-out
+  needed at this scale. Source: arch_patterns_chunk_1."
+
+## Components
+# min 2 components required
+# Each must have: name, responsibility (one sentence), technology (specific), interfaces[]
+components:
+  - name: [Component name — e.g. API Gateway]
+    responsibility: [Single responsibility, one sentence]
+    technology: [Specific — e.g. Kong, AWS API Gateway — not 'some gateway']
+    interfaces: [REST API, gRPC, Kafka topic — how it communicates]
+
+  - name: [Core Processing Component]
+    responsibility: [What it does — single responsibility]
+    technology: [Specific stack]
+    interfaces: [Communication mechanism]
+
+  - name: [Data Store]
+    responsibility: [What data it holds and why]
+    technology: [PostgreSQL 15, Pinecone Serverless — specific version]
+    interfaces: [JDBC, SDK — how services connect]
+
+## Data Flow
+# Ordered steps — min 2. Show: input source → processing → output destination
+data_flow:
+  - "1. [Entry point]: [Who triggers] → [what happens]"
+  - "2. [Processing step]: [Component] receives [payload] → [action taken]"
+  - "3. [Integration step]: [Component] calls [external service] → [result]"
+  - "4. [Output step]: [Component] produces [artifact] → [delivery mechanism]"
+  - "5. Failure path: If [step N] fails → [specific error handling action]"
+
+## NFR Mappings
+# Every NFR from the BRD must appear here — enforced by Critic completeness check
+# Each NFRMapping MUST include a citation field
+nfr_mappings:
+  - nfr: "NFR-01: [Copy exact NFR text from BRD]"
+    architecture_decision: "[Specific design decision that satisfies this NFR]"
+    citation: [arch_patterns_chunk_N or org_engineering_standards_chunk_N]
+
+  - nfr: "NFR-02: [Copy exact NFR text from BRD]"
+    architecture_decision: "[Specific decision — multi-AZ, cache layer, circuit breaker, etc.]"
+    citation: [relevant chunk ID]
+
+  - nfr: "NFR-03: [Security or compliance NFR]"
+    architecture_decision: "[Encryption, auth mechanism, audit trail approach]"
+    citation: [org_engineering_standards_chunk_N]
+
+## Deployment Model
+deployment_model: "[Cloud (AWS EKS) | Serverless (AWS Lambda) | Hybrid | On-premise]"
+
+## Architecture Diagram (Mermaid)
+# mermaid_diagram field — rendered by Kroki.io tool call → produces diagram_svg
+mermaid_diagram: |
+  graph TD
+    subgraph Input [Input Layer]
+      A[Source / Trigger] --> B
+    end
+    subgraph Processing [Processing Layer]
+      B(Ingestion / Normalization) --> C
+      C[Core Engine / Orchestrator] --> D
+      D{Reasoning / Business Logic} --> E
+    end
+    subgraph Output [Output Layer]
+      E(Formatter) --> F[Delivery / API]
+    end
+
+## Diagram SVG
+# diagram_svg: populated by Kroki.io API tool call — empty if Kroki unavailable
+diagram_svg: ""
+
+## Architecture Decision Checklist
+# Verify before submitting output
+checklist:
+  - Pattern justified against team size and NFRs: [Y/N]
+  - All external dependencies listed with failure fallback: [Y/N]
+  - Data flow covers happy path AND primary failure mode: [Y/N]
+  - Every BRD NFR has a corresponding nfr_mapping entry: [Y/N]
+  - Security: encryption at rest and in transit specified: [Y/N]
+  - Observability: tracing, logging, alerting covered: [Y/N]
+  - Mermaid diagram renders in target documentation system: [Y/N]

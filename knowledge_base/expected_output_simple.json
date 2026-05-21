@@ -1,0 +1,329 @@
+{
+  "_meta": {
+    "brd_file": "test_brd_simple.txt",
+    "brd_name": "Employee Directory Mobile App",
+    "complexity": "simple",
+    "purpose": "Golden expected output for evaluation \u2014 compare agent outputs against these",
+    "rubric_thresholds": {
+      "groundedness": 3.75,
+      "completeness": 5.0,
+      "consistency": 5.0,
+      "actionability": 4.0,
+      "overall_green": 4.0
+    }
+  },
+  "engineering_plan": {
+    "total_duration_weeks": 8,
+    "phases": [
+      {
+        "name": "Discovery",
+        "duration_weeks": 1,
+        "objectives": [
+          "Okta API integration spike",
+          "Tech stack finalisation",
+          "UI wireframes"
+        ],
+        "milestones": [
+          {
+            "name": "Kickoff + scope sign-off",
+            "week": 1,
+            "owner_role": "EM"
+          },
+          {
+            "name": "Okta integration spike complete",
+            "week": 1,
+            "owner_role": "Senior Engineer"
+          }
+        ]
+      },
+      {
+        "name": "Build",
+        "duration_weeks": 5,
+        "objectives": [
+          "Core directory search",
+          "Profile pages",
+          "Okta SSO login",
+          "Photo upload"
+        ],
+        "milestones": [
+          {
+            "name": "Search API complete",
+            "week": 3,
+            "owner_role": "Engineer"
+          },
+          {
+            "name": "iOS + Android builds passing",
+            "week": 5,
+            "owner_role": "Engineer"
+          },
+          {
+            "name": "Okta SSO live in staging",
+            "week": 6,
+            "owner_role": "Senior Engineer"
+          }
+        ]
+      },
+      {
+        "name": "Testing",
+        "duration_weeks": 1,
+        "objectives": [
+          "UAT with 10 pilot users",
+          "Performance validation"
+        ],
+        "milestones": [
+          {
+            "name": "UAT sign-off",
+            "week": 7,
+            "owner_role": "Product Manager"
+          }
+        ]
+      },
+      {
+        "name": "Launch",
+        "duration_weeks": 1,
+        "objectives": [
+          "App store submission",
+          "All-hands communication"
+        ],
+        "milestones": [
+          {
+            "name": "iOS App Store approved",
+            "week": 8,
+            "owner_role": "Engineer"
+          },
+          {
+            "name": "Go-live",
+            "week": 8,
+            "owner_role": "EM"
+          }
+        ]
+      }
+    ],
+    "risks": [
+      {
+        "description": "Okta API rate limits during bulk sync",
+        "likelihood": "low",
+        "impact": "low",
+        "mitigation": "Implement exponential backoff and batch sync off-peak"
+      },
+      {
+        "description": "App Store review delay for iOS",
+        "likelihood": "medium",
+        "impact": "low",
+        "mitigation": "Submit 2 weeks before target launch date"
+      }
+    ],
+    "team_composition": {
+      "Engineer": 2,
+      "Product Manager": 0.25
+    },
+    "min_phases": 4,
+    "required_risks_min": 2,
+    "reflection_notes_required": true,
+    "all_risks_must_have_citation": true,
+    "all_milestones_must_have_owner_role": true
+  },
+  "schedule": {
+    "total_effort_days": 64,
+    "buffer_weeks": 1,
+    "sprints": [
+      {
+        "sprint": 1,
+        "week_range": "W1",
+        "deliverables": [
+          "Kickoff",
+          "Okta spike"
+        ],
+        "effort_days": 8
+      },
+      {
+        "sprint": 2,
+        "week_range": "W2-W3",
+        "deliverables": [
+          "Search API",
+          "Profile model"
+        ],
+        "effort_days": 16
+      },
+      {
+        "sprint": 3,
+        "week_range": "W4-W5",
+        "deliverables": [
+          "Mobile builds",
+          "Photo upload"
+        ],
+        "effort_days": 16
+      },
+      {
+        "sprint": 4,
+        "week_range": "W6",
+        "deliverables": [
+          "Okta SSO",
+          "Deprovisioning"
+        ],
+        "effort_days": 8
+      },
+      {
+        "sprint": 5,
+        "week_range": "W7",
+        "deliverables": [
+          "UAT",
+          "Bug fixes"
+        ],
+        "effort_days": 8
+      },
+      {
+        "sprint": 6,
+        "week_range": "W8",
+        "deliverables": [
+          "App store submission",
+          "Go-live"
+        ],
+        "effort_days": 8
+      }
+    ],
+    "critical_path": [
+      "Okta API integration",
+      "App Store approval",
+      "UAT sign-off"
+    ],
+    "comparable_projects_min": 1,
+    "total_effort_days_min": 50,
+    "buffer_weeks_min": 0
+  },
+  "architecture": {
+    "pattern": "Modular monolith",
+    "pattern_justification": "Team < 4 engineers, 8-week timeline, low traffic \u2014 modular monolith is the right choice per org standards (DL-2021-007). Microservices complexity not justified.",
+    "components": [
+      {
+        "name": "Mobile App (React Native)",
+        "technology": "React Native",
+        "responsibility": "iOS + Android UI"
+      },
+      {
+        "name": "Backend API",
+        "technology": "FastAPI / Python",
+        "responsibility": "Search, profiles, auth"
+      },
+      {
+        "name": "Database",
+        "technology": "PostgreSQL (AWS RDS)",
+        "responsibility": "Employee data store"
+      },
+      {
+        "name": "Auth",
+        "technology": "Okta SSO",
+        "responsibility": "Login + deprovisioning"
+      },
+      {
+        "name": "Storage",
+        "technology": "AWS S3",
+        "responsibility": "Employee photos"
+      }
+    ],
+    "deployment_model": "Cloud (AWS us-east-1)",
+    "nfr_mappings": [
+      {
+        "nfr": "Load time < 2 seconds",
+        "decision": "CDN for static assets + Redis cache for search results"
+      },
+      {
+        "nfr": "iOS 15+ and Android 11+",
+        "decision": "React Native 0.73+ with native module support"
+      }
+    ]
+  },
+  "poc": {
+    "hypothesis": "Validate that Okta SSO deprovisioning works within 5 minutes of HR system update",
+    "duration_weeks": 1,
+    "scope_in": [
+      "Okta SCIM provisioning",
+      "PostgreSQL sync on deprovision event"
+    ],
+    "scope_out": [
+      "Mobile UI",
+      "Photo upload",
+      "Search features"
+    ],
+    "success_criteria": [
+      {
+        "metric": "Deprovisioning latency",
+        "target": "< 5 minutes",
+        "method": "Manual test with 10 accounts"
+      },
+      {
+        "metric": "Zero login after deprovision",
+        "target": "100%",
+        "method": "Automated test suite"
+      }
+    ],
+    "go_nogo_criteria_required": true,
+    "risk_if_poc_fails_required": true,
+    "scope_out_min_items": 2,
+    "success_criteria_min": 2,
+    "duration_weeks_max": 4
+  },
+  "tech_stack": {
+    "recommended": "Option A \u2014 React Native + FastAPI + PostgreSQL",
+    "options": [
+      {
+        "name": "Option A \u2014 React Native + FastAPI + PostgreSQL",
+        "scalability": 3,
+        "team_familiarity": 5,
+        "integration_risk": "low",
+        "monthly_cost_usd": 45,
+        "pros": [
+          "Team knows Python",
+          "Single codebase for iOS + Android",
+          "Fast to build"
+        ],
+        "cons": [
+          "React Native can have native module issues",
+          "Smaller team than web"
+        ]
+      },
+      {
+        "name": "Option B \u2014 Flutter + FastAPI + PostgreSQL",
+        "scalability": 3,
+        "team_familiarity": 2,
+        "integration_risk": "medium",
+        "monthly_cost_usd": 45,
+        "pros": [
+          "Better performance than React Native",
+          "Growing community"
+        ],
+        "cons": [
+          "Team has no Flutter experience",
+          "Dart learning curve adds 2-3 weeks"
+        ]
+      }
+    ],
+    "options_min": 2,
+    "options_max": 3,
+    "recommendation_rationale_required": true,
+    "github_velocity_note_required": true,
+    "all_options_must_have_citation": true
+  },
+  "evaluation_targets": {
+    "min_groundedness": 3.75,
+    "min_completeness": 4.5,
+    "min_actionability": 4.0,
+    "expected_badge": "green",
+    "expected_citations_per_output": 2,
+    "expected_phases": 4,
+    "expected_risks_min": 2,
+    "expected_stack_options": 2,
+    "expected_citations_per_output_min": 2,
+    "expected_phases_min": 4,
+    "expected_stack_options_min": 2,
+    "acceptable_badge": "green",
+    "reflection_notes_required": true,
+    "comparable_projects_required": true,
+    "go_nogo_criteria_required": true,
+    "github_velocity_note_required": true,
+    "nfr_mappings_required": true,
+    "risk_citations_required": true,
+    "owner_role_on_all_milestones": true,
+    "total_duration_weeks_must_match_phases": true
+  }
+}

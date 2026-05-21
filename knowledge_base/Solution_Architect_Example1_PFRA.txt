@@ -1,0 +1,108 @@
+# Solution Architecture Design Document — Example
+# Project: Product Finance Reporting Agent (PFRA)
+# Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
+# Synced to Agent 4 (Solution Architect) contract v2.0
+
+## Output Contract Header
+agent_name:          solution_architect
+run_id:              pfra_2024_arch
+citations:           [arch_patterns_chunk_0, arch_patterns_chunk_1, Solution_Architect_Example1_PFRA_chunk_0]
+confidence_score:    0.85
+assumptions:
+  - AWS cloud deployment assumed — org enterprise contract confirmed
+  - Pinecone Serverless used for RAG — approved per org standard DL-2024-031
+flagged_ambiguities:
+  - BRD does not specify whether vector DB must be self-hosted or cloud — assumed cloud per org standards
+  - Retention period for generated reports not specified — assumed 90 days
+
+## Pattern Selection
+pattern: Orchestrator-Agent with RAG Knowledge Layer
+pattern_justification: |
+  The PFRA requires sequential coordination of 3 distinct operations: structured DB
+  retrieval, unstructured PDF search (RAG), and LLM synthesis. Orchestrator pattern
+  provides explicit per-step control and failure handling mapping directly to BRD FR-01-FR-06.
+  Team size is 2 AI Engineers — microservices not justified (org standard DL-2021-007:
+  microservices require 4+ independent teams). Event-driven pattern rejected: no need
+  for async fan-out at monthly batch frequency. CQRS rejected: read-only data access
+  pattern with single output — no write separation benefit. Source: arch_patterns_chunk_0.
+
+## Components
+components:
+  - name: Orchestrator
+    responsibility: Sequences all pipeline steps, manages state, handles per-step failures
+    technology: Python + LangGraph
+    interfaces: [LangGraph StateGraph edges, Internal function calls]
+
+  - name: Data Ingestion Service
+    responsibility: Pulls structured financial metrics from Business Metrics DB
+    technology: Python + SQLAlchemy + Snowflake connector
+    interfaces: [Snowflake JDBC, REST API to Orchestrator]
+
+  - name: Vector Store RAG
+    responsibility: Stores embeddings of external market reports, retrieves top-4 relevant chunks
+    technology: Pinecone Serverless (text-embedding-3-large, 1536-dim, cosine)
+    interfaces: [OpenAI Embeddings API, Pinecone Python SDK]
+
+  - name: LLM Synthesis Engine
+    responsibility: Cross-correlates structured data with retrieved context, generates narrative
+    technology: OpenAI GPT-4o via LangChain with JSON mode
+    interfaces: [LangChain ChatOpenAI, Structured output response_format]
+
+  - name: Report Generator
+    responsibility: Formats LLM output into standardized PDF and Markdown with citations
+    technology: Jinja2 + WeasyPrint
+    interfaces: [File system write, Email attachment via SendGrid]
+
+## Data Flow
+data_flow:
+  - "1. Monthly cron trigger fires on 25th → Orchestrator initializes run with unique run_id"
+  - "2. Data Ingestion pulls structured metrics from Snowflake → JSON payload {Product_ID, Sales_Volume, Margin_Pct, Growth_Rate}"
+  - "3. Vector Store retrieves top-4 relevant market report chunks via semantic search (query: product + period)"
+  - "4. LLM Synthesis receives structured data + retrieved chunks → generates narrative with (Source: chunk_id) citations"
+  - "5. Report Generator formats narrative into PDF with Executive Summary, Key Metrics, Product Deep Dive, Market Context sections"
+  - "6. Email delivery sends PDF attachment to hardcoded distribution list via SendGrid"
+  - "7. Failure path: If step 2 or 3 fails → Orchestrator halts gracefully, logs failure with timestamp, notifies admin, does NOT deliver partial report"
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01: Full pipeline completes in < 15 minutes"
+    architecture_decision: Single LLM call with full context minimizes round trips. Async data ingestion where possible. OCR pre-processing done at ingestion time not query time.
+    citation: arch_patterns_chunk_0
+
+  - nfr: "NFR-02: Narrative accuracy < 2% deviation from manual calculation"
+    architecture_decision: Citation-back-to-source validation before every delivery. Structured JSON schema enforced at LLM output. All data points traced to source chunk_id.
+    citation: org_engineering_standards_chunk_4
+
+  - nfr: "NFR-03: 99% availability for scheduled execution"
+    architecture_decision: Serverless deployment (AWS Lambda) with 3 retry attempts and 5-min backoff. CloudWatch alarm fires if execution fails to complete by 26th of month.
+    citation: org_engineering_standards_chunk_2
+
+  - nfr: "NFR-05: Any single source failure must not cause total system failure"
+    architecture_decision: Per-step failure handling in Orchestrator. Each data source wrapped in try-catch. Admin notification before pipeline proceeds past failed step.
+    citation: arch_patterns_chunk_0
+
+## Deployment Model
+deployment_model: Serverless (AWS Lambda) — monthly scheduled trigger, pay-per-use, auto-scaling
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    subgraph Input [Input Data Sources]
+      A[Monthly Schedule Trigger] --> B
+      C[Snowflake Business Metrics DB] --> B
+      D[External Market Report PDFs] --> E
+    end
+    subgraph Processing [Core Intelligence Layer]
+      E(Pinecone Vector Store RAG) --> B
+      B[LangGraph Orchestrator] --> F
+      F{GPT-4o LLM Synthesis Engine} --> G
+    end
+    subgraph Output [Report Delivery]
+      G(Report Generator Jinja2 + WeasyPrint) --> H[PDF and Markdown Artifact]
+      H --> I{SendGrid Email Delivery}
+    end
+    style B fill:#B3E5FC,stroke:#1E88E5,stroke-width:2px
+    style F fill:#FFCCBC,stroke:#FF9800,stroke-width:2px
+
+## Diagram SVG
+diagram_svg: ""

@@ -1,0 +1,283 @@
+"""
+src/agents/tech_stack.py
+════════════════════════
+Tech Stack Recommender Agent — specialist spoke.
+
+RAG: source_types=["tech_log", "standard"]
+Contract: TechStackOutput
+"""
+
+from __future__ import annotations
+
+import json
+
+import requests
+
+from src.agents.base_agent import BaseAgent
+from src.core.logger import get_logger
+from src.core.models import PipelineState, RiskLevel, StackOption, TechStackOutput
+
+log = get_logger(__name__)
+
+SYSTEM_PROMPT = """You are a senior Engineering Manager recommending technology stack options.
+Produce 2-3 grounded options with trade-offs.
+
+Rules:
+1. options must contain exactly 2 or 3 options.
+2. recommended_option must match one option.name exactly.
+3. Each option must include components, scalability_rating, team_familiarity_rating,
+   integration_risk, estimated_monthly_cost_usd, pros, cons, and citation.
+4. recommendation_rationale must reference team familiarity, cost, and risk.
+5. Output ONLY valid JSON — no markdown fences, no explanation."""
+
+SCHEMA = """{
+  "options": [
+    {
+      "name": "string",
+      "components": {"api": "FastAPI", "database": "PostgreSQL"},
+      "scalability_rating": integer,
+      "team_familiarity_rating": integer,
+      "integration_risk": "low|medium|high",
+      "estimated_monthly_cost_usd": float,
+      "pros": ["string"],
+      "cons": ["string"],
+      "citation": "chunk_id from context"
+    }
+  ],
+  "recommended_option": "string",
+  "recommendation_rationale": "string",
+  "confidence_score": 0.0,
+  "assumptions": ["string"],
+  "flagged_ambiguities": ["string"]
+}"""
+
+
+class TechStackAgent(BaseAgent):
+    """Creates stack options as an independent specialist spoke."""
+
+    def run(self, state: PipelineState, feedback: str = "") -> TechStackOutput:
+        start = self.start_timer()
+        log.info(f"[{state.run_id}] TechStack start | revision={state.revision_count}")
+
+        brd_text = self._brd_text(state)
+        query = f"technology stack decision tradeoff cost integration platform {brd_text[:300]}"
+        context_str, citation_ids = self.retrieve_context(
+            query=query,
+            source_types=["tech_log", "standard"],
+        )
+        github_signal = self._github_velocity_signal()
+
+        raw = self._generate(brd_text, context_str, citation_ids, feedback, github_signal)
+        output = self._parse(raw, state.run_id, citation_ids)
+
+        self.log_run(
+            run_id=state.run_id,
+            agent_name="tech_stack_recommender",
+            citation_ids=citation_ids,
+            critic_score=None,
+            start_time=start,
+            revision_count=state.revision_count,
+            guardrail_triggers=["github_api_signal_used"] if github_signal else [],
+        )
+        log.info(
+            f"[{state.run_id}] TechStack done | "
+            f"options={len(output.options)} recommended={output.recommended_option}"
+        )
+        return output
+
+    def _brd_text(self, state: PipelineState) -> str:
+        return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
+
+    def _github_velocity_signal(self) -> str:
+        """
+        Lightweight public GitHub API signal for tool-call coverage.
+        Failure is non-blocking because stack recommendation must still work offline.
+        """
+        try:
+            response = requests.get(
+                "https://api.github.com/repos/fastapi/fastapi",
+                timeout=3,
+                headers={"Accept": "application/vnd.github+json"},
+            )
+            if response.status_code != 200:
+                return ""
+            data = response.json()
+            return (
+                f"GitHub public signal: fastapi stars={data.get('stargazers_count')}, "
+                f"open_issues={data.get('open_issues_count')}."
+            )
+        except Exception as e:
+            log.warning(f"GitHub API signal unavailable | {type(e).__name__}: {e}")
+            return ""
+
+    def _generate(
+        self,
+        brd_text: str,
+        context_str: str,
+        citation_ids: list[str],
+        feedback: str,
+        github_signal: str,
+    ) -> str:
+        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        cites = "\n".join(f"  - {c}" for c in citation_ids)
+        return self._call_llm_with_retry(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=(
+                f"{feedback_block}"
+                f"AVAILABLE CITATION IDs:\n{cites}\n\n"
+                f"GITHUB API SIGNAL:\n{github_signal or 'Unavailable — use org standards and BRD constraints.'}\n\n"
+                f"KNOWLEDGE BASE:\n{context_str}\n\n"
+                f"BRD:\n{brd_text}\n\n"
+                f"Output ONLY JSON:\n{SCHEMA}"
+            ),
+            response_format={"type": "json_object"},
+        )
+
+    def _parse(self, raw: str, run_id: str, citation_ids: list[str]) -> TechStackOutput:
+        try:
+            d = json.loads(raw)
+        except json.JSONDecodeError as e:
+            log.error(f"[{run_id}] TechStack parse error: {e}")
+            return self._fallback(run_id, citation_ids, str(e))
+
+        try:
+            first_cite = citation_ids[0] if citation_ids else "tech_decision_log_chunk_0"
+            options = []
+            for o in d.get("options", [])[:3]:
+                cite = o.get("citation", first_cite)
+                if cite not in citation_ids:
+                    cite = first_cite
+                options.append(StackOption(
+                    name=o.get("name", f"Option {len(options) + 1}"),
+                    components=o.get("components", {
+                        "api": "FastAPI",
+                        "database": "PostgreSQL",
+                        "frontend": "Streamlit",
+                    }),
+                    scalability_rating=int(o.get("scalability_rating", 3)),
+                    team_familiarity_rating=int(o.get("team_familiarity_rating", 4)),
+                    integration_risk=_coerce_risk_level(o.get("integration_risk")),
+                    estimated_monthly_cost_usd=float(o.get("estimated_monthly_cost_usd", 500.0)),
+                    pros=o.get("pros", ["Familiar, fast to deliver"]),
+                    cons=o.get("cons", ["May need refactoring at larger scale"]),
+                    citation=cite,
+                ))
+
+            while len(options) < 2:
+                options.extend(self._default_options(first_cite)[len(options):len(options) + 1])
+
+            recommended = d.get("recommended_option", options[0].name)
+            if recommended not in [o.name for o in options]:
+                recommended = options[0].name
+
+            return TechStackOutput(
+                run_id=run_id,
+                citations=citation_ids or [first_cite],
+                confidence_score=float(d.get("confidence_score", 0.72)),
+                assumptions=d.get("assumptions", []),
+                flagged_ambiguities=d.get("flagged_ambiguities", []),
+                options=options[:3],
+                recommended_option=recommended,
+                recommendation_rationale=d.get(
+                    "recommendation_rationale",
+                    "Recommended option balances team familiarity, moderate cost, and manageable integration risk.",
+                ),
+            )
+        except Exception as e:
+            log.error(f"[{run_id}] TechStack build error: {e}")
+            return self._fallback(run_id, citation_ids, str(e))
+
+    def _default_options(self, citation: str) -> list[StackOption]:
+        return [
+            StackOption(
+                name="Lean Python Web Stack",
+                components={
+                    "api": "FastAPI",
+                    "frontend": "Streamlit",
+                    "database": "PostgreSQL",
+                    "hosting": "Container platform",
+                },
+                scalability_rating=3,
+                team_familiarity_rating=4,
+                integration_risk=RiskLevel.LOW,
+                estimated_monthly_cost_usd=500.0,
+                pros=["Fast delivery", "High team familiarity", "Low operational complexity"],
+                cons=["May require later frontend migration for complex UX"],
+                citation=citation,
+            ),
+            StackOption(
+                name="Service-Oriented Cloud Stack",
+                components={
+                    "api": "FastAPI microservices",
+                    "frontend": "React",
+                    "database": "PostgreSQL",
+                    "queue": "Managed message queue",
+                },
+                scalability_rating=4,
+                team_familiarity_rating=3,
+                integration_risk=RiskLevel.MEDIUM,
+                estimated_monthly_cost_usd=1200.0,
+                pros=["Better scalability", "Cleaner service boundaries"],
+                cons=["Higher cost", "More DevOps overhead"],
+                citation=citation,
+            ),
+        ]
+
+    def _fallback(self, run_id: str, citation_ids: list[str], error: str) -> TechStackOutput:
+        log.warning(f"[{run_id}] TechStack fallback | {error[:80]}")
+        cite = citation_ids[0] if citation_ids else "tech_decision_log_chunk_0"
+        options = self._default_options(cite)
+        return TechStackOutput(
+            run_id=run_id,
+            citations=citation_ids or [cite],
+            confidence_score=0.2,
+            assumptions=["Fallback tech stack — agent parse error"],
+            flagged_ambiguities=["Tech stack output could not be parsed"],
+            options=options,
+            recommended_option=options[0].name,
+            recommendation_rationale=(
+                "Fallback recommends the lean stack because it maximizes team familiarity, "
+                "keeps cost low, and minimizes integration risk."
+            ),
+        )
+
+
+# ── RiskLevel coercion ────────────────────────────────────────────────────────
+# LLMs sometimes emit risk levels outside the enum's exact values
+# (e.g. "very high", "severe", "minimal", "extreme"). This helper normalizes
+# any string to the closest valid RiskLevel rather than raising ValidationError.
+
+_RISK_LEVEL_ALIASES = {
+    "low":      "low",
+    "minimal":  "low",
+    "minor":    "low",
+    "negligible": "low",
+    "medium":   "medium",
+    "moderate": "medium",
+    "mid":      "medium",
+    "normal":   "medium",
+    "high":     "high",
+    "elevated": "high",
+    "severe":   "high",
+    "major":    "high",
+    "critical": "critical",
+    "extreme":  "critical",
+    "very high": "critical",
+    "veryhigh": "critical",
+    "blocker":  "critical",
+}
+
+
+def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
+    """Best-effort map ANY input to a valid RiskLevel. Never raises."""
+    if isinstance(value, RiskLevel):
+        return value
+    if value is None:
+        return RiskLevel(default)
+    key = str(value).strip().lower()
+    mapped = _RISK_LEVEL_ALIASES.get(key)
+    if mapped:
+        return RiskLevel(mapped)
+    # Fallback: if the LLM emitted something we haven't mapped, log + use default
+    log.warning(f"Unknown RiskLevel value {value!r} — coercing to {default!r}")
+    return RiskLevel(default)

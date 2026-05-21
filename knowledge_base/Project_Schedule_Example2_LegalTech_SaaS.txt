@@ -1,0 +1,97 @@
+# Project Schedule — Example
+# Project: LegalTech SaaS Platform — Practice Management and e-Discovery
+# Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 3.0
+# Synced to Agent 3 (Schedule Estimator) contract v2.0
+
+## Output Contract Header
+agent_name:          schedule_estimator
+run_id:              legaltech_2024_sched
+citations:           [project_timelines_chunk_12, project_timelines_chunk_8, Project_Schedule_Example2_LegalTech_SaaS_chunk_0]
+confidence_score:    0.74
+assumptions:
+  - P004 Internal Developer Platform (20 est / 26 actual) used as primary calibration
+  - Compliance workload adds 4-6 weeks per P007 (SSO and Identity Platform) precedent
+  - External pen test firm must be booked in Week 1 — 3-week lead time typical
+comparable_projects:
+  - project_timelines_chunk_12  # P004 Internal Developer Platform — complex, 30% variance
+  - project_timelines_chunk_8   # P007 SSO and Identity Platform — compliance extended
+  - project_timelines_chunk_15  # P016 LegalTech SaaS — actual outcome for self-calibration
+flagged_ambiguities:
+  - Number of pilot law firm clients not specified in BRD for UAT — assumed 2
+buffer_weeks: 3
+total_effort_days: 1390.0
+critical_path:
+  - Penetration test passed (hard gate — Phase 2 cannot start without this)
+  - ACL and Ethical Wall enforced in staging (required before Document Intake)
+  - 10TB load test passed (validates OCR pipeline before UAT)
+  - SOC 2 evidence package complete (required for enterprise client onboarding)
+  - UAT sign-off from pilot clients (blocks production launch)
+
+## Sprints
+
+### Sprint 1 — Weeks 1-4: Foundation and Security Architecture
+sprint: 1
+week_range: W1-W4
+effort_days: 250.0
+team_members: [Architect, Security Engineer, DevOps, Platform Engineer x2]
+deliverables:
+  - AWS EKS cluster, VPC, per-tenant S3 buckets via Terraform
+  - Multi-tenant isolation design approved by Security Engineer
+  - API Gateway — JWT auth, tenant routing, large-file resumable upload
+  - External penetration test — zero critical or high findings
+  - CI/CD pipeline — GitHub Actions, container registry, staging deploy
+
+### Sprint 2 — Weeks 5-10: Core Services Part 1
+sprint: 2
+week_range: W5-W10
+effort_days: 360.0
+team_members: [Domain Engineer x4, QA x2, Security Engineer]
+deliverables:
+  - Matter Management service — CRUD, status, assignments
+  - ACL service — RBAC, matter-level permissions, Ethical Wall enforcement
+  - Ethical Wall double-approval workflow tested
+  - Immutable audit ledger — append-only, hash chain, legal hold flag
+  - Integration tests — ACL blocks Attorney A from conflicting matter, zero data in error response
+
+### Sprint 3 — Weeks 11-16: Core Services Part 2
+sprint: 3
+week_range: W11-W16
+effort_days: 410.0
+team_members: [Domain Engineer x4, QA x2, DevOps]
+deliverables:
+  - Document Intake — SHA-256 hash within 500ms, S3 write, audit event
+  - OCR pipeline — Kafka queue, async workers, Textract, backpressure
+  - e-Discovery Search — per-tenant Elasticsearch, Boolean query < 2s
+  - Time and Billing — 1/10th hour tracking, LEDES export
+  - Legal hold service — immutable flag, retention override
+  - 10TB ingestion load test passed
+
+### Sprint 4 — Weeks 17-20: Hardening and Compliance
+sprint: 4
+week_range: W17-W20
+effort_days: 250.0
+team_members: [Security Engineer, QA x2, DevOps, EM, PM]
+deliverables:
+  - Full integration test suite — all 5 microservices, all failure modes
+  - Performance certification — P95 search < 2s at 100 concurrent tenants
+  - BYOK key rotation and escrow tested
+  - Legal hold survives schema migration and region failover
+  - SOC 2 evidence package — control matrix, access logs, encryption certs
+  - UAT with 2 pilot law firm clients, zero P1 incidents
+
+### Sprint 5 — Weeks 21-24: Launch and SOC 2
+sprint: 5
+week_range: W21-W24
+effort_days: 120.0
+team_members: [DevOps, Security Engineer, EM, all on hypercare rotation]
+deliverables:
+  - Canary at 2 pilot tenants, then expand to 10
+  - Zero P1 incidents for 72 hours before each expansion
+  - SOC 2 auditor on-site review initiated
+  - On-call runbook and rotation established
+
+## Comparable Projects Reference
+comparable_project_lessons:
+  - P004 (20 est / 26 actual, 30% variance): Multi-service coordination consistently underestimated — add 25% buffer
+  - P007 (10 est / 11 actual): Compliance and security always takes longer — start SOC 2 evidence 6 weeks early
+  - P016 (24 est / 27 actual, 12.5%): Ethical Wall edge cases found in UAT — add extra UAT week for security features

@@ -1,0 +1,172 @@
+{
+  "_meta": {
+    "brd_file": "test_brd_complex.txt",
+    "brd_name": "Real-Time Risk and Compliance Platform (RRCP)",
+    "complexity": "complex",
+    "domain": "fintech",
+    "architecture": "event-driven microservices",
+    "regulatory": [
+      "Basel III",
+      "GDPR",
+      "MiFID II"
+    ],
+    "purpose": "Golden expected output \u2014 complex BRD with regulatory, multi-team, high NFR profile",
+    "rubric_thresholds": {
+      "groundedness": 3.75,
+      "completeness": 5.0,
+      "consistency": 5.0,
+      "actionability": 4.0,
+      "overall_green": 4.0
+    }
+  },
+  "engineering_plan": {
+    "total_duration_weeks_min": 28,
+    "total_duration_weeks_max": 36,
+    "min_phases": 5,
+    "required_phase_names": [
+      "Discovery",
+      "Foundation",
+      "Core Build",
+      "Compliance Hardening",
+      "Launch"
+    ],
+    "required_risks_min": 4,
+    "required_risks": [
+      "regulatory change risk (Basel III / MiFID II updates)",
+      "real-time latency under load",
+      "third-party market data feed reliability",
+      "audit trail integrity"
+    ],
+    "team_composition_required": {
+      "min_engineers": 7,
+      "must_include_roles": [
+        "Senior Engineer",
+        "Compliance Specialist",
+        "QA Engineer",
+        "DevOps/SRE"
+      ]
+    },
+    "required_milestones": [
+      "Architecture Review Board approval",
+      "Penetration test passed before production data access",
+      "Regulatory sign-off before launch",
+      "Load test at 2x peak volume"
+    ],
+    "all_risks_must_have_citation": true,
+    "all_milestones_must_have_owner_role": true
+  },
+  "schedule": {
+    "total_effort_days_min": 450,
+    "total_effort_days_max": 700,
+    "min_buffer_weeks": 3,
+    "min_sprints": 8,
+    "critical_path_must_include": [
+      "market data feed integration",
+      "regulatory reporting pipeline",
+      "compliance audit trail",
+      "load testing"
+    ],
+    "comparable_projects_expected": [
+      "fintech",
+      "complex",
+      "regulatory"
+    ]
+  },
+  "architecture": {
+    "required_pattern": "event-driven microservices",
+    "acceptable_patterns": [
+      "event-driven microservices",
+      "CQRS",
+      "event-driven with CQRS"
+    ],
+    "pattern_justification_must_mention": [
+      "high throughput",
+      "audit trail",
+      "regulatory",
+      "team size"
+    ],
+    "required_components_min": 6,
+    "required_components": [
+      "API Gateway",
+      "Risk Calculation Engine",
+      "Market Data Ingestion Service",
+      "Compliance Reporting Service",
+      "Audit Ledger",
+      "Message Queue / Event Bus"
+    ],
+    "nfr_mappings_required": [
+      "sub-100ms latency",
+      "99.99% availability",
+      "GDPR compliance",
+      "Basel III capital reporting"
+    ],
+    "mermaid_diagram_required": true,
+    "deployment_model_must_include": [
+      "multi-AZ",
+      "cloud"
+    ]
+  },
+  "poc": {
+    "hypothesis_must_address": "real-time risk calculation latency",
+    "acceptable_hypotheses": [
+      "real-time P&L and VaR calculation within 100ms under peak load",
+      "market data ingestion latency under trading load",
+      "event stream throughput at 50,000 events per second"
+    ],
+    "duration_weeks_max": 4,
+    "required_success_criteria_min": 3,
+    "required_success_criteria": [
+      "latency target (< 100ms)",
+      "throughput target (events/sec)",
+      "data accuracy vs manual calculation"
+    ],
+    "scope_out_must_include": [
+      "full regulatory reporting",
+      "production UI",
+      "all market data feeds"
+    ]
+  },
+  "tech_stack": {
+    "required_options": 2,
+    "recommended_stack_must_include": [
+      "event streaming",
+      "low-latency compute",
+      "time-series DB"
+    ],
+    "required_consideration": "regulatory compliance certification",
+    "options_min": 2,
+    "options_max": 3,
+    "must_include_trade_off": "cost vs latency vs compliance coverage"
+  },
+  "critic_thresholds": {
+    "groundedness_min": 3.75,
+    "completeness_min": 4.0,
+    "actionability_min": 3.5,
+    "overall_min": 3.8,
+    "expected_badge": "green",
+    "acceptable_badges": [
+      "green",
+      "amber"
+    ],
+    "note": "Complex BRDs are harder to fully address \u2014 amber is acceptable on first pass"
+  },
+  "evaluation_targets": {
+    "expected_citations_per_output_min": 2,
+    "expected_phases_min": 5,
+    "expected_risks_min": 4,
+    "expected_stack_options_min": 2,
+    "expected_badge": "green",
+    "acceptable_badge": "amber",
+    "expected_duration_weeks_min": 28,
+    "expected_nfr_count_min": 5,
+    "flagged_ambiguities_expected": false,
+    "reflection_notes_required": true,
+    "comparable_projects_required": true,
+    "go_nogo_criteria_required": true,
+    "github_velocity_note_required": true,
+    "nfr_mappings_required": true,
+    "risk_citations_required": true,
+    "owner_role_on_all_milestones": true,
+    "total_duration_weeks_must_match_phases": true
+  }
+}

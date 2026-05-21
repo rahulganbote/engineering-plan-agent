@@ -1,0 +1,201 @@
+{
+  "_meta": {
+    "brd_file": "test_brd_medium.txt",
+    "brd_name": "Customer Analytics & Reporting Platform",
+    "complexity": "medium",
+    "purpose": "Golden expected output for evaluation"
+  },
+  "engineering_plan": {
+    "total_duration_weeks": 20,
+    "phases": [
+      {
+        "name": "Discovery",
+        "duration_weeks": 2,
+        "objectives": [
+          "Data source audit",
+          "Schema mapping",
+          "ADR approved"
+        ]
+      },
+      {
+        "name": "Foundation",
+        "duration_weeks": 4,
+        "objectives": [
+          "Snowflake setup",
+          "dbt base models",
+          "5 source connectors"
+        ]
+      },
+      {
+        "name": "Core Build",
+        "duration_weeks": 8,
+        "objectives": [
+          "Report builder",
+          "Dashboards",
+          "Row-level security",
+          "Alerts"
+        ]
+      },
+      {
+        "name": "Compliance",
+        "duration_weeks": 3,
+        "objectives": [
+          "SOC 2 evidence collection",
+          "Pen test",
+          "Audit logs"
+        ]
+      },
+      {
+        "name": "Launch",
+        "duration_weeks": 3,
+        "objectives": [
+          "Training",
+          "Staged rollout",
+          "Hypercare"
+        ]
+      }
+    ],
+    "risks": [
+      {
+        "description": "Mixpanel API rate limits for historical load",
+        "likelihood": "high",
+        "impact": "medium",
+        "mitigation": "Parallel load with exponential backoff over 90 days"
+      },
+      {
+        "description": "Data definition conflicts across teams",
+        "likelihood": "high",
+        "impact": "high",
+        "mitigation": "Metric definitions catalog in Week 1 with all team leads sign-off"
+      },
+      {
+        "description": "Row-level security Snowflake complexity",
+        "likelihood": "medium",
+        "impact": "medium",
+        "mitigation": "Spike in Week 2 with clear pass/fail criteria"
+      }
+    ],
+    "team_composition": {
+      "Senior Data Engineer": 2,
+      "Analytics Engineer": 1,
+      "DevOps": 0.5,
+      "PM": 0.5
+    },
+    "min_phases": 5,
+    "required_risks_min": 3,
+    "all_risks_must_have_citation": true,
+    "all_milestones_must_have_owner_role": true
+  },
+  "schedule": {
+    "total_effort_days": 330,
+    "buffer_weeks": 2,
+    "critical_path": [
+      "Snowflake contract activation",
+      "Mixpanel historical load",
+      "SOC 2 audit scheduling"
+    ],
+    "comparable_projects_min": 1,
+    "total_effort_days_min": 200,
+    "buffer_weeks_min": 1
+  },
+  "architecture": {
+    "pattern": "Event-driven data pipeline with ELT",
+    "components": [
+      {
+        "name": "Source connectors",
+        "technology": "Fivetran / custom Python",
+        "responsibility": "Ingest from 5 sources"
+      },
+      {
+        "name": "Data warehouse",
+        "technology": "Snowflake",
+        "responsibility": "Storage + compute"
+      },
+      {
+        "name": "Transformation",
+        "technology": "dbt",
+        "responsibility": "Metric definitions + models"
+      },
+      {
+        "name": "Visualization",
+        "technology": "Metabase / Looker",
+        "responsibility": "Self-serve reporting"
+      },
+      {
+        "name": "Alerting",
+        "technology": "dbt tests + PagerDuty",
+        "responsibility": "Anomaly detection"
+      }
+    ]
+  },
+  "poc": {
+    "hypothesis": "Validate Snowflake row-level security performs < 5s for 50 concurrent users",
+    "duration_weeks": 2,
+    "success_criteria": [
+      {
+        "metric": "Query latency",
+        "target": "< 5 seconds P95",
+        "method": "Load test 50 users"
+      },
+      {
+        "metric": "RLS correctness",
+        "target": "100% \u2014 no cross-tenant data",
+        "method": "Automated test matrix"
+      }
+    ],
+    "go_nogo_criteria_required": true,
+    "risk_if_poc_fails_required": true,
+    "scope_out_min_items": 2,
+    "success_criteria_min": 2,
+    "duration_weeks_max": 4
+  },
+  "tech_stack": {
+    "recommended": "Option A \u2014 Snowflake + dbt + Metabase",
+    "options": [
+      {
+        "name": "Option A \u2014 Snowflake + dbt + Metabase",
+        "monthly_cost_usd": 8500,
+        "team_familiarity": 4,
+        "integration_risk": "low"
+      },
+      {
+        "name": "Option B \u2014 Snowflake + dbt + Looker",
+        "monthly_cost_usd": 18000,
+        "team_familiarity": 2,
+        "integration_risk": "medium"
+      },
+      {
+        "name": "Option C \u2014 BigQuery + dbt + Looker Studio",
+        "monthly_cost_usd": 4200,
+        "team_familiarity": 1,
+        "integration_risk": "high"
+      }
+    ],
+    "options_min": 3,
+    "options_max": 3,
+    "recommendation_rationale_required": true,
+    "github_velocity_note_required": true
+  },
+  "evaluation_targets": {
+    "min_groundedness": 3.75,
+    "min_completeness": 4.5,
+    "min_actionability": 4.0,
+    "expected_badge": "green",
+    "expected_phases": 5,
+    "expected_risks_min": 3,
+    "expected_stack_options": 3,
+    "expected_total_weeks": 20,
+    "expected_citations_per_output_min": 2,
+    "expected_phases_min": 5,
+    "expected_stack_options_min": 3,
+    "acceptable_badge": "amber",
+    "reflection_notes_required": true,
+    "comparable_projects_required": true,
+    "go_nogo_criteria_required": true,
+    "github_velocity_note_required": true,
+    "nfr_mappings_required": true,
+    "risk_citations_required": true,
+    "owner_role_on_all_milestones": true,
+    "total_duration_weeks_must_match_phases": true
+  }
+}

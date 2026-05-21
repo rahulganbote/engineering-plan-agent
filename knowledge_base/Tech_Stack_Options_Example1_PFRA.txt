@@ -1,0 +1,88 @@
+# Tech Stack Recommendation — Example
+# Project: Product Finance Reporting Agent (PFRA)
+# Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
+# Synced to Agent 6 (Tech Stack Recommender) contract v2.0
+#
+# CONTRACT FIELDS PRESENT:
+#   agent_name, citations[], confidence_score, assumptions[], flagged_ambiguities[],
+#   options[{name, components{}, scalability_rating, team_familiarity_rating,
+#             integration_risk, estimated_monthly_cost_usd, pros[], cons[], citation}]
+#   options min 2, max 3
+#   recommended_option (must exactly match one option.name)
+#   recommendation_rationale (must reference: team familiarity + cost + integration_risk + org tech log)
+#   github_velocity_note (result of GitHub API tool call)
+
+## Output Contract Header
+agent_name:          tech_stack_recommender
+run_id:              pfra_2024_stack
+citations:           [tech_decision_log_chunk_0, tech_decision_log_chunk_2, org_engineering_standards_chunk_1]
+confidence_score:    0.88
+assumptions:
+  - Team Python proficiency confirmed from GitHub profile and job descriptions
+  - AWS cloud assumed based on org enterprise contract (no region restriction for this workload)
+flagged_ambiguities:
+  - BRD does not specify cloud provider preference — assumed AWS per org standard DL-2024-031
+  - Monthly infrastructure budget not stated in BRD — assumed < $500/month from constraints section
+
+## Option A — AWS Native Stack (Recommended)
+options:
+  - name: Option A — AWS Native Stack
+    components:
+      Orchestration: Python + LangGraph + Apache Airflow (AWS MWAA)
+      Vector Store: Pinecone Serverless
+      LLM: OpenAI GPT-4o via LangChain
+      Data Warehouse: Snowflake
+      Report Generation: Jinja2 + WeasyPrint
+      Deployment: AWS Lambda (serverless, monthly trigger)
+    scalability_rating: 5
+    team_familiarity_rating: 4
+    integration_risk: low
+    estimated_monthly_cost_usd: 220.0
+    pros:
+      - Team Python-native — no skill gap cost on 11-week timeline
+      - Managed services reduce DevOps overhead for 2-engineer team
+      - LangGraph + Pinecone + GPT-4o all org-approved (DL-2024-031, DL-2024-021, DL-2024-028)
+    cons:
+      - Airflow (AWS MWAA) has operational learning curve — 3-5 days ramp
+      - AWS Lambda cold start adds 2-3s to first monthly execution
+    citation: tech_decision_log_chunk_0
+
+## Option B — Enterprise Java Stack
+  - name: Option B — Enterprise Java Stack
+    components:
+      Orchestration: Java Spring Boot + Python FastAPI (AI calls only)
+      Vector Store: Elasticsearch self-hosted with vector extension
+      LLM: Cohere API via custom Python wrapper
+      Data Warehouse: PostgreSQL + TimescaleDB
+      Report Generation: Apache POI (Java) + Python integration
+      Deployment: Kubernetes (EKS)
+    scalability_rating: 4
+    team_familiarity_rating: 2
+    integration_risk: medium
+    estimated_monthly_cost_usd: 450.0
+    pros:
+      - Mature enterprise ecosystem — widely supported in regulated industries
+      - Self-hosted Elasticsearch has no per-query cost at scale
+    cons:
+      - Team has no Java experience — 6-8 week ramp-up cost exceeds PoC timeline
+      - Mixed Python and Java stack doubles cognitive overhead for 2-person team
+      - Kubernetes operational burden requires dedicated DevOps — not available
+    citation: tech_decision_log_chunk_3
+
+## Recommendation
+recommended_option: Option A — AWS Native Stack
+recommendation_rationale: |
+  Option A recommended for 4 reasons aligned to org decision log:
+  1. Team familiarity 4/5 vs 2/5 for Option B — Java ramp-up (6-8 weeks) exceeds
+     remaining project timeline and is not approved for AI workloads (DL-2024-028).
+  2. Monthly cost $220 vs $450 — Option A is 2x cheaper, both within BRD constraint.
+  3. Integration risk low vs medium — all Option A components have existing org integrations.
+  4. Org tech log alignment: DL-2024-031 (Pinecone), DL-2024-021 (LangGraph),
+     DL-2024-028 (GPT-4o) — Option A requires zero new vendor approvals.
+
+github_velocity_note: |
+  LangGraph: ~45 commits/week avg last 4 weeks — active, well-maintained.
+  Pinecone Python client: ~12 commits/week — stable, production-grade.
+  OpenAI Python SDK: ~28 commits/week — rapid iteration, backward compatible.
+  Cohere SDK (Option B): ~8 commits/week — less active, smaller community.
+  All Option A core dependencies actively maintained with strong enterprise adoption.

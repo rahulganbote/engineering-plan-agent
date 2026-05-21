@@ -1,0 +1,188 @@
+# Engineering Plan — Example
+# Project: LegalTech SaaS Platform — Practice Management and e-Discovery
+# Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 3.0
+# Synced to Agent 2 (Engineering Plan Generator) contract v2.0
+
+## Output Contract Header
+agent_name:          engineering_plan_generator
+run_id:              legaltech_2024_ex2
+citations:           [Engineering_Plan_Example2_LegalTech_SaaS_chunk_0, Solution_Architect_Example2_LegalTech_SaaS_chunk_1, org_engineering_standards_chunk_3]
+confidence_score:    0.79
+assumptions:
+  - Assumed AWS cloud (existing enterprise contract)
+  - Assumed external pen test firm available in Week 4 — must be booked in Week 1
+  - Assumed SOC 2 auditor engaged in parallel starting Week 17
+flagged_ambiguities:
+  - BRD does not specify whether Ethical Wall double-approval requires both approvers simultaneously or sequentially
+  - Legal hold retention period not defined in BRD — assumed 7 years per legal standard
+total_duration_weeks: 24
+
+## Phase 1: Foundation and Security Architecture
+duration_weeks: 4
+objectives:
+  - AWS EKS cluster, VPC, per-tenant S3 buckets provisioned via Terraform
+  - Multi-tenant isolation architecture approved by Security Engineer
+  - API Gateway deployed with JWT auth and tenant routing
+  - Penetration test passed — zero critical findings before Phase 2 starts
+milestones:
+  - name: Infrastructure provisioned
+    week: 1
+    deliverable: EKS cluster, VPC, S3 buckets deployed via Terraform, IaC committed
+    owner_role: DevOps
+  - name: Tenant isolation design approved
+    week: 2
+    deliverable: Per-namespace isolation architecture reviewed by Security Engineer and signed off
+    owner_role: Security Engineer
+  - name: API Gateway live
+    week: 3
+    deliverable: JWT auth, tenant routing, and large-file upload tested in staging
+    owner_role: Platform Engineer
+  - name: Penetration test passed
+    week: 4
+    deliverable: External pen test report — zero critical or high severity findings
+    owner_role: Security Engineer
+
+## Phase 2: Core Domain Services Part 1
+duration_weeks: 6
+objectives:
+  - Matter Management service — CRUD, status, assignments
+  - ACL service — RBAC, matter-level permissions, Ethical Wall enforcement
+  - Immutable audit ledger — append-only, SHA-256 hash chain, legal hold flag
+milestones:
+  - name: Matter Management service complete
+    week: 6
+    deliverable: CRUD endpoints, status transitions, assignment tested in staging
+    owner_role: Domain Engineer
+  - name: ACL service complete with Ethical Wall
+    week: 7
+    deliverable: RBAC enforced, Ethical Wall blocks Attorney A from conflicting matter
+    owner_role: Domain Engineer
+  - name: Ethical Wall double-approval workflow
+    week: 8
+    deliverable: Double-approval tested — single approval insufficient to remove wall
+    owner_role: Security Engineer
+  - name: Immutable audit ledger verified
+    week: 10
+    deliverable: Append-only confirmed — delete attempt returns 403 at all user levels including superadmin
+    owner_role: QA Engineer
+
+## Phase 3: Core Domain Services Part 2
+duration_weeks: 6
+objectives:
+  - Document Intake — SHA-256 hash on intake, S3 write, audit event
+  - OCR pipeline — Kafka queue, async workers, backpressure, auto-scaling
+  - e-Discovery Search — per-tenant Elasticsearch, Boolean query, < 2s response
+  - Time and Billing — 1/10th hour tracking, LEDES export
+  - Legal hold service — immutable flag, retention schedule override
+milestones:
+  - name: Document SHA-256 hash verified
+    week: 12
+    deliverable: Hash generated within 500ms of upload on 3 consecutive test runs
+    owner_role: Domain Engineer
+  - name: OCR pipeline live
+    week: 13
+    deliverable: Async OCR queue processing PDFs, backpressure confirmed under load
+    owner_role: Domain Engineer
+  - name: e-Discovery search < 2s
+    week: 14
+    deliverable: Boolean query across 10M documents returns in < 2 seconds — zero cross-tenant results
+    owner_role: Domain Engineer
+  - name: LEDES export verified
+    week: 15
+    deliverable: Billing service compiles approved time entries to valid LEDES format
+    owner_role: Domain Engineer
+  - name: 10TB load test passed
+    week: 16
+    deliverable: OCR pipeline handles 10TB ingestion without memory exhaustion — pod limits enforced
+    owner_role: DevOps
+
+## Phase 4: Hardening Compliance and Integration Testing
+duration_weeks: 4
+objectives:
+  - Full integration test suite across all 5 microservices
+  - Performance certification — P95 search < 2s at 100 concurrent tenants
+  - SOC 2 Type II evidence collection begins
+  - UAT with 2 pilot law firm clients
+milestones:
+  - name: All integration tests passing
+    week: 17
+    deliverable: Cross-service tests green for all 5 microservices in staging
+    owner_role: QA Engineer
+  - name: Performance certified
+    week: 18
+    deliverable: P95 search < 2s sustained, 99.99% availability measured over 72 hours
+    owner_role: QA Engineer
+  - name: SOC 2 evidence package
+    week: 19
+    deliverable: Control matrix, access logs, encryption certificates compiled
+    owner_role: Security Engineer
+  - name: UAT sign-off
+    week: 20
+    deliverable: 2 pilot law firms complete UAT, zero P1 incidents, sign-off obtained
+    owner_role: EM
+
+## Phase 5: Launch and SOC 2 Certification
+duration_weeks: 4
+objectives:
+  - Canary rollout 2 tenants then 10 then full availability
+  - SOC 2 auditor on-site review initiated
+  - On-call runbook and rotation established
+milestones:
+  - name: Canary at 2 tenants
+    week: 21
+    deliverable: 2 pilot tenants on production — zero P1 incidents for 48 hours
+    owner_role: DevOps
+  - name: Expand to 10 tenants
+    week: 22
+    deliverable: 10 tenants on production — zero P1 incidents for 72 hours
+    owner_role: DevOps
+  - name: SOC 2 audit started
+    week: 23
+    deliverable: Auditor on-site, evidence review in progress, initial findings triaged
+    owner_role: Security Engineer
+  - name: Hypercare complete
+    week: 24
+    deliverable: On-call rotation live, runbook signed, BAU handover done
+    owner_role: EM
+
+## Risks
+risks:
+  - description: Tenant isolation bug exposes privileged legal data to opposing counsel — catastrophic liability
+    likelihood: low
+    impact: high
+    mitigation: Mandatory pen test before Phase 2, circuit breaker halts routing on token mismatch
+    citation: BRD_Example2_LegalTech_SaaS_chunk_3
+  - description: 10TB legal discovery dump causes memory exhaustion in OCR workers
+    likelihood: medium
+    impact: high
+    mitigation: Kafka backpressure with hard pod memory limits per container
+    citation: org_engineering_standards_chunk_5
+  - description: SOC 2 audit findings block first enterprise client onboarding
+    likelihood: medium
+    impact: high
+    mitigation: Begin evidence collection at Week 17 — remediate before Week 21 launch
+    citation: org_engineering_standards_chunk_1
+  - description: Legal hold flag lost during schema migration
+    likelihood: medium
+    impact: high
+    mitigation: Hold stored in immutable ledger not application database — tested on every migration
+    citation: BRD_Example2_LegalTech_SaaS_chunk_4
+
+## Team Composition
+team_composition:
+  Platform Engineer: 4
+  Domain Engineer: 4
+  QA Engineer: 2
+  Security Engineer: 1
+  DevOps: 1
+  EM: 0.5
+total_duration_weeks: 24
+
+## Reflection Notes
+reflection_notes: |
+  First draft placed penetration test at end of Phase 1 as a milestone but did not
+  make it a hard gate blocking Phase 2. Revised to add explicit gate: Phase 2 cannot
+  start until pen test passes — no exceptions. This is a critical risk mitigation for
+  RISK-01 (tenant isolation liability). Also found Phase 2 and 3 milestones had no
+  owner_role fields — added all owner roles per contract requirement. Identified
+  that all 4 risks lacked citation fields — added citations from BRD and org standards.

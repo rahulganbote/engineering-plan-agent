@@ -1,0 +1,40 @@
+# Virtual environments — never copy into the image
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets — injected as HF Space secrets / env vars at runtime, never baked in
+secrets/
+*.env
+.env
+.env.*
+!.env.example
+
+# Runtime artifacts
+logs/
+*.log
+*.jsonl
+
+# Local dev scratch
+.git/
+.gitignore
+.DS_Store
+.write_test
+streamlit_app_test.py
+docx-build/
+main_original.py
+agent_schemas.json
+dump_schemas.py
+outputs/
+
+# Docs not needed at runtime (keep image lean; they stay in the GitHub repo)
+docs/*.svg
+docs/*.png

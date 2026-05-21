@@ -1,0 +1,68 @@
+# ─── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ─── Virtual environments ─────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ─── Secrets & credentials (NEVER commit these) ───────────────────────────
+secrets/
+*.env
+.env
+.env.*
+!.env.example
+google_service_account.json
+**/service_account*.json
+*.pem
+
+# ─── Runtime artifacts ────────────────────────────────────────────────────
+logs/
+*.log
+*.jsonl
+
+# ─── OS junk ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editor / IDE ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ─── Streamlit ────────────────────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ─── Scratch / dev artifacts ──────────────────────────────────────────────
+.write_test
+streamlit_app_test.py
+agent_schemas.json
+dump_schemas.py
+outputs/
+
+# ─── Build helpers from this repo ─────────────────────────────────────────
+docx-build/
+main_original.py
+
+# ─── User-uploaded BRDs (when running the demo) ───────────────────────────
+# Test BRDs in eval/ ARE tracked — they're fixtures. Live uploads go elsewhere.
+uploads/

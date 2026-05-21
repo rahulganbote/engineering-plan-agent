@@ -1,0 +1,85 @@
+# Business Requirements Document
+# Project: Product Finance Reporting Agent (PFRA)
+# Domain: Fintech / AI Agent | Complexity: Medium | Version: 1.0
+# Organization: NovaCart | Date: October 2024
+# Normalized from uploaded BRD_Example1_Product_Finance_Reporting_Agent
+
+## Background and Business Context
+The Product Finance team at NovaCart currently relies on manual aggregation and
+cross-referencing of product performance metrics (internal) and external market
+intelligence (external reports, PDFs, industry outlooks). This manual process
+takes 3-5 days per analyst per reporting cycle, carries high risk of human
+oversight, and consistently delays strategic decision-making by leadership.
+The organization requires an autonomous AI agent that replaces this manual process
+with an automated, reliable, and auditable monthly reporting workflow.
+
+## Objectives
+1. Achieve 99% reliability rate for report generation and delivery by the 1st of every month
+2. Reduce human operational time on data aggregation and report drafting by at least 80%
+3. Ensure every report includes synthesized cross-source insights (e.g., "Rising commodity costs from external source correlate with margin decline in Product Line X")
+4. Reduce human-introduced data aggregation errors to zero
+5. Deliver reports to executive leadership in a format requiring no reformatting
+
+## Stakeholders
+- Product Owner: Product Finance Team Lead
+- Primary Users: Product Finance Team (validates reports, fine-tunes prompts, monitors performance)
+- Executive Recipients: C-Suite / Executive Leadership (consumes final report)
+- Technical Lead: AI Engineer / Data Engineer
+- External: OpenAI API, Vector Database vendor, Email delivery service
+
+## Scope Boundaries
+In Scope (Must Do):
+  - Data retrieval from internal product sales metrics (Vector Database / structured DB)
+  - Data retrieval from external market intelligence (unstructured PDFs / reports via RAG)
+  - Cross-correlation and synthesis of internal + external data into narrative insight
+  - Generation of structured Monthly Financial Standing Report (Markdown / PDF)
+  - Automated email delivery of the final report to distribution list
+  - Scheduled autonomous execution (triggered on the 25th of each month)
+
+Out of Scope (Must NOT Do):
+  - Strategic financial decision making or authorization of expenditures
+  - Maintenance or updating of source databases (agent is read-only)
+  - Live customer interaction or real-time query servicing
+  - Modification of source data in any system
+
+## Functional Requirements
+FR-01: The agent shall initiate autonomously on a defined monthly schedule (25th of month)
+FR-02: The agent shall retrieve structured product performance metrics from the Vector Database (Product ID, Sales Volume, Margin %, Growth Rate as JSON)
+FR-03: The agent shall query unstructured external market reports and industry outlooks via RAG/semantic search, returning structured text summaries of external trends
+FR-04: The agent shall perform cross-correlation analysis between FR-02 and FR-03 outputs, producing narrative insight (not juxtaposed data) identifying key correlations, risks, and opportunities
+FR-05: The agent shall format synthesized insights into a standardized report structure: Executive Summary, Key Metrics, Product Deep Dive, Market Context sections
+FR-06: The agent shall deliver the final report via email to a hardcoded distribution list as a PDF/Markdown attachment
+FR-07: If any data source fails, the agent shall halt gracefully, log the failure with timestamp and source name, and notify an administrator via email
+FR-08: All access to source data must be authenticated and authorized — no unauthenticated data access permitted
+FR-09: The agent shall store a hash of each generated report for audit trail purposes
+
+## Non-Functional Requirements (NFRs)
+NFR-01 Performance:    Complete full cycle (FR-01 through FR-06) within 15 minutes
+NFR-02 Accuracy:       Generated summary must reflect source data with < 2% deviation from manual calculation
+NFR-03 Availability:   Agent must be available for scheduled execution with 99% reliability
+NFR-04 Security:       Access to source data limited to authenticated services only; no PII in logs
+NFR-05 Robustness:     Any single source failure must not cause total system failure — degrade gracefully
+
+## Constraints
+- Team: 2 AI Engineers, 1 Data Engineer — no additional hiring
+- Timeline: PoC in 3 weeks, MVP in 8 weeks, production in 12 weeks
+- Technology: Must use existing Vector Database infrastructure; LangChain + OpenAI preferred
+- Data: Agent is read-only — cannot modify any source system
+- Budget: Must operate within existing OpenAI API spend limits
+
+## Risks
+- RISK-01 (HIGH):   External market report formats are inconsistent — RAG chunking strategy may require iteration. Mitigation: Spike on 5 sample documents in Week 1.
+- RISK-02 (MEDIUM): Cross-correlation narrative depth may not meet executive expectations on first run. Mitigation: Define 3 example "gold standard" insights as acceptance criteria.
+- RISK-03 (MEDIUM): LLM hallucination in financial narrative could cause incorrect business decisions. Mitigation: Implement citation-back-to-source validation before delivery.
+- RISK-04 (LOW):    Email delivery service rate limits may block report delivery. Mitigation: Implement retry with exponential backoff.
+
+## Acceptance Criteria
+- FR-04 (Core synthesis): Input: "Product Line Alpha Q3 sales + negative sustainability sentiment data" → Output: Narrative paragraph linking the two with specific data points cited
+- FR-07 (Failure handling): Disconnect Vector DB during test run → Agent halts within 30 seconds, logs error with timestamp, admin receives notification email
+- NFR-01 (Performance): Full end-to-end run with real data completes in < 15 minutes measured 3 times consecutively
+
+## Success Criteria (Post-Launch KPIs)
+- Timeliness: Report delivered by 1st of month with 99% reliability over 6-month period
+- Efficiency: Finance team time on reporting reduced from 5 days to < 4 hours per cycle
+- Accuracy: Zero P1 data accuracy incidents in first 6 months (validated by Finance team)
+- Adoption: Executive leadership reads and acts on AI-generated report without requesting manual version within 3 months of launch
