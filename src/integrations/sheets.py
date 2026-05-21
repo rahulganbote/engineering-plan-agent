@@ -143,7 +143,8 @@ def _write_to_google_sheets(state: PipelineState) -> str:
     log.info(f"[{run_id}] Writing artifacts to Google Sheets")
 
     # ── Tab: Run Summary ─────────────────────────────────────────────────────
-    summary_ws = _get_or_create_worksheet(sh, "Run Summary", rows=100, cols=14)
+    summary_ws = _get_or_create_worksheet(sh, "Run Summary", rows=100, cols=20)
+    _ensure_min_cols(summary_ws, len(_summary_headers()))
     summary_ws.update("A1", [_summary_headers()])
     summary_ws.append_row(_summary_row(state, ts))
 
@@ -169,6 +170,15 @@ def _write_to_google_sheets(state: PipelineState) -> str:
             stack_ws.append_row(row)
 
     return f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}"
+
+
+def _ensure_min_cols(ws, min_cols: int) -> None:
+    """Widen an existing worksheet if it has fewer columns than the schema needs."""
+    try:
+        if ws.col_count < min_cols:
+            ws.add_cols(min_cols - ws.col_count)
+    except Exception:
+        pass
 
 
 def _get_or_create_worksheet(sh, title: str, rows: int = 100, cols: int = 10):
@@ -273,14 +283,20 @@ def _summary_headers() -> list[str]:
     return [
         "run_id", "brd_name", "timestamp", "badge", "overall_score",
         "groundedness", "completeness", "consistency", "actionability",
-        "revisions", "hitl_decision", "processing_time_sec",
-        "plan_duration_weeks", "plan_confidence"
+        "revisions", "hitl_decision", "notes", "em_rating", "processing_time_sec",
+        "plan_duration_weeks", "plan_confidence", "pipeline_status"
     ]
 
 
 def _summary_row(state: PipelineState, ts: str) -> list[Any]:
     critic = state.critic_output
     plan = state.plan_output
+    # notes: the EM's decision note. For a failed run (no decision) fall back
+    # to the pipeline error(s) so the EM sees why it failed on the dashboard.
+    notes = state.hitl_latest_note
+    if not notes and state.pipeline_status == "error" and state.errors:
+        notes = "; ".join(state.errors)[:500]
+    em_rating = state.hitl_em_ratings[-1].get("em_rating", "") if state.hitl_em_ratings else ""
     return [
         state.run_id,
         state.brd_name,
@@ -293,9 +309,12 @@ def _summary_row(state: PipelineState, ts: str) -> list[Any]:
         critic.actionability.score if critic else 0,
         state.revision_count,
         state.hitl_decision.value,
+        notes,
+        em_rating,
         round(state.processing_time_sec, 2),
         plan.total_duration_weeks  if plan else 0,
         plan.confidence_score      if plan else 0.0,
+        state.pipeline_status,
     ]
 
 

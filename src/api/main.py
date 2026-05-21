@@ -544,6 +544,7 @@ async def download_artifacts_pdf(run_id: str):
 # ── Background task ───────────────────────────────────────────────────────────
 
 async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name: str) -> None:
+    state = None
     try:
         _push_event(run_id, {"type": "agent_start", "agent": "orchestrator"})
         from src.agents.pipeline import run_pipeline
@@ -554,6 +555,29 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
     except Exception as e:
         log.error(f"[{run_id}] Pipeline task failed | error={e}")
         _push_event(run_id, {"type": "error", "message": str(e)})
+        # Pipeline raised before producing a state — synthesize a minimal error
+        # state so the failed run is still recorded and visible to the EM.
+        if state is None:
+            try:
+                from src.core.models import PipelineState
+                state = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name)
+            except Exception:
+                state = None
+        if state is not None:
+            state.pipeline_status = "error"
+            if str(e)[:500] not in state.errors:
+                state.errors.append(str(e)[:500])
+            _runs[run_id] = state
+
+    # A failed run never reaches the HITL gate / POST /approve, so log a Run
+    # Summary row here too — the EM sees errored runs on the Sheets dashboard.
+    if state is not None and state.pipeline_status == "error":
+        try:
+            from src.integrations.sheets import write_artifacts_to_sheet
+            write_artifacts_to_sheet(state)
+            log.info(f"[{run_id}] Errored run logged to the dashboard sheet")
+        except Exception as se:
+            log.warning(f"[{run_id}] Could not log errored run to sheet | {se}")
 
 
 def _push_event(run_id: str, data: dict) -> None:
