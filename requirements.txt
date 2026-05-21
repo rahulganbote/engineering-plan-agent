@@ -37,7 +37,7 @@ elevenlabs==1.9.0           # ElevenLabs Conversational AI voice agent
 requests==2.32.3            # HTTP client for GitHub API tool call
 
 # ── Data / Validation ─────────────────────────────────────────────────────────
-pydantic==2.9.2             # Agent output contracts + validation
+pydantic>=2.11.0,<3.0.0     # Agent output contracts — >=2.11 required by the mcp SDK
 pydantic-settings==2.6.1    # Settings management from .env
 pandas==2.2.3               # Eval results dataframes
 reportlab==4.2.5            # PDF artifact export
