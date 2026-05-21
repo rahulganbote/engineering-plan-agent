@@ -422,7 +422,7 @@ def render_progress_chips() -> None:
         "critic_review": "🔍 Critic reviewing complete bundle…",
         "revising":      f"♻️ Revision cycle (round {artifacts.get('revision_count', '?')})…",
         "awaiting_hitl": "⏸️ Awaiting your decision. Please review and confirm below.",
-        "exported":      "✅ Approved · Uploaded Artifacts to Jira and Rundown Summary to Google Sheets",
+        "exported":      "✅ Approved · Added Artifacts to Jira ticket",
         "export_failed": "⚠️ Approved but export failed",
         "error":         "❌ Pipeline error",
     }.get(status, status or "")
@@ -788,13 +788,94 @@ def render_artifacts() -> None:
             st.caption("Pending…")
 
 
+def _build_voice_briefing(artifacts: dict) -> str:
+    """
+    Compact plain-text summary of the generated artifacts, handed to the
+    ElevenLabs voice agent as the {{artifact_brief}} dynamic variable so it can
+    answer the EM's questions about the plan before they approve or reject.
+    """
+    if not artifacts:
+        return "No engineering plan has been generated yet."
+
+    def _clip(text: object, n: int) -> str:
+        s = str(text or "").strip()
+        return s if len(s) <= n else s[: n - 1] + "\u2026"
+
+    lines: list[str] = []
+
+    crit = artifacts.get("critic_output") or {}
+    if crit:
+        lines.append(
+            f"CRITIC VERDICT: {str(crit.get('badge', '?')).upper()} badge, "
+            f"overall quality {crit.get('overall_score', 0):.2f} out of 5 "
+            f"(revision {crit.get('revision_number', 0)})."
+        )
+
+    plan = artifacts.get("plan_output") or {}
+    if plan:
+        phases = plan.get("phases") or []
+        phase_str = "; ".join(
+            f"{p.get('name', '?')} ({p.get('duration_weeks', '?')}w)" for p in phases
+        ) or "n/a"
+        team = plan.get("team_composition") or {}
+        team_str = ", ".join(f"{k} x{v}" for k, v in team.items()) or "n/a"
+        lines.append(
+            f"PLAN: {plan.get('total_duration_weeks', '?')} weeks total across "
+            f"{len(phases)} phases - {phase_str}. Team: {team_str}."
+        )
+        risks = plan.get("risks") or []
+        if risks:
+            risk_str = "; ".join(
+                f"{_clip(r.get('description'), 90)} "
+                f"(likelihood {r.get('likelihood', '?')}, impact {r.get('impact', '?')})"
+                for r in risks[:3]
+            )
+            lines.append(f"TOP RISKS: {risk_str}.")
+
+    sched = artifacts.get("schedule_output") or {}
+    if sched:
+        cp = sched.get("critical_path") or []
+        lines.append(
+            f"SCHEDULE: {sched.get('total_effort_days', 0):.0f} effort-days, "
+            f"{sched.get('buffer_weeks', '?')} weeks buffer. "
+            f"Critical path: {' -> '.join(cp) if cp else 'n/a'}."
+        )
+
+    arch = artifacts.get("arch_output") or {}
+    if arch:
+        comps = ", ".join(
+            c.get("name", "?") for c in (arch.get("components") or [])
+        ) or "n/a"
+        lines.append(
+            f"ARCHITECTURE: {arch.get('pattern', '?')} pattern, deployed on "
+            f"{arch.get('deployment_model', '?')}. Components: {comps}."
+        )
+
+    poc = artifacts.get("poc_output") or {}
+    if poc:
+        lines.append(
+            f"PROOF OF CONCEPT: {_clip(poc.get('poc_hypothesis'), 200)} "
+            f"({poc.get('duration_weeks', '?')} weeks, team of {poc.get('team_size', '?')})."
+        )
+
+    stack = artifacts.get("stack_output") or {}
+    if stack:
+        lines.append(
+            f"TECH STACK: recommended option is {stack.get('recommended_option', '?')}. "
+            f"{_clip(stack.get('recommendation_rationale'), 240)}"
+        )
+
+    briefing = "\n".join(lines).strip()
+    return briefing[:2000] if briefing else "The engineering plan is still being generated."
+
+
 def render_hitl_gate() -> None:
     status = st.session_state.pipeline_status
     if status != "awaiting_hitl":
         return
 
     rejection_count = st.session_state.rejection_count
-    #gate_label = "Gate" if rejection_count == 0 else f"Gate {min(rejection_count + 1, 2)}"
+    #gate_label = "Gate" if rejection_count == 0 else f"Gate {min(rejection_count + 1, 2)}" # to-do 
     st.subheader(f"Review and Confirmation · Decision")
     st.info("Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard")
 
@@ -817,19 +898,22 @@ def render_hitl_gate() -> None:
         # dynamic-variables. The agent's webhook tool can then call
         #     POST {api_base_url}/approve/{run_id}
         # using these substitutions. The agent's system prompt should reference
-        # them as {{run_id}} and {{api_base_url}}.
-        dyn_vars_json = json.dumps({
-            "run_id":       rid,
-            "api_base_url": st.session_state.api_base_url,
-        })
+        # them as {{run_id}}, {{api_base_url}}, and {{artifact_brief}}.
+        import html
+        dyn_vars_json = html.escape(json.dumps({
+            "run_id":         rid,
+            "api_base_url":   st.session_state.api_base_url,
+            "artifact_brief": _build_voice_briefing(st.session_state.artifacts or {}),
+        }))
 
         # ElevenLabs Conversational AI Web Component
-        # Single-quoted attribute so the embedded JSON's double-quotes survive.
+        # JSON is html-escaped, so the double-quoted attribute stays valid even
+        # when the artifact briefing contains quotes or apostrophes.
         html_code = f"""
         <div style="display: flex; justify-content: center; padding: 10px;">
             <elevenlabs-convai
                 agent-id="{agent_id}"
-                dynamic-variables='{dyn_vars_json}'
+                dynamic-variables="{dyn_vars_json}"
             ></elevenlabs-convai>
             <script src="https://elevenlabs.io/convai-widget/index.js" async type="text/javascript"></script>
         </div>
@@ -842,18 +926,23 @@ def render_hitl_gate() -> None:
     else:
         st.caption("Voice approval disabled. (Configure ELEVENLABS_AGENT_ID in .env to enable)")
 
+    decision_made = bool(st.session_state.get("approval_result"))
+    if decision_made:
+        prior = str((st.session_state.approval_result or {}).get("decision", "recorded")).lower()
+        st.info(f"Decision already recorded for this run \u2014 **{prior}**. This gate is locked.")
+
     with st.form("hitl_form"):
-        reviewer = st.text_input("Reviewer", value="Engineering Manager")
+        reviewer = st.text_input("Reviewer", value="Engineering Manager", disabled=decision_made)
         em_rating = st.slider(
             "EM rating (1=unusable · 5=excellent)",
-            min_value=1, max_value=5, value=4,
+            min_value=1, max_value=5, value=4, disabled=decision_made,
         )
-        notes = st.text_area("Notes (optional, required for reject)", value="")
+        notes = st.text_area("Notes (optional, required for reject)", value="", disabled=decision_made)
         col_a, col_r = st.columns(2)
         with col_a:
-            approve_clicked = st.form_submit_button("✅ Approve & export", type="primary", use_container_width=True)
+            approve_clicked = st.form_submit_button("✅ Approve & export", type="primary", use_container_width=True, disabled=decision_made)
         with col_r:
-            reject_clicked  = st.form_submit_button("✖ Reject", use_container_width=True)
+            reject_clicked  = st.form_submit_button("✖ Reject", use_container_width=True, disabled=decision_made)
 
     if approve_clicked:
         with st.spinner("Recording decision · Pushing to Jira, writing to Google Sheets…"):
@@ -1024,10 +1113,16 @@ def main() -> None:
     render_hitl_gate()
     render_export_result()
 
-    # Auto-rerun while pipeline is still moving toward a terminal/pause state.
+    # Auto-rerun while the pipeline is still active. Crucially we keep polling at
+    # the HITL gate (awaiting_hitl) too: a decision made outside this browser tab
+    # — voice approval, ngrok webhook, another tab — only reaches the UI when
+    # refresh_artifacts() -> _sync_external_hitl_decision() runs on a rerun. Poll
+    # slowly while paused so the HITL form and voice widget stay responsive.
     status = st.session_state.pipeline_status or ""
-    if status not in TERMINAL_STATUSES and status not in PAUSE_STATUSES:
-        time.sleep(POLL_INTERVAL_SEC)
+    decision_recorded = bool(st.session_state.get("approval_result"))
+    if status not in TERMINAL_STATUSES and not decision_recorded:
+        interval = HITL_POLL_INTERVAL_SEC if status in PAUSE_STATUSES else POLL_INTERVAL_SEC
+        time.sleep(interval)
         st.rerun()
 
 

@@ -19,7 +19,7 @@ short_description: BRD to Engineering Plan Multi-Agent System
 [![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 
-> **EM Copilot** is a state-of-the-art, 7-agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle — plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting voice commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
+> **EM Copilot** is a state-of-the-art, 7-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle — plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting voice commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
 
 ---
 
@@ -53,31 +53,32 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 *   **Inconsistent Scoping:** Ad-hoc architectures and planning criteria that vary wildly across engineering squads.
 
 ### The EM Copilot Solution
-**EM Copilot** addresses these bottlenecks by building a multi-agent workflow that ingests raw BRDs and produces a complete, audit-ready engineering bundle. The system matches the business opportunity in five key areas:
+**EM Copilot** addresses these bottlenecks by building a multi-Agent workflow that ingests raw BRDs and produces a complete, audit-ready engineering bundle. The system matches the business opportunity in five key areas:
 
-*   **Faster Turnaround:** RAG-augmented specialist agents reference past projects and templates, eliminating the need to write generic boilerplate drafts from scratch.
+*   **Faster Turnaround:** RAG-augmented specialist Agents reference past projects and templates, eliminating the need to write generic boilerplate drafts from scratch.
 *   **Standardized, Validated Planning:** A Critic Agent checks all planning outputs for completeness, consistency, and alignment before they are exposed to the user.
 *   **Grounded Intelligence:** Integrating a Pinecone RAG vector store ensures architectural decisions and project guidelines are grounded in organization standards and historical project data.
-*   **Evaluated Outputs:** Instead of showing unvalidated outputs, artifacts carry clear Green / Amber / Red quality badges based on exact evaluation criteria.
+*   **Evaluated Outputs:** Validated outputs for quality and scored based on 5 criterion to detect Hallucination, checking for citation, so Artifacts carry clear Green / Amber / Red quality badges based on exact evaluation criteria.
 *   **EM Enablement:** Generates decision-ready artifacts complete with source citations, allowing the EM to serve as an editor and approver rather than starting from a blank page.
 
 ---
 
 ## Core Pillars
 
-| Capability | Engineering Implementation | Status |
+| Capability | Engineering Implementation
 |---|---|---|
-| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic) | ✅ |
-| **Pydantic-Enforced Output Contracts** | Zero untyped LLM handoffs, schema conformance validated at every transition | ✅ |
-| **Deterministic Security Layer** | 7-check security pipeline (length, extension, regex, semantic scan, PII redact) | ✅ |
-| **Pinecone RAG Vector Search** | Dynamic retrieval with document citation mapping and diversity checks | ✅ |
-| **Critic Revision Loop** | Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (FM-1/2/3) | ✅ |
-| **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback | ✅ |
-| **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting numeric ratings and text feedback | ✅ |
-| **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable | ✅ |
-| **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs | ✅ |
-| **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts | ✅ |
-| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency | ✅ |
+| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic)
+| **Pydantic-Enforced Output Contracts** | Zero untyped LLM handoffs, schema conformance validated at every transition
+| **Deterministic Security Layer** | 7-check security pipeline (length, extension, regex, semantic scan, PII redact)
+| **Pinecone RAG Vector Search** | Dynamic retrieval with document citation mapping and diversity checks
+| **Critic Revision Loop** | LLM-as-Judge - Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (Hallucination Guard, Uncited Claim Cap, Sentinel Fallback Cap) 
+| **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback 
+| **ElevenLabs Voice HITL Gate** | Conversational human approval webhook accepting numeric ratings and text feedback 
+| **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable
+| **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs
+| **BRD Pinecone Ingestion** | Upon approval, the BRD is ingested in Pinecone
+| **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts
+| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency
 
 ---
 
@@ -118,7 +119,7 @@ BRD Upload ──► FastAP ──►│  File check → Parse → Injection Gua
                         ┌───────────────────────────┼───────────────────────────┐
                         │                           │                           │
                         ▼ Approved                  ▼ Rejected                  ▼
-          Sheets + Jira Epic (MCP) + PDF   Sheets audit row only              (wait)
+          Sheets + Jira Epic (MCP) + Pinecone   Sheets audit row only              (wait)
 ```
 
 ---
@@ -126,19 +127,19 @@ BRD Upload ──► FastAP ──►│  File check → Parse → Injection Gua
 ## Agent Design Patterns
 
 ### 1. Parallel Dispatch (Hub-and-Spoke)
-Instead of sequentially chaining agent calls, the Orchestrator splits the incoming BRD sections and routes them to all five specialist agents concurrently using Python's `ThreadPoolExecutor`. This reduces total wall-clock execution time by **~3×** (~50 seconds compared to >2.5 minutes sequentially).
+Instead of sequentially chaining Agent calls, the Orchestrator splits the incoming BRD sections and routes them to all five specialist Agents concurrently using Python's `ThreadPoolExecutor`. This reduces total wall-clock execution time by **~3×** (~50 seconds compared to >2.5 minutes sequentially).
 
 ### 2. Multi-Agent Aggregate Criticism
-The Critic node serves as a secondary routing hub. Rather than verifying each agent individually, it acts on the aggregated `PipelineState` containing all 5 specialist outputs. This global view enables it to catch cross-specialist contradictions, such as the *Schedule Estimator* planning a 12-week project while the *Solution Architect* designs 25 separate microservices for a 2-engineer team.
+The Critic node serves as a secondary routing hub. Rather than verifying each Agent individually, it acts on the aggregated `PipelineState` containing all 5 specialist outputs. This global view enables it to catch cross-specialist contradictions, such as the *Schedule Estimator* planning a 12-week project while the *Solution Architect* designs 25 separate microservices for a 2-engineer team.
 
 ### 3. Targeted Revision Loop
-If the Critic flags issues, the pipeline does not rerun from scratch. Instead, it runs a selective revision loop (max 2 cycles). The loop only invokes the specialist agents that were flagged with a quality score below the acceptable threshold.
+If the Critic flags issues, the pipeline does not rerun from scratch. Instead, it runs a selective revision loop (max 2 cycles). The loop only invokes the specialist Agents that were flagged with a quality score below the acceptable threshold.
 
 ### 4. Deterministic Failure-Mode Caps (FM-1/2/3)
 To prevent the LLM Critic from being overly optimistic (a common LLM-as-Judge failure mode), three deterministic rules override the Critic's scoring logic:
 *   **FM-1 (Hallucination Guard):** Deducts `0.3` points from the overall score for every citation that does not match retrieved vector database keys.
-*   **FM-2 (Uncited Claim Cap):** Caps the overall score at `3.9` (Amber) if any specialist agent fails to reference at least one vector chunk.
-*   **FM-3 (Sentinel Fallback Cap):** If an agent fails or experiences an API timeout, the pipeline falls back to safe mock structures with a low confidence score (`≤ 0.30`). The Critic immediately caps the overall quality rating to `3.9` (Amber) and flags a `ConsistencyIssue` in the UI to prevent silent failures.
+*   **FM-2 (Uncited Claim Cap):** Caps the overall score at `3.9` (Amber) if any specialist Agent fails to reference at least one vector chunk.
+*   **FM-3 (Sentinel Fallback Cap):** If an Agent fails or experiences an API timeout, the pipeline falls back to safe mock structures with a low confidence score (`≤ 0.30`). The Critic immediately caps the overall quality rating to `3.9` (Amber) and flags a `ConsistencyIssue` in the UI to prevent silent failures.
 
 ---
 
@@ -152,8 +153,8 @@ To prevent the LLM Critic from being overly optimistic (a common LLM-as-Judge fa
 | **Models** | GPT-4o (specialists) + GPT-4o-mini (critic) | Balance between specialist reasoning quality and critic execution cost |
 | **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, and non-blocking exports |
 | **Frontend UI** | Streamlit | Rapid UI prototyping displaying real-time execution graphs and progress logs |
-| **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL approvals |
-| **Tool Integration** | Model Context Protocol (MCP) | Standardized agent-to-tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
+| **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
+| **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 
 ---
 
@@ -174,7 +175,7 @@ Before any LLM node processes a user-uploaded document, the file passes through 
 
 The vector database stores organization-specific architectural patterns, planning templates, and historical schedules.
 *   **Ingestion:** The ingestion tool `scripts/ingest_kb.py` parses documents from `knowledge_base/`, splits them using a dynamic recursive character text splitter, embeds them via `text-embedding-3-large` (1024 dimensions), and writes them to Pinecone with metadata tags (`source_type`, `chunk_id`).
-*   **Retrieval:** During execution, each specialist agent retrieves relevant context using a similarity search. A similarity threshold of `0.45` is enforced.
+*   **Retrieval:** During execution, each specialist Agent retrieves relevant context using a similarity search. A similarity threshold of `0.45` is enforced.
 *   **Citation Tracking:** Specialists must return exact citations (`source_file` + `chunk_id`) for any technical standard referenced in their plan. The Critic enforces that these references are present and match valid chunks.
 
 ---
@@ -331,6 +332,7 @@ Fill out the keys in `secrets/.env`. Standard required keys are:
 *   `OPENAI_API_KEY`
 *   `PINECONE_API_KEY`
 
+
 For observability and integrations, configure:
 ```env
 # LangSmith Observability
@@ -343,6 +345,8 @@ JIRA_BASE_URL=https://your-domain.atlassian.net
 JIRA_EMAIL=your-email@domain.com
 JIRA_API_TOKEN=your_jira_token
 JIRA_PROJECT_KEY=SCRUM
+JIRA_ISSUE_TYPE   # Task or "Epic"
+JIRA_LABEL_PREFIX     # optional; defaults to em-copilot
 
 GOOGLE_SHEET_ID=your_sheet_id
 # Place google service account credentials in secrets/google_service_account.json
@@ -376,16 +380,16 @@ Access the application UI by visiting `http://localhost:8501`.
 ## Failure Modes & Mitigations
 
 *   **API Timeouts:** Covered by `tenacity` retry wrappers performing exponential backoffs (1s → 2s → 4s).
-*   **JSON Parse Failures:** Specialized agents perform schema recovery prompts on parse failure. If recovery fails, `_fallback()` returns a placeholder model, flagging low confidence (`0.20`), triggering Critic's **FM-3** Amber downgrading.
+*   **JSON Parse Failures:** Specialized Agents perform schema recovery prompts on parse failure. If recovery fails, `_fallback()` returns a placeholder model, flagging low confidence (`0.20`), triggering Critic's **FM-3** Amber downgrading.
 *   **Missing Integrations Credentials:** If Google Sheets or Jira credentials are not found, the endpoints skip execution gracefully with warning logs. They write a local fallback zip/CSV copy to `logs/exports/` and allow the pipeline to proceed without throwing exceptions.
 *   **MCP Server Unavailable:** If the `mcp-atlassian` server cannot spawn or the `jira_create_issue` call fails, `/approve` automatically falls back to the REST Jira client — the Epic is still created, and the fallback reason is logged.
-*   **Unavailable Third-Party Endpoints:** If Kroki.io fails during SVG generation, the frontend defaults to client-side JS Rendering. If the GitHub API is unavailable, the tech stack agent ignores velocity signals and notes the dependency failure in its logs.
+*   **Unavailable Third-Party Endpoints:** If Kroki.io fails during SVG generation, the frontend defaults to client-side JS Rendering. If the GitHub API is unavailable, the Tech Stack Agent ignores velocity signals and notes the dependency failure in its logs.
 
 ---
 
 ## Observability & Tracing
 
-Full observability is configured through **LangSmith**. Every database call, agent dispatch, and LLM text generation is traced via our LangSmith-wrapped OpenAI client:
+Full observability is configured through **LangSmith**. Every database call, Agent dispatch, and LLM text generation is traced via our LangSmith-wrapped OpenAI client:
 
 ```python
 from openai import OpenAI
@@ -405,6 +409,6 @@ MIT License - Feel free to use this project for learning and inspiration.
 
 ---
 
-## 📧 Author
-Author: Rahul Ganbote
+## 🧑‍💻 Author
+Name: Rahul Ganbote
 GitHub: @morya99
