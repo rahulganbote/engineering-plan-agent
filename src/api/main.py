@@ -451,6 +451,11 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
                 "error": err_msg
             })
 
+    # The whole /approve handler (Sheets + Jira + Pinecone) is now done. The UI
+    # polls until it sees this flag, so it never freezes on a half-finished
+    # export — e.g. Jira still creating the Epic when the page last refreshed.
+    _run_export.setdefault(run_id, {})["finalized"] = True
+
     return ApprovalResponse(
         run_id=run_id,
         decision=decision.value,
@@ -578,6 +583,11 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
             log.info(f"[{run_id}] Errored run logged to the dashboard sheet")
         except Exception as se:
             log.warning(f"[{run_id}] Could not log errored run to sheet | {se}")
+        try:
+            from src.integrations.slack import send_pipeline_error_alert
+            send_pipeline_error_alert(state)
+        except Exception as se:
+            log.warning(f"[{run_id}] Could not send Slack alert | {se}")
 
 
 def _push_event(run_id: str, data: dict) -> None:

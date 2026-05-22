@@ -300,6 +300,7 @@ def _sync_external_hitl_decision(payload: dict) -> None:
         "jira_issue_key": current.get("jira_issue_key") or jira_meta.get("issue_key"),
         "pipeline_status": payload.get("pipeline_status"),
         "rejection_count": payload.get("hitl_rejection_count", 0),
+        "export_finalized": bool(export_meta.get("finalized")),
     }
 
 
@@ -1019,6 +1020,7 @@ def render_export_result() -> None:
         jira_mode = result.get("jira_status")  or jira_meta.get("mode") or "skipped"
         jira_key  = result.get("jira_issue_key") or jira_meta.get("issue_key")
         jira_det  = result.get("jira_detail")  or jira_meta.get("detail")
+        finalized = bool(result.get("export_finalized")) or bool(export_meta.get("finalized"))
 
         if jira_url:
             st.success(f"Pushed to Jira: {jira_key}")
@@ -1029,8 +1031,10 @@ def render_export_result() -> None:
             st.warning("Jira push failed")
             if jira_det:
                 st.code(jira_det)
+        elif not finalized and not jira_meta:
+            st.info("Jira push in progress - creating the Epic via the MCP server...")
         else:
-            st.caption(jira_det or "Jira push skipped (credentials not configured)")
+            st.caption(jira_det or "Jira push was skipped")
 
     # ── Branch 1: Approval succeeded → Sheets + Jira ────────────────────────
     if status == "exported":
@@ -1119,8 +1123,13 @@ def main() -> None:
     # refresh_artifacts() -> _sync_external_hitl_decision() runs on a rerun. Poll
     # slowly while paused so the HITL form and voice widget stay responsive.
     status = st.session_state.pipeline_status or ""
-    decision_recorded = bool(st.session_state.get("approval_result"))
-    if status not in TERMINAL_STATUSES and not decision_recorded:
+    _ar = st.session_state.get("approval_result") or {}
+    run_finalized = bool(_ar.get("export_finalized"))
+    # Poll until the run hits a hard error OR the EM's decision is fully processed
+    # server-side (Sheets + Jira + Pinecone done -> finalized). This lets a voice
+    # approval surface its COMPLETE result and stops the UI freezing on a
+    # half-finished export (e.g. Jira still pushing the Epic).
+    if status not in ("error", "export_failed") and not run_finalized:
         interval = HITL_POLL_INTERVAL_SEC if status in PAUSE_STATUSES else POLL_INTERVAL_SEC
         time.sleep(interval)
         st.rerun()

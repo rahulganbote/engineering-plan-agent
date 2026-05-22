@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     jira_issue_type:      str = "Epic"   # REST fallback path; MCP path always creates Epic
     jira_label_prefix:    str = "em-copilot"
 
+    # ── Slack (pipeline failure alerts) ───────────────────────────
+    slack_webhook_url:    str = ""   # Incoming Webhook URL; empty = alerts off
+
     # ── Email (audit) ─────────────────────────────────────────────────────────
     smtp_host:            str = ""
     smtp_port:            int = 587

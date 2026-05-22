@@ -65,20 +65,20 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 
 ## Core Pillars
 
-| Capability | Engineering Implementation
-|---|---|---|
-| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic)
-| **Pydantic-Enforced Output Contracts** | Zero untyped LLM handoffs, schema conformance validated at every transition
-| **Deterministic Security Layer** | 7-check security pipeline (length, extension, regex, semantic scan, PII redact)
-| **Pinecone RAG Vector Search** | Dynamic retrieval with document citation mapping and diversity checks
-| **Critic Revision Loop** | LLM-as-Judge - Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (Hallucination Guard, Uncited Claim Cap, Sentinel Fallback Cap) 
-| **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback 
-| **ElevenLabs Voice HITL Gate** | Conversational human approval webhook accepting numeric ratings and text feedback 
-| **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable
-| **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs
-| **BRD Pinecone Ingestion** | Upon approval, the BRD is ingested in Pinecone
-| **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts
-| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency
+| Capability | Engineering Implementation |
+|---|---|
+| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic) |
+| **Pydantic-Enforced Output Contracts** | Zero untyped LLM handoffs, schema conformance validated at every transition |
+| **Deterministic Security Layer** | 7-check security pipeline (length, extension, regex, semantic scan, PII redact) |
+| **Pinecone RAG Vector Search** | Dynamic retrieval with document citation mapping and diversity checks |
+| **Critic Revision Loop** | LLM-as-Judge - Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (Hallucination Guard, Uncited Claim Cap, Sentinel Fallback Cap) |
+| **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback | 
+| **ElevenLabs Voice HITL Gate** | Conversational human approval webhook accepting numeric ratings and text feedback | 
+| **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable |
+| **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs |
+| **BRD Pinecone Ingestion** | Upon approval, the BRD is ingested in Pinecone |
+| **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts |
+| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency |
 
 ---
 

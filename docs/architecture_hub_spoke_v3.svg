@@ -56,7 +56,7 @@
   <circle cx="92" cy="475" r="25" fill="#ef4444"/>
   <text x="92" y="484" text-anchor="middle" font-size="25" fill="#ffffff">3</text>
   <text x="172" y="461" text-anchor="middle" class="card-title">Security Validator</text>
-  <text x="172" y="485" text-anchor="middle" class="card-subtitle">Format, PII, injection</text>
+  <text x="172" y="485" text-anchor="middle" class="card-subtitle">7-check security gate</text>
   <text x="172" y="506" text-anchor="middle" class="tiny">No raw BRD in external logs</text>
 
   <rect x="54" y="552" width="208" height="78" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
@@ -111,7 +111,7 @@
   <text x="421" y="712" text-anchor="middle" font-size="25" fill="#ffffff">A</text>
   <text x="528" y="689" text-anchor="middle" class="card-title">Solution Architect</text>
   <text x="528" y="713" text-anchor="middle" class="card-subtitle">Patterns, NFRs, data flow</text>
-  <text x="528" y="734" text-anchor="middle" class="tiny">RAG + Kroki diagram tool</text>
+  <text x="528" y="734" text-anchor="middle" class="tiny">RAG + Mermaid / Kroki SVG</text>
 
   <rect x="380" y="772" width="286" height="88" rx="14" fill="#fff7ed" stroke="#d97706" stroke-width="3"/>
   <circle cx="421" cy="816" r="27" fill="#d97706"/>
@@ -186,7 +186,7 @@
   <text x="1350" y="312" text-anchor="middle" class="card-subtitle">Completeness = 5.0</text>
   <text x="1350" y="336" text-anchor="middle" class="card-subtitle">Consistency = 5.0</text>
   <text x="1350" y="360" text-anchor="middle" class="card-subtitle">Actionability >= 4.0</text>
-  <text x="1350" y="388" text-anchor="middle" class="label" fill="#d97706">Cross-agent checks here</text>
+  <text x="1350" y="388" text-anchor="middle" class="label" fill="#d97706">FM-1/2/3 caps + cross-checks</text>
 
   <rect x="1232" y="456" width="224" height="136" rx="16" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
   <circle cx="1280" cy="524" r="31" fill="#7c3aed"/>
@@ -218,51 +218,52 @@
 
   <line x1="1478" y1="590" x2="1518" y2="590" stroke="#94a3b8" stroke-width="4" marker-end="url(#arrow-gray)"/>
 
-  <rect x="1540" y="222" width="210" height="106" rx="15" fill="#fff1f2" stroke="#ef4444" stroke-width="3"/>
-  <circle cx="1582" cy="275" r="29" fill="#ef4444"/>
-  <text x="1582" y="286" text-anchor="middle" font-size="27" fill="#ffffff">1</text>
-  <text x="1660" y="261" text-anchor="middle" class="card-title">HITL Gate 1</text>
+  <rect x="1540" y="222" width="210" height="106" rx="15" fill="#fffbeb" stroke="#d97706" stroke-width="3"/>
+  <circle cx="1582" cy="275" r="29" fill="#d97706"/>
+  <text x="1582" y="285" text-anchor="middle" font-size="26" fill="#ffffff">H</text>
+  <text x="1660" y="261" text-anchor="middle" class="card-title">HITL Gate</text>
   <text x="1660" y="286" text-anchor="middle" class="card-subtitle">EM reviews bundle</text>
-  <text x="1660" y="309" text-anchor="middle" class="tiny">Approve or reject with notes</text>
+  <text x="1660" y="309" text-anchor="middle" class="tiny">Voice (ElevenLabs) or buttons</text>
 
-  <rect x="1540" y="360" width="210" height="106" rx="15" fill="#fff1f2" stroke="#ef4444" stroke-width="3"/>
-  <circle cx="1582" cy="413" r="29" fill="#ef4444"/>
-  <text x="1582" y="424" text-anchor="middle" font-size="27" fill="#ffffff">2</text>
-  <text x="1660" y="399" text-anchor="middle" class="card-title">HITL Gate 2</text>
-  <text x="1660" y="424" text-anchor="middle" class="card-subtitle">Final review</text>
-  <text x="1660" y="447" text-anchor="middle" class="tiny">Second rejection escalates</text>
+  <rect x="1540" y="360" width="210" height="106" rx="15" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <circle cx="1582" cy="413" r="29" fill="#2563eb"/>
+  <text x="1582" y="423" text-anchor="middle" font-size="26" fill="#ffffff">J</text>
+  <text x="1660" y="399" text-anchor="middle" class="card-title">Jira Cloud - Epic</text>
+  <text x="1660" y="424" text-anchor="middle" class="card-subtitle">mcp-atlassian MCP server</text>
+  <text x="1660" y="447" text-anchor="middle" class="tiny">REST + ADF fallback</text>
 
   <rect x="1540" y="512" width="210" height="106" rx="15" fill="#ecfdf5" stroke="#16a34a" stroke-width="3"/>
   <circle cx="1582" cy="565" r="29" fill="#16a34a"/>
   <text x="1582" y="576" text-anchor="middle" font-size="27" fill="#ffffff">G</text>
   <text x="1660" y="551" text-anchor="middle" class="card-title">Google Sheets</text>
-  <text x="1660" y="576" text-anchor="middle" class="card-subtitle">Plan, schedule, stack</text>
-  <text x="1660" y="599" text-anchor="middle" class="tiny">Write only after approval</text>
+  <text x="1660" y="576" text-anchor="middle" class="card-subtitle">Run Summary + plan tabs</text>
+  <text x="1660" y="599" text-anchor="middle" class="tiny">Logs every decision + errors</text>
 
-  <rect x="1540" y="650" width="210" height="106" rx="15" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
-  <circle cx="1582" cy="703" r="29" fill="#2563eb"/>
-  <text x="1582" y="714" text-anchor="middle" font-size="27" fill="#ffffff">A</text>
-  <text x="1660" y="689" text-anchor="middle" class="card-title">Artifacts</text>
-  <text x="1660" y="714" text-anchor="middle" class="card-subtitle">Plan, arch, PoC</text>
-  <text x="1660" y="737" text-anchor="middle" class="tiny">Citations + quality badge</text>
+  <rect x="1540" y="650" width="210" height="106" rx="15" fill="#faf5ff" stroke="#7c3aed" stroke-width="3"/>
+  <circle cx="1582" cy="703" r="29" fill="#7c3aed"/>
+  <text x="1582" y="713" text-anchor="middle" font-size="26" fill="#ffffff">A</text>
+  <text x="1660" y="689" text-anchor="middle" class="card-title">Artifacts + PDF</text>
+  <text x="1660" y="714" text-anchor="middle" class="card-subtitle">Plan, arch, PoC, PDF</text>
+  <text x="1660" y="737" text-anchor="middle" class="tiny">ReportLab + citations + badge</text>
 
   <rect x="1540" y="788" width="210" height="106" rx="15" fill="#fff1f2" stroke="#ef4444" stroke-width="3"/>
   <circle cx="1582" cy="841" r="29" fill="#ef4444"/>
-  <text x="1582" y="852" text-anchor="middle" font-size="27" fill="#ffffff">E</text>
-  <text x="1660" y="827" text-anchor="middle" class="card-title">Escalation Email</text>
-  <text x="1660" y="852" text-anchor="middle" class="card-subtitle">Audit bundle sent</text>
-  <text x="1660" y="875" text-anchor="middle" class="tiny">Only on second rejection</text>
+  <text x="1582" y="852" text-anchor="middle" font-size="28" fill="#ffffff">!</text>
+  <text x="1660" y="827" text-anchor="middle" class="card-title">Alerts</text>
+  <text x="1660" y="852" text-anchor="middle" class="card-subtitle">Slack: pipeline failure</text>
+  <text x="1660" y="875" text-anchor="middle" class="tiny">Email: HITL audit bundle</text>
 
-  <line x1="1645" y1="328" x2="1645" y2="360" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-red)"/>
+  <line x1="1645" y1="328" x2="1645" y2="360" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow-gray)"/>
   <line x1="1645" y1="466" x2="1645" y2="512" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow-gray)"/>
   <line x1="1645" y1="618" x2="1645" y2="650" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-gray)"/>
   <line x1="1645" y1="756" x2="1645" y2="788" stroke="#ef4444" stroke-width="3" stroke-dasharray="8,6" marker-end="url(#arrow-red)"/>
 
   <!-- Bottom callouts -->
   <rect x="28" y="830" width="260" height="116" rx="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
-  <text x="158" y="860" text-anchor="middle" class="section-title" fill="#2563eb">5. INTEGRATIONS</text>
-  <text x="158" y="887" text-anchor="middle" class="small">Pinecone RAG, OpenAI, Kroki</text>
-  <text x="158" y="913" text-anchor="middle" class="small">GitHub API, Google Sheets</text>
+  <text x="158" y="858" text-anchor="middle" class="section-title" fill="#2563eb">5. INTEGRATIONS</text>
+  <text x="158" y="882" text-anchor="middle" class="small">Pinecone · OpenAI · Kroki</text>
+  <text x="158" y="905" text-anchor="middle" class="small">Jira (MCP) · Sheets · GitHub</text>
+  <text x="158" y="928" text-anchor="middle" class="small">Slack · ElevenLabs · LangSmith</text>
 
   <rect x="328" y="964" width="840" height="2" fill="#7c3aed" opacity="0.18"/>
   <text x="748" y="936" text-anchor="middle" font-size="15" font-weight="800" fill="#7c3aed">Hub-and-spoke invariant: no specialist-to-specialist communication; every decision and revision route is mediated by the Orchestrator.</text>
