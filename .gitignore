@@ -66,3 +66,10 @@ main_original.py
 # ─── User-uploaded BRDs (when running the demo) ───────────────────────────
 # Test BRDs in eval/ ARE tracked — they're fixtures. Live uploads go elsewhere.
 uploads/
+
+# Never commit SSH keys
+*_ssh_key
+*_ssh_key.pub
+id_rsa
+id_ed25519
+*.pem
