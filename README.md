@@ -8,13 +8,13 @@
 [![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 
-> **EM Copilot** is a state-of-the-art, 7-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle — plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting voice commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
+> **EM Copilot** is a state-of-the-art, 7-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle: plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting Voice AI commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
 
 ---
 
 ## Table of Contents
 1. [Business Use Case & Solution](#business-use-case--solution)
-2. [Core Features](#core-pillars)
+2. [Core Pillars](#core-pillars)
 3. [Architectural Overview](#architectural-overview)
 4. [Agent Design Patterns](#agent-design-patterns)
 5. [Tech Stack Justification](#tech-stack-justification)
@@ -400,4 +400,7 @@ MIT License - Feel free to use this project for learning and inspiration.
 
 ## 🧑‍💻 Author
 Name: Rahul Ganbote
-GitHub: @morya99
+GitHub: @rahulganbote
+---
+
+*© 2026 Rahul Ganbote · All rights reserved.*
