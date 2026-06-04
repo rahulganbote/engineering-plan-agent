@@ -121,6 +121,7 @@ In the Space → **Settings** → **Variables and secrets** → add each as a **
 | `GOOGLE_SHEET_ID` | Sheets export target | Falls back to local CSV bundle |
 | `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` | Jira push on approve | Silently skipped |
 | `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID` | Voice HITL widget | Widget hidden; button HITL still works |
+| `SLACK_WEBHOOK_URL` | Posts a failure alert to a Slack channel when a pipeline run ends in `error` | Errored runs still log to the Sheets dashboard, just no Slack message |
 
 **Use the "Secret" type, not "Variable"** — secrets are encrypted and not shown
 in build logs. Anything non-sensitive (like `LANGCHAIN_TRACING_V2=true`) can be a
@@ -148,6 +149,15 @@ not an env var. On HF Spaces you have two choices:
   `GOOGLE_SHEET_ID`. On startup `start.sh` writes the key back to
   `secrets/google_service_account.json` before the API launches. A missing or
   malformed `GOOGLE_SA_B64` is non-fatal — the pipeline falls back to local CSV.
+
+### Slack failure alerts (optional)
+
+To get a Slack message every time a pipeline run ends in `error`:
+
+1. Create an Incoming Webhook for the target channel: https://api.slack.com/messaging/webhooks
+2. Add the URL as a Space **Secret** named `SLACK_WEBHOOK_URL` (must start with `https://hooks.slack.com/services/…`).
+
+The Space restarts after you save the secret. An errored run posts a formatted message with the run ID, BRD name, status, timestamp, and the first few error lines. If the secret is unset or malformed the alert is silently skipped — the pipeline never breaks on a missing webhook.
 
 ---
 

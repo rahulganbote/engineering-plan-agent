@@ -1,3 +1,14 @@
+---
+title: EM Copilot
+emoji: 🧭
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: BRD to Engineering Plan Multi-Agent System
+---
+
 # EM Copilot — BRD to Engineering Plan Agent
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
@@ -7,6 +18,7 @@
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
 [![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
+[![Slack](https://img.shields.io/badge/Alerts-Slack-4A154B)](https://slack.com)
 
 > **EM Copilot** is a state-of-the-art, 7-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle: plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting Voice AI commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
 
@@ -65,6 +77,7 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 | **ElevenLabs Voice HITL Gate** | Conversational human approval webhook accepting numeric ratings and text feedback | 
 | **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable |
 | **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs |
+| **Slack Failure Alert** | Incoming-webhook alert on any pipeline error so the EM sees failed runs in real time |
 | **BRD Pinecone Ingestion** | Upon approval, the BRD is ingested in Pinecone |
 | **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts |
 | **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency |
