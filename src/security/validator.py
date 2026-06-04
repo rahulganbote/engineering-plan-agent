@@ -637,11 +637,19 @@ Respond ONLY with valid JSON:
         Returns the list of sections that the LLM confirms are STILL missing.
         """
         prompt = f"""You are validating a Business Requirements Document (BRD).
-A simple keyword scanner failed to find the following required elements: {missing_sections}.
-However, free-form text can describe these without using standard headings.
+A simple keyword scanner failed to find these required elements: {missing_sections}.
 
-Please analyze the provided document excerpt and determine if the semantic concepts
-for these elements are actually present.
+IMPORTANT — treat these as SEMANTIC concepts, not literal headings:
+  - "objective" is present if the BRD describes goals, aims, purpose, vision, mission,
+    business goals, primary goals, or what the project must achieve. The word "objective"
+    does NOT need to appear literally.
+  - "requirement" is present if the BRD describes functional requirements, non-functional
+    requirements, features, capabilities, or any "shall"/"must" statements.
+  - "constraint" is present if the BRD describes budget, timeline, scope limits, technical
+    limitations, out-of-scope items, or SLAs (latency, uptime, etc.).
+
+Default: if the BRD has substantive content describing the concept in ANY wording,
+mark it FALSE (i.e. NOT missing). Only mark TRUE (missing) when the concept is genuinely absent.
 
 Document excerpt:
 ---
@@ -681,17 +689,37 @@ Example format:
         """
         Extract section bodies from common Markdown/plain-text BRD headings.
         Falls back to keyword-window checks when the document is table-like.
+
+        PDFs are pre-processed: pypdf often emits the whole document as a handful
+        of giant lines with all sections concatenated. We force a newline before
+        every numbered heading ("3. Business Goals", "7. Non-Functional ...")
+        so each section actually starts a line.
         """
+        # Split before "<n>. <Capitalized>"  e.g. "3. Business Goals", "8. Security"
+        text = re.sub(r"(?<=\S)\s*(?=\b\d{1,2}\.\s+[A-Z][a-z])", "\n", text)
+        # Also split before common inline sub-headings that PDFs jam together
+        for sub in ("In Scope", "Out of Scope", "Primary Goals", "Secondary Goals",
+                    "Availability", "Performance", "Scalability", "Reliability",
+                    "Security"):
+            text = re.sub(rf"(?<=\S)\s+(?={re.escape(sub)}[\s●:])", "\n", text)
+
         sections: dict[str, list[str]] = {}
         current: Optional[str] = None
         aliases = {
-            "objective": ["objective", "objectives", "goal", "goals"],
-            "requirement": [
-                "requirement", "requirements", "functional requirements",
-                "non-functional requirements", "nfr", "fr",
-            ],
-            "constraint": ["constraint", "constraints", "limitations", "budget", "timeline"],
+            "objective":  ["objective", "objectives", "goal", "goals",
+                           "aim", "aims", "purpose", "vision", "mission"],
+            "requirement": ["requirement", "requirements", "functional requirements",
+                            "non-functional requirements", "nfr", "fr",
+                            "feature", "features", "capabilities"],
+            "constraint": ["constraint", "constraints", "limitation", "limitations",
+                           "budget", "timeline", "out of scope", "boundaries"],
         }
+
+        # Match alias as a STANDALONE WORD anywhere in the heading line.
+        # This catches "Business Goals", "3. Primary Objectives", "Project Aims"
+        # etc. — not just headings that start with the alias word.
+        def _is_heading(norm: str, names: list[str]) -> bool:
+            return any(re.search(rf"\b{re.escape(name)}\b", norm) for name in names)
 
         for raw_line in text.splitlines():
             line = raw_line.strip()
@@ -700,7 +728,7 @@ Example format:
             normalized = re.sub(r"^[#\-\*\d\.\)\s]+", "", line).strip().lower().rstrip(":")
             heading_key = None
             for key, names in aliases.items():
-                if normalized in names or any(normalized.startswith(f"{name} ") for name in names):
+                if _is_heading(normalized, names):
                     heading_key = key
                     break
             if heading_key:
