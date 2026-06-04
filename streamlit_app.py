@@ -1076,9 +1076,27 @@ def render_errors() -> None:
     artifacts = st.session_state.artifacts or {}
     errs = artifacts.get("errors") or []
     if errs:
-        st.error("Pipeline errors")
+        # Check if it's an OpenAI key or token/rate limit error
+        openai_key_or_limit_error = False
         for e in errs:
-            st.code(e)
+            e_lower = str(e).lower()
+            if any(term in e_lower for term in [
+                "archived", "no longer accessible", "not_authorized_invalid_project",
+                "authenticationerror", "invalid_request_error", "401", "rate_limit", 
+                "quota", "token limit", "expired", "insufficient_quota"
+            ]):
+                openai_key_or_limit_error = True
+                break
+        
+        if openai_key_or_limit_error:
+            st.error("Sorry, your OpenAI API key is expired or OpenAI tokens limit has reached, please try again after some time.")
+            with st.expander("Show raw error details", expanded=False):
+                for e in errs:
+                    st.code(e)
+        else:
+            st.error("Pipeline errors")
+            for e in errs:
+                st.code(e)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
