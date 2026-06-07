@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 
 from src.agents.base_agent import BaseAgent
+from src.core.cache import CachePolicy, get_semantic_backend
 from src.core.logger import get_logger
 from src.core.models import PipelineState, PoCOutput, SuccessCriterion
 
@@ -50,6 +51,8 @@ SCHEMA = """{
 
 class PoCPlannerAgent(BaseAgent):
     """Creates a PoC scope artifact as an independent specialist spoke."""
+
+    CACHE_POLICY = CachePolicy(mode="semantic", semantic_threshold=0.95, namespace="llm-cache.poc")
 
     def run(self, state: PipelineState, feedback: str = "") -> PoCOutput:
         start = self.start_timer()

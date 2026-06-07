@@ -46,6 +46,7 @@ from openai import OpenAI
 from langsmith.wrappers import wrap_openai
 
 from src.core.config import settings
+from src.core.cache import CachePolicy
 from src.core.logger import get_logger
 from src.core.models import (
     ConsistencyIssue,
@@ -77,6 +78,10 @@ class CriticAgent:
     Evaluates all 5 specialist agent outputs collectively and drives
     the revision loop until quality thresholds are met or max revisions reached.
     """
+
+    # Phase 6: per-agent semantic cache policy (used when CriticAgent is wired
+    # through BaseAgent._call_llm_with_retry; stored here for forward-compat).
+    CACHE_POLICY = CachePolicy(mode="semantic", semantic_threshold=0.95, namespace="llm-cache.critic")
 
     def run(self, state: PipelineState) -> CriticOutput:
         """
@@ -373,6 +378,14 @@ Return ONLY valid JSON with this exact structure:
                 temperature=0.1,
                 response_format={"type": "json_object"},
             )
+
+            _critic_usage = getattr(response, 'usage', None)
+
+            if _critic_usage is not None:
+
+                from src.agents.base_agent import add_tokens as _add_tokens
+
+                _add_tokens(getattr(_critic_usage, 'prompt_tokens', 0) or 0, getattr(_critic_usage, 'completion_tokens', 0) or 0)
             return json.loads(response.choices[0].message.content)
         except Exception as e:
             log.error(f"Critic LLM judge failed | error={e}")
