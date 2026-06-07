@@ -108,3 +108,8 @@ def send_pipeline_error_alert(state: PipelineState) -> dict[str, Any]:
         return {"status": "sent", "detail": "Slack alert delivered"}
     log.warning(f"[{run_id}] Slack alert failed — {detail}")
     return {"status": "failed", "detail": detail}
+
+
+# Phase 7: export-handler registry
+from src.integrations.export_registry import register_export
+register_export("slack", send_pipeline_error_alert, "error")

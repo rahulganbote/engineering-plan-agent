@@ -86,6 +86,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+# ── Phase 8 + 10 wiring — cache backend + observability sink ────────────────
+@app.on_event("startup")
+async def _wire_resilience_and_cache() -> None:
+    """Initialise the process-default cache backend and bridge resilience
+    events into the per-run event stream. Idempotent."""
+    try:
+        from src.core.cache import init_default_backend_from_env
+        init_default_backend_from_env()
+    except Exception as e:
+        log.warning(f"cache backend init failed: {e}")
+
+    try:
+        from src.core.events import set_event_sink
+
+        def _bridge(event: dict) -> None:
+            rid = event.pop("run_id", None)
+            if not rid:
+                return  # event outside any run — drop
+            _push_event(rid, event)
+
+        set_event_sink(_bridge)
+    except Exception as e:
+        log.warning(f"event sink wiring failed: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -320,33 +345,57 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
                 "message": "Two rejections — flagging for audit review",
             })
 
-    # ── Sheets Export (Runs on BOTH Approve and Reject to log the decision) ──
-    sheet_url:        str | None = None
-    export_status:    str | None = None
-    export_mode:      str | None = None
-    export_detail:    str | None = None
-    jira_url:         str | None = None
-    jira_status:      str | None = None
-    jira_detail:      str | None = None
-    jira_issue_key:   str | None = None
+    # ── Export registry (Phase 7) ─────────────────────────────────────────────
+    # Import integration modules so they register themselves on first access.
+    import src.integrations.sheets    # noqa: F401
+    import src.integrations.jira_mcp  # noqa: F401
+    import src.integrations.pdf_export  # noqa: F401
+    from src.integrations.export_registry import get_handlers_for_decision
 
-    try:
-        from src.integrations.sheets import write_artifacts_to_sheet
-        result = write_artifacts_to_sheet(state)
-        sheet_url     = result.get("url")
-        export_mode   = result.get("mode")              # "sheets" | "local"
-        export_detail = result.get("detail")
-        export_status = "ok" if export_mode == "sheets" else "local_fallback"
-        
+    sheet_url:      str | None = None
+    export_status:  str | None = None
+    export_mode:    str | None = None
+    export_detail:  str | None = None
+    jira_url:       str | None = None
+    jira_status:    str | None = None
+    jira_detail:    str | None = None
+    jira_issue_key: str | None = None
+
+    decision_key = decision.value  # "approved" | "rejected"
+    registry_decision = "approve" if decision_key == "approved" else "reject"
+    export_results: dict = {}
+
+    for handler_name, handler_fn in get_handlers_for_decision(registry_decision):
+        try:
+            import inspect as _inspect
+            if _inspect.iscoroutinefunction(handler_fn):
+                result = await handler_fn(state)
+            else:
+                result = handler_fn(state)
+            export_results[handler_name] = result
+            log.info(f"[{run_id}] export handler '{handler_name}' ok | {result.get('mode','?')}")
+        except Exception as e:
+            err = f"{type(e).__name__}: {str(e)[:200]}"
+            export_results[handler_name] = {"mode": "failed", "error": err}
+            log.error(f"[{run_id}] export handler '{handler_name}' failed | {err}")
+
+    # ── Unpack sheets result (shape-stable for ApprovalResponse) ─────────────
+    sheets_result = export_results.get("sheets", {})
+    if sheets_result:
+        sheet_url     = sheets_result.get("url")
+        export_mode   = sheets_result.get("mode")
+        export_detail = sheets_result.get("detail")
+        export_status = "ok" if export_mode == "sheets" else (
+            "local_fallback" if export_mode == "local" else "failed"
+        )
         if decision == HITLDecision.APPROVED:
             state.pipeline_status = "exported"
-            
         _run_export[run_id] = {
             "sheet_url":       sheet_url,
             "mode":            export_mode,
             "detail":          export_detail,
-            "files":           result.get("files", []),
-            "fallback_reason": result.get("fallback_reason"),
+            "files":           sheets_result.get("files", []),
+            "fallback_reason": sheets_result.get("fallback_reason"),
             "status":          export_status,
         }
         _push_event(run_id, {
@@ -355,74 +404,31 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
             "sheet_url": sheet_url,
             "detail":    export_detail,
         })
-        log.info(f"[{run_id}] Export complete | mode={export_mode} | url={sheet_url}")
-    except Exception as e:
+    elif sheets_result.get("mode") == "failed":
         if decision == HITLDecision.APPROVED:
             state.pipeline_status = "export_failed"
         export_status = "failed"
-        err_msg = str(e)[:240]
+        err_msg = sheets_result.get("error", "unknown")
         _run_export[run_id] = {"sheet_url": None, "status": "failed", "error": err_msg}
         _push_event(run_id, {"type": "export_failed", "error": err_msg})
-        log.error(f"[{run_id}] Export failed | error={err_msg}")
 
-    # ── Jira push (best-effort — never blocks approval / Sheets export) ──
-    # ONLY push to Jira on approval.
-    if decision == HITLDecision.APPROVED:
-        try:
-            # ── Jira via MCP (primary) ──────────────────────────────────────
-            # Creates an Epic through the mcp-atlassian MCP server. The pipeline
-            # acts as an MCP client: spawn server → handshake → list_tools →
-            # call_tool("jira_create_issue", issue_type="Epic"). On any failure
-            # (SDK missing, server missing, tool error) it returns mode!="jira"
-            # and we transparently fall back to the REST integration below — so
-            # a missing MCP server can never break approval.
-            jresult = None
-            try:
-                from src.integrations.jira_mcp import push_epic_to_jira_via_mcp
-                jresult = await push_epic_to_jira_via_mcp(state)
-                if jresult.get("mode") != "jira":
-                    log.info(
-                        f"[{run_id}] Jira MCP unavailable "
-                        f"({jresult.get('fallback_reason')}) — falling back to REST"
-                    )
-                    jresult = None
-            except Exception as mcp_e:
-                log.warning(
-                    f"[{run_id}] Jira MCP path raised — falling back to REST | {mcp_e}"
-                )
-                jresult = None
-
-            # ── Jira via REST (fallback) ────────────────────────────────────
-            if jresult is None:
-                from src.integrations.jira import push_artifacts_to_jira
-                jresult = push_artifacts_to_jira(state)
-
-            jira_url       = jresult.get("url")
-            jira_mode      = jresult.get("mode") or "skipped"   # "jira" | "skipped"
-            jira_detail    = jresult.get("detail")
-            jira_issue_key = jresult.get("issue_key")
-            jira_status    = jira_mode
-            # Stash alongside Sheets export meta so /artifacts can surface it
-            _run_export.setdefault(run_id, {})["jira"] = jresult
-            _push_event(run_id, {
-                "type":      "jira_pushed" if jira_url else "jira_skipped",
-                "mode":      jira_mode,
-                "url":       jira_url,
-                "issue_key": jira_issue_key,
-                "detail":    jira_detail,
-            })
-            log.info(
-                f"[{run_id}] Jira {jira_mode} | key={jira_issue_key} | url={jira_url}"
-            )
-        except Exception as e:
-            jira_status = "failed"
-            jira_detail = f"{type(e).__name__}: {str(e)[:200]}"
-            _run_export.setdefault(run_id, {})["jira"] = {
-                "url": None, "mode": "failed", "detail": jira_detail,
-                "issue_key": None, "fallback_reason": jira_detail,
-            }
-            _push_event(run_id, {"type": "jira_failed", "error": jira_detail})
-            log.error(f"[{run_id}] Jira push raised | {jira_detail}")
+    # ── Unpack jira result ────────────────────────────────────────────────────
+    jresult = export_results.get("jira", {})
+    if jresult:
+        jira_url       = jresult.get("url")
+        jira_mode      = jresult.get("mode") or "skipped"
+        jira_detail    = jresult.get("detail")
+        jira_issue_key = jresult.get("issue_key")
+        jira_status    = jira_mode
+        _run_export.setdefault(run_id, {})["jira"] = jresult
+        _push_event(run_id, {
+            "type":      "jira_pushed" if jira_url else "jira_skipped",
+            "mode":      jira_mode,
+            "url":       jira_url,
+            "issue_key": jira_issue_key,
+            "detail":    jira_detail,
+        })
+        log.info(f"[{run_id}] Jira {jira_mode} | key={jira_issue_key} | url={jira_url}")
 
         # ── Pinecone BRD Ingestion ──
         try:

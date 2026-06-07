@@ -85,6 +85,26 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
             "fallback_reason": why_not,
         }
 
+    # Phase 7: idempotency — search for existing issue with this run's label
+    idempotency_label = f"em-copilot-run-{state.run_id}"
+    existing_key = _search_existing_issue(state.run_id, idempotency_label)
+    if existing_key:
+        url = f"{settings.jira_base_url.rstrip('/')}/browse/{existing_key}"
+        log.info(f"[{run_id}] Jira REST — idempotent skip, issue already exists: {existing_key}")
+        try:
+            from src.core.events import emit as _evt
+            _evt("idempotent_skip", run_id=run_id, issue_key=existing_key,
+                 transport="rest", label=idempotency_label)
+        except Exception:
+            pass
+        return {
+            "url":             url,
+            "mode":            "jira",
+            "detail":          f"Idempotent skip — issue {existing_key} already exists (label={idempotency_label})",
+            "issue_key":       existing_key,
+            "fallback_reason": None,
+        }
+
     try:
         created = _create_issue(state)
     except Exception as e:
@@ -132,6 +152,32 @@ def _credentials_status() -> tuple[bool, str]:
 # ──────────────────────────────────────────────────────────────────────────────
 # REST call
 # ──────────────────────────────────────────────────────────────────────────────
+
+def _search_existing_issue(run_id: str, label: str) -> str | None:
+    """
+    JQL search for an existing issue with the idempotency label.
+    Returns the issue key if found, else None. Never raises.
+    """
+    try:
+        jql = f'project = "{settings.jira_project_key}" AND labels = "{label}"'
+        url = f"{settings.jira_base_url.rstrip('/')}/rest/api/3/search"
+        headers = {
+            "Authorization": _basic_auth_header(),
+            "Accept": "application/json",
+        }
+        r = requests.get(
+            url, headers=headers,
+            params={"jql": jql, "maxResults": 1, "fields": "key"},
+            timeout=JIRA_TIMEOUT_SEC,
+        )
+        if r.status_code == 200:
+            issues = r.json().get("issues", [])
+            if issues:
+                return issues[0]["key"]
+    except Exception as e:
+        log.warning(f"[{run_id}] Jira idempotency search failed: {e}")
+    return None
+
 
 def _create_issue(state: PipelineState) -> dict[str, Any]:
     """
@@ -276,6 +322,8 @@ def _build_labels(state: PipelineState) -> list[str]:
         prefix,
         f"badge-{badge}",
         f"run-{state.run_id[:8]}",
+        # Phase 7: full run_id label for idempotency search
+        f"em-copilot-run-{state.run_id}",
     ]
     if arch and arch.pattern:
         labels.append(f"pattern-{_slugify(arch.pattern)[:60]}")

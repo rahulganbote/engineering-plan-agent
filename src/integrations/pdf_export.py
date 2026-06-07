@@ -418,3 +418,15 @@ def _add_tech_stack(story, styles, state: PipelineState) -> None:
         tbl.setStyle(_DEFAULT_TABLE_STYLE)
         story.append(tbl)
     story.append(Spacer(1, 6))
+
+
+# Phase 7: export-handler registry
+from src.integrations.export_registry import register_export
+
+
+def _pdf_export_handler(state):
+    """Wrap build_artifacts_pdf for the export registry. Returns availability flag."""
+    return {"available": True, "mode": "pdf"}
+
+
+register_export("pdf", _pdf_export_handler, "approve")

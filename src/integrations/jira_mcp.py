@@ -115,6 +115,10 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
     summary     = _build_summary(state)
     description = _build_markdown_description(state)
     labels      = _build_labels(state)
+    # Phase 7: idempotency — add run-specific label so we can search for it
+    idempotency_label = f"em-copilot-run-{state.run_id}"
+    if idempotency_label not in labels:
+        labels = list(labels) + [idempotency_label]
 
     server_params = StdioServerParameters(
         command=MCP_SERVER_COMMAND,
@@ -131,6 +135,23 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
             "ENABLED_TOOLS":   "jira_create_issue,jira_get_issue",
         },
     )
+
+    # Phase 7: idempotency — search for an existing Epic with this run's label
+    existing = await _search_existing_epic_mcp(state, idempotency_label)
+    if existing:
+        log.info(f"[{run_id}] Jira MCP — idempotent skip, Epic already exists: {existing}")
+        from src.core.events import emit as _evt
+        _evt("idempotent_skip", run_id=run_id, issue_key=existing,
+             transport="mcp", label=idempotency_label)
+        base = (settings.jira_base_url or "").rstrip("/")
+        return {
+            "url":             f"{base}/browse/{existing}" if base else None,
+            "mode":            "jira",
+            "detail":          f"Idempotent skip — Epic {existing} already exists (label={idempotency_label})",
+            "issue_key":       existing,
+            "fallback_reason": None,
+            "transport":       "mcp",
+        }
 
     log.info(f"[{run_id}] Jira MCP — spawning mcp-atlassian server via stdio")
 
@@ -408,6 +429,32 @@ def _build_markdown_description(state: PipelineState) -> str:
 # Helper
 # ──────────────────────────────────────────────────────────────────────────────
 
+async def _search_existing_epic_mcp(state, label: str) -> str | None:
+    """
+    Search for an existing Epic with the given idempotency label via REST
+    (simpler than MCP for a read-only search). Returns the issue key if found.
+    """
+    try:
+        from src.integrations.jira import _basic_auth_header
+        import requests as _requests
+        jql = f'project = "{settings.jira_project_key}" AND labels = "{label}"'
+        url = f"{settings.jira_base_url.rstrip('/')}/rest/api/3/search"
+        headers = {
+            "Authorization": _basic_auth_header(),
+            "Accept": "application/json",
+        }
+        r = _requests.get(url, headers=headers,
+                          params={"jql": jql, "maxResults": 1, "fields": "key"},
+                          timeout=8)
+        if r.status_code == 200:
+            issues = r.json().get("issues", [])
+            if issues:
+                return issues[0]["key"]
+    except Exception as e:
+        log.warning(f"[{state.run_id}] idempotency search failed: {e}")
+    return None
+
+
 def _skip(reason: str) -> dict[str, Any]:
     """Build a uniform skip result. Logged at INFO since skip is a normal state."""
     log.info(f"Jira MCP push skipped — {reason}")
@@ -419,3 +466,33 @@ def _skip(reason: str) -> dict[str, Any]:
         "fallback_reason": reason,
         "transport":       "mcp",
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Phase 7: combined Jira handler (MCP → REST fallback) + export registry
+# ──────────────────────────────────────────────────────────────────────────────
+
+async def push_epic_to_jira(state) -> dict:
+    """
+    Combined handler: attempts MCP path first, falls back to REST on any failure.
+    Registered in the export registry so /approve iterates it without special-casing.
+    """
+    jresult = None
+    try:
+        jresult = await push_epic_to_jira_via_mcp(state)
+        if jresult.get("mode") != "jira":
+            jresult = None
+    except Exception as e:
+        from src.core.logger import get_logger as _gl
+        _gl(__name__).warning(f"[{state.run_id}] Jira MCP raised in combined handler: {e}")
+        jresult = None
+
+    if jresult is None:
+        from src.integrations.jira import push_artifacts_to_jira
+        jresult = push_artifacts_to_jira(state)
+
+    return jresult
+
+
+from src.integrations.export_registry import register_export
+register_export("jira", push_epic_to_jira, "approve")

@@ -146,7 +146,8 @@ def _write_to_google_sheets(state: PipelineState) -> str:
     summary_ws = _get_or_create_worksheet(sh, "Run Summary", rows=100, cols=20)
     _ensure_min_cols(summary_ws, len(_summary_headers()))
     summary_ws.update("A1", [_summary_headers()])
-    summary_ws.append_row(_summary_row(state, ts))
+    # Phase 7: idempotency — update existing row if run_id already present
+    _upsert_summary_row(summary_ws, state, ts)
 
     # ── Tab: Engineering Plan ────────────────────────────────────────────────
     if state.plan_output:
@@ -170,6 +171,26 @@ def _write_to_google_sheets(state: PipelineState) -> str:
             stack_ws.append_row(row)
 
     return f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}"
+
+
+def _upsert_summary_row(ws, state, ts: str) -> None:
+    """
+    Write the Run Summary row idempotently. If a row with state.run_id already
+    exists in column A, update it in-place; otherwise append a new row.
+    """
+    try:
+        all_rows = ws.get_all_values()
+        # row 0 is the header; data starts at row 1 (1-indexed in gspread: row 2)
+        for i, row in enumerate(all_rows[1:], start=2):
+            if row and row[0] == state.run_id:
+                new_row = _summary_row(state, ts)
+                col_end = chr(ord("A") + len(new_row) - 1)
+                ws.update(f"A{i}:{col_end}{i}", [new_row])
+                log.info(f"[{state.run_id}] Sheets idempotent update at row {i}")
+                return
+    except Exception as e:
+        log.warning(f"[{state.run_id}] Sheets upsert search failed ({e}); appending")
+    ws.append_row(_summary_row(state, ts))
 
 
 def _ensure_min_cols(ws, min_cols: int) -> None:
@@ -380,3 +401,8 @@ def _tech_stack_rows(state: PipelineState) -> list[list[Any]]:
         ]
         for opt in state.stack_output.options
     ]
+
+
+# Phase 7: export-handler registry
+from src.integrations.export_registry import register_export
+register_export("sheets", write_artifacts_to_sheet, "both")
