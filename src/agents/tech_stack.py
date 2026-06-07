@@ -281,3 +281,7 @@ def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
     # Fallback: if the LLM emitted something we haven't mapped, log + use default
     log.warning(f"Unknown RiskLevel value {value!r} — coercing to {default!r}")
     return RiskLevel(default)
+
+
+from src.agents.registry import register_specialist
+register_specialist("tech_stack_recommender", TechStackAgent)

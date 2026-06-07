@@ -16,3 +16,6 @@ Import pattern:
     from src.agents.critic import CriticAgent
     from src.agents.plan_generator import PlanGeneratorAgent
 """
+
+# Phase 4: Import specialist modules at package load so they register in the registry.
+from src.agents import plan_generator, schedule, architect, poc_planner, tech_stack  # noqa: F401

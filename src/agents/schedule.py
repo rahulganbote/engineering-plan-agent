@@ -74,6 +74,12 @@ class ScheduleEstimatorAgent(BaseAgent):
         start = self.start_timer()
         log.info(f"[{state.run_id}] ScheduleEstimator start | revision={state.revision_count}")
 
+        # On revision cycles, read plan_output from state if not explicitly passed.
+        # This lets the registry dispatcher call cls().run(ps, feedback=feedback)
+        # without needing special-case logic in pipeline._run_agent.
+        if plan_output is None and state.revision_count > 0:
+            plan_output = state.plan_output
+
         # ── RAG retrieval — timeline source type ──────────────────────────────
         query = self._build_query(state, plan_output)
         context_str, citation_ids = self.retrieve_context(
@@ -218,3 +224,7 @@ class ScheduleEstimatorAgent(BaseAgent):
             buffer_weeks=1,
             comparable_projects=citation_ids[:1] if citation_ids else ["project_timelines_chunk_0"],
         )
+
+
+from src.agents.registry import register_specialist
+register_specialist("schedule_estimator", ScheduleEstimatorAgent)

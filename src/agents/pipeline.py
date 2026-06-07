@@ -20,18 +20,18 @@ Hub-and-spoke invariants:
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from src.agents.base_agent import (
+    set_current_run_id, reset_token_counter, get_token_counts,
+)
 import time
 from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
-from src.agents.architect import SolutionArchitectAgent
+import src.agents  # noqa: F401 — side-effect: registers all specialists
 from src.agents.critic import CriticAgent
 from src.agents.orchestrator import OrchestratorAgent
-from src.agents.plan_generator import PlanGeneratorAgent
-from src.agents.poc_planner import PoCPlannerAgent
-from src.agents.schedule import ScheduleEstimatorAgent
-from src.agents.tech_stack import TechStackAgent
+from src.agents.registry import get_specialist
 from src.core.config import settings
 from src.core.logger import get_logger, log_pipeline_summary
 from src.core.models import PipelineState
@@ -90,24 +90,10 @@ def _revision_targets(ps: PipelineState) -> list[str]:
 
 def _run_agent(agent_name: str, ps: PipelineState):
     """Run one specialist spoke. Called from Orchestrator dispatch worker threads."""
+    set_current_run_id(ps.run_id)
     feedback = _feedback_for(ps, agent_name)
-    if agent_name == "engineering_plan_generator":
-        return PlanGeneratorAgent().run(ps, feedback=feedback)
-    if agent_name == "schedule_estimator":
-        # Initial schedule is estimated directly from BRD; on revision it may
-        # see existing plan_output from the previous aggregate state.
-        return ScheduleEstimatorAgent().run(
-            ps,
-            plan_output=ps.plan_output if ps.revision_count > 0 else None,
-            feedback=feedback,
-        )
-    if agent_name == "solution_architect":
-        return SolutionArchitectAgent().run(ps, feedback=feedback)
-    if agent_name == "poc_planner":
-        return PoCPlannerAgent().run(ps, feedback=feedback)
-    if agent_name == "tech_stack_recommender":
-        return TechStackAgent().run(ps, feedback=feedback)
-    raise ValueError(f"Unknown specialist agent: {agent_name}")
+    cls = get_specialist(agent_name)
+    return cls().run(ps, feedback=feedback)
 
 
 # ── Node functions ────────────────────────────────────────────────────────────
@@ -154,20 +140,45 @@ def node_dispatch_specialists(state: dict) -> dict:
     ps.pipeline_status = "dispatching"
     max_workers = min(len(targets), len(ALL_SPECIALIST_AGENTS)) or 1
 
+    # ── Phase 9 — Bulkhead: per-agent timeout at the executor ───────────────
+    # One stuck specialist cannot block the whole pipeline. Any future that
+    # doesn't return within settings.agent_timeout_sec is cancelled; its agent
+    # output stays None, which the Critic's FM-3 cap catches downstream.
+    from concurrent.futures import TimeoutError as _BulkheadTimeout
+    _bulkhead_budget = float(getattr(settings, "agent_timeout_sec", 90))
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_run_agent, agent_name, ps): agent_name
             for agent_name in targets
         }
-        for future in as_completed(futures):
-            agent_name = futures[future]
-            field_name = AGENT_OUTPUT_FIELDS[agent_name]
-            try:
-                output = future.result()
-                setattr(ps, field_name, output)
-                log.info(f"[{ps.run_id}] Orchestrator received {agent_name}")
-            except Exception as e:
-                log.error(f"[{ps.run_id}] {agent_name} error: {e}")
+        try:
+            for future in as_completed(futures, timeout=_bulkhead_budget):
+                agent_name = futures[future]
+                field_name = AGENT_OUTPUT_FIELDS[agent_name]
+                try:
+                    output = future.result(timeout=0)
+                    setattr(ps, field_name, output)
+                    log.info(f"[{ps.run_id}] Orchestrator received {agent_name}")
+                except Exception as e:
+                    log.error(f"[{ps.run_id}] {agent_name} error: {e}")
+        except _BulkheadTimeout:
+            # Bulkhead trip: at least one specialist exceeded the budget.
+            # Cancel everything still pending and proceed with what we have.
+            for fut, agent_name in futures.items():
+                if not fut.done():
+                    fut.cancel()
+                    log.warning(
+                        f"[{ps.run_id}] {agent_name} bulkhead timeout after "
+                        f"{_bulkhead_budget}s — proceeding without it"
+                    )
+                    ps.errors.append(f"{agent_name}: bulkhead timeout ({_bulkhead_budget}s)")
+                    try:
+                        from src.core.events import emit as _evt
+                        _evt("bulkhead_timeout", agent=agent_name,
+                             timeout_sec=_bulkhead_budget)
+                    except Exception:
+                        pass
                 ps.errors.append(f"{agent_name}: {str(e)[:140]}")
 
     state["_last_dispatch_targets"] = targets
@@ -415,6 +426,8 @@ def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "") 
     """
     pipeline_start = time.perf_counter()
     log.info(f"[{run_id}] Pipeline starting | words={len(brd_text.split())}")
+    reset_token_counter(run_id)
+    set_current_run_id(run_id)
 
     initial = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name).model_dump()
     initial["_brd_text"] = brd_text
@@ -426,6 +439,9 @@ def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "") 
 
     total_ms = int((time.perf_counter() - pipeline_start) * 1000)
     result.processing_time_sec = total_ms / 1000.0
+    _tin, _tout = get_token_counts(run_id)
+    result.total_input_tokens  = _tin
+    result.total_output_tokens = _tout
     agent_logs = [
         {"agent": agent_name, "success": getattr(result, field_name) is not None}
         for agent_name, field_name in AGENT_OUTPUT_FIELDS.items()

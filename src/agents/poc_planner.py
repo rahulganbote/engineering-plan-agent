@@ -174,3 +174,7 @@ class PoCPlannerAgent(BaseAgent):
             team_size=2,
             risk_if_poc_fails="Escalate to EM for rescoping before committing to full delivery.",
         )
+
+
+from src.agents.registry import register_specialist
+register_specialist("poc_planner", PoCPlannerAgent)

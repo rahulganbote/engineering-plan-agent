@@ -363,3 +363,7 @@ class SolutionArchitectAgent(BaseAgent):
             diagram_mermaid=self._default_mermaid(comps),
             # diagram_svg left None; run() will try Kroki on this fallback Mermaid too
         )
+
+
+from src.agents.registry import register_specialist
+register_specialist("solution_architect", SolutionArchitectAgent)
