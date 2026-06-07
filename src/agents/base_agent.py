@@ -42,12 +42,90 @@ from tenacity import (
     RetryError,
 )
 
+# ── Phase 1: distributed-systems primitives ──────────────────────────────────
+import threading as _threading2
+from src.core.resilience import (
+    CircuitBreaker, CallPolicy, resilient, CircuitOpenError, OPENAI_POLICY,
+)
+from src.core.cache import cached, hash_args, CACHE_LLM
+
 from src.core.config import settings
 from src.core.logger import get_logger, log_agent_run
 from src.core.rag import retrieve, format_context, RetrievedChunk
 
 log    = get_logger(__name__)
 client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
+
+
+# ── Token usage tracker — per-run counters, thread-safe ──────────────────────
+# Each pipeline run has its own input/output token tally. Agents running in the
+# ThreadPoolExecutor set a thread-local run_id; LLM callers add to the dict via
+# add_tokens(); pipeline.py reads totals at the end via get_token_counts().
+import threading as _threading
+from collections import defaultdict as _defaultdict
+
+_TOKEN_LOCK    = _threading.Lock()
+_TOKEN_COUNTER: dict[str, dict[str, int]] = _defaultdict(lambda: {"input": 0, "output": 0})
+_CURRENT_RUN   = _threading.local()
+
+
+def set_current_run_id(run_id: str) -> None:
+    """Set the run_id for this thread so subsequent LLM calls are attributed."""
+    _CURRENT_RUN.run_id = run_id
+
+
+def _current_run_id() -> str | None:
+    return getattr(_CURRENT_RUN, "run_id", None)
+
+
+def reset_token_counter(run_id: str) -> None:
+    """Zero the counter for a run — call at pipeline start."""
+    with _TOKEN_LOCK:
+        _TOKEN_COUNTER[run_id] = {"input": 0, "output": 0}
+
+
+def add_tokens(prompt: int, completion: int, run_id: str | None = None) -> None:
+    """Add tokens to the current run's tally (uses thread-local run_id if not given)."""
+    rid = run_id or _current_run_id()
+    if not rid:
+        return
+    with _TOKEN_LOCK:
+        d = _TOKEN_COUNTER[rid]
+        d["input"]  += int(prompt or 0)
+        d["output"] += int(completion or 0)
+
+
+def get_token_counts(run_id: str) -> tuple[int, int]:
+    with _TOKEN_LOCK:
+        d = _TOKEN_COUNTER.get(run_id, {"input": 0, "output": 0})
+        return d["input"], d["output"]
+
+
+def cleanup_token_counter(run_id: str) -> None:
+    with _TOKEN_LOCK:
+        _TOKEN_COUNTER.pop(run_id, None)
+
+
+# ── Phase 1: Per-agent-class circuit breakers ────────────────────────────────
+# Each BaseAgent subclass gets ONE breaker per process. State persists across
+# agent INSTANCES (which are created fresh per pipeline run), but each agent
+# CLASS has its own independent breaker — one class's failures cannot poison
+# another's. This is the "per-instance ownership" pattern from resilience.py
+# applied at the class level (since instances are short-lived).
+_LLM_BREAKERS: dict[str, CircuitBreaker] = {}
+_LLM_BREAKER_LOCK = _threading2.Lock()
+
+
+def _get_llm_breaker(agent_class_name: str) -> CircuitBreaker:
+    with _LLM_BREAKER_LOCK:
+        if agent_class_name not in _LLM_BREAKERS:
+            _LLM_BREAKERS[agent_class_name] = CircuitBreaker(
+                name=f"{agent_class_name}.llm",
+                fail_threshold=5,
+                reset_sec=30.0,
+            )
+        return _LLM_BREAKERS[agent_class_name]
+
 
 # Sentinel citation value used when Pinecone returns no results
 NO_RAG_SENTINEL = "kb_no_results_ungrounded"
@@ -62,7 +140,16 @@ class BaseAgent:
         start = self.start_timer()
         ... do work ...
         self.log_run(state.run_id, "agent_name", citations, critic_score, start, revision)
+
+    Class attributes (Phase 5 — per-agent policy manifest):
+        CACHE_POLICY      — CachePolicy used by _call_llm_with_retry
+        RESILIENCE_POLICY — CallPolicy used by _call_llm_with_retry
+    Override either on a specialist subclass to change its behaviour.
     """
+
+    # ── Phase 5: per-agent policy manifest ───────────────────────────────────
+    CACHE_POLICY:      CachePolicy = CACHE_LLM
+    RESILIENCE_POLICY: CallPolicy  = OPENAI_POLICY
 
     # ── Timing ────────────────────────────────────────────────────────────────
 
@@ -128,13 +215,11 @@ class BaseAgent:
         response_format: dict = None,
     ) -> str:
         """
-        Call OpenAI with tenacity retry — FM-1 malformed JSON, FM-5 LLM timeout.
+        Call OpenAI with per-agent CACHE_POLICY + RESILIENCE_POLICY.
 
-        Retry policy:
-            - 3 attempts total (1 initial + 2 retries)
-            - Exponential backoff: 1s → 2s → 4s
-            - Retries on: OpenAI errors, timeouts, JSON parse errors
-            - After 3 failures: raises RetryError → routed to error node
+        Phase 5: decorators are applied dynamically so subclasses can override
+        CACHE_POLICY and RESILIENCE_POLICY as class attributes and have those
+        policies take effect without touching this method.
 
         Args:
             system_prompt: Role and instruction for the LLM
@@ -146,36 +231,60 @@ class BaseAgent:
             Raw string content from the LLM response
         """
         model = model or settings.openai_model
+        breaker = _get_llm_breaker(type(self).__name__)
 
-        @retry(
-            retry=retry_if_exception_type(Exception),
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=1, min=1, max=4),
-            reraise=True,
-        )
-        def _call() -> str:
+        # Capture per-agent policies at call time so subclass overrides are
+        # respected — class-level @cached/@resilient decorators can't do this.
+        cache_policy     = self.CACHE_POLICY
+        resilience_policy = self.RESILIENCE_POLICY
+
+        def _llm_key(sys_p, usr_p, mdl, fmt):
+            return hash_args(sys_p, usr_p, mdl, fmt)
+
+        def _call(sys_p, usr_p, mdl, fmt) -> str:
             kwargs = {
-                "model":    model,
+                "model":    mdl,
                 "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": user_prompt},
+                    {"role": "system", "content": sys_p},
+                    {"role": "user",   "content": usr_p},
                 ],
                 "temperature": 0.2,
             }
-            if response_format:
-                kwargs["response_format"] = response_format
+            if fmt:
+                kwargs["response_format"] = fmt
             response = client.chat.completions.create(**kwargs)
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                add_tokens(
+                    getattr(usage, "prompt_tokens", 0) or 0,
+                    getattr(usage, "completion_tokens", 0) or 0,
+                )
             return response.choices[0].message.content
 
+        # Apply wrappers inside-out: resilient first, then cached on top
+        # so a cache hit pays zero resilience/retry cost.
+        _resilient_call = resilient(
+            policy=resilience_policy, breaker=breaker, name="llm.chat"
+        )(_call)
+        _cached_call = cached(
+            policy=cache_policy, key_fn=_llm_key, name="llm.chat"
+        )(_resilient_call)
+
         try:
-            return _call()
-        except RetryError as e:
+            return _cached_call(system_prompt, user_prompt, model, response_format)
+        except CircuitOpenError:
             log.error(
-                f"LLM call failed after 3 attempts | "
-                f"model={model} | error={type(e.last_attempt.exception()).__name__} | "
+                f"LLM call short-circuited (breaker {breaker.name} OPEN) — "
+                f"too many recent failures; routing to error node"
+            )
+            raise
+        except Exception as e:
+            log.error(
+                f"LLM call failed after {resilience_policy.max_attempts} attempts | "
+                f"model={model} | error={type(e).__name__} | "
                 f"FM-1/FM-5 mitigation: routing to error node"
             )
-            raise  # Propagates to pipeline error node
+            raise
 
     # ── Structured Logging ────────────────────────────────────────────────────
 
