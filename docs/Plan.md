@@ -136,6 +136,40 @@ This gives Claude Code full context in ~3k tokens instead of feeding the whole p
 
 ---
 
+## Phase 1–10 — Distributed Resilience & Cache Layer
+
+Post-MVP hardening to make EM Copilot operate as a true distributed agentic system. Plan was a 10-phase rollout shipped over multiple Cowork sessions.
+
+| Phase | Goal | Status | Commit |
+|---|---|---|---|
+| **1** | Foundation: `resilience.py` (CallPolicy, CircuitBreaker, @resilient) + `cache.py` (CachePolicy, CacheBackend, @cached) | ✅ Code on disk · ⚠️ **uncommitted** | working tree |
+| **2** | RAG retrieval cached (key normalisation, sentinel handling) | ✅ Code on disk · ⚠️ **uncommitted** | `src/core/rag.py` working tree |
+| **3** | Embeddings cached + resilient (per-service breaker) | ✅ Code on disk · ⚠️ **uncommitted** | `src/core/rag.py` working tree |
+| **4** | Specialist registry — decoupled dispatch | ✅ Committed | `497ab4c` |
+| **5** | Per-agent CACHE_POLICY / RESILIENCE_POLICY manifest | ✅ Committed | `6d78529` |
+| **6** | Semantic LLM cache (Pinecone, `namespace=llm-cache`, cosine 0.95) | ✅ Committed (incl. all of cache.py) | `282cc8f` |
+| **7** | Idempotent writes (`em-copilot-run-<id>` label) + export-handler registry | ✅ Committed | `0f98432` |
+| **8** | RedisCache + TieredCache + `init_default_backend_from_env()` | ✅ Code on disk · ⚠️ **uncommitted** (in cache.py — actually committed via Phase 6) | bundled in `282cc8f` |
+| **9** | Per-agent bulkhead (`as_completed(timeout=)`) + `agent_timeout_sec` config | ✅ Code on disk · ⚠️ **uncommitted** | `src/core/config.py`, `src/agents/pipeline.py` working tree |
+| **10** | Observability event bus (`events.py`) + FastAPI startup wiring | ✅ Code on disk · ⚠️ **uncommitted** | `src/core/events.py` untracked |
+
+> ⚠️ **Working tree gap:** Phases 1, 2, 3, 9, 10 are implemented and integrated but not yet committed. A `git push` today would ship Phases 4–7 only — and the deployed code would fail at import because Phase 4–7 depends on `resilience.py` / `events.py`. **One follow-up commit is required before push:**
+> ```bash
+> git add src/core/resilience.py src/core/events.py src/core/rag.py src/core/config.py src/api/main.py src/agents/base_agent.py src/agents/pipeline.py requirements.txt
+> git commit -m "feat: Phase 1+2+3+9+10 — resilience primitives, RAG cache, bulkhead, event bus"
+> ```
+
+### Follow-up work (not in Phases 1–10)
+
+| Item | Priority | Effort |
+|---|---|---|
+| Wrap Critic's direct `client.chat.completions.create` with `@cached + @resilient` | 🟡 Medium | 15 min |
+| Add Streamlit "Resilience" expander (cache hit-rate, breaker state, recent events) | 🟢 Low | 1 h |
+| Refresh `docs/architecture_hub_spoke_v3.svg` to show breaker + cache layer | 🟢 Low | 2 h |
+| Soak test on `test_brd_complex.txt` with Redis up + Redis killed mid-run | 🟢 Low | 30 min |
+
+---
+
 ## What to cut if running short on time (Day 5 triage)
 
 | Feature | Cut? | Impact |

@@ -1,4 +1,74 @@
 # EM Copilot — State & Progress Log
+**Updated:** 2026-06-07 (evening, CDT)
+**Status:** ✅ Demo-ready · 🚧 Distributed-resilience hardening Phase 1–10 in working tree
+
+---
+
+## 🆕 2026-06-07 — Distributed Resilience & Cache Layer (Phases 1–10)
+
+Post-MVP push to harden EM Copilot into a true distributed agentic system: per-instance circuit breakers, jittered exponential backoff, hard timeouts, two-tier cache (L1 in-memory + optional L2 Redis), Pinecone-backed semantic cache for the Critic, per-agent bulkhead, specialist registry, per-agent policy manifest, idempotent writes, and an observability event bus surfaced into the Streamlit SSE stream.
+
+### Shipped to disk
+
+| Phase | Component | Files |
+|---|---|---|
+| 1 | Resilience primitives (CallPolicy, CircuitBreaker, @resilient) + Cache scaffolding (CachePolicy, InMemoryCache, @cached) | `src/core/resilience.py` (NEW), `src/core/cache.py` (NEW), `src/agents/base_agent.py` |
+| 2 | RAG retrieval cached | `src/core/rag.py` |
+| 3 | Embeddings cached + resilient | `src/core/rag.py` |
+| 4 | Specialist registry (`register_specialist` / `get_specialist`) | `src/agents/registry.py` (NEW), `src/agents/pipeline.py`, all specialist modules |
+| 5 | Per-agent CACHE_POLICY / RESILIENCE_POLICY class attrs | `src/agents/base_agent.py` |
+| 6 | Semantic LLM cache via Pinecone (`namespace=llm-cache`, threshold 0.95) | `src/core/cache.py` (SemanticBackend), `src/agents/critic.py`, `src/agents/poc_planner.py` |
+| 7 | Idempotent writes — Jira/Sheets de-dupe by `em-copilot-run-<id>` + export-handler registry | `src/integrations/export_registry.py` (NEW), `src/integrations/jira.py`, `src/integrations/sheets.py`, `src/integrations/slack.py`, `src/api/main.py` |
+| 8 | RedisCache + TieredCache + `init_default_backend_from_env()` (graceful degradation) | `src/core/cache.py`, `requirements.txt` (redis>=5,<6) |
+| 9 | Per-agent bulkhead via `as_completed(timeout=)` with cancellation + `agent_timeout_sec` config | `src/agents/pipeline.py`, `src/core/config.py` |
+| 10 | Observability event bus → SSE | `src/core/events.py` (NEW), `src/api/main.py` (startup hook) |
+
+### Commit status
+
+| State | Phases | Commit SHAs |
+|---|---|---|
+| ✅ Committed | 4, 5, 6, 7 (and cache.py wholesale, which includes Phase 8 backends) | `497ab4c`, `6d78529`, `282cc8f`, `0f98432` |
+| ⚠️ **Uncommitted (working tree)** | 1, 2, 3, 9, 10 + the docs updates from this session | `git status -s`: M rag.py, config.py, main.py (parts), base_agent.py, pipeline.py, streamlit_app.py, requirements.txt · ?? resilience.py, events.py |
+
+**Pre-push gate:** A separate `feat: Phase 1+2+3+9+10 — resilience primitives, RAG cache, bulkhead, event bus` commit must land before either remote is pushed, or the deployed code will fail at import (`from src.core.resilience import ...`).
+
+### Configuration surface added
+
+- `REDIS_URL` (env, optional) — when set, activates L2 Redis cache; absent = L1 only, identical to legacy behavior
+- `AGENT_TIMEOUT_SEC` (env, default 90) — per-agent bulkhead budget
+- `SEMANTIC_CACHE_THRESHOLD` (env, default 0.95) — Critic semantic match threshold
+
+### What runs out of the box vs needs setup
+
+| Capability | Out of the box | Needs setup |
+|---|---|---|
+| L1 cache (InMemory LRU+TTL) | ✅ Always on | — |
+| L2 Redis cache | — | `REDIS_URL` env var (Upstash free tier ok) |
+| Semantic cache (Critic) | ✅ Uses existing Pinecone index | — (auto-creates `llm-cache` namespace on first upsert) |
+| Per-agent bulkhead | ✅ Default 90s | Tune `AGENT_TIMEOUT_SEC` if needed |
+| Event bus → SSE | ✅ Wired at FastAPI startup | — |
+| Streamlit Resilience dashboard | ❌ Not yet built | Phase 11 (follow-up) |
+| Critic LLM @cached + @resilient wrap | ⚠️ Partial (direct `client.chat.completions.create` not yet wrapped) | Phase 11 (follow-up, ~15 min edit) |
+
+### Observed behavior (smoke from previous session)
+
+- `init_default_backend_from_env()` chooses `InMemoryCache` when `REDIS_URL` is absent (verified)
+- Specialist registry imports populate `SPECIALISTS` dict at module load (verified)
+- `BaseAgent.CACHE_POLICY = CACHE_LLM`, `RESILIENCE_POLICY = OPENAI_POLICY` default (verified line 151-152)
+- Jira idempotency label `em-copilot-run-<id>` written at line 89 and de-dupe lookup at line 326 (verified)
+
+### Documentation updated in this session
+
+- `README.md` — added 4 new design patterns (#5–#8), Core Pillars rows for resilience + cache + registry, Tech Stack rows for resilience primitives + cache backends + event bus, full new section "Distributed Resilience & Cache Layer", updated Failure Modes (removed stale `tenacity` mention), updated Project Directory Structure, added optional env-var block to Quick Start, added resilience-event paragraph to Observability section
+- `docs/Design.md` — added "Distributed Resilience & Caching (Phases 1–10)" section with decorator stack diagram, per-instance state explanation, cache backend table, library-comparison rationale
+- `docs/Plan.md` — added Phase 1–10 status table with commit SHAs and the pre-push gate warning
+- `docs/State.md` — this entry
+- `docs/blog_em_copilot.md` — added "Phase 1–10 follow-up" section on distributed-resilience-as-foundational-pattern lesson
+- `docs/DEPLOYMENT_HUGGINGFACE.md` — already updated in earlier session (Redis L2 walkthrough)
+
+---
+
+## 2026-05-18 — Demo readiness baseline (preserved below)
 **Updated:** Day 5 (Monday 2026-05-18, evening)
 **Demo deadline:** Wednesday night
 **Status:** ✅ Demo-ready — all critical paths shipped and tested

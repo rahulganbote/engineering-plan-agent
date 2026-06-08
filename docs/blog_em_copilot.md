@@ -172,6 +172,36 @@ If you read no other section of this post, read this one.
 
 ---
 
+## The Phase 1–10 follow-up: making it a distributed system
+
+The capstone version of EM Copilot was demo-ready, but it had a quiet weakness I couldn't stop thinking about: it was a single-process Python application talking to OpenAI, Pinecone, and Jira over the network, with `tenacity` retries as its only fault-tolerance story. If OpenAI returned a 503 mid-pipeline, the retry would eventually give up and the agent would fall back. If Pinecone slowed to 8-second responses, every specialist Agent would wait for it. If I ever scaled to two HF Spaces replicas, every cache hit would be process-local — repeated revisions would pay the LLM cost twice.
+
+So I spent another week shipping a ten-phase hardening pass that turns EM Copilot into a real distributed agentic system. The pieces:
+
+1. **Distributed-systems primitives** — a custom 250-line `resilience.py` (mirrors Hystrix / Polly / resilience4j) with `CallPolicy` (frozen dataclass: timeout, retry, backoff jitter), `CircuitBreaker` (per-instance state), and a `@resilient` decorator. Each agent class and each external service owns its own breaker — shared CODE, never shared STATE. One failing dependency cannot poison the others.
+
+2. **Two-tier cache with graceful degradation** — `InMemoryCache` (L1: LRU+TTL, always on) composed with optional `RedisCache` (L2: pickle+gzip, ~70% size reduction, shared across replicas) into a `TieredCache`. When `REDIS_URL` is unset, only L1 runs. When Redis dies mid-flight, the pipeline degrades to L1 only, logs the degradation, and recovers automatically. The pipeline behavior is identical with or without Redis — Redis is purely a performance multiplier for multi-replica deployments.
+
+3. **Semantic LLM cache for the Critic** — a `SemanticBackend` over Pinecone with cosine similarity threshold 0.95 in a separate `llm-cache` namespace. The Critic's revision-loop prompts are highly self-similar; semantic cache catches near-equivalent queries that exact-key cache would miss. Other agents opt out by default to protect Pinecone free-tier quota.
+
+4. **Per-agent bulkhead** — `node_dispatch_specialists` consumes futures via `as_completed(timeout=AGENT_TIMEOUT_SEC)`. A slow agent can no longer drag down the rest of the pipeline: the bulkhead cancels the straggler, fills its slot with the Sentinel Fallback, and the Critic then caps the badge at FM-3 Amber. The pipeline stays bounded in wall-clock time.
+
+5. **Specialist registry & policy manifest** — `register_specialist()` / `get_specialist()` replaces the if/elif dispatch chain, and each `BaseAgent` subclass declares `CACHE_POLICY` and `RESILIENCE_POLICY` as class attributes that the shared `_call_llm_with_retry` reads from. Adding a new specialist with custom resilience characteristics is now a two-line change.
+
+6. **Idempotent writes** — every Jira Epic carries an `em-copilot-run-<id>` label; the export path checks for an existing match before writing. If MCP succeeds and you accidentally retry with REST, you get one Epic, not two.
+
+7. **Observability event bus** — a lightweight `events.py` emits `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout` events keyed by `run_id`. FastAPI fans them into the SSE stream, so the Streamlit UI shows resilience state in real time — not just Agent progress chips, but "Plan Generator: cache hit (L1)" or "Solution Architect: breaker_open (3 consecutive failures)".
+
+The lesson, separate from the implementation:
+
+> **Distributed resilience is not a feature; it's the substrate.** I built the original capstone as a single coherent pipeline. The Phase 1–10 work didn't add any new artifacts to the engineering plan — but it changed every external call site from "happy path with a retry" to "isolated, observable, bounded in time, and cheap to repeat." The integration cost was real: ~600 lines of foundation code, ~80 lines of agent wiring, careful per-instance breaker isolation. But it's the difference between "works in the demo" and "stays up when one of your three providers has a bad afternoon."
+
+The same EM Copilot now ships with the same UX, the same 31-cent run cost, and the same Green-badge output. But underneath, it's a different system. The Critic's revision loop no longer pays full price the second time. A slow Pinecone region no longer cascades into a full pipeline timeout. Redis dying mid-run no longer crashes anything. And every retry, every cache hit, every breaker open is visible in the trace alongside the LLM tokens.
+
+That's the architecture I'd want backing any agentic system I asked to make decisions for me.
+
+---
+
 ## What this means for engineering managers
 
 I built this as a capstone, but I built it for myself first. The math is straightforward: an EM running 4–6 engagements a year and losing 2–3 days to each BRD recovers **40–60 hours** of planning time. For a consulting team at 20+ engagements, the impact compounds. The upfront cost is real — best results require populating the RAG knowledge base with *your* organization's BRDs, architecture decisions, and engineering standards. That's a one-time setup investment, but a meaningful one.

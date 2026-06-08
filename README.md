@@ -32,15 +32,16 @@ short_description: BRD to Engineering Plan Multi-Agent System
 5. [Tech Stack Justification](#tech-stack-justification)
 6. [Security & Validation Pipeline](#security--validation-pipeline)
 7. [Vector DB & RAG Integration](#vector-db--rag-integration)
-8. [Evaluation Framework](#evaluation-framework)
-9. [Integrations & External Channels](#integrations--external-channels)
-10. [Token Usage & Execution Cost](#token-usage--execution-cost)
-11. [Project Directory Structure](#project-directory-structure)
-12. [Quick Start Guide](#quick-start-guide)
-13. [Failure Modes & Mitigations](#failure-modes--mitigations)
-14. [Observability & Tracing](#observability--tracing)
-15. [License](#license)
-16. [Author](#author)
+8. [Distributed Resilience & Cache Layer](#distributed-resilience--cache-layer)
+9. [Evaluation Framework](#evaluation-framework)
+10. [Integrations & External Channels](#integrations--external-channels)
+11. [Token Usage & Execution Cost](#token-usage--execution-cost)
+12. [Project Directory Structure](#project-directory-structure)
+13. [Quick Start Guide](#quick-start-guide)
+14. [Failure Modes & Mitigations](#failure-modes--mitigations)
+15. [Observability & Tracing](#observability--tracing)
+16. [License](#license)
+17. [Author](#author)
 
 
 ---
@@ -73,6 +74,9 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 | **Deterministic Security Layer** | 7-check security pipeline (length, extension, regex, semantic scan, PII redact) |
 | **Pinecone RAG Vector Search** | Dynamic retrieval with document citation mapping and diversity checks |
 | **Critic Revision Loop** | LLM-as-Judge - Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (Hallucination Guard, Uncited Claim Cap, Sentinel Fallback Cap) |
+| **Distributed Resilience Layer** | Per-instance circuit breakers, jittered exponential backoff, hard timeouts (ThreadPoolExecutor), per-agent bulkheads with cancellation — modeled on Hystrix/Polly/resilience4j |
+| **Two-Tier Cache (L1 + L2)** | In-process LRU+TTL (L1) + optional Redis L2 (pickle+gzip, graceful degradation), Pinecone-backed semantic cache for the Critic |
+| **Specialist Registry & Policy Manifest** | Decoupled dispatch via `register_specialist()`; per-agent `CACHE_POLICY` / `RESILIENCE_POLICY` class attributes for per-call-site tuning |
 | **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback | 
 | **ElevenLabs Voice HITL Gate** | Conversational human approval webhook accepting numeric ratings and text feedback | 
 | **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable |
@@ -143,6 +147,18 @@ To prevent the LLM Critic from being overly optimistic (a common LLM-as-Judge fa
 *   **FM-2 (Uncited Claim Cap):** Caps the overall score at `3.9` (Amber) if any specialist Agent fails to reference at least one vector chunk.
 *   **FM-3 (Sentinel Fallback Cap):** If an Agent fails or experiences an API timeout, the pipeline falls back to safe mock structures with a low confidence score (`≤ 0.30`). The Critic immediately caps the overall quality rating to `3.9` (Amber) and flags a `ConsistencyIssue` in the UI to prevent silent failures.
 
+### 5. Specialist Registry (Decoupled Dispatch)
+Specialist agents register themselves at import time via `register_specialist("plan_generator", PlanGeneratorAgent)`. The pipeline's `_run_agent()` looks up the class via `get_specialist(name)` instead of a hardcoded `if/elif` chain. Adding a new specialist becomes a two-line change (one register call + one entry in the dispatch list) instead of touching multiple files.
+
+### 6. Per-Agent Policy Manifest
+Each `BaseAgent` subclass declares two class-level attributes — `CACHE_POLICY: CachePolicy` and `RESILIENCE_POLICY: CallPolicy`. The shared `_call_llm_with_retry` reads `self.CACHE_POLICY` / `self.RESILIENCE_POLICY`, so individual agents can tune TTL, timeout, retry count, or circuit-breaker thresholds without touching base infrastructure. Defaults come from `CACHE_LLM` / `OPENAI_POLICY`.
+
+### 7. Two-Tier Cache with Graceful Degradation
+The cache layer composes `InMemoryCache` (L1: LRU + TTL, always on) with optional `RedisCache` (L2: pickle+gzip, ~70% size reduction). `TieredCache` checks L1 first, falls through to L2, and back-fills L1 on L2 hits. When `REDIS_URL` is unset, only L1 runs. When Redis fails mid-flight, the pipeline degrades to L1 only, logs the degradation, and recovers automatically on the next successful call.
+
+### 8. Per-Instance Circuit Breakers (Isolation)
+Each agent class and each external service owns its own `CircuitBreaker`. A module-level registry keyed by class name (`_get_llm_breaker(class_name)`) ensures that one agent's failures cannot open another's breaker. RAG retrieval and embedding calls have separate breakers from LLM calls. This is the same isolation pattern Hystrix/resilience4j use for production fault tolerance — shared CODE, never shared STATE.
+
 ---
 
 ## Tech Stack Justification
@@ -157,6 +173,9 @@ To prevent the LLM Critic from being overly optimistic (a common LLM-as-Judge fa
 | **Frontend UI** | Streamlit | Rapid UI prototyping displaying real-time execution graphs and progress logs |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
+| **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
+| **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol — chosen at runtime via `init_default_backend_from_env()` |
+| **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`; surfaced into Streamlit SSE stream |
 
 ---
 
@@ -179,6 +198,57 @@ The vector database stores organization-specific architectural patterns, plannin
 *   **Ingestion:** The ingestion tool `scripts/ingest_kb.py` parses documents from `knowledge_base/`, splits them using a dynamic recursive character text splitter, embeds them via `text-embedding-3-large` (1024 dimensions), and writes them to Pinecone with metadata tags (`source_type`, `chunk_id`).
 *   **Retrieval:** During execution, each specialist Agent retrieves relevant context using a similarity search. A similarity threshold of `0.45` is enforced.
 *   **Citation Tracking:** Specialists must return exact citations (`source_file` + `chunk_id`) for any technical standard referenced in their plan. The Critic enforces that these references are present and match valid chunks.
+
+---
+
+## Distributed Resilience & Cache Layer
+
+EM Copilot ships with a production-grade resilience and caching layer modeled on the Hystrix / Polly / resilience4j family of distributed-systems libraries. The goal is simple: **no single external dependency (OpenAI, Pinecone, Redis) should be able to take the pipeline down**, and repeated work (Critic revisions, retried agents, redundant queries) should not pay the LLM cost twice.
+
+### Decorator Composition
+
+Every external call site composes two decorators in a strict order:
+
+```python
+@cached(policy=self.CACHE_POLICY, key_fn=_llm_key, name="llm.chat")
+@resilient(policy=self.RESILIENCE_POLICY, breaker=breaker, name="llm.chat")
+def _call(...):
+    return client.chat.completions.create(...)
+```
+
+`@cached` runs **outside** `@resilient`, so a cache hit short-circuits before the breaker even sees the call. On a cache miss, `@resilient` applies the timeout, the retry policy, and the circuit breaker. The pattern is applied at three layers: LLM calls in `BaseAgent`, RAG retrieval and embeddings in `rag.py`, and (configurably) the Critic.
+
+### Two-Tier Cache
+
+| Layer | Backend | When it runs | Notes |
+|---|---|---|---|
+| **L1** | `InMemoryCache` (LRU + TTL) | Always | Per-process; survives only the container lifetime |
+| **L2** | `RedisCache` (pickle+gzip) | When `REDIS_URL` is set | Shared across replicas; ~70% size reduction on LLM responses |
+| **Semantic** | `SemanticBackend` (Pinecone, `namespace="llm-cache"`, cosine threshold `0.95`) | Critic opt-in only | Catches near-equivalent queries even when text differs slightly |
+
+The Critic opts into the semantic cache by default because revision loops produce highly-similar critique prompts; specialists do not, to protect free-tier Pinecone quota. The single Pinecone index is shared with the RAG corpus via separate namespaces — no extra index to provision.
+
+### Per-Agent Bulkhead
+
+`pipeline.py` dispatches specialists through a `ThreadPoolExecutor` and consumes them via `as_completed(futures, timeout=AGENT_TIMEOUT_SEC)`. A slow agent cannot drag down the rest: when the budget elapses, pending futures are cancelled, the timed-out agent's slot is filled with the Sentinel Fallback (which the Critic caps at FM-3 Amber), and the pipeline continues. Default budget is `90s` per agent (tunable via `AGENT_TIMEOUT_SEC`).
+
+### Per-Instance Circuit Breakers
+
+Each agent class has its own breaker, keyed by class name in a module-level registry. RAG retrieval and embeddings have separate breakers from LLM calls. When a breaker opens after N consecutive failures, subsequent calls fast-fail with `CircuitOpenError` (which the agent catches and routes to its Sentinel Fallback) until the cooldown elapses and the breaker enters half-open state. **One failing dependency cannot cascade to take down others.**
+
+### Observability Bus
+
+A lightweight `src/core/events.py` emitter publishes structured events — `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `breaker_short_circuit`, `bulkhead_timeout` — onto a thread-local channel keyed by `run_id`. FastAPI wires the sink at startup and fans events into the SSE stream, so the Streamlit UI sees them in real time alongside Agent progress chips. The bus is best-effort and never raises, so observability cannot break the caller.
+
+### Graceful Degradation Matrix
+
+| Failure | Behavior | Recovery |
+|---|---|---|
+| Redis unreachable | Logged once, L1 only | Auto-restored on next successful call |
+| OpenAI 429 / 503 | Retry with jittered backoff, breaker after N failures | Half-open after cooldown |
+| Pinecone timeout | Embedding/retrieval breaker opens; agents proceed with cached or empty RAG | Half-open after cooldown |
+| Agent exceeds bulkhead budget | Pending futures cancelled; Sentinel Fallback returned; Critic caps at FM-3 Amber | Next run unaffected |
+| MCP Jira server down | REST fallback (Phase 7 idempotency label prevents double-write) | None needed |
 
 ---
 
@@ -278,10 +348,14 @@ engineering-plan-agent/
 │   ├── core/
 │   │   ├── models.py               ← Pydantic schemas and pipeline state contracts
 │   │   ├── config.py               ← configuration settings loader
-│   │   ├── rag.py                  ← vector store ingestion and retrieval logic
+│   │   ├── rag.py                  ← vector store ingestion and retrieval logic (cached + resilient)
+│   │   ├── cache.py                ← CachePolicy, backends (InMemory / Redis / Tiered / Semantic), @cached
+│   │   ├── resilience.py           ← CallPolicy, CircuitBreaker, @resilient, sensible defaults
+│   │   ├── events.py               ← observability event bus (cache_hit / retry / breaker_open ...)
 │   │   └── logger.py               ← JSONL logger with criteria trackers
 │   ├── agents/
-│   │   ├── base_agent.py           ← shared agent class wrapping LLM calls
+│   │   ├── base_agent.py           ← shared agent class wrapping LLM calls (per-agent breaker registry)
+│   │   ├── registry.py             ← specialist dispatch registry (register/get_specialist)
 │   │   ├── orchestrator.py         ← BRD parser and specialist dispatcher
 │   │   ├── plan_generator.py       ← reflection-based project plan creator
 │   │   ├── schedule.py             ← effort and sprint schedule estimator
@@ -295,9 +369,10 @@ engineering-plan-agent/
 │   ├── security/
 │   │   └── validator.py            ← 7-check security sanitization layers
 │   └── integrations/
-│       ├── sheets.py               ← Google Sheets gspread connector
-│       ├── jira.py                 ← Jira Cloud REST client (fallback path)
+│       ├── sheets.py               ← Google Sheets gspread connector (idempotent on run_id)
+│       ├── jira.py                 ← Jira Cloud REST client (idempotency label: em-copilot-run-<id>)
 │       ├── jira_mcp.py             ← MCP-client Jira Epic integration (mcp-atlassian)
+│       ├── export_registry.py      ← pluggable export-handler registry
 │       ├── pdf_export.py           ← ReportLab PDF generator
 │       ├── voice.py                ← ElevenLabs webhook connector
 │       └── email.py                ← email notification handler
@@ -357,6 +432,15 @@ ELEVENLABS_API_KEY=your_elevenlabs_key
 ELEVENLABS_AGENT_ID=your_agent_id
 ```
 
+For the optional distributed cache & resilience tuning:
+```env
+# Optional — Distributed Cache & Resilience (Phases 8-9)
+REDIS_URL=rediss://default:<password>@<host>:<port>   # enables L2 cache; absent = L1 only
+AGENT_TIMEOUT_SEC=90                                   # per-agent bulkhead budget
+SEMANTIC_CACHE_THRESHOLD=0.95                          # Critic semantic match threshold
+```
+Without `REDIS_URL`, the cache layer runs L1-only (in-process LRU+TTL) and the pipeline behaves exactly as before. With Redis configured, cache state survives container restarts and is shared across replicas. See `docs/DEPLOYMENT_HUGGINGFACE.md` for the Upstash setup walkthrough.
+
 ### 3. Database Ingestion (One-Time Setup)
 
 Ingest organization standards into Pinecone:
@@ -381,10 +465,13 @@ Access the application UI by visiting `http://localhost:8501`.
 
 ## Failure Modes & Mitigations
 
-*   **API Timeouts:** Covered by `tenacity` retry wrappers performing exponential backoffs (1s → 2s → 4s).
+*   **API Timeouts & Transient Errors:** Covered by the `@resilient(policy=...)` decorator — jittered exponential backoff, hard timeout enforced via `ThreadPoolExecutor`, and per-instance circuit breakers that open after N consecutive failures and half-open after a cooldown. Replaces the earlier `tenacity` wrapper.
 *   **JSON Parse Failures:** Specialized Agents perform schema recovery prompts on parse failure. If recovery fails, `_fallback()` returns a placeholder model, flagging low confidence (`0.20`), triggering Critic's **FM-3** Amber downgrading.
+*   **Agent Bulkhead Timeout:** If any specialist exceeds `AGENT_TIMEOUT_SEC` (default 90s), the pipeline cancels the pending future, fills its slot with the Sentinel Fallback, emits a `bulkhead_timeout` event, and continues with the rest. The Critic then caps the overall badge at FM-3 Amber.
+*   **Circuit Breaker Open:** When a service's breaker is open, subsequent calls fast-fail with `CircuitOpenError` instead of hitting the dead dependency. Each agent class and each external service (LLM, embeddings, Pinecone) owns its own breaker, so one failing dependency cannot poison the others.
+*   **Redis Unavailable:** The two-tier cache degrades to L1 only — graceful, logged once (`[cache] Redis healthcheck failed (...); using L1 only`), recovers automatically on the next successful call. The pipeline behavior is identical to a Redis-less deployment.
 *   **Missing Integrations Credentials:** If Google Sheets or Jira credentials are not found, the endpoints skip execution gracefully with warning logs. They write a local fallback zip/CSV copy to `logs/exports/` and allow the pipeline to proceed without throwing exceptions.
-*   **MCP Server Unavailable:** If the `mcp-atlassian` server cannot spawn or the `jira_create_issue` call fails, `/approve` automatically falls back to the REST Jira client — the Epic is still created, and the fallback reason is logged.
+*   **MCP Server Unavailable:** If the `mcp-atlassian` server cannot spawn or the `jira_create_issue` call fails, `/approve` automatically falls back to the REST Jira client — the Epic is still created (idempotent on `em-copilot-run-<id>` label so no double-write), and the fallback reason is logged.
 *   **Unavailable Third-Party Endpoints:** If Kroki.io fails during SVG generation, the frontend defaults to client-side JS Rendering. If the GitHub API is unavailable, the Tech Stack Agent ignores velocity signals and notes the dependency failure in its logs.
 
 ---
@@ -402,6 +489,8 @@ client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
 ```
 
 This captures prompt structures, latency figures, model versions, and token usage records under the `em-copilot-brd-agent` LangSmith project dashboard. Detailed local logs are simultaneously captured as structured JSONL in `logs/pipeline.jsonl`.
+
+Beyond LangSmith, the pipeline emits structured **resilience events** — `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `breaker_short_circuit`, `bulkhead_timeout` — onto a thread-local bus (`src/core/events.py`) keyed by `run_id`. FastAPI wires the sink at startup and fans these events into the per-run SSE stream, so the Streamlit UI surfaces them in real time alongside Agent progress chips. The bus is best-effort and never raises, so observability cannot break the caller. Cache hit-rate is queryable at runtime via `cache_stats()` for capacity planning.
 
 ---
 

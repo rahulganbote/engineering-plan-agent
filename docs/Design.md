@@ -314,6 +314,99 @@ streamlit run streamlit_app.py
 
 ---
 
+## Distributed Resilience & Caching (Phases 1–10)
+
+Production-grade fault tolerance and cost control. The layer mirrors industry-standard distributed-systems libraries (Hystrix / Polly / resilience4j) but is implemented in <250 lines to keep the surface area small and the dependency footprint zero.
+
+### Decorator Stack (call-site composition)
+
+```
+┌─────────────────────────────────────────┐
+│ @cached(policy=CACHE_POLICY, key_fn=K)  │   ← Phase 1+2+5: cache hit short-circuits
+│ ┌─────────────────────────────────────┐ │
+│ │ @resilient(policy=POL, breaker=BRK) │ │   ← Phase 1+3: timeout · retry · breaker
+│ │ ┌─────────────────────────────────┐ │ │
+│ │ │ provider call (OpenAI/Pinecone) │ │ │
+│ │ └─────────────────────────────────┘ │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+
+Order matters: `@cached` runs **outside** `@resilient`, so a cache hit avoids the breaker entirely. On a miss, the resilient layer applies hard timeout (ThreadPoolExecutor), jittered exponential backoff retry, and per-instance circuit breaker.
+
+### Per-Instance State, Shared Code
+
+The pattern is *shared code, never shared state*. `src/core/resilience.py` exports `CallPolicy` (frozen dataclass), `CircuitBreaker` class, and the `@resilient` factory — that's it. Each agent class and each external service **owns its own breaker instance**, registered in a module-level dict keyed by class name:
+
+```python
+_LLM_BREAKERS: dict[str, CircuitBreaker] = {}
+_LLM_BREAKER_LOCK = threading.Lock()
+
+def _get_llm_breaker(agent_class_name: str) -> CircuitBreaker:
+    with _LLM_BREAKER_LOCK:
+        if agent_class_name not in _LLM_BREAKERS:
+            _LLM_BREAKERS[agent_class_name] = CircuitBreaker(...)
+        return _LLM_BREAKERS[agent_class_name]
+```
+
+A failing `PlanGeneratorAgent` cannot open the `ScheduleEstimatorAgent` breaker. RAG retrieval and embedding calls have their own breakers in `rag.py`.
+
+### Cache Backends (Pluggable via Protocol)
+
+| Backend | Purpose | Activation |
+|---|---|---|
+| `InMemoryCache` | L1 — LRU + TTL, per-process | Always |
+| `RedisCache` | L2 — pickle+gzip, shared across replicas | `REDIS_URL` env var set |
+| `TieredCache` | Composes L1 + L2 (read L1 first, back-fill on L2 hit, write-through) | Auto when both present |
+| `SemanticBackend` | Pinecone cosine similarity (`namespace="llm-cache"`, threshold 0.95) | Critic opt-in |
+
+`init_default_backend_from_env()` runs at FastAPI startup and selects the backend based on environment. The Redis layer degrades gracefully: a failed healthcheck or mid-flight error logs once and falls back to L1.
+
+### Per-Agent Policy Manifest
+
+`BaseAgent` declares:
+
+```python
+class BaseAgent:
+    CACHE_POLICY:      CachePolicy = CACHE_LLM
+    RESILIENCE_POLICY: CallPolicy  = OPENAI_POLICY
+```
+
+Subclasses override these to tune TTL, timeout, retry count, or breaker thresholds without touching `_call_llm_with_retry`. The Critic, for example, opts into the `SemanticBackend` by setting its `CACHE_POLICY` accordingly. This is the Phase 5 extensibility win — adding a new agent with custom resilience characteristics is a two-line change.
+
+### Specialist Registry (Phase 4)
+
+`src/agents/registry.py` exposes `register_specialist(name, cls)` and `get_specialist(name)`. Each specialist module calls `register_specialist()` at import time, and `pipeline._run_agent()` dispatches via lookup instead of an `if/elif` chain. Adding a new specialist requires no edits to `pipeline.py`.
+
+### Per-Agent Bulkhead (Phase 9)
+
+`node_dispatch_specialists` submits agents to a `ThreadPoolExecutor` and consumes via `as_completed(futures, timeout=AGENT_TIMEOUT_SEC)`. If the budget elapses, the bulkhead cancels pending futures, emits `bulkhead_timeout` events, and proceeds with whatever completed. Stragglers cannot drag down the rest of the pipeline.
+
+### Observability Bus (Phase 10)
+
+`src/core/events.py` exports `set_event_sink(fn)` and `emit(event_type, **fields)`. The cache and resilience layers emit:
+
+- `cache_hit` / `cache_miss` (with backend name, key prefix)
+- `retry` (attempt number, exception type)
+- `breaker_open` / `breaker_short_circuit` / `breaker_half_open`
+- `bulkhead_timeout` (agent name, budget)
+
+The bus best-effort attaches the current thread's `run_id` (via thread-local from `base_agent`) so events correlate to a specific run. FastAPI wires the sink at startup and fans events into the SSE stream consumed by the Streamlit UI. The bus never raises — observability cannot break the caller.
+
+### Why Custom Instead of Hystrix-Py / pybreaker / aiocache
+
+| Library | Why not chosen |
+|---|---|
+| `pybreaker` | Only does the breaker — no integrated retry/timeout/cache stack |
+| `tenacity` | Retry-only; we previously used it and removed it in Phase 1 |
+| `aiocache` | Async-first; our codebase is sync (ThreadPoolExecutor parallelism) |
+| `cachetools` | LRU only; no TTL, no semantic, no pluggable backend |
+| Hystrix-Py | Unmaintained; heavyweight |
+
+The custom layer is ~600 lines total (resilience + cache + events) and has zero non-stdlib dependencies (except optional `redis`, only imported when `REDIS_URL` is set).
+
+---
+
 ## Test Commands
 
 ```bash
