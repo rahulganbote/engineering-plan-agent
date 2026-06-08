@@ -481,6 +481,8 @@ class PipelineState(BaseModel):
     run_id:       str
     brd_name:     str   = ""
     processing_time_sec: float = 0.0
+    total_input_tokens:  int   = 0   # Sum across all LLM calls in this run
+    total_output_tokens: int   = 0   # ── displayed alongside processing time
     brd_raw_hash: str   # sha256 of original BRD — for audit, never log raw
 
     # Populated by Orchestrator after Security Validator passes

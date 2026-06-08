@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     max_critic_revisions: int   = 2
     max_agent_retries:    int   = 2
     pipeline_timeout_sec: int   = 300   # 5 min hard limit
+    agent_timeout_sec:    int   = 90    # Per-agent bulkhead — Phase 9
 
     # ── Security ──────────────────────────────────────────────────────────────
     max_brd_file_size_mb: int   = 10

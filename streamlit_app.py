@@ -325,49 +325,65 @@ def render_header() -> None:
             st.success(f"API connected · {info}")
         else:
             st.error(f"API offline · {info}")
-        st.caption(f"Base URL: {st.session_state.api_base_url}")
+            # Show the URL only when the API isn't reachable — useful as a
+            # troubleshooting hint, hidden otherwise to keep the header clean.
+            st.caption(f"Base URL: {st.session_state.api_base_url}")
 
 
 def render_sidebar() -> None:
+    # Look up auth state once per render
+    from src.security.google_auth import (
+        is_configured as _g_configured,
+        is_authenticated as _g_authed,
+        render_signin_required as _g_signin,
+        render_signed_in_chip as _g_chip,
+    )
+    _auth_needed = _g_configured() and not _g_authed()
+
     with st.sidebar:
+        # Show "Signed in / Sign out" chip when authenticated
+        _g_chip()
+
         st.header("Upload BRD")
-        uploaded = st.file_uploader(
-            "Drop a PDF, DOCX, or TXT BRD",
-            type=["pdf", "docx", "txt"],
-            accept_multiple_files=False,
-        )
-        if uploaded is not None:
-            run_in_flight = st.session_state.run_id is not None
-            if st.button(
-                "Generate Engineering Plan",
-                type="primary",
-                use_container_width=True,
-                disabled=run_in_flight,
-                help=("Click 'Reset' below to start a new run."
-                      if run_in_flight else None),
-            ):
-                _reset_run()
-                content_type = uploaded.type or "application/octet-stream"
-                # Capture user-intent time BEFORE the blocking API call. If the
-                # server's /run-pipeline ever blocks on the validator or pipeline,
-                # this still measures the true wall-clock the EM experiences.
-                st.session_state.pipeline_start_ts = time.time()
-                st.session_state.pipeline_end_ts   = None
-                with st.spinner("Validating + dispatching agents…"):
-                    resp = api_run_pipeline(uploaded.getvalue(), uploaded.name, content_type)
-                if resp:
-                    st.session_state.run_id            = resp["run_id"]
-                    st.success(f"Pipeline started · run_id `{resp['run_id']}`")
-                    st.rerun()
-                else:
-                    st.error(st.session_state.upload_error or "Upload failed")
 
-        st.divider()
-        st.subheader("Settings")
-        new_url = st.text_input("API base URL", value=st.session_state.api_base_url)
-        if new_url and new_url != st.session_state.api_base_url:
-            st.session_state.api_base_url = new_url
+        if _auth_needed:
+            # NOT signed in — replace the file uploader + Generate button with a
+            # sign-in CTA. The rest of the page (description, what-it-does copy)
+            # is still visible because main() doesn't block.
+            _g_signin("Sign in to upload a BRD and generate an engineering plan.")
+        else:
+            uploaded = st.file_uploader(
+                "Drop a PDF, DOCX, or TXT BRD",
+                type=["pdf", "docx", "txt"],
+                accept_multiple_files=False,
+            )
+            if uploaded is not None:
+                run_in_flight = st.session_state.run_id is not None
+                if st.button(
+                    "Generate Engineering Plan",
+                    type="primary",
+                    use_container_width=True,
+                    disabled=run_in_flight,
+                    help=("Click 'Reset' below to start a new run."
+                          if run_in_flight else None),
+                ):
+                    _reset_run()
+                    content_type = uploaded.type or "application/octet-stream"
+                    # Capture user-intent time BEFORE the blocking API call. If the
+                    # server's /run-pipeline ever blocks on the validator or pipeline,
+                    # this still measures the true wall-clock the EM experiences.
+                    st.session_state.pipeline_start_ts = time.time()
+                    st.session_state.pipeline_end_ts   = None
+                    with st.spinner("Validating + dispatching agents…"):
+                        resp = api_run_pipeline(uploaded.getvalue(), uploaded.name, content_type)
+                    if resp:
+                        st.session_state.run_id            = resp["run_id"]
+                        st.success(f"Pipeline started · run_id `{resp['run_id']}`")
+                        st.rerun()
+                    else:
+                        st.error(st.session_state.upload_error or "Upload failed")
 
+        # Current run block first — pinned high so Reset is reachable without scroll
         if st.session_state.run_id:
             st.divider()
             st.subheader("Current run")
@@ -376,6 +392,13 @@ def render_sidebar() -> None:
             if st.button("Reset", use_container_width=True):
                 _reset_run()
                 st.rerun()
+
+        # Dev-time settings — collapsed by default so it never pushes Current run
+        # off-screen. Most users (including the HF Space demo) never open it.
+        with st.expander("⚙️ Advanced settings", expanded=False):
+            new_url = st.text_input("API base URL", value=st.session_state.api_base_url)
+            if new_url and new_url != st.session_state.api_base_url:
+                st.session_state.api_base_url = new_url
 
 
 def render_progress_chips() -> None:
@@ -431,10 +454,20 @@ def render_progress_chips() -> None:
     # Flex layout keeps "Current Status" on the left and "Total Processing Time"
     # right-aligned, on the same line regardless of message length.
     elapsed_str = _fmt_duration(_processing_seconds())
+
+    # Token counts (in / out) — sourced from PipelineState; absent on runs that
+    # haven't completed yet. Format with thousands separators for readability.
+    arts = st.session_state.artifacts or {}
+    _tin  = int(arts.get("total_input_tokens",  0) or 0)
+    _tout = int(arts.get("total_output_tokens", 0) or 0)
+    tokens_str = f"{_tin:,} in / {_tout:,} out" if (_tin or _tout) else "—"
+
     st.markdown(
         "<div style='display:flex; justify-content:space-between; align-items:center; "
         "flex-wrap:wrap; gap:12px; margin-top:20px;margin-bottom:20px;'>"
         f"<div><strong>Current Status:</strong> {status_msg or '—'}</div>"
+        f"<div><strong>Tokens (in / out):</strong> "
+        f"<code style='background:#f3f4f6;padding:2px 6px;border-radius:4px;'>{tokens_str}</code></div>"
         f"<div><strong>Total Processing Time:</strong> "
         f"<code style='background:#f3f4f6;padding:2px 6px;border-radius:4px;'>{elapsed_str}</code></div>"
         "</div>",
@@ -1109,6 +1142,16 @@ def main() -> None:
         page_icon="🧭",
         layout="wide",
     )
+
+    # ── Optional Google Sign-In — non-blocking ─────────────────────────────
+    # The page (header + description) renders for EVERYONE. The actual file
+    # upload and "Generate Engineering Plan" button are gated behind sign-in
+    # inside render_sidebar() — so visitors can read what the app does, but
+    # only signed-in users can trigger work that costs LLM tokens.
+    # No-op when GOOGLE_OAUTH_* env vars are unset (local dev).
+    from src.security.google_auth import process_callback as _auth_callback
+    _auth_callback()
+
     _init_state()
     render_header()
     render_sidebar()

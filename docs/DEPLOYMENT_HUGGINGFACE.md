@@ -159,6 +159,80 @@ To get a Slack message every time a pipeline run ends in `error`:
 
 The Space restarts after you save the secret. An errored run posts a formatted message with the run ID, BRD name, status, timestamp, and the first few error lines. If the secret is unset or malformed the alert is silently skipped — the pipeline never breaks on a missing webhook.
 
+### Redis L2 cache (optional — Phase 8, for multi-replica deployments)
+
+EM Copilot ships a two-tier cache:
+
+- **L1** — in-process LRU (always on, sub-millisecond, per-replica)
+- **L2** — Redis, **activates automatically when `REDIS_URL` is set**, otherwise stays off
+
+Single-container HF Spaces don't need Redis — L1 alone catches the Critic revision-loop reuse and any same-BRD reruns. Add Redis only if you scale to multiple replicas, or if you want cache state to survive container restarts.
+
+**Setup (free Redis option that works with HF):**
+
+1. Sign up for [Upstash](https://upstash.com) (free tier, REST-compatible Redis, ideal for serverless).
+2. Create a database, copy the connection URL (`redis://default:<password>@<host>:<port>`).
+3. Add as a Space **Secret** named `REDIS_URL`.
+
+The Space restarts automatically. On boot you'll see one of these in the Logs tab:
+
+```
+[cache] using TieredCache (L1=InMemory, L2=Redis @ <host>)     ← Redis healthy
+[cache] Redis healthcheck failed (...); using L1 only           ← graceful degradation
+[cache] using InMemoryCache (no REDIS_URL)                      ← L1 only
+```
+
+If Redis ever goes down mid-flight, the system degrades to L1 only (logged), the pipeline keeps working, and recovers automatically on the next call. Cache values are pickled and gzip-compressed before going to Redis — ~70% size reduction for LLM responses.
+
+### Google Sign-In gate (recommended — blocks bots and limits cost)
+
+The public Space is gated behind **Sign in with Google** when you set four Space
+Secrets. The gate activates *only* when these env vars are present — local dev
+remains friction-free.
+
+**One-time Google Cloud Console setup:**
+
+1. Open https://console.cloud.google.com/ → create or pick a project.
+2. **APIs & Services → OAuth consent screen** → User Type: External → fill in
+   App name (e.g. "EM Copilot Demo"), your support email, developer email →
+   Save & continue. Scopes: leave default. Test users: add the emails you want
+   to grant access to (while the app is in "Testing" status, only listed
+   emails can sign in — that *is* your access control during a demo).
+3. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+   → Application type: **Web application**.
+4. **Authorized redirect URIs:** add **exactly** your Space URL, with a
+   trailing slash:
+   ```
+   https://<owner>-<space-name>.hf.space/
+   ```
+   For example: `https://rganbote-em-copilot.hf.space/`. Trailing slash matters.
+5. Copy the **Client ID** (ends in `.apps.googleusercontent.com`) and **Client Secret**.
+
+**Add these as Space Secrets** (Space → Settings → Variables and secrets):
+
+| Secret name | Value |
+|---|---|
+| `GOOGLE_OAUTH_CLIENT_ID` | the OAuth client ID from step 5 |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | the OAuth client secret from step 5 |
+| `GOOGLE_OAUTH_REDIRECT_URI` | the same Space URL from step 4, with trailing slash |
+| `GOOGLE_OAUTH_ALLOWED_EMAILS` *(optional)* | comma-separated allowlist, e.g. `rganbote@gmail.com,reviewer@example.com`. Leave empty to permit any Google account that completed Google Cloud Console "Test users" step. |
+
+The Space restarts automatically after saving secrets.
+
+**Behaviour (non-blocking gate):** the landing page — header, "What this does",
+description copy — renders for **everyone**, so anyone clicking the Space link
+can see what EM Copilot does. The **file uploader and Generate Engineering
+Plan button** are replaced with a "🔒 Sign in to upload a BRD…" CTA when the
+visitor is not authenticated. Only after signing in does the file picker
+appear and the pipeline become runnable. A "Signed in: <email> / Sign out"
+chip appears at the top of the sidebar once authenticated.
+
+This design lets reviewers read the page without committing to sign-in, but
+blocks every action that would cost LLM tokens.
+
+**To disable the gate** (e.g. while debugging): delete `GOOGLE_OAUTH_CLIENT_ID`
+from the Space Secrets and the gate becomes a no-op.
+
 ---
 
 ## 6. Knowledge base — one-time Pinecone population

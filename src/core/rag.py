@@ -86,6 +86,8 @@ import hashlib
 from typing import Optional
 
 from src.core.config import settings
+from src.core.resilience import resilient, CircuitBreaker, OPENAI_POLICY, PINECONE_POLICY, EMBEDDING_POLICY
+from src.core.cache import cached, hash_args, CACHE_RAG, CACHE_EMBEDDING
 from src.core.logger import get_logger
 
 log = get_logger(__name__)
@@ -97,6 +99,13 @@ log = get_logger(__name__)
 # Pinecone client and index are created on first use, not at import time.
 # This avoids startup failures if Pinecone is temporarily unavailable.
 _pinecone_index = None
+
+# ── Phase 2/3: per-service circuit breakers (module-scoped, single owner) ────
+# RAG and embedding go to different surfaces (Pinecone vs OpenAI) with
+# different failure profiles, so each gets its own breaker. Independent
+# failure domains — Pinecone troubles don't trip the embedding breaker.
+_RAG_BREAKER   = CircuitBreaker(name="rag.query",      fail_threshold=4, reset_sec=20.0)
+_EMBED_BREAKER = CircuitBreaker(name="rag.embedding",  fail_threshold=5, reset_sec=30.0)
 
 
 def _get_index():
@@ -134,6 +143,13 @@ def _get_index():
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
 
+def _embed_key(texts):
+    # Cache by texts only — model + dims are part of the response but stable for the process
+    return hash_args(texts, settings.openai_embedding_model, settings.embedding_dimension)
+
+
+@cached(policy=CACHE_EMBEDDING, key_fn=_embed_key, name="rag.embed")
+@resilient(policy=EMBEDDING_POLICY, breaker=_EMBED_BREAKER, name="rag.embed")
 def _embed(texts: list[str]) -> list[list[float]]:
     """
     Batch embed texts using OpenAI text-embedding-3-large.
@@ -289,6 +305,16 @@ class RetrievedChunk:
         )
 
 
+def _retrieve_key(query, source_types=None, domain=None, top_k=None, threshold=None):
+    # Cache key normalises sentinels (None) to their defaults so equivalent calls share the entry
+    _tk = top_k     if top_k     is not None else settings.rag_top_k
+    _th = threshold if threshold is not None else settings.rag_similarity_threshold
+    _st = tuple(sorted(source_types)) if source_types else ()
+    _dm = domain or ""
+    return hash_args(query, _st, _dm, _tk, _th)
+
+
+@cached(policy=CACHE_RAG, key_fn=_retrieve_key, name="rag.retrieve")
 def retrieve(
     query:        str,
     source_types: Optional[list[str]] = None,
@@ -329,13 +355,17 @@ def retrieve(
     if domain:
         pinecone_filter["domain"] = {"$eq": domain}
 
-    try:
-        results = index.query(
+    @resilient(policy=PINECONE_POLICY, breaker=_RAG_BREAKER, name="rag.pinecone.query")
+    def _do_query():
+        return index.query(
             vector=query_vec,
             top_k=min(top_k * 2, 20),   # over-fetch then threshold filter below
             include_metadata=True,
             filter=pinecone_filter if pinecone_filter else None,
         )
+
+    try:
+        results = _do_query()
         # print("DEBUG threshold:", threshold)
         # print("DEBUG filter:", pinecone_filter)
         # print("DEBUG raw matches:", [

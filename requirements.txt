@@ -63,3 +63,6 @@ httpx==0.28.1               # >=0.28 required by mcp-atlassian
 # ── Model Context Protocol (Jira Epic creation via MCP server) ──
 mcp>=1.1.0                  # MCP client SDK (ClientSession, stdio_client)
 mcp-atlassian>=0.11.0       # MCP server for Jira/Confluence — run as stdio subprocess
+
+# ── Optional: Redis backend for cache L2 (Phase 8) ──────────
+redis>=5.0,<6.0   # activates when REDIS_URL env var is set

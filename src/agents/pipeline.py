@@ -147,7 +147,12 @@ def node_dispatch_specialists(state: dict) -> dict:
     from concurrent.futures import TimeoutError as _BulkheadTimeout
     _bulkhead_budget = float(getattr(settings, "agent_timeout_sec", 90))
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    # Explicit executor lifecycle (NOT `with`) so we can return immediately on
+    # bulkhead trip. A `with` block would call shutdown(wait=True) on __exit__,
+    # which joins all running threads — defeating the point of the bulkhead.
+    executor = ThreadPoolExecutor(max_workers=max_workers)
+    bulkhead_tripped = False
+    try:
         futures = {
             executor.submit(_run_agent, agent_name, ps): agent_name
             for agent_name in targets
@@ -162,9 +167,14 @@ def node_dispatch_specialists(state: dict) -> dict:
                     log.info(f"[{ps.run_id}] Orchestrator received {agent_name}")
                 except Exception as e:
                     log.error(f"[{ps.run_id}] {agent_name} error: {e}")
+                    # Surface the real cause to ps.errors so the UI / aggregate
+                    # phase sees it instead of just "Missing specialist outputs".
+                    err_msg = str(e).strip() or type(e).__name__
+                    ps.errors.append(f"{agent_name}: {err_msg[:280]}")
         except _BulkheadTimeout:
             # Bulkhead trip: at least one specialist exceeded the budget.
             # Cancel everything still pending and proceed with what we have.
+            bulkhead_tripped = True
             for fut, agent_name in futures.items():
                 if not fut.done():
                     fut.cancel()
@@ -179,7 +189,15 @@ def node_dispatch_specialists(state: dict) -> dict:
                              timeout_sec=_bulkhead_budget)
                     except Exception:
                         pass
-                ps.errors.append(f"{agent_name}: {str(e)[:140]}")
+    finally:
+        # On bulkhead trip → return immediately; orphan threads finish in the
+        # background but do NOT block this function's return.
+        # On normal completion → wait for any stragglers (there shouldn't be any).
+        # Trade-off: orphan thread keeps consuming any in-flight OpenAI/Pinecone
+        # request until it completes. Acceptable because (a) the SDK timeout still
+        # caps it via @resilient, (b) its result is discarded, (c) wall-clock
+        # containment is the bulkhead's primary contract.
+        executor.shutdown(wait=not bulkhead_tripped, cancel_futures=True)
 
     state["_last_dispatch_targets"] = targets
     return _dump(ps, state)
