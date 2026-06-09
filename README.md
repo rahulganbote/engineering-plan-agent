@@ -20,7 +20,7 @@ short_description: BRD to Engineering Plan Multi-Agent System
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 [![Slack](https://img.shields.io/badge/Alerts-Slack-4A154B)](https://slack.com)
 
-> **EM Copilot** is a 7 AI-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering package: Plan, Project schedule, Kroki-rendered system Architecture diagram, PoC definition, and Tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting Voice AI commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report.
+> **EM Copilot** is an enterprise-grade multi-agent system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
 
 ---
 
@@ -28,7 +28,7 @@ short_description: BRD to Engineering Plan Multi-Agent System
 
 * **What it is:** A production-grade, RAG-augmented multi-agent system that automates the translation of Business Requirements Documents (BRDs) into audit-ready engineering deliverables (System Architecture, Project Schedules, Tech Stacks, and PoC specifications) grounded in organizational standards.
 * **The ROI:** Redefines the standard planning lifecycle, reducing scoping and drafting time from weeks to minutes (~50s execution) with a low operational cost (~$0.31 per run).
-* **Enterprise Grade:** Built on LangGraph with Pinecone RAG for knowledge grounding, type-safe schemas, a 7-stage security sanitization pipeline (inc. PII redacting), isolated resilience circuit breakers (Hystrix/resilience4j pattern), a dual-tier (L1/L2) cache, and full execution observability via LangSmith.
+* **Enterprise Grade:** Built on LangGraph with Pinecone RAG for knowledge grounding, type-safe schemas, a 7-stage security sanitization pipeline (inc. PII redacting), isolated resilience, a dual-tier (L1/L2) cache, and full execution observability via LangSmith.
 * **Integrations:** Closes the feedback loop via Slack alerts, a voice/UI Human-in-the-Loop (HITL) gate, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP).
 
 ---
