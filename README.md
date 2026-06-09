@@ -20,28 +20,38 @@ short_description: BRD to Engineering Plan Multi-Agent System
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 [![Slack](https://img.shields.io/badge/Alerts-Slack-4A154B)](https://slack.com)
 
-> **EM Copilot** is a state-of-the-art, 7-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering bundle: plan, project schedule, Kroki-rendered system architecture diagram, PoC definition, and tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting Voice AI commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report cards.
+> **EM Copilot** is a 7 AI-Agent system built using LangGraph. It transforms a raw Business Requirements Document (BRD) into an audit-ready engineering package: Plan, Project schedule, Kroki-rendered system Architecture diagram, PoC definition, and Tech stack options. The bundle is dynamically evaluated by a Critic Agent, reviewed via a Human-in-the-Loop (HITL) gate (supporting Voice AI commands or UI actions), and deployed directly to Jira Cloud, Google Sheets, and downloadable PDF report.
+
+---
+
+## Executive Summary (TL;DR)
+
+* **What it is:** A production-grade, RAG-augmented multi-agent system that automates the translation of Business Requirements Documents (BRDs) into audit-ready engineering deliverables (System Architecture, Project Schedules, Tech Stacks, and PoC specifications) grounded in organizational standards.
+* **The ROI:** Redefines the standard planning lifecycle, reducing scoping and drafting time from weeks to minutes (~50s execution) with a low operational cost (~$0.31 per run).
+* **Enterprise Grade:** Built on LangGraph with Pinecone RAG for knowledge grounding, type-safe schemas, a 7-stage security sanitization pipeline (inc. PII redacting), isolated resilience circuit breakers (Hystrix/resilience4j pattern), a dual-tier (L1/L2) cache, and full execution observability via LangSmith.
+* **Integrations:** Closes the feedback loop via Slack alerts, a voice/UI Human-in-the-Loop (HITL) gate, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP).
 
 ---
 
 ## Table of Contents
-1. [Business Use Case & Solution](#business-use-case--solution)
-2. [Core Pillars](#core-pillars)
-3. [Architectural Overview](#architectural-overview)
-4. [Agent Design Patterns](#agent-design-patterns)
-5. [Tech Stack Justification](#tech-stack-justification)
-6. [Security & Validation Pipeline](#security--validation-pipeline)
-7. [Vector DB & RAG Integration](#vector-db--rag-integration)
-8. [Distributed Resilience & Cache Layer](#distributed-resilience--cache-layer)
-9. [Evaluation Framework](#evaluation-framework)
-10. [Integrations & External Channels](#integrations--external-channels)
-11. [Token Usage & Execution Cost](#token-usage--execution-cost)
-12. [Project Directory Structure](#project-directory-structure)
-13. [Quick Start Guide](#quick-start-guide)
-14. [Failure Modes & Mitigations](#failure-modes--mitigations)
-15. [Observability & Tracing](#observability--tracing)
-16. [License](#license)
-17. [Author](#author)
+1. [Executive Summary (TL;DR)](#executive-summary-tldr)
+2. [Business Use Case & Solution](#business-use-case--solution)
+3. [Core Pillars](#core-pillars)
+4. [Architectural Overview](#architectural-overview)
+5. [Agent Design Patterns](#agent-design-patterns)
+6. [Tech Stack Justification](#tech-stack-justification)
+7. [Security & Validation Pipeline](#security--validation-pipeline)
+8. [Vector DB & RAG Integration](#vector-db--rag-integration)
+9. [Distributed Resilience & Cache Layer](#distributed-resilience--cache-layer)
+10. [Evaluation Framework](#evaluation-framework)
+11. [Integrations & External Channels](#integrations--external-channels)
+12. [Token Usage & Execution Cost](#token-usage--execution-cost)
+13. [Project Directory Structure](#project-directory-structure)
+14. [Quick Start Guide](#quick-start-guide)
+15. [Failure Modes & Mitigations](#failure-modes--mitigations)
+16. [Observability & Tracing](#observability--tracing)
+17. [License](#license)
+18. [Author](#author)
 
 
 ---
@@ -70,20 +80,20 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 | Capability | Engineering Implementation |
 |---|---|
 | **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic) |
-| **Pydantic-Enforced Output Contracts** | Zero untyped LLM handoffs, schema conformance validated at every transition |
-| **Deterministic Security Layer** | 7-check security pipeline (length, extension, regex, semantic scan, PII redact) |
-| **Pinecone RAG Vector Search** | Dynamic retrieval with document citation mapping and diversity checks |
-| **Critic Revision Loop** | LLM-as-Judge - Self-correction mechanism (capped at 2 loops) with 3 failure-mode caps (Hallucination Guard, Uncited Claim Cap, Sentinel Fallback Cap) |
-| **Distributed Resilience Layer** | Per-instance circuit breakers, jittered exponential backoff, hard timeouts (ThreadPoolExecutor), per-agent bulkheads with cancellation — modeled on Hystrix/Polly/resilience4j |
-| **Two-Tier Cache (L1 + L2)** | In-process LRU+TTL (L1) + optional Redis L2 (pickle+gzip, graceful degradation), Pinecone-backed semantic cache for the Critic |
-| **Specialist Registry & Policy Manifest** | Decoupled dispatch via `register_specialist()`; per-agent `CACHE_POLICY` / `RESILIENCE_POLICY` class attributes for per-call-site tuning |
-| **Visual Architecture Renderer** | LLM Mermaid syntax validated & rendered to SVG via Kroki API with local JS fallback | 
-| **ElevenLabs Voice HITL Gate** | Conversational human approval webhook accepting numeric ratings and text feedback | 
-| **Jira Epic Creation via MCP** | Creates a Jira **Epic** through an `mcp-atlassian` MCP server (stdio transport); automatic fallback to the REST API + ADF body if MCP is unavailable |
-| **Google Sheets Logging** | Comprehensive audit export used to power a historical insights dashboard, with local CSV fallback for air-gapped runs |
-| **Slack Failure Alert** | Incoming-webhook alert on any pipeline error so the EM sees failed runs in real time |
-| **BRD Pinecone Ingestion** | Upon approval, the BRD is ingested in Pinecone |
-| **ReportLab PDF Exporter** | One-click downloadable PDF summary enclosing all generated planning artifacts |
+| **Type-Safe Schema Contracts** | Schema conformance validated at every transition to ensure structural integrity |
+| **7-Stage Security Pipeline** | Automated checks including format, size, regex guard, LLM injection guard, and PII redacting |
+| **Pinecone RAG Vector Search** | Dynamic context retrieval with document citation mapping and diversity filters |
+| **Critic Revision Loop** | LLM-as-Judge self-correction (capped at 2 loops) with deterministic failure-mode quality caps |
+| **Distributed Resilience** | Per-instance circuit breakers, jittered exponential backoff, bulkhead isolation, and sentinel fallbacks |
+| **Dual-Tier Hybrid Caching** | Local L1 (InMemory LRU+TTL) and distributed L2 (Redis) with semantic cache fallback for Critic queries |
+| **Specialist Registry & Policy Manifest** | Decoupled dynamic agent registration; policy manifests allow per-agent timeout/cache configuration |
+| **Visual Architecture Renderer** | LLM Mermaid syntax generation validated and rendered to SVG via Kroki API with local JS fallback | 
+| **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting natural language feedback and scoring inputs | 
+| **Jira Epic Integration via MCP** | MCP-native Atlassian server (stdio transport) with automatic fallback to Jira Cloud REST API |
+| **Google Sheets Logging** | Centralized audit row export powering historical insights with local CSV fallback |
+| **Slack Failure Alerting** | Webhook alerts trigger on critical execution errors for real-time alerting |
+| **BRD Pinecone Ingestion** | Post-approval BRD vector indexing to keep the RAG knowledge base automatically up to date |
+| **ReportLab PDF Exporter** | Automated compilation of all planning artifacts into a downloadable executive summary PDF |
 | **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency |
 
 ---
@@ -170,7 +180,7 @@ Each agent class and each external service owns its own `CircuitBreaker`. A modu
 | **Embeddings** | `text-embedding-3-large` (1024) | High dimensionality with customized text projection for dense architectural guides |
 | **Models** | GPT-4o (specialists) + GPT-4o-mini (critic) | Balance between specialist reasoning quality and critic execution cost |
 | **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, and non-blocking exports |
-| **Frontend UI** | Streamlit | Rapid UI prototyping displaying real-time execution graphs and progress logs |
+| **Frontend UI** | Streamlit | Rapid internal prototyping & dashboard (easily swappable with a React/Next.js frontend backing the FastAPI server) |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
@@ -203,52 +213,23 @@ The vector database stores organization-specific architectural patterns, plannin
 
 ## Distributed Resilience & Cache Layer
 
-EM Copilot ships with a production-grade resilience and caching layer modeled on the Hystrix / Polly / resilience4j family of distributed-systems libraries. The goal is simple: **no single external dependency (OpenAI, Pinecone, Redis) should be able to take the pipeline down**, and repeated work (Critic revisions, retried agents, redundant queries) should not pay the LLM cost twice.
+EM Copilot incorporates a production-grade resilience and caching architecture modeled on distributed-systems patterns (like Hystrix and resilience4j). The system guarantees that no single external dependency failure (OpenAI, Pinecone, Redis, or MCP) can crash the pipeline, while caching ensures cost-efficiency by preventing duplicate LLM execution.
 
-### Decorator Composition
+### Key Pillars
 
-Every external call site composes two decorators in a strict order:
+1. **Two-Tier Caching System**
+   * **L1 (In-Memory):** A fast, per-process LRU cache with TTL for immediate local retrieval.
+   * **L2 (Redis):** Distributed cache (gzipped/serialized) to persist and share states across container instances.
+   * **Semantic Cache:** Powered by Pinecone (cosine threshold `0.95`) specifically for the Critic's evaluation revisions, recognizing similar inputs even when text varies slightly.
+   * **Decorator Flow:** The `@cached` decorator wraps the `@resilient` wrapper, meaning cache hits short-circuit before hitting timeouts or circuit breakers.
 
-```python
-@cached(policy=self.CACHE_POLICY, key_fn=_llm_key, name="llm.chat")
-@resilient(policy=self.RESILIENCE_POLICY, breaker=breaker, name="llm.chat")
-def _call(...):
-    return client.chat.completions.create(...)
-```
+2. **Fault Tolerance & Isolation**
+   * **Circuit Breakers:** Isolated per agent and external service. If OpenAI rate limits (`429`) or Pinecone timeouts occur consecutively, the breaker opens to fast-fail calls, preventing downstream cascade.
+   * **Bulkheads:** Enforced per-agent execution timeouts. If a specialist agent hangs, the system cancels its execution, returns a Sentinel Fallback (flagging a low confidence score), and lets other agents finish successfully.
+   * **Graceful Degradation:** The pipeline automatically downgrades to L1 cache if Redis is offline, falls back to direct REST APIs if the Atlassian MCP server is down, and renders architecture diagrams client-side if the Kroki API fails.
 
-`@cached` runs **outside** `@resilient`, so a cache hit short-circuits before the breaker even sees the call. On a cache miss, `@resilient` applies the timeout, the retry policy, and the circuit breaker. The pattern is applied at three layers: LLM calls in `BaseAgent`, RAG retrieval and embeddings in `rag.py`, and (configurably) the Critic.
-
-### Two-Tier Cache
-
-| Layer | Backend | When it runs | Notes |
-|---|---|---|---|
-| **L1** | `InMemoryCache` (LRU + TTL) | Always | Per-process; survives only the container lifetime |
-| **L2** | `RedisCache` (pickle+gzip) | When `REDIS_URL` is set | Shared across replicas; ~70% size reduction on LLM responses |
-| **Semantic** | `SemanticBackend` (Pinecone, `namespace="llm-cache"`, cosine threshold `0.95`) | Critic opt-in only | Catches near-equivalent queries even when text differs slightly |
-
-The Critic opts into the semantic cache by default because revision loops produce highly-similar critique prompts; specialists do not, to protect free-tier Pinecone quota. The single Pinecone index is shared with the RAG corpus via separate namespaces — no extra index to provision.
-
-### Per-Agent Bulkhead
-
-`pipeline.py` dispatches specialists through a `ThreadPoolExecutor` and consumes them via `as_completed(futures, timeout=AGENT_TIMEOUT_SEC)`. A slow agent cannot drag down the rest: when the budget elapses, pending futures are cancelled, the timed-out agent's slot is filled with the Sentinel Fallback (which the Critic caps at FM-3 Amber), and the pipeline continues. Default budget is `90s` per agent (tunable via `AGENT_TIMEOUT_SEC`).
-
-### Per-Instance Circuit Breakers
-
-Each agent class has its own breaker, keyed by class name in a module-level registry. RAG retrieval and embeddings have separate breakers from LLM calls. When a breaker opens after N consecutive failures, subsequent calls fast-fail with `CircuitOpenError` (which the agent catches and routes to its Sentinel Fallback) until the cooldown elapses and the breaker enters half-open state. **One failing dependency cannot cascade to take down others.**
-
-### Observability Bus
-
-A lightweight `src/core/events.py` emitter publishes structured events — `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `breaker_short_circuit`, `bulkhead_timeout` — onto a thread-local channel keyed by `run_id`. FastAPI wires the sink at startup and fans events into the SSE stream, so the Streamlit UI sees them in real time alongside Agent progress chips. The bus is best-effort and never raises, so observability cannot break the caller.
-
-### Graceful Degradation Matrix
-
-| Failure | Behavior | Recovery |
-|---|---|---|
-| Redis unreachable | Logged once, L1 only | Auto-restored on next successful call |
-| OpenAI 429 / 503 | Retry with jittered backoff, breaker after N failures | Half-open after cooldown |
-| Pinecone timeout | Embedding/retrieval breaker opens; agents proceed with cached or empty RAG | Half-open after cooldown |
-| Agent exceeds bulkhead budget | Pending futures cancelled; Sentinel Fallback returned; Critic caps at FM-3 Amber | Next run unaffected |
-| MCP Jira server down | REST fallback (Phase 7 idempotency label prevents double-write) | None needed |
+3. **Event-Driven Observability**
+   * A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`). These are streamed live to the Streamlit UI via Server-Sent Events (SSE) without affecting pipeline execution.
 
 ---
 
@@ -465,14 +446,18 @@ Access the application UI by visiting `http://localhost:8501`.
 
 ## Failure Modes & Mitigations
 
-*   **API Timeouts & Transient Errors:** Covered by the `@resilient(policy=...)` decorator — jittered exponential backoff, hard timeout enforced via `ThreadPoolExecutor`, and per-instance circuit breakers that open after N consecutive failures and half-open after a cooldown. Replaces the earlier `tenacity` wrapper.
-*   **JSON Parse Failures:** Specialized Agents perform schema recovery prompts on parse failure. If recovery fails, `_fallback()` returns a placeholder model, flagging low confidence (`0.20`), triggering Critic's **FM-3** Amber downgrading.
-*   **Agent Bulkhead Timeout:** If any specialist exceeds `AGENT_TIMEOUT_SEC` (default 90s), the pipeline cancels the pending future, fills its slot with the Sentinel Fallback, emits a `bulkhead_timeout` event, and continues with the rest. The Critic then caps the overall badge at FM-3 Amber.
-*   **Circuit Breaker Open:** When a service's breaker is open, subsequent calls fast-fail with `CircuitOpenError` instead of hitting the dead dependency. Each agent class and each external service (LLM, embeddings, Pinecone) owns its own breaker, so one failing dependency cannot poison the others.
-*   **Redis Unavailable:** The two-tier cache degrades to L1 only — graceful, logged once (`[cache] Redis healthcheck failed (...); using L1 only`), recovers automatically on the next successful call. The pipeline behavior is identical to a Redis-less deployment.
-*   **Missing Integrations Credentials:** If Google Sheets or Jira credentials are not found, the endpoints skip execution gracefully with warning logs. They write a local fallback zip/CSV copy to `logs/exports/` and allow the pipeline to proceed without throwing exceptions.
-*   **MCP Server Unavailable:** If the `mcp-atlassian` server cannot spawn or the `jira_create_issue` call fails, `/approve` automatically falls back to the REST Jira client — the Epic is still created (idempotent on `em-copilot-run-<id>` label so no double-write), and the fallback reason is logged.
-*   **Unavailable Third-Party Endpoints:** If Kroki.io fails during SVG generation, the frontend defaults to client-side JS Rendering. If the GitHub API is unavailable, the Tech Stack Agent ignores velocity signals and notes the dependency failure in its logs.
+This pipeline separates failure mitigations into infrastructural fallbacks and agent-level cognitive recoveries to ensure robust operations under real-world conditions.
+
+### 1. Infrastructure & Integration Faults
+*   **API Timeouts & Down Services:** Handled by the `@resilient(policy=...)` decorator applying jittered exponential backoffs, hard timeouts (ThreadPoolExecutor), and isolated circuit breakers. If a third-party dependency goes offline, the circuit breaker opens to fast-fail subsequent calls.
+*   **Redis Cache Cache-Miss/Outage:** The cache layer gracefully degrades to L1 memory cache, logging the failure once and auto-reconnecting upon recovery.
+*   **Google Sheets / Jira Integration Outage:** Missing or invalid credentials default to local CSV/ZIP backups under `logs/exports/` rather than blocking pipeline execution.
+*   **MCP Server Outage:** If the Atlassian MCP server fails to spin up, the pipeline falls back immediately to direct Jira REST endpoints carrying an idempotency hash to prevent duplicate issues.
+*   **External Rendering (Kroki.io) Failures:** If Kroki fails, the UI falls back to client-side JS Rendering (`mermaid.js`).
+
+### 2. LLM & Cognitive Faults
+*   **JSON Schema Parse Errors:** Specialist agents retry validation schema logic using standard recovery prompts. If recovery fails, the pipeline initiates a Sentinel Fallback yielding a low confidence score, which triggers the Critic to cap the output at Amber.
+*   **Specialist Execution Latency (Bulkhead):** If any specialist agent takes longer than `AGENT_TIMEOUT_SEC` (default 90s), the executor thread is cancelled, and the Sentinel Fallback is returned to avoid stalling downstream agent runs.
 
 ---
 
