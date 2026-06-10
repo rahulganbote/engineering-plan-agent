@@ -45,7 +45,9 @@ log = get_logger(__name__)
 
 # ── Kroki rendering config ───────────────────────────────────────────────────
 KROKI_URL          = "https://kroki.io/mermaid/svg"
-KROKI_TIMEOUT_SEC  = 8
+KROKI_TIMEOUT_SEC  = 15   # Per-attempt budget. 8s was too tight — kroki.io
+                           # occasionally serves a 10-12s response. 15 × 2 retries
+                           # = 30s worst case, still well under the 90s bulkhead.
 KROKI_MAX_RETRIES  = 2
 
 SYSTEM_PROMPT = """You are a senior Solution Architect. Produce a grounded,

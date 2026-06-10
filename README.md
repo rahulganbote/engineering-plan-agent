@@ -20,7 +20,7 @@ short_description: BRD to Engineering Plan Multi-Agent System
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 [![Slack](https://img.shields.io/badge/Alerts-Slack-4A154B)](https://slack.com)
 
-> **EM Copilot** is an enterprise-grade multi-agent system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
+> **EM Copilot** is an multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
 
 ---
 
@@ -36,22 +36,23 @@ short_description: BRD to Engineering Plan Multi-Agent System
 ## Table of Contents
 1. [Executive Summary (TL;DR)](#executive-summary-tldr)
 2. [Business Use Case & Solution](#business-use-case--solution)
-3. [Core Pillars](#core-pillars)
-4. [Architectural Overview](#architectural-overview)
-5. [Agent Design Patterns](#agent-design-patterns)
+3. [Architectural Overview](#architectural-overview)
+4. [System Design & Core Engineering Pillars](#system-design--core-engineering-pillars)
+   * [Core Capabilities Matrix](#core-capabilities-matrix)
+   * [Agent Design Patterns](#agent-design-patterns)
+   * [Security & Validation Pipeline](#security--validation-pipeline)
+   * [Distributed Resilience & Caching](#distributed-resilience--caching)
+   * [Observability & Tracing](#observability--tracing)
+5. [Screenshots](#screenshots)
 6. [Tech Stack Justification](#tech-stack-justification)
-7. [Security & Validation Pipeline](#security--validation-pipeline)
-8. [Vector DB & RAG Integration](#vector-db--rag-integration)
-9. [Distributed Resilience & Cache Layer](#distributed-resilience--cache-layer)
-10. [Evaluation Framework](#evaluation-framework)
-11. [Integrations & External Channels](#integrations--external-channels)
-12. [Token Usage & Execution Cost](#token-usage--execution-cost)
-13. [Project Directory Structure](#project-directory-structure)
-14. [Quick Start Guide](#quick-start-guide)
-15. [Failure Modes & Mitigations](#failure-modes--mitigations)
-16. [Observability & Tracing](#observability--tracing)
-17. [License](#license)
-18. [Author](#author)
+7. [Vector DB & RAG Integration](#vector-db--rag-integration)
+8. [Evaluation Framework](#evaluation-framework)
+9. [Integrations & External Channels](#integrations--external-channels)
+10. [Token Usage & Execution Cost](#token-usage--execution-cost)
+11. [Project Directory Structure](#project-directory-structure)
+12. [Quick Start Guide](#quick-start-guide)
+13. [License](#license)
+14. [Author](#author)
 
 
 ---
@@ -72,29 +73,6 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 *   **Grounded Intelligence:** Integrating a Pinecone RAG vector store ensures architectural decisions and project guidelines are grounded in organization standards and historical project data.
 *   **Evaluated Outputs:** Validated outputs for quality and scored based on 5 criterion to detect Hallucination, checking for citation, so Artifacts carry clear Green / Amber / Red quality badges based on exact evaluation criteria.
 *   **EM Enablement:** Generates decision-ready artifacts complete with source citations, allowing the EM to serve as an editor and approver rather than starting from a blank page.
-
----
-
-## Core Pillars
-
-| Capability | Engineering Implementation |
-|---|---|
-| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic) |
-| **Type-Safe Schema Contracts** | Schema conformance validated at every transition to ensure structural integrity |
-| **7-Stage Security Pipeline** | Automated checks including format, size, regex guard, LLM injection guard, and PII redacting |
-| **Pinecone RAG Vector Search** | Dynamic context retrieval with document citation mapping and diversity filters |
-| **Critic Revision Loop** | LLM-as-Judge self-correction (capped at 2 loops) with deterministic failure-mode quality caps |
-| **Distributed Resilience** | Per-instance circuit breakers, jittered exponential backoff, bulkhead isolation, and sentinel fallbacks |
-| **Dual-Tier Hybrid Caching** | Local L1 (InMemory LRU+TTL) and distributed L2 (Redis) with semantic cache fallback for Critic queries |
-| **Specialist Registry & Policy Manifest** | Decoupled dynamic agent registration; policy manifests allow per-agent timeout/cache configuration |
-| **Visual Architecture Renderer** | LLM Mermaid syntax generation validated and rendered to SVG via Kroki API with local JS fallback | 
-| **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting natural language feedback and scoring inputs | 
-| **Jira Epic Integration via MCP** | MCP-native Atlassian server (stdio transport) with automatic fallback to Jira Cloud REST API |
-| **Google Sheets Logging** | Centralized audit row export powering historical insights with local CSV fallback |
-| **Slack Failure Alerting** | Webhook alerts trigger on critical execution errors for real-time alerting |
-| **BRD Pinecone Ingestion** | Post-approval BRD vector indexing to keep the RAG knowledge base automatically up to date |
-| **ReportLab PDF Exporter** | Automated compilation of all planning artifacts into a downloadable executive summary PDF |
-| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency |
 
 ---
 
@@ -140,34 +118,96 @@ BRD Upload ──► FastAP ──►│  File check → Parse → Injection Gua
 
 ---
 
-## Agent Design Patterns
+## System Design & Core Engineering Pillars
 
-### 1. Parallel Dispatch (Hub-and-Spoke)
+This section outlines the architectural foundation, security validations, and resilience strategies that govern the EM Copilot system.
+
+### 1. Core Capabilities Matrix
+
+| Capability | Engineering Implementation |
+|---|---|
+| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic) |
+| **Type-Safe Schema Contracts** | Schema conformance validated at every transition to ensure structural integrity |
+| **7-Stage Security Pipeline** | Automated checks including format, size, regex guard, LLM injection guard, and PII redacting |
+| **Pinecone RAG Vector Search** | Dynamic context retrieval with document citation mapping and diversity filters |
+| **Critic Revision Loop** | LLM-as-Judge self-correction (capped at 2 loops) with deterministic failure-mode quality caps |
+| **Distributed Resilience** | Per-instance circuit breakers, jittered exponential backoff, bulkhead isolation, and sentinel fallbacks |
+| **Dual-Tier Hybrid Caching** | Local L1 (InMemory LRU+TTL) and distributed L2 (Redis) with semantic cache fallback for Critic queries |
+| **Specialist Registry & Policy Manifest** | Decoupled dynamic agent registration; policy manifests allow per-agent timeout/cache configuration |
+| **Visual Architecture Renderer** | LLM Mermaid syntax generation validated and rendered to SVG via Kroki API with local JS fallback | 
+| **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting natural language feedback and scoring inputs | 
+| **Jira Epic Integration via MCP** | MCP-native Atlassian server (stdio transport) with automatic fallback to Jira Cloud REST API |
+| **Google Sheets Logging** | Centralized audit row export powering historical insights with local CSV fallback |
+| **Slack Failure Alerting** | Webhook alerts trigger on critical execution errors for real-time alerting |
+| **BRD Pinecone Ingestion** | Post-approval BRD vector indexing to keep the RAG knowledge base automatically up to date |
+| **ReportLab PDF Exporter** | Automated compilation of all planning artifacts into a downloadable executive summary PDF |
+| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency |
+
+### 2. Agent Design Patterns
+
+#### Parallel Dispatch (Hub-and-Spoke)
 Instead of sequentially chaining Agent calls, the Orchestrator splits the incoming BRD sections and routes them to all five specialist Agents concurrently using Python's `ThreadPoolExecutor`. This reduces total wall-clock execution time by **~3×** (~50 seconds compared to >2.5 minutes sequentially).
 
-### 2. Multi-Agent Aggregate Criticism
+#### Multi-Agent Aggregate Criticism
 The Critic node serves as a secondary routing hub. Rather than verifying each Agent individually, it acts on the aggregated `PipelineState` containing all 5 specialist outputs. This global view enables it to catch cross-specialist contradictions, such as the *Schedule Estimator* planning a 12-week project while the *Solution Architect* designs 25 separate microservices for a 2-engineer team.
 
-### 3. Targeted Revision Loop
+#### Targeted Revision Loop
 If the Critic flags issues, the pipeline does not rerun from scratch. Instead, it runs a selective revision loop (max 2 cycles). The loop only invokes the specialist Agents that were flagged with a quality score below the acceptable threshold.
 
-### 4. Deterministic Failure-Mode Caps (FM-1/2/3)
-To prevent the LLM Critic from being overly optimistic (a common LLM-as-Judge failure mode), three deterministic rules override the Critic's scoring logic:
-*   **FM-1 (Hallucination Guard):** Deducts `0.3` points from the overall score for every citation that does not match retrieved vector database keys.
-*   **FM-2 (Uncited Claim Cap):** Caps the overall score at `3.9` (Amber) if any specialist Agent fails to reference at least one vector chunk.
-*   **FM-3 (Sentinel Fallback Cap):** If an Agent fails or experiences an API timeout, the pipeline falls back to safe mock structures with a low confidence score (`≤ 0.30`). The Critic immediately caps the overall quality rating to `3.9` (Amber) and flags a `ConsistencyIssue` in the UI to prevent silent failures.
+#### Deterministic Quality Caps
+To prevent the LLM Critic from being overly optimistic, the scoring pipeline enforces three deterministic quality overrides (hallucination penalties, uncited claim limits, and sentinel fallback caps). These rules are detailed under the [Evaluation Framework](#evaluation-framework) section.
 
-### 5. Specialist Registry (Decoupled Dispatch)
+#### Specialist Registry (Decoupled Dispatch)
 Specialist agents register themselves at import time via `register_specialist("plan_generator", PlanGeneratorAgent)`. The pipeline's `_run_agent()` looks up the class via `get_specialist(name)` instead of a hardcoded `if/elif` chain. Adding a new specialist becomes a two-line change (one register call + one entry in the dispatch list) instead of touching multiple files.
 
-### 6. Per-Agent Policy Manifest
-Each `BaseAgent` subclass declares two class-level attributes — `CACHE_POLICY: CachePolicy` and `RESILIENCE_POLICY: CallPolicy`. The shared `_call_llm_with_retry` reads `self.CACHE_POLICY` / `self.RESILIENCE_POLICY`, so individual agents can tune TTL, timeout, retry count, or circuit-breaker thresholds without touching base infrastructure. Defaults come from `CACHE_LLM` / `OPENAI_POLICY`.
+### 3. Security & Validation Pipeline
 
-### 7. Two-Tier Cache with Graceful Degradation
-The cache layer composes `InMemoryCache` (L1: LRU + TTL, always on) with optional `RedisCache` (L2: pickle+gzip, ~70% size reduction). `TieredCache` checks L1 first, falls through to L2, and back-fills L1 on L2 hits. When `REDIS_URL` is unset, only L1 runs. When Redis fails mid-flight, the pipeline degrades to L1 only, logs the degradation, and recovers automatically on the next successful call.
+Before any LLM node processes a user-uploaded document, the file passes through a strict, sequential 7-check security pipeline:
+1.  **Format Restriction:** Restricts file extensions to `.txt`, `.pdf`, and `.docx`.
+2.  **Size Guard:** Enforces a hard 10MB limit (preventing Denial of Service / resource exhaustion).
+3.  **Word Check:** Ensures the document contains at least 50 words to avoid parsing empty text.
+4.  **Regex Injection Guard:** Scans for 15 known LLM jailbreak and injection strings (e.g., `"ignore all previous instructions"`).
+5.  **Semantic Injection Guard:** A lightweight GPT-4o-mini scan to detect sophisticated, multi-paragraph prompt injections.
+6.  **PII Sanitizer:** Identifies and redacts Social Security Numbers, Credit Cards, email addresses, and phone numbers with placeholders (e.g., `[REDACTED-SSN]`).
+7.  **Completeness Check:** Inspects the parsed text structure to confirm key sections (Objectives, Requirements, Constraints, Risks, NFRs) are present.
 
-### 8. Per-Instance Circuit Breakers (Isolation)
-Each agent class and each external service owns its own `CircuitBreaker`. A module-level registry keyed by class name (`_get_llm_breaker(class_name)`) ensures that one agent's failures cannot open another's breaker. RAG retrieval and embedding calls have separate breakers from LLM calls. This is the same isolation pattern Hystrix/resilience4j use for production fault tolerance — shared CODE, never shared STATE.
+### 4. Distributed Resilience & Caching
+
+EM Copilot incorporates a production-grade resilience and caching architecture modeled on distributed-systems patterns (like Hystrix and resilience4j). The system guarantees that no single external dependency failure (OpenAI, Pinecone, Redis, or MCP) can crash the pipeline, while caching ensures cost-efficiency by preventing duplicate LLM execution.
+
+#### Two-Tier Caching System
+*   **L1 (In-Memory):** A fast, per-process LRU cache with TTL for immediate local retrieval.
+*   **L2 (Redis):** Distributed cache (gzipped/serialized with ~70% size reduction) to persist and share states across container instances.
+*   **Semantic Cache:** Powered by Pinecone (cosine threshold `0.95`) specifically for the Critic's evaluation revisions, recognizing similar inputs even when text varies slightly.
+*   **Decorator Flow:** The `@cached` decorator wraps the `@resilient` wrapper, meaning cache hits short-circuit before hitting timeouts or circuit breakers.
+*   **Dynamic Cache Policies:** Configurable per agent class via class-level `CACHE_POLICY` manifests to customize TTL and backend choice.
+
+#### Fault Tolerance & Isolation
+*   **Circuit Breakers:** Isolated per agent and external service class in a module-level registry. A failure in one agent (e.g., OpenAI rate limit) or external service (e.g., Pinecone timeout) does not cascade or trip other breakers.
+*   **Bulkheads:** Enforced per-agent execution timeouts. Parallel agent execution is managed concurrently via `ThreadPoolExecutor`. If an agent hangs, its thread is cancelled and returns a Sentinel Fallback (flagging a low confidence score), allowing the rest of the pipeline to complete successfully.
+*   **Dynamic Call Policies:** Declared on each agent subclass via a `RESILIENCE_POLICY` manifest to fine-tune retry counts, timeouts, and breaker cooldowns.
+*   **Graceful Degradation:** The pipeline automatically downgrades to L1 cache if Redis is offline, falls back to direct REST APIs if the Atlassian MCP server is down, and renders architecture diagrams client-side if the Kroki API fails.
+
+#### Event-Driven Observability
+*   A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`). These are streamed live to the Streamlit UI via Server-Sent Events (SSE) without affecting pipeline execution.
+
+#### Failure Mitigation Matrix
+The system maps infrastructure faults and LLM cognitive errors directly to specific resilience strategies:
+
+| Failure Mode | Mitigation & Recovery Mechanism |
+|---|---|
+| **API Down / Timeout** | Jittered backoff retries → isolated Circuit Breaker opens to fast-fail calls |
+| **Redis Outage** | Gracefully degrades to local L1 in-memory cache; auto-recovers |
+| **Integration Down** | Outages (Sheets/Jira) fall back to exporting local CSV/ZIP backups |
+| **MCP Server Offline** | Dynamic fallback directly to Jira Cloud REST APIs with idempotency hashes |
+| **Kroki Rendering Down** | UI automatically renders architectural charts client-side via `mermaid.js` |
+| **JSON Parse Failures** | Dynamic self-correction retries → safe mock sentinel fallback (badges Critic Amber) |
+| **Slow Agent (Bulkhead)** | ThreadPool executor halts hung agents after 90s timeout, using sentinel fallbacks |
+
+### 5. Observability & Tracing
+
+*   **Global Execution Tracing:** Integrates **LangSmith** to capture prompt structures, token counts, execution latency, and exact model responses. Detailed audit logs are simultaneously persisted locally as structured JSONL in `logs/pipeline.jsonl`.
+*   **Real-Time Event Bus:** Emitters publish structured runtime events (`cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`) on a thread-local channel. These events are streamed to the UI via FastAPI Server-Sent Events (SSE) for real-time latency and state monitoring.
 
 ---
 
@@ -189,47 +229,12 @@ Each agent class and each external service owns its own `CircuitBreaker`. A modu
 
 ---
 
-## Security & Validation Pipeline
-
-Before any LLM node processes a user-uploaded document, the file passes through a strict, sequential 7-check security pipeline:
-1.  **Format Restriction:** Restricts file extensions to `.txt`, `.pdf`, and `.docx`.
-2.  **Size Guard:** Enforces a hard 10MB limit (preventing Denial of Service / resource exhaustion).
-3.  **Word Check:** Ensures the document contains at least 50 words to avoid parsing empty text.
-4.  **Regex Injection Guard:** Scans for 15 known LLM jailbreak and injection strings (e.g., `"ignore all previous instructions"`).
-5.  **Semantic Injection Guard:** A lightweight GPT-4o-mini scan to detect sophisticated, multi-paragraph prompt injections.
-6.  **PII Sanitizer:** Identifies and redacts Social Security Numbers, Credit Cards, email addresses, and phone numbers with placeholders (e.g., `[REDACTED-SSN]`).
-7.  **Completeness Check:** Inspects the parsed text structure to confirm key sections (Objectives, Requirements, Constraints, Risks, NFRs) are present.
-
----
-
 ## Vector DB & RAG Integration
 
 The vector database stores organization-specific architectural patterns, planning templates, and historical schedules.
 *   **Ingestion:** The ingestion tool `scripts/ingest_kb.py` parses documents from `knowledge_base/`, splits them using a dynamic recursive character text splitter, embeds them via `text-embedding-3-large` (1024 dimensions), and writes them to Pinecone with metadata tags (`source_type`, `chunk_id`).
 *   **Retrieval:** During execution, each specialist Agent retrieves relevant context using a similarity search. A similarity threshold of `0.45` is enforced.
 *   **Citation Tracking:** Specialists must return exact citations (`source_file` + `chunk_id`) for any technical standard referenced in their plan. The Critic enforces that these references are present and match valid chunks.
-
----
-
-## Distributed Resilience & Cache Layer
-
-EM Copilot incorporates a production-grade resilience and caching architecture modeled on distributed-systems patterns (like Hystrix and resilience4j). The system guarantees that no single external dependency failure (OpenAI, Pinecone, Redis, or MCP) can crash the pipeline, while caching ensures cost-efficiency by preventing duplicate LLM execution.
-
-### Key Pillars
-
-1. **Two-Tier Caching System**
-   * **L1 (In-Memory):** A fast, per-process LRU cache with TTL for immediate local retrieval.
-   * **L2 (Redis):** Distributed cache (gzipped/serialized) to persist and share states across container instances.
-   * **Semantic Cache:** Powered by Pinecone (cosine threshold `0.95`) specifically for the Critic's evaluation revisions, recognizing similar inputs even when text varies slightly.
-   * **Decorator Flow:** The `@cached` decorator wraps the `@resilient` wrapper, meaning cache hits short-circuit before hitting timeouts or circuit breakers.
-
-2. **Fault Tolerance & Isolation**
-   * **Circuit Breakers:** Isolated per agent and external service. If OpenAI rate limits (`429`) or Pinecone timeouts occur consecutively, the breaker opens to fast-fail calls, preventing downstream cascade.
-   * **Bulkheads:** Enforced per-agent execution timeouts. If a specialist agent hangs, the system cancels its execution, returns a Sentinel Fallback (flagging a low confidence score), and lets other agents finish successfully.
-   * **Graceful Degradation:** The pipeline automatically downgrades to L1 cache if Redis is offline, falls back to direct REST APIs if the Atlassian MCP server is down, and renders architecture diagrams client-side if the Kroki API fails.
-
-3. **Event-Driven Observability**
-   * A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`). These are streamed live to the Streamlit UI via Server-Sent Events (SSE) without affecting pipeline execution.
 
 ---
 
@@ -252,8 +257,11 @@ Our evaluation suite (`eval/run_eval.py`) verifies pipeline updates across 5 key
     *   *Metric:* Deterministic structural assertions (minimum milestone count, 100% of milestones having assigned owners, citation formats).
     *   *Dataset:* Run on all test files (`test_brd_simple.txt`, `test_brd_medium.txt`, `test_brd_complex.txt`, etc.).
 2.  **Method 2: LLM-as-Judge**
-    *   *Metric:* 0-5 scores for Groundedness (citations presence), Completeness, Consistency, and Actionability.
-    *   *Dataset:* Calibration set anchored via `critic_calibration_set.json`.
+    *   *Metric:* 0-5 scores for Groundedness (citations presence), Completeness, Consistency, and Actionability, calibrated via `critic_calibration_set.json`.
+    *   *Deterministic Quality Caps:* To override optimistic LLM self-ratings, the Critic enforces three rules:
+        *   **FM-1 (Hallucination Guard):** Deducts `0.3` points for every citation not matching valid keys in the Pinecone vector database.
+        *   **FM-2 (Uncited Claim Cap):** Caps the overall score at `3.9` (Amber) if any specialist agent fails to reference at least one vector database chunk.
+        *   **FM-3 (Sentinel Fallback Cap):** Caps the overall score at `3.9` (Amber) and flags a `ConsistencyIssue` in the UI if an agent fails or times out, forcing a mock fallback.
 3.  **Method 3: Execution-Based**
     *   *Metric:* Pydantic validation pass rate (100% target), Kroki SVG rendering checks, and pipeline execution time (<300s SLA).
 4.  **Method 4: Reference-Based (BERTScore)**
@@ -312,6 +320,11 @@ Below is the token usage and cost breakdown for a single full execution of the E
 
 > [!TIP]
 > A full run costs approximately **$0.31 USD** end-to-end. This parallel execution is managed well within standard Tier 1 OpenAI rate limits (supporting up to 3 parallel pipeline runs per minute).
+
+---
+
+## Screenshots of Demo
+See [screenshots/README.md](docs/screenshots/README.md) for sample run with screenshots and detailed annotations.
 
 ---
 
@@ -442,42 +455,7 @@ streamlit run streamlit_app.py
 ```
 Access the application UI by visiting `http://localhost:8501`.
 
----
 
-## Failure Modes & Mitigations
-
-This pipeline separates failure mitigations into infrastructural fallbacks and agent-level cognitive recoveries to ensure robust operations under real-world conditions.
-
-### 1. Infrastructure & Integration Faults
-*   **API Timeouts & Down Services:** Handled by the `@resilient(policy=...)` decorator applying jittered exponential backoffs, hard timeouts (ThreadPoolExecutor), and isolated circuit breakers. If a third-party dependency goes offline, the circuit breaker opens to fast-fail subsequent calls.
-*   **Redis Cache Cache-Miss/Outage:** The cache layer gracefully degrades to L1 memory cache, logging the failure once and auto-reconnecting upon recovery.
-*   **Google Sheets / Jira Integration Outage:** Missing or invalid credentials default to local CSV/ZIP backups under `logs/exports/` rather than blocking pipeline execution.
-*   **MCP Server Outage:** If the Atlassian MCP server fails to spin up, the pipeline falls back immediately to direct Jira REST endpoints carrying an idempotency hash to prevent duplicate issues.
-*   **External Rendering (Kroki.io) Failures:** If Kroki fails, the UI falls back to client-side JS Rendering (`mermaid.js`).
-
-### 2. LLM & Cognitive Faults
-*   **JSON Schema Parse Errors:** Specialist agents retry validation schema logic using standard recovery prompts. If recovery fails, the pipeline initiates a Sentinel Fallback yielding a low confidence score, which triggers the Critic to cap the output at Amber.
-*   **Specialist Execution Latency (Bulkhead):** If any specialist agent takes longer than `AGENT_TIMEOUT_SEC` (default 90s), the executor thread is cancelled, and the Sentinel Fallback is returned to avoid stalling downstream agent runs.
-
----
-
-## Observability & Tracing
-
-Full observability is configured through **LangSmith**. Every database call, Agent dispatch, and LLM text generation is traced via our LangSmith-wrapped OpenAI client:
-
-```python
-from openai import OpenAI
-from langsmith.wrappers import wrap_openai
-from src.core.config import settings
-
-client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
-```
-
-This captures prompt structures, latency figures, model versions, and token usage records under the `em-copilot-brd-agent` LangSmith project dashboard. Detailed local logs are simultaneously captured as structured JSONL in `logs/pipeline.jsonl`.
-
-Beyond LangSmith, the pipeline emits structured **resilience events** — `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `breaker_short_circuit`, `bulkhead_timeout` — onto a thread-local bus (`src/core/events.py`) keyed by `run_id`. FastAPI wires the sink at startup and fans these events into the per-run SSE stream, so the Streamlit UI surfaces them in real time alongside Agent progress chips. The bus is best-effort and never raises, so observability cannot break the caller. Cache hit-rate is queryable at runtime via `cache_stats()` for capacity planning.
-
----
 
 ## 📜 License
 MIT License - Feel free to use this project for learning and inspiration.
@@ -486,8 +464,8 @@ MIT License - Feel free to use this project for learning and inspiration.
 ---
 
 ## 🧑‍💻 Author
-Name: Rahul Ganbote
-GitHub: @rahulganbote
+**Rahul Ganbote** — [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
+
 ---
 
 *© 2026 Rahul Ganbote · All rights reserved.*

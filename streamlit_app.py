@@ -659,19 +659,35 @@ def render_architecture(arch: dict) -> None:
             # Kroki-rendered SVG — fastest path, no client-side JS
             st.markdown(svg, unsafe_allow_html=True)
         else:
-            # Fallback: Kroki failed or wasn't called — render via mermaid.js in the browser
+            # Fallback: Kroki failed or wasn't called — render via mermaid.js in the browser.
+            # IMPORTANT: `startOnLoad: true` does NOT work here because the <script type="module">
+            # loads asynchronously — by the time mermaid.initialize() runs, DOMContentLoaded has
+            # already fired, so the auto-render listener never triggers. We must call
+            # mermaid.run() explicitly. The try/catch surfaces failures visibly instead of
+            # rendering a silent blank rectangle.
             # pyrefly: ignore [missing-import]
             import streamlit.components.v1 as components
             mermaid_html = (
-                '<div class="mermaid" style="background:white;padding:12px;border-radius:8px;">'
-                f'{mermaid}'
+                '<div id="mmd-host" style="background:white;padding:12px;border-radius:8px;'
+                'min-height:60px;">'
+                f'<pre class="mermaid" style="margin:0;font-family:inherit;">{mermaid}</pre>'
                 '</div>'
                 '<script type="module">'
-                'import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";'
-                'mermaid.initialize({startOnLoad:true, theme:"neutral"});'
+                'try {'
+                '  const m = (await import("https://cdn.jsdelivr.net/npm/mermaid@10/'
+                'dist/mermaid.esm.min.mjs")).default;'
+                '  m.initialize({startOnLoad:false, theme:"neutral", securityLevel:"loose"});'
+                '  await m.run({querySelector:".mermaid"});'
+                '} catch (e) {'
+                '  const host = document.getElementById("mmd-host");'
+                '  host.innerHTML ='
+                '    "<div style=\"color:#c00;font-family:monospace;padding:8px\">"'
+                '    + "Mermaid client-side render failed: " + (e && e.message || e)'
+                '    + "<br><br>Source below is still copy-able.</div>";'
+                '}'
                 '</script>'
             )
-            components.html(mermaid_html, height=480, scrolling=True)
+            components.html(mermaid_html, height=520, scrolling=True)
         if mermaid:
             with st.expander("Mermaid source (re-usable in Jira / Confluence / GitHub)", expanded=False):
                 st.code(mermaid, language="mermaid")
