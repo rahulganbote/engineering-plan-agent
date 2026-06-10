@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     agent_timeout_sec:    int   = 90    # Per-agent bulkhead — Phase 9
 
     # ── Security ──────────────────────────────────────────────────────────────
-    max_brd_file_size_mb: int   = 10
+    max_brd_file_size_mb: int   = 25   # MUST match .streamlit/config.toml maxUploadSize
     injection_llm_confidence_threshold: float = 0.85
 
     # ── Jira ──────────────────────────────────────────────────────────────

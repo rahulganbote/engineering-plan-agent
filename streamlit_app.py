@@ -655,41 +655,66 @@ def render_architecture(arch: dict) -> None:
     mermaid = arch.get("diagram_mermaid")
     if svg or mermaid:
         st.markdown("**Architecture diagram**")
+
         if svg:
-            # Kroki-rendered SVG — fastest path, no client-side JS
+            # Kroki-rendered SVG — fastest path, no client-side JS needed.
+            # The SVG is trusted (we made the request, we read the response).
             st.markdown(svg, unsafe_allow_html=True)
-        else:
-            # Fallback: Kroki failed or wasn't called — render via mermaid.js in the browser.
-            # IMPORTANT: `startOnLoad: true` does NOT work here because the <script type="module">
-            # loads asynchronously — by the time mermaid.initialize() runs, DOMContentLoaded has
-            # already fired, so the auto-render listener never triggers. We must call
-            # mermaid.run() explicitly. The try/catch surfaces failures visibly instead of
-            # rendering a silent blank rectangle.
+        elif mermaid:
+            # Kroki failed/skipped → render client-side with mermaid.js via the
+            # UMD build (NOT the ES module). UMD avoids the type=module timing
+            # issue where the script loads AFTER DOMContentLoaded fires.
+            #
+            # We also unconditionally show the syntax-highlighted source via
+            # st.code BELOW the iframe — so even if the iframe fails for any
+            # reason (CDN blocked, browser extension, etc.) the user is never
+            # left with a blank rectangle.
             # pyrefly: ignore [missing-import]
             import streamlit.components.v1 as components
-            mermaid_html = (
-                '<div id="mmd-host" style="background:white;padding:12px;border-radius:8px;'
-                'min-height:60px;">'
-                f'<pre class="mermaid" style="margin:0;font-family:inherit;">{mermaid}</pre>'
-                '</div>'
-                '<script type="module">'
-                'try {'
-                '  const m = (await import("https://cdn.jsdelivr.net/npm/mermaid@10/'
-                'dist/mermaid.esm.min.mjs")).default;'
-                '  m.initialize({startOnLoad:false, theme:"neutral", securityLevel:"loose"});'
-                '  await m.run({querySelector:".mermaid"});'
-                '} catch (e) {'
-                '  const host = document.getElementById("mmd-host");'
-                '  host.innerHTML ='
-                '    "<div style=\"color:#c00;font-family:monospace;padding:8px\">"'
-                '    + "Mermaid client-side render failed: " + (e && e.message || e)'
-                '    + "<br><br>Source below is still copy-able.</div>";'
-                '}'
-                '</script>'
-            )
+            import uuid as _uuid
+            _mmd_id = f"mmd-{_uuid.uuid4().hex[:8]}"   # unique per render to bust iframe cache
+            # JSON-encode the source so embedded newlines / quotes survive transport
+            import json as _json
+            _src_js = _json.dumps(mermaid)
+            mermaid_html = f"""
+<div id="{_mmd_id}" style="background:white;padding:12px;border-radius:8px;min-height:60px;color:#333;">
+  <div style="color:#888;font-family:system-ui;font-size:12px;">Loading mermaid.js&hellip;</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function() {{
+  var host = document.getElementById("{_mmd_id}");
+  function fail(msg) {{
+    host.innerHTML = '<div style="color:#c00;font-family:monospace;padding:8px;font-size:13px;">'
+                   + '⚠ Mermaid client-side render failed: ' + msg
+                   + '<br><br>The source code is shown below — use it in any Mermaid-aware tool.'
+                   + '</div>';
+  }}
+  if (typeof mermaid === "undefined") {{ fail("mermaid library did not load (CDN blocked?)"); return; }}
+  try {{
+    mermaid.initialize({{ startOnLoad: false, theme: "neutral", securityLevel: "loose" }});
+    var src = {_src_js};
+    mermaid.render("{_mmd_id}-svg", src).then(function(result) {{
+      host.innerHTML = result.svg;
+    }}).catch(function(e) {{
+      fail((e && e.message) || String(e));
+    }});
+  }} catch (e) {{
+    fail((e && e.message) || String(e));
+  }}
+}})();
+</script>
+"""
             components.html(mermaid_html, height=520, scrolling=True)
+
+        # Always render the source as fallback — never leave the user stuck
+        # if Kroki failed AND mermaid.js failed. They can copy-paste into
+        # https://mermaid.live, GitHub, Jira, Confluence, or VSCode.
         if mermaid:
-            with st.expander("Mermaid source (re-usable in Jira / Confluence / GitHub)", expanded=False):
+            with st.expander(
+                "📋 Mermaid source (copy into Jira / Confluence / GitHub / mermaid.live)",
+                expanded=False,
+            ):
                 st.code(mermaid, language="mermaid")
 
     components = arch.get("components") or []
