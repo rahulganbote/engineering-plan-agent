@@ -101,6 +101,69 @@ def get_login_url() -> str:
     return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
 
 
+def get_auth_target() -> str:
+    """
+    Determine the anchor redirect target context.
+    HuggingFace Spaces embed Streamlit in a sandboxed iframe without allow-top-navigation.
+    Hence, target="_top" or "_self" is blocked (nothing happens on click).
+    We MUST use target="_blank" (new tab) inside HuggingFace Spaces.
+    On local or Google Cloud Run (no iframe), target="_top" is used for same-tab redirect.
+    """
+    if os.environ.get("SPACE_ID"):
+        return "_blank"
+    return "_top"
+
+
+def _get_auth_button_html(target: str) -> str:
+    url = get_login_url()
+    return f"""
+    <style>
+    .g-signin-btn {{
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background-color: #ffffff !important;
+        color: #3c4043 !important;
+        padding: 8px 16px !important;
+        border-radius: 4px !important;
+        font-weight: 500 !important;
+        text-decoration: none !important;
+        font-size: 14px !important;
+        border: 1px solid #dadce0 !important;
+        line-height: 1.5 !important;
+        font-family: 'Roboto', sans-serif !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+        transition: background-color 0.2s !important;
+        cursor: pointer !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-bottom: 12px !important;
+    }}
+    .g-signin-btn:hover {{
+        background-color: #f8f9fa !important;
+        border-color: #c6c6c6 !important;
+    }}
+    .g-signin-btn span {{
+        color: #3c4043 !important;
+        text-decoration: none !important;
+        font-weight: 500 !important;
+    }}
+    </style>
+    <a href="{url}" target="{target}" class="g-signin-btn">
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 48 48" style="margin-right: 10px; vertical-align: middle;">
+          <g>
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+            <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.55 2.87-2.22 5.37-4.72 7.03l7.3 5.66c4.27-3.92 6.72-9.74 6.72-16.92z"></path>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.3-5.66c-2.11 1.41-4.8 2.32-8.59 2.32-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+            <path fill="none" d="M0 0h48v48H0z"></path>
+          </g>
+        </svg>
+        <span>Continue with Google</span>
+    </a>
+    """
+
+
 # ── OAuth callback handler ────────────────────────────────────────────────────
 
 def _process_callback(code: str) -> Tuple[bool, str]:
@@ -167,38 +230,7 @@ def _render_login_page() -> None:
     )
     st.markdown("")  # spacer
     st.markdown(
-        f"""
-        <a href="{get_login_url()}" target="_top" style="
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #ffffff;
-            color: #3c4043 !important;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-weight: 500;
-            text-decoration: none !important;
-            font-size: 14px;
-            border: 1px solid #dadce0;
-            line-height: 1.5;
-            margin-bottom: 12px;
-            font-family: 'Roboto', sans-serif;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            transition: background-color 0.2s;
-            cursor: pointer;
-        ">
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 48 48" style="margin-right: 10px; vertical-align: middle;">
-              <g>
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.55 2.87-2.22 5.37-4.72 7.03l7.3 5.66c4.27-3.92 6.72-9.74 6.72-16.92z"></path>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.3-5.66c-2.11 1.41-4.8 2.32-8.59 2.32-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                <path fill="none" d="M0 0h48v48H0z"></path>
-              </g>
-            </svg>
-            <span style="color: #3c4043 !important; font-weight: 500; font-family: Roboto, sans-serif; text-decoration: none !important;">Continue with Google</span>
-        </a>
-        """,
+        _get_auth_button_html(get_auth_target()),
         unsafe_allow_html=True
     )
     st.caption(
@@ -257,40 +289,7 @@ def render_signin_required(message: str = "") -> None:
         return
     st.info("🔒 " + (message or "Sign in with Google to continue."))
     st.markdown(
-        f"""
-        <a href="{get_login_url()}" target="_top" style="
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            background-color: #ffffff;
-            color: #3c4043 !important;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-weight: 500;
-            text-decoration: none !important;
-            font-size: 14px;
-            border: 1px solid #dadce0;
-            line-height: 1.5;
-            margin-bottom: 8px;
-            font-family: 'Roboto', sans-serif;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            transition: background-color 0.2s;
-            cursor: pointer;
-            box-sizing: border-box;
-        ">
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 48 48" style="margin-right: 10px; vertical-align: middle;">
-              <g>
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-                <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.55 2.87-2.22 5.37-4.72 7.03l7.3 5.66c4.27-3.92 6.72-9.74 6.72-16.92z"></path>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.3-5.66c-2.11 1.41-4.8 2.32-8.59 2.32-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                <path fill="none" d="M0 0h48v48H0z"></path>
-              </g>
-            </svg>
-            <span style="color: #3c4043 !important; font-weight: 500; font-family: Roboto, sans-serif; text-decoration: none !important;">Continue with Google</span>
-        </a>
-        """,
+        _get_auth_button_html(get_auth_target()),
         unsafe_allow_html=True
     )
     st.caption(
