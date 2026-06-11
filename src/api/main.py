@@ -627,7 +627,7 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
             log.warning(f"[{run_id}] Could not send Slack alert | {se}")
 
 
-
+def _push_event(run_id: str, data: dict) -> None:
     if run_id not in _run_events:
         _run_events[run_id] = []
     _run_events[run_id].append(json.dumps(data))
