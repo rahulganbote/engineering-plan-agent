@@ -57,7 +57,7 @@ LOCAL_EXPORT_ROOT = Path("logs/exports")
 # Public entry point
 # ──────────────────────────────────────────────────────────────────────────────
 
-def write_artifacts_to_sheet(state: PipelineState) -> dict[str, Any]:
+def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str, Any]:
     """
     Export all approved engineering artifacts.
 
@@ -78,7 +78,7 @@ def write_artifacts_to_sheet(state: PipelineState) -> dict[str, Any]:
 
     if creds_ok:
         try:
-            url = _write_to_google_sheets(state)
+            url = _write_to_google_sheets(state, email)
             log.info(f"[{run_id}] Sheets export complete | url={url}")
             return {
                 "url":              url,
@@ -90,10 +90,10 @@ def write_artifacts_to_sheet(state: PipelineState) -> dict[str, Any]:
         except Exception as e:
             reason = f"Sheets API error: {type(e).__name__}: {str(e)[:160]}"
             log.warning(f"[{run_id}] Sheets export failed — falling back to local | {reason}")
-            return _write_local_export(state, fallback_reason=reason)
+            return _write_local_export(state, fallback_reason=reason, email=email)
 
     log.info(f"[{run_id}] Sheets credentials unavailable ({why_not}) — writing local CSV bundle")
-    return _write_local_export(state, fallback_reason=why_not)
+    return _write_local_export(state, fallback_reason=why_not, email=email)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ def _credentials_status() -> tuple[bool, str]:
 # Google Sheets path
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _write_to_google_sheets(state: PipelineState) -> str:
+def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
     """
     Write all approved artifacts to Google Sheets.
     Creates tabs if they don't exist. Appends rows on subsequent runs.
@@ -146,8 +146,8 @@ def _write_to_google_sheets(state: PipelineState) -> str:
     summary_ws = _get_or_create_worksheet(sh, "Run Summary", rows=100, cols=20)
     _ensure_min_cols(summary_ws, len(_summary_headers()))
     summary_ws.update("A1", [_summary_headers()])
-    # Phase 7: idempotency — update existing row if run_id already present
-    _upsert_summary_row(summary_ws, state, ts)
+    # Write to Run Summary - always appends a new row
+    _upsert_summary_row(summary_ws, state, ts, email)
 
     # ── Tab: Engineering Plan ────────────────────────────────────────────────
     if state.plan_output:
@@ -173,24 +173,11 @@ def _write_to_google_sheets(state: PipelineState) -> str:
     return f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}"
 
 
-def _upsert_summary_row(ws, state, ts: str) -> None:
+def _upsert_summary_row(ws, state, ts: str, email: str = "") -> None:
     """
-    Write the Run Summary row idempotently. If a row with state.run_id already
-    exists in column A, update it in-place; otherwise append a new row.
+    Write the Run Summary row. Always appends a new row to support multiple log entries per run_id.
     """
-    try:
-        all_rows = ws.get_all_values()
-        # row 0 is the header; data starts at row 1 (1-indexed in gspread: row 2)
-        for i, row in enumerate(all_rows[1:], start=2):
-            if row and row[0] == state.run_id:
-                new_row = _summary_row(state, ts)
-                col_end = chr(ord("A") + len(new_row) - 1)
-                ws.update(f"A{i}:{col_end}{i}", [new_row])
-                log.info(f"[{state.run_id}] Sheets idempotent update at row {i}")
-                return
-    except Exception as e:
-        log.warning(f"[{state.run_id}] Sheets upsert search failed ({e}); appending")
-    ws.append_row(_summary_row(state, ts))
+    ws.append_row(_summary_row(state, ts, email))
 
 
 def _ensure_min_cols(ws, min_cols: int) -> None:
@@ -221,7 +208,7 @@ def _ensure_headers_gs(ws, headers: list[str]) -> None:
 # Local CSV fallback path
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _write_local_export(state: PipelineState, fallback_reason: str = "") -> dict[str, Any]:
+def _write_local_export(state: PipelineState, fallback_reason: str = "", email: str = "") -> dict[str, Any]:
     """
     Write artifacts as CSVs into logs/exports/<run_id>/.
     Files written: run_summary.csv, engineering_plan.csv, schedule.csv, tech_stack.csv
@@ -237,7 +224,7 @@ def _write_local_export(state: PipelineState, fallback_reason: str = "") -> dict
 
     # Run Summary
     summary_path = export_dir / "run_summary.csv"
-    _write_csv(summary_path, _summary_headers(), [_summary_row(state, ts)])
+    _append_or_write_csv(summary_path, _summary_headers(), _summary_row(state, ts, email))
     written.append(str(summary_path))
 
     # Engineering Plan
@@ -296,6 +283,16 @@ def _write_csv(path: Path, headers: list[str], rows: list[list[Any]]) -> None:
             w.writerow(row)
 
 
+def _append_or_write_csv(path: Path, headers: list[str], row: list[Any]) -> None:
+    """Append a row to CSV, writing headers first if the file doesn't exist."""
+    exists = path.exists()
+    with path.open("a" if exists else "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        if not exists:
+            w.writerow(headers)
+        w.writerow(row)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared schema (used by both Sheets and local paths so output is identical)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -305,11 +302,11 @@ def _summary_headers() -> list[str]:
         "run_id", "brd_name", "timestamp", "badge", "overall_score",
         "groundedness", "completeness", "consistency", "actionability",
         "revisions", "hitl_decision", "notes", "em_rating", "processing_time_sec",
-        "plan_duration_weeks", "plan_confidence", "pipeline_status"
+        "plan_duration_weeks", "plan_confidence", "pipeline_status", "email-id"
     ]
 
 
-def _summary_row(state: PipelineState, ts: str) -> list[Any]:
+def _summary_row(state: PipelineState, ts: str, email: str = "") -> list[Any]:
     critic = state.critic_output
     plan = state.plan_output
     # notes: the EM's decision note. For a failed run (no decision) fall back
@@ -336,6 +333,7 @@ def _summary_row(state: PipelineState, ts: str) -> list[Any]:
         plan.total_duration_weeks  if plan else 0,
         plan.confidence_score      if plan else 0.0,
         state.pipeline_status,
+        email,
     ]
 
 

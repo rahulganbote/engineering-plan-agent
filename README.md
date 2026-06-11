@@ -1,5 +1,6 @@
 # EM Copilot — BRD to Engineering Plan Agent
 
+
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2.28-green)](https://github.com/langchain-ai/langgraph)
 [![Pinecone](https://img.shields.io/badge/RAG-Pinecone-purple)](https://pinecone.io)

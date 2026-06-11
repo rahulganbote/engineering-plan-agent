@@ -198,12 +198,13 @@ def api_get_artifacts(run_id: str) -> tuple[dict | None, int]:
         return None, 0
 
 
-def api_approve(run_id: str, decision: str, reviewer: str, notes: str, em_rating: int) -> dict | None:
+def api_approve(run_id: str, decision: str, reviewer: str, notes: str, em_rating: int, email: str = "") -> dict | None:
     payload = {
         "decision":  decision,
         "reviewer":  reviewer,
         "notes":     notes,
         "em_rating": em_rating,
+        "email":     email,
     }
     try:
         r = requests.post(api_url(f"/approve/{run_id}"), json=payload, timeout=120)
@@ -358,6 +359,7 @@ def render_sidebar() -> None:
                 accept_multiple_files=False,
             )
             if uploaded is not None:
+                st.info("⚠️ **Demo Purpose Only:** This application is for demo purposes only. This AI can make mistakes. Please double-check the results.")
                 run_in_flight = st.session_state.run_id is not None
                 if st.button(
                     "Generate Engineering Plan",
@@ -466,10 +468,10 @@ def render_progress_chips() -> None:
         "<div style='display:flex; justify-content:space-between; align-items:center; "
         "flex-wrap:wrap; gap:12px; margin-top:20px;margin-bottom:20px;'>"
         f"<div><strong>Current Status:</strong> {status_msg or '—'}</div>"
-        f"<div><strong>Tokens (in / out):</strong> "
-        f"<code style='background:#f3f4f6;padding:2px 6px;border-radius:4px;'>{tokens_str}</code></div>"
         f"<div><strong>Total Processing Time:</strong> "
         f"<code style='background:#f3f4f6;padding:2px 6px;border-radius:4px;'>{elapsed_str}</code></div>"
+        f"<div><strong>Tokens used (in / out):</strong> "
+        f"<code style='background:#f3f4f6;padding:2px 6px;border-radius:4px;'>{tokens_str}</code></div>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -802,6 +804,17 @@ def render_tech_stack(stack: dict) -> None:
     _render_citations(stack.get("citations") or [])
 
 
+def _log_pdf_download(api_base_url: str, run_id: str, email: str) -> None:
+    try:
+        requests.post(
+            f"{api_base_url.rstrip('/')}/log-download/{run_id}",
+            json={"email": email},
+            timeout=5
+        )
+    except Exception:
+        pass
+
+
 def render_artifacts() -> None:
     artifacts = st.session_state.artifacts or {}
     have_any = any(artifacts.get(field) for _, field in AGENT_OUTPUT_FIELD.items())
@@ -816,6 +829,8 @@ def render_artifacts() -> None:
         rid = st.session_state.run_id
         if rid:
             try:
+                from src.security.google_auth import get_user_email
+                user_email = get_user_email()
                 pdf_bytes = api_download_pdf(st.session_state.api_base_url, rid)
                 st.download_button(
                     "⬇ Download PDF",
@@ -823,6 +838,8 @@ def render_artifacts() -> None:
                     file_name=f"em-copilot-{rid}-artifacts.pdf",
                     mime="application/pdf",
                     use_container_width=True,
+                    on_click=_log_pdf_download,
+                    args=(st.session_state.api_base_url, rid, user_email),
                 )
             except Exception:
                 st.button("⬇ Download PDF", disabled=True, use_container_width=True,
@@ -1020,8 +1037,10 @@ def render_hitl_gate() -> None:
             reject_clicked  = st.form_submit_button("✖ Reject", use_container_width=True, disabled=decision_made)
 
     if approve_clicked:
+        from src.security.google_auth import get_user_email
+        user_email = get_user_email()
         with st.spinner("Recording decision · Pushing to Jira, writing to Google Sheets…"):
-            result = api_approve(st.session_state.run_id, "approved", reviewer, notes, em_rating)
+            result = api_approve(st.session_state.run_id, "approved", reviewer, notes, em_rating, user_email)
         if result:
             st.session_state.approval_result = result
             refresh_artifacts()
@@ -1030,8 +1049,10 @@ def render_hitl_gate() -> None:
         if not notes.strip():
             st.warning("Please add notes explaining the rejection.")
         else:
+            from src.security.google_auth import get_user_email
+            user_email = get_user_email()
             with st.spinner("Recording rejection…"):
-                result = api_approve(st.session_state.run_id, "rejected", reviewer, notes, em_rating)
+                result = api_approve(st.session_state.run_id, "rejected", reviewer, notes, em_rating, user_email)
             if result:
                 st.session_state.approval_result = result
                 refresh_artifacts()

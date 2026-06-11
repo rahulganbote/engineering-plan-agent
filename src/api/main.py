@@ -132,6 +132,7 @@ class ApprovalRequest(BaseModel):
     reviewer:  str = "Engineering Manager"
     notes:     str = ""
     em_rating: int = 0   # 1-5 — EM rating for Method 5 eval tracking
+    email:     str = ""
 
 
 class ApprovalResponse(BaseModel):
@@ -368,10 +369,15 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
     for handler_name, handler_fn in get_handlers_for_decision(registry_decision):
         try:
             import inspect as _inspect
+            sig = _inspect.signature(handler_fn)
+            kwargs = {}
+            if "email" in sig.parameters:
+                kwargs["email"] = request.email
+
             if _inspect.iscoroutinefunction(handler_fn):
-                result = await handler_fn(state)
+                result = await handler_fn(state, **kwargs)
             else:
-                result = handler_fn(state)
+                result = handler_fn(state, **kwargs)
             export_results[handler_name] = result
             log.info(f"[{run_id}] export handler '{handler_name}' ok | {result.get('mode','?')}")
         except Exception as e:
@@ -552,6 +558,31 @@ async def download_artifacts_pdf(run_id: str):
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
+
+class LogDownloadRequest(BaseModel):
+    email: str
+
+
+@app.post("/log-download/{run_id}")
+async def log_download(run_id: str, req: LogDownloadRequest):
+    state = _runs.get(run_id)
+    if not state:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    from src.integrations.sheets import write_artifacts_to_sheet
+    from src.core.models import HITLDecision
+    import copy
+
+    state_copy = copy.copy(state)
+    state_copy.hitl_decision = HITLDecision.DOWNLOAD_PDF
+
+    try:
+        write_artifacts_to_sheet(state_copy, email=req.email)
+    except Exception as e:
+        log.error(f"[{run_id}] Failed to log PDF download to sheet: {e}")
+
+    return {"status": "ok"}
+
 # ── Background task ───────────────────────────────────────────────────────────
 
 async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name: str) -> None:
@@ -596,7 +627,7 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
             log.warning(f"[{run_id}] Could not send Slack alert | {se}")
 
 
-def _push_event(run_id: str, data: dict) -> None:
+
     if run_id not in _run_events:
         _run_events[run_id] = []
     _run_events[run_id].append(json.dumps(data))

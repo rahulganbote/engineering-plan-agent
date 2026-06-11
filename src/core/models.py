@@ -71,6 +71,7 @@ class HITLDecision(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     PENDING  = "pending"
+    DOWNLOAD_PDF = "download_pdf"
 
 
 # ──────────────────────────────────────────────────────────────────────────────

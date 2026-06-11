@@ -166,7 +166,25 @@ def _render_login_page() -> None:
         "block automated traffic."
     )
     st.markdown("")  # spacer
-    st.link_button("🔑  Continue with Google", get_login_url(), type="primary")
+    st.markdown(
+        f"""
+        <a href="{get_login_url()}" target="_self" style="
+            display: inline-block;
+            text-align: center;
+            background-color: #ff4b4b;
+            color: white !important;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 14px;
+            border: 1px solid #ff4b4b;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        ">🔑  Continue with Google</a>
+        """,
+        unsafe_allow_html=True
+    )
     st.caption(
         "By continuing you agree to fair use of this demo Space. "
         "Your email is used only to authorise access; nothing else is stored."
@@ -222,8 +240,26 @@ def render_signin_required(message: str = "") -> None:
     if not is_configured() or is_authenticated():
         return
     st.info("🔒 " + (message or "Sign in with Google to continue."))
-    st.link_button("🔑  Continue with Google", get_login_url(),
-                   type="primary", use_container_width=True)
+    st.markdown(
+        f"""
+        <a href="{get_login_url()}" target="_self" style="
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            background-color: #ff4b4b;
+            color: white !important;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 14px;
+            border: 1px solid #ff4b4b;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        ">🔑  Continue with Google</a>
+        """,
+        unsafe_allow_html=True
+    )
     st.caption(
         "Sign-in keeps LLM-token costs predictable on this public Space. "
         "Your email is used only to authorise access."
