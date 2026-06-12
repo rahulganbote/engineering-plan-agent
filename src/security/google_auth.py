@@ -255,6 +255,47 @@ def _render_login_page() -> None:
 #      out" when the user IS authenticated.
 
 
+def _render_oauth_listener() -> None:
+    """
+    Render a hidden iframe component in the first tab to listen for the OAuth code
+    broadcasted by the popup tab, then reload the parent page to complete login.
+    """
+    # pyrefly: ignore [missing-import]
+    import streamlit.components.v1 as components
+    js_listener = """
+    <script>
+    (function() {
+        console.log("OAuth Listener: setting up BroadcastChannel & storage listeners...");
+        
+        // 1. BroadcastChannel listener (primary)
+        try {
+            const bc = new BroadcastChannel("oauth_channel");
+            bc.onmessage = function(event) {
+                console.log("OAuth Listener: received BroadcastChannel message", event.data);
+                if (event.data && event.data.code) {
+                    window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?code=" + event.data.code + "&state=opener";
+                }
+            };
+        } catch(e) {
+            console.warn("OAuth Listener: BroadcastChannel setup failed", e);
+        }
+        
+        // 2. Storage listener (cross-browser fallback)
+        window.addEventListener("storage", function(event) {
+            if (event.key === "oauth_code" && event.newValue) {
+                console.log("OAuth Listener: received storage event for code");
+                window.parent.location.href = window.parent.location.origin + window.parent.location.pathname + "?code=" + event.newValue + "&state=opener";
+                try {
+                    localStorage.removeItem("oauth_code");
+                } catch(err) {}
+            }
+        });
+    })();
+    </script>
+    """
+    components.html(js_listener, height=0, width=0)
+
+
 def process_callback() -> None:
     """
     Handle the return-from-Google flow if the URL has ?code=…  Sets session
@@ -263,6 +304,11 @@ def process_callback() -> None:
     """
     if not is_configured():
         return
+
+    # Set up cross-tab listener on the primary tab so it receives code from popup
+    if not is_authenticated():
+        _render_oauth_listener()
+
     qp = st.query_params
     if "code" not in qp or is_authenticated():
         return
@@ -273,10 +319,7 @@ def process_callback() -> None:
         return
 
     # On HF (target=_blank), Google redirects back to a popup tab with state=popup.
-    # The popup must forward the code to its opener (original tab) and close itself.
-    # We use components.v1.html (which renders in an iframe — <script> tags actually
-    # execute there) instead of st.markdown(unsafe_allow_html=True) (which strips
-    # <script> tags and onerror handlers).
+    # The popup must forward the code to the listener in the original tab via BroadcastChannel.
     state_val = qp.get("state")
     if isinstance(state_val, list):
         state_val = state_val[0] if state_val else ""
@@ -284,20 +327,64 @@ def process_callback() -> None:
     if state_val == "popup":
         # pyrefly: ignore [missing-import]
         import streamlit.components.v1 as components
+        
+        # Render a premium styled success card to the user in the popup tab
+        st.markdown(
+            """
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+                <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%; border: 1px solid #eaeaea;">
+                    <div style="font-size: 56px; margin-bottom: 20px;">🧭</div>
+                    <h2 style="color: #111827; margin-bottom: 12px; font-weight: 600; font-size: 24px; line-height: 1.2;">Sign-in Successful!</h2>
+                    <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 28px;">
+                        Your session has been authorized. You can close this window now and return to the main EM Copilot tab.
+                    </p>
+                    <button onclick="window.parent.close(); window.close();" style="background-color: #ff4b4b; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; transition: background-color 0.2s; width: 100%;">
+                        Close Window
+                    </button>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         js_code = """
         <script>
-        if (window.parent && window.parent.opener) {
+        (function() {
             try {
-                const urlParams = new URLSearchParams(window.parent.location.search);
-                const code = urlParams.get('code');
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get("code");
                 if (code) {
-                    window.parent.opener.location.href = window.parent.location.origin + window.parent.location.pathname + "?code=" + code + "&state=opener";
+                    console.log("OAuth Popup: broadcasting authorization code...");
+                    
+                    // 1. Write to localStorage (fallback)
+                    try {
+                        localStorage.setItem("oauth_code", code);
+                    } catch(e) {
+                        console.error("OAuth Popup: localStorage write failed", e);
+                    }
+                    
+                    // 2. Post to BroadcastChannel (primary)
+                    try {
+                        const bc = new BroadcastChannel("oauth_channel");
+                        bc.postMessage({ type: "oauth", code: code });
+                    } catch(e) {
+                        console.error("OAuth Popup: BroadcastChannel post failed", e);
+                    }
                 }
-                window.parent.close();
-            } catch (e) {
-                console.error("Opener redirect failed:", e);
+            } catch(e) {
+                console.error("OAuth Popup: broadcast failed", e);
             }
-        }
+            
+            // Auto-close tab after 800ms
+            setTimeout(function() {
+                try {
+                    window.parent.close();
+                } catch(e) {}
+                try {
+                    window.close();
+                } catch(e) {}
+            }, 800);
+        })();
         </script>
         """
         components.html(js_code, height=0, width=0)
