@@ -62,6 +62,26 @@ def is_configured() -> bool:
     )
 
 
+def get_redirect_uri() -> str:
+    """
+    Get the redirect URI.
+    If we can detect the host from the Streamlit request context, we use it to
+    ensure the redirect URI matches the current origin (preventing cross-origin issues
+    with popups/redirects). Otherwise, we fall back to the configured env var.
+    """
+    try:
+        host = st.context.headers.get("host")
+        if host:
+            proto = "https"
+            if "localhost" in host or "127.0.0.1" in host:
+                proto = "http"
+            return f"{proto}://{host}/"
+    except Exception:
+        pass
+    return _env("GOOGLE_OAUTH_REDIRECT_URI")
+
+
+
 def _allowed_emails() -> list[str]:
     raw = _env("GOOGLE_OAUTH_ALLOWED_EMAILS")
     return [e.strip().lower() for e in raw.split(",") if e.strip()]
@@ -92,7 +112,7 @@ def get_login_url(state: str = "same_tab") -> str:
     """Build the Google OAuth consent URL."""
     params = {
         "client_id":     _env("GOOGLE_OAUTH_CLIENT_ID"),
-        "redirect_uri":  _env("GOOGLE_OAUTH_REDIRECT_URI"),
+        "redirect_uri":  get_redirect_uri(),
         "response_type": "code",
         "scope":         "openid email profile",
         "access_type":   "online",
@@ -192,7 +212,7 @@ def _process_callback(code: str) -> Tuple[bool, str]:
                 "code":          code,
                 "client_id":     _env("GOOGLE_OAUTH_CLIENT_ID"),
                 "client_secret": _env("GOOGLE_OAUTH_CLIENT_SECRET"),
-                "redirect_uri":  _env("GOOGLE_OAUTH_REDIRECT_URI"),
+                "redirect_uri":  get_redirect_uri(),
                 "grant_type":    "authorization_code",
             },
             timeout=10,
