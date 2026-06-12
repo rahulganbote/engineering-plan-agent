@@ -167,6 +167,47 @@ class ArtifactSummary(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+@app.post("/test-inject/{run_id}")
+async def test_inject(run_id: str):
+    """
+    Test-only endpoint to inject a mock pipeline state directly into memory.
+    Avoids calling actual LLM/Pinecone APIs in integration/smoke testing.
+    """
+    from src.core.models import PipelineState, CriticOutput, QualityBadge, DimensionScore
+    
+    dim_score = DimensionScore(
+        score=3.5,
+        threshold=3.0,
+        passed=True,
+        evidence="Good quality",
+        improvement_suggestion="None"
+    )
+    
+    critic = CriticOutput(
+        run_id=run_id,
+        revision_number=0,
+        target_agents=[],
+        groundedness=dim_score,
+        completeness=dim_score,
+        consistency=dim_score,
+        actionability=dim_score,
+        overall_score=3.5,
+        badge=QualityBadge.AMBER,
+        requires_revision=False
+    )
+    
+    state = PipelineState(
+        run_id=run_id,
+        brd_raw_hash="mock_hash",
+        brd_name="mock_test.txt",
+        pipeline_status="awaiting_hitl",
+        critic_output=critic
+    )
+    
+    _runs[run_id] = state
+    return {"status": "injected", "run_id": run_id}
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "version": "1.1.0"}
@@ -396,6 +437,8 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
         )
         if decision == HITLDecision.APPROVED:
             state.pipeline_status = "exported"
+        elif decision == HITLDecision.REJECTED:
+            state.pipeline_status = "rejected"
         _run_export[run_id] = {
             "sheet_url":       sheet_url,
             "mode":            export_mode,
@@ -413,6 +456,9 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
     elif sheets_result.get("mode") == "failed":
         if decision == HITLDecision.APPROVED:
             state.pipeline_status = "export_failed"
+        elif decision == HITLDecision.REJECTED:
+            # Rejection still happens — audit row went to local CSV fallback.
+            state.pipeline_status = "rejected"
         export_status = "failed"
         err_msg = sheets_result.get("error", "unknown")
         _run_export[run_id] = {"sheet_url": None, "status": "failed", "error": err_msg}

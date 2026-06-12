@@ -40,7 +40,7 @@ import streamlit as st
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
 POLL_INTERVAL_SEC = 1.5
 HITL_POLL_INTERVAL_SEC = 8.0
-TERMINAL_STATUSES = {"exported", "export_failed", "error"}
+TERMINAL_STATUSES = {"exported", "export_failed", "error", "rejected"}
 PAUSE_STATUSES = {"awaiting_hitl"}
 
 SPECIALIST_AGENTS = [
@@ -391,7 +391,7 @@ def render_sidebar() -> None:
             st.subheader("Current run")
             st.code(st.session_state.run_id, language=None)
             st.caption(f"Status: `{st.session_state.pipeline_status or 'starting'}`")
-            if st.button("Reset", use_container_width=True):
+            if st.button("Clear Plan & Reset", use_container_width=True):
                 _reset_run()
                 st.rerun()
 
@@ -429,7 +429,7 @@ def render_progress_chips() -> None:
                 )
             else:
                 in_progress = (
-                    status not in ("", "exported", "export_failed", "error", "awaiting_hitl")
+                    status not in ("", "exported", "export_failed", "error", "awaiting_hitl", "rejected")
                 )
                 bg = "#3b82f6" if in_progress else "#374151"
                 icon = "⟳" if in_progress else "○"
@@ -450,6 +450,7 @@ def render_progress_chips() -> None:
         "awaiting_hitl": "⏸️ Awaiting your decision. Please review and confirm below.",
         "exported":      "✅ Approved · Added Artifacts to Jira ticket",
         "export_failed": "⚠️ Approved but export failed",
+        "rejected":      "❌ Rejected · Audit row logged to Google Sheets",
         "error":         "❌ Pipeline error",
     }.get(status, status or "")
     # Status + processing time on a single horizontal row.
