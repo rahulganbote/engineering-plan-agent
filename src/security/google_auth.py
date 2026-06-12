@@ -135,7 +135,7 @@ def get_auth_target() -> str:
     return "_top"
 
 
-def _get_auth_button_html(target: str) -> str:
+def _get_auth_button_html(target: str, in_iframe: bool = True) -> str:
     state_param = "popup" if target == "_blank" else "same_tab"
     url = get_login_url(state=state_param)
     
@@ -144,14 +144,18 @@ def _get_auth_button_html(target: str) -> str:
     if target == "_blank":
         onclick_js = f"onclick=\"try {{ window.parent.open('{url}', '_blank'); }} catch(e) {{ window.open('{url}', '_blank'); }} return false;\""
         
-    return f"""
-    <style>
-    body {{
+    body_style = """
+    body {
         margin: 0 !important;
         padding: 0 !important;
         overflow: hidden !important;
         background-color: transparent !important;
-    }}
+    }
+    """ if in_iframe else ""
+
+    return f"""
+    <style>
+    {body_style}
     .g-signin-btn {{
         display: inline-flex !important;
         align-items: center !important;
@@ -171,6 +175,7 @@ def _get_auth_button_html(target: str) -> str:
         cursor: pointer !important;
         width: 100% !important;
         box-sizing: border-box !important;
+        margin-bottom: 12px !important;
     }}
     .g-signin-btn:hover {{
         background-color: #f8f9fa !important;
@@ -195,6 +200,24 @@ def _get_auth_button_html(target: str) -> str:
         <span>Continue with Google</span>
     </a>
     """
+
+
+def render_signin_button() -> None:
+    """
+    Render Google Sign-in button.
+    For HuggingFace Spaces (sandboxed iframe), we MUST use components.html with target="_blank"
+    and window.parent.open to escape the space sandbox.
+    For local or Google Cloud Run (no iframe wrapper), we use st.markdown with target="_top"
+    to perform a direct same-tab redirect, avoiding iframe sandboxing issues.
+    """
+    target = get_auth_target()
+    if target == "_blank":
+        import streamlit.components.v1 as components
+        components.html(_get_auth_button_html(target, in_iframe=True), height=55)
+    else:
+        st.markdown(_get_auth_button_html(target, in_iframe=False), unsafe_allow_html=True)
+
+
 
 
 # ── OAuth callback handler ────────────────────────────────────────────────────
@@ -262,10 +285,7 @@ def _render_login_page() -> None:
         "block automated traffic."
     )
     st.markdown("")  # spacer
-    # Render Google Sign-in button inside iframe to support window.parent.open
-    # pyrefly: ignore [missing-import]
-    import streamlit.components.v1 as components
-    components.html(_get_auth_button_html(get_auth_target()), height=55)
+    render_signin_button()
     st.caption(
         "By continuing you agree to fair use of this demo Space. "
         "Your email is used only to authorise access; nothing else is stored."
@@ -450,10 +470,7 @@ def render_signin_required(message: str = "") -> None:
     if not is_configured() or is_authenticated():
         return
     st.info("🔒 " + (message or "Sign in with Google to continue."))
-    # Render Google Sign-in button inside iframe to support window.parent.open
-    # pyrefly: ignore [missing-import]
-    import streamlit.components.v1 as components
-    components.html(_get_auth_button_html(get_auth_target()), height=55)
+    render_signin_button()
     st.caption(
         "Sign-in keeps LLM-token costs predictable on this public Space. "
         "Your email is used only to authorise access."
