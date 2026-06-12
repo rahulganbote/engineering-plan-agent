@@ -1,3 +1,14 @@
+---
+title: EM Copilot
+emoji: 🧭
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: BRD to Engineering Plan Multi-Agent System
+---
+
 # EM Copilot — BRD to Engineering Plan Agent
 
 
