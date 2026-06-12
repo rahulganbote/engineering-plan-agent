@@ -269,6 +269,25 @@ def process_callback() -> None:
         code = code[0] if code else ""
     if not code:
         return
+
+    # If this is a popup/second tab (target="_blank" on HuggingFace), redirect
+    # the opener/original tab to this callback URL and close this popup.
+    # Same-origin policy allows opener access because the popup is on the same host.
+    import streamlit.components.v1 as components
+    js_code = """
+    <script>
+    if (window.parent && window.parent.opener) {
+        try {
+            window.parent.opener.location.href = window.parent.location.href;
+            window.parent.close();
+        } catch (e) {
+            console.error("Opener redirect failed:", e);
+        }
+    }
+    </script>
+    """
+    components.html(js_code, height=0, width=0)
+
     ok, err = _process_callback(code)
     if ok:
         # Strip ?code=… so a refresh doesn't replay (Google codes are one-shot)
