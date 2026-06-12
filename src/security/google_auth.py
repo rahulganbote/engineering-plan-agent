@@ -273,7 +273,6 @@ def process_callback() -> None:
     # If this is a popup/second tab (target="_blank" on HuggingFace), redirect
     # the opener/original tab to this callback URL and close this popup.
     # Same-origin policy allows opener access because the popup is on the same host.
-    import streamlit.components.v1 as components
     js_code = """
     <script>
     if (window.parent && window.parent.opener) {
@@ -286,7 +285,7 @@ def process_callback() -> None:
     }
     </script>
     """
-    components.html(js_code, height=0, width=0)
+    st.components.v1.html(js_code, height=0, width=0)
 
     ok, err = _process_callback(code)
     if ok:
