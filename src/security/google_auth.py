@@ -279,22 +279,33 @@ def process_callback() -> None:
 
     if state_val == "popup":
         js_code = """
-        <script>
-        if (window.parent && window.parent.opener) {
-            try {
-                const urlParams = new URLSearchParams(window.parent.location.search);
-                const code = urlParams.get('code');
-                if (code) {
-                    window.parent.opener.location.href = window.parent.location.origin + window.parent.location.pathname + "?code=" + code + "&state=opener";
+        <img src="does-not-exist.png" onerror='
+            (function() {
+                try {
+                    console.log("OAuth callback popup tab triggered. Attempting redirection...");
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get("code");
+                    if (code) {
+                        if (window.opener) {
+                            console.log("Found window.opener. Redirecting original window...");
+                            window.opener.location.href = window.location.origin + window.location.pathname + "?code=" + code + "&state=opener";
+                        } else {
+                            console.warn("window.opener is null. Falling back to same tab redirection.");
+                            window.location.href = window.location.origin + window.location.pathname + "?code=" + code + "&state=same_tab";
+                            return;
+                        }
+                    } else {
+                        console.error("No authorization code found in URL params.");
+                    }
+                    console.log("Closing popup window.");
+                    window.close();
+                } catch (e) {
+                    console.error("OAuth popup script error:", e);
                 }
-                window.parent.close();
-            } catch (e) {
-                console.error("Opener redirect failed:", e);
-            }
-        }
-        </script>
+            })()
+        ' style="display:none; width:0; height:0;">
         """
-        st.components.v1.html(js_code, height=0, width=0)
+        st.markdown(js_code, unsafe_allow_html=True)
         st.stop()
 
     ok, err = _process_callback(code)
