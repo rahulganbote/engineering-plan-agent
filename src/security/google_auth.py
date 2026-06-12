@@ -88,7 +88,7 @@ def sign_out() -> None:
 
 # ── OAuth URL builders ────────────────────────────────────────────────────────
 
-def get_login_url() -> str:
+def get_login_url(state: str = "same_tab") -> str:
     """Build the Google OAuth consent URL."""
     params = {
         "client_id":     _env("GOOGLE_OAUTH_CLIENT_ID"),
@@ -97,6 +97,7 @@ def get_login_url() -> str:
         "scope":         "openid email profile",
         "access_type":   "online",
         "prompt":        "select_account",
+        "state":         state,
     }
     return f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
 
@@ -115,7 +116,8 @@ def get_auth_target() -> str:
 
 
 def _get_auth_button_html(target: str) -> str:
-    url = get_login_url()
+    state_param = "popup" if target == "_blank" else "same_tab"
+    url = get_login_url(state=state_param)
     return f"""
     <style>
     .g-signin-btn {{
@@ -270,22 +272,30 @@ def process_callback() -> None:
     if not code:
         return
 
-    # If this is a popup/second tab (target="_blank" on HuggingFace), redirect
-    # the opener/original tab to this callback URL and close this popup.
-    # Same-origin policy allows opener access because the popup is on the same host.
-    js_code = """
-    <script>
-    if (window.parent && window.parent.opener) {
-        try {
-            window.parent.opener.location.href = window.parent.location.href;
-            window.parent.close();
-        } catch (e) {
-            console.error("Opener redirect failed:", e);
+    # Check if this was a popup flow using the state parameter returned by Google
+    state_val = qp.get("state")
+    if isinstance(state_val, list):
+        state_val = state_val[0] if state_val else ""
+
+    if state_val == "popup":
+        js_code = """
+        <script>
+        if (window.parent && window.parent.opener) {
+            try {
+                const urlParams = new URLSearchParams(window.parent.location.search);
+                const code = urlParams.get('code');
+                if (code) {
+                    window.parent.opener.location.href = window.parent.location.origin + window.parent.location.pathname + "?code=" + code + "&state=opener";
+                }
+                window.parent.close();
+            } catch (e) {
+                console.error("Opener redirect failed:", e);
+            }
         }
-    }
-    </script>
-    """
-    st.components.v1.html(js_code, height=0, width=0)
+        </script>
+        """
+        st.components.v1.html(js_code, height=0, width=0)
+        st.stop()
 
     ok, err = _process_callback(code)
     if ok:
