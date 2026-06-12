@@ -359,7 +359,7 @@ def render_sidebar() -> None:
                 accept_multiple_files=False,
             )
             if uploaded is not None:
-                st.info("⚠️ **Demo Purpose Only:** This application is for demo purposes only. This AI can make mistakes. Please double-check the results.")
+                st.info("⚠️ **Demo Purpose Only:** This application is for demo purposes only. The AI can make mistakes.")
                 run_in_flight = st.session_state.run_id is not None
                 if st.button(
                     "Generate Engineering Plan",
@@ -961,14 +961,47 @@ def _build_voice_briefing(artifacts: dict) -> str:
     return briefing[:2000] if briefing else "The engineering plan is still being generated."
 
 
+def render_hitl_alert() -> None:
+    status = st.session_state.pipeline_status
+    if status != "awaiting_hitl":
+        return
+
+    decision_made = bool(st.session_state.get("approval_result"))
+    if decision_made:
+        return
+
+    st.markdown(
+        """
+        <div style="background-color: #fff9db; border-left: 5px solid #f59f00; padding: 16px; border-radius: 8px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); font-family: system-ui, -apple-system, sans-serif;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 250px;">
+                    <span style="font-size: 24px;">⏸️</span>
+                    <div>
+                        <div style="color: #856404; font-weight: bold; font-size: 15px; margin-bottom: 2px;">Action Required: Approval Needed</div>
+                        <div style="color: #665014; font-size: 13px;">The multi-agent pipeline is paused. Please review the generated plans and jump down to submit your decision.</div>
+                    </div>
+                </div>
+                <a href="#decision-gate" target="_self" style="background-color: #f59f00; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s; box-shadow: 0 2px 4px rgba(245, 159, 0, 0.2);">
+                    👇 Scroll to Decision Gate
+                </a>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 def render_hitl_gate() -> None:
     status = st.session_state.pipeline_status
     if status != "awaiting_hitl":
         return
 
+    # Anchor target for dynamic page scrolling
+    st.markdown('<div id="decision-gate"></div>', unsafe_allow_html=True)
+
     rejection_count = st.session_state.rejection_count
     #gate_label = "Gate" if rejection_count == 0 else f"Gate {min(rejection_count + 1, 2)}" # to-do 
-    st.subheader(f"Review and Confirmation · Decision")
+    st.subheader(f"Decision Gate")
     st.info("Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard")
 
     if rejection_count >= 2:
@@ -1232,6 +1265,7 @@ def main() -> None:
     consume_new_events()
     refresh_artifacts()
 
+    render_hitl_alert()
     render_progress_chips()
     render_event_log()
     render_critic_scores()
