@@ -43,14 +43,14 @@ class Settings(BaseSettings):
     )
 
     # ── OpenAI ────────────────────────────────────────────────────────────────
-    openai_api_key:       str              # required — no default
+    openai_api_key:       str = ""
     openai_model:         str = "gpt-4o"
     openai_model_mini:    str = "gpt-4o-mini"   # used for Critic scoring + injection scan
     openai_embedding_model: str = "text-embedding-3-large"
     embedding_dimension: int = 1024
 
     # ── Pinecone ──────────────────────────────────────────────────────────────
-    pinecone_api_key:     str              # required — no default
+    pinecone_api_key:     str = ""
     pinecone_index:       str = "brd-knowledge-base"
     rag_top_k:            int = 4
     rag_similarity_threshold: float = 0.45
