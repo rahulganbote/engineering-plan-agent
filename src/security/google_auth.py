@@ -118,8 +118,20 @@ def get_auth_target() -> str:
 def _get_auth_button_html(target: str) -> str:
     state_param = "popup" if target == "_blank" else "same_tab"
     url = get_login_url(state=state_param)
+    
+    # We use window.parent.open for popup target to escape iframe sandbox and ensure script-closeable window
+    onclick_js = ""
+    if target == "_blank":
+        onclick_js = f"onclick=\"try {{ window.parent.open('{url}', '_blank'); }} catch(e) {{ window.open('{url}', '_blank'); }} return false;\""
+        
     return f"""
     <style>
+    body {{
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        background-color: transparent !important;
+    }}
     .g-signin-btn {{
         display: inline-flex !important;
         align-items: center !important;
@@ -139,7 +151,6 @@ def _get_auth_button_html(target: str) -> str:
         cursor: pointer !important;
         width: 100% !important;
         box-sizing: border-box !important;
-        margin-bottom: 12px !important;
     }}
     .g-signin-btn:hover {{
         background-color: #f8f9fa !important;
@@ -151,7 +162,7 @@ def _get_auth_button_html(target: str) -> str:
         font-weight: 500 !important;
     }}
     </style>
-    <a href="{url}" target="{target}" rel="opener" class="g-signin-btn">
+    <a href="{url}" target="{target}" rel="opener" {onclick_js} class="g-signin-btn">
         <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 48 48" style="margin-right: 10px; vertical-align: middle;">
           <g>
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
@@ -231,10 +242,10 @@ def _render_login_page() -> None:
         "block automated traffic."
     )
     st.markdown("")  # spacer
-    st.markdown(
-        _get_auth_button_html(get_auth_target()),
-        unsafe_allow_html=True
-    )
+    # Render Google Sign-in button inside iframe to support window.parent.open
+    # pyrefly: ignore [missing-import]
+    import streamlit.components.v1 as components
+    components.html(_get_auth_button_html(get_auth_target()), height=55)
     st.caption(
         "By continuing you agree to fair use of this demo Space. "
         "Your email is used only to authorise access; nothing else is stored."
@@ -338,7 +349,7 @@ def process_callback() -> None:
                     <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 28px;">
                         Your session has been authorized. You can close this window now and return to the main EM Copilot tab.
                     </p>
-                    <button onclick="window.parent.close(); window.close();" style="background-color: #ff4b4b; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; transition: background-color 0.2s; width: 100%;">
+                    <button onclick="try { window.parent.close(); } catch(e) {} window.close();" style="background-color: #ff4b4b; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; transition: background-color 0.2s; width: 100%;">
                         Close Window
                     </button>
                 </div>
@@ -351,39 +362,49 @@ def process_callback() -> None:
         <script>
         (function() {
             try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const code = urlParams.get("code");
-                if (code) {
-                    console.log("OAuth Popup: broadcasting authorization code...");
-                    
-                    // 1. Write to localStorage (fallback)
-                    try {
-                        localStorage.setItem("oauth_code", code);
-                    } catch(e) {
-                        console.error("OAuth Popup: localStorage write failed", e);
-                    }
-                    
-                    // 2. Post to BroadcastChannel (primary)
-                    try {
+                console.log("Iframe: injecting redirection script into parent window...");
+                const parentDoc = window.parent.document;
+                const script = parentDoc.createElement("script");
+                script.textContent = `
+                    (function() {
+                        try {
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const code = urlParams.get("code");
+                            if (code) {
+                                if (window.opener) {
+                                    console.log("Top-level: Redirecting original window...");
+                                    window.opener.location.href = window.opener.location.origin + window.opener.location.pathname + "?code=" + code + "&state=opener";
+                                    
+                                    // Auto-close the popup tab after a small delay
+                                    setTimeout(function() {
+                                        console.log("Top-level: closing popup window...");
+                                        window.close();
+                                    }, 400);
+                                } else {
+                                    console.warn("Top-level: window.opener is null. Falling back to same tab redirect.");
+                                    window.location.href = window.location.origin + window.location.pathname + "?code=" + code + "&state=same_tab";
+                                }
+                            }
+                        } catch(e) {
+                            console.error("Top-level OAuth script failed:", e);
+                        }
+                    })();
+                `;
+                parentDoc.body.appendChild(script);
+            } catch(e) {
+                console.error("Iframe script injection failed:", e);
+                
+                // Fallback inside iframe using postMessage/BroadcastChannel just in case DOM injection is blocked
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const code = urlParams.get("code");
+                    if (code) {
                         const bc = new BroadcastChannel("oauth_channel");
                         bc.postMessage({ type: "oauth", code: code });
-                    } catch(e) {
-                        console.error("OAuth Popup: BroadcastChannel post failed", e);
+                        localStorage.setItem("oauth_code", code);
                     }
-                }
-            } catch(e) {
-                console.error("OAuth Popup: broadcast failed", e);
+                } catch(err) {}
             }
-            
-            // Auto-close tab after 800ms
-            setTimeout(function() {
-                try {
-                    window.parent.close();
-                } catch(e) {}
-                try {
-                    window.close();
-                } catch(e) {}
-            }, 800);
         })();
         </script>
         """
@@ -409,10 +430,10 @@ def render_signin_required(message: str = "") -> None:
     if not is_configured() or is_authenticated():
         return
     st.info("🔒 " + (message or "Sign in with Google to continue."))
-    st.markdown(
-        _get_auth_button_html(get_auth_target()),
-        unsafe_allow_html=True
-    )
+    # Render Google Sign-in button inside iframe to support window.parent.open
+    # pyrefly: ignore [missing-import]
+    import streamlit.components.v1 as components
+    components.html(_get_auth_button_html(get_auth_target()), height=55)
     st.caption(
         "Sign-in keeps LLM-token costs predictable on this public Space. "
         "Your email is used only to authorise access."
