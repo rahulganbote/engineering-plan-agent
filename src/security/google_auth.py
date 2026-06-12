@@ -272,40 +272,35 @@ def process_callback() -> None:
     if not code:
         return
 
-    # Check if this was a popup flow using the state parameter returned by Google
+    # On HF (target=_blank), Google redirects back to a popup tab with state=popup.
+    # The popup must forward the code to its opener (original tab) and close itself.
+    # We use components.v1.html (which renders in an iframe — <script> tags actually
+    # execute there) instead of st.markdown(unsafe_allow_html=True) (which strips
+    # <script> tags and onerror handlers).
     state_val = qp.get("state")
     if isinstance(state_val, list):
         state_val = state_val[0] if state_val else ""
 
     if state_val == "popup":
+        # pyrefly: ignore [missing-import]
+        import streamlit.components.v1 as components
         js_code = """
-        <img src="does-not-exist.png" onerror='
-            (function() {
-                try {
-                    console.log("OAuth callback popup tab triggered. Attempting redirection...");
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const code = urlParams.get("code");
-                    if (code) {
-                        if (window.opener) {
-                            console.log("Found window.opener. Redirecting original window...");
-                            window.opener.location.href = window.location.origin + window.location.pathname + "?code=" + code + "&state=opener";
-                        } else {
-                            console.warn("window.opener is null. Falling back to same tab redirection.");
-                            window.location.href = window.location.origin + window.location.pathname + "?code=" + code + "&state=same_tab";
-                            return;
-                        }
-                    } else {
-                        console.error("No authorization code found in URL params.");
-                    }
-                    console.log("Closing popup window.");
-                    window.close();
-                } catch (e) {
-                    console.error("OAuth popup script error:", e);
+        <script>
+        if (window.parent && window.parent.opener) {
+            try {
+                const urlParams = new URLSearchParams(window.parent.location.search);
+                const code = urlParams.get('code');
+                if (code) {
+                    window.parent.opener.location.href = window.parent.location.origin + window.parent.location.pathname + "?code=" + code + "&state=opener";
                 }
-            })()
-        ' style="display:none; width:0; height:0;">
+                window.parent.close();
+            } catch (e) {
+                console.error("Opener redirect failed:", e);
+            }
+        }
+        </script>
         """
-        st.markdown(js_code, unsafe_allow_html=True)
+        components.html(js_code, height=0, width=0)
         st.stop()
 
     ok, err = _process_callback(code)
