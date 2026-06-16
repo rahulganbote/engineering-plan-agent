@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Force dark slate base for v1 — see react_migration_plan.md Decisions Log.
+   When v2 adds the theme toggle, this becomes :root { ... } and
+   .dark { ... } variants. */
+html, body, #root {
+  background-color: #020617;  /* slate-950 */
+  color: #f1f5f9;             /* slate-100 */
+  min-height: 100vh;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

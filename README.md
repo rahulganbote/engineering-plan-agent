@@ -24,6 +24,8 @@ short_description: BRD to Engineering Plan Multi-Agent System
 
 > **EM Copilot** is an multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
 
+🔗 **Live Demo:** [em-copilot on Google Cloud Run](https://em-copilot-1-809545615573.europe-west1.run.app/) · *Streamlit v1 deployed · React v2 in progress ([migration plan](./react_migration_plan.md) · [mockups](./docs/react_mockups/))*
+
 ---
 
 ## Executive Summary (TL;DR)
