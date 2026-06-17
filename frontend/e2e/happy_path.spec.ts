@@ -21,7 +21,7 @@ test.describe('EM Copilot — happy path', () => {
 
     // The header text from AgentWorkspace is the canonical landmark
     await expect(
-      page.getByText(/BRD\s*[→\-]\s*Engineering Plan/i)
+      page.getByText(/BRD\s*[→-]\s*Engineering Plan/i)
     ).toBeVisible({ timeout: 10_000 });
   });
 
