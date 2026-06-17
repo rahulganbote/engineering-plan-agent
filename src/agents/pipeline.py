@@ -72,6 +72,15 @@ def _feedback_for(ps: PipelineState, agent_name: str) -> str:
     return ps.critic_output.agent_feedback.get(agent_name, "")
 
 
+def _safe_emit(event_type: str, **fields) -> None:
+    """Best-effort event emit. Never raises — observability cannot break the pipeline."""
+    try:
+        from src.core.events import emit
+        emit(event_type, **fields)
+    except Exception:
+        pass
+
+
 def _revision_targets(ps: PipelineState) -> list[str]:
     """
     Decide which agents should rerun during a revision cycle.
@@ -91,9 +100,17 @@ def _revision_targets(ps: PipelineState) -> list[str]:
 def _run_agent(agent_name: str, ps: PipelineState):
     """Run one specialist spoke. Called from Orchestrator dispatch worker threads."""
     set_current_run_id(ps.run_id)
+    _safe_emit("agent_start", agent=agent_name)
     feedback = _feedback_for(ps, agent_name)
     cls = get_specialist(agent_name)
-    return cls().run(ps, feedback=feedback)
+    try:
+        res = cls().run(ps, feedback=feedback)
+    except Exception:
+        # Surface to UI: chip flips from "in progress" → "failed" instead of staying stuck.
+        _safe_emit("agent_failed", agent=agent_name)
+        raise
+    _safe_emit("agent_complete", agent=agent_name)
+    return res
 
 
 # ── Node functions ────────────────────────────────────────────────────────────
@@ -103,6 +120,7 @@ def node_orchestrator_hub(state: dict) -> dict:
     ps = _ps(state)
     brd_text = state.get("_brd_text", "")
     log.info(f"[{ps.run_id}] NODE orchestrator_hub")
+    _safe_emit("agent_start", agent="orchestrator")
 
     if not brd_text:
         ps.errors.append("No BRD text provided")
@@ -114,6 +132,8 @@ def node_orchestrator_hub(state: dict) -> dict:
     ps.pipeline_status = "dispatching" if output.validation_passed else "error"
     state["_routing_plan"] = output.routing_plan
     state["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
+
+    _safe_emit("agent_complete", agent="orchestrator")
 
     if not output.validation_passed:
         ps.errors.extend(output.validation_errors)
@@ -241,6 +261,8 @@ def node_critic(state: dict) -> dict:
     ps = _ps(state)
     log.info(f"[{ps.run_id}] NODE critic | rev={ps.revision_count}")
 
+    _safe_emit("agent_start", agent="critic")
+
     try:
         ps.critic_output = CriticAgent().run(ps)
         ps.critic_scores_history.append({
@@ -252,12 +274,14 @@ def node_critic(state: dict) -> dict:
             "overall": ps.critic_output.overall_score,
             "badge": ps.critic_output.badge.value,
         })
+        _safe_emit("agent_complete", agent="critic")
         log.info(
             f"[{ps.run_id}] Critic score | overall={ps.critic_output.overall_score:.2f} "
             f"badge={ps.critic_output.badge.value} "
             f"requires_revision={ps.critic_output.requires_revision}"
         )
     except Exception as e:
+        _safe_emit("agent_failed", agent="critic")
         log.error(f"[{ps.run_id}] critic error: {e}")
         ps.errors.append(f"critic: {str(e)[:140]}")
         ps.pipeline_status = "error"

@@ -1,27 +1,64 @@
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
-import App from './App'
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import App from './App';
 
 /**
- * Sprint 0 smoke test.
- * Goal: prove that the scaffolding (Vite + React + TS + Tailwind + shadcn Button)
- * is wired correctly. If this passes, the whole toolchain is healthy.
- * Real component tests get added as components are built in Sprint 1+.
+ * Sprint 1 & 2 tests.
+ * Validates the workspaces layout, sandbox toggle, and control elements.
  */
-describe('App (Sprint 0 smoke)', () => {
-  it('renders without throwing', () => {
-    render(<App />)
-  })
+describe('App (Sprint 1 workspace and sandbox)', () => {
+  beforeEach(() => {
+    globalThis.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            authenticated: true,
+            email: 'sairam1908@gmail.com',
+            name: 'Sairam Ganbote',
+          }),
+      })
+    ) as unknown as typeof fetch;
+  });
 
-  it('shows the scaffold title', () => {
-    render(<App />)
-    expect(screen.getByText(/EM Copilot — React UI/i)).toBeInTheDocument()
-  })
+  it('renders without throwing', async () => {
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /BRD → Engineering Plan/i })).toBeInTheDocument();
+  });
 
-  it('renders the three example Buttons', () => {
-    render(<App />)
-    expect(screen.getByRole('button', { name: 'Primary' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Secondary' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ghost' })).toBeInTheDocument()
-  })
-})
+  it('renders the workspace title', async () => {
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /BRD → Engineering Plan/i })).toBeInTheDocument();
+  });
+
+  it('renders the workspace control elements', async () => {
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /Browse files/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Generate Engineering Plan/i })).toBeInTheDocument();
+  });
+
+  it('can toggle to the sandbox view and back', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Switcher buttons
+    const sandboxBtn = await screen.findByRole('button', { name: /Sandbox/i });
+    const workspaceBtn = await screen.findByRole('button', { name: /Workspace/i });
+
+    expect(sandboxBtn).toBeInTheDocument();
+    expect(workspaceBtn).toBeInTheDocument();
+
+    // Click Sandbox button
+    await user.click(sandboxBtn);
+
+    // Verify sandbox title is displayed
+    expect(await screen.findByRole('heading', { name: /Storybook-style Sandbox/i })).toBeInTheDocument();
+
+    // Click Workspace button to toggle back
+    await user.click(workspaceBtn);
+
+    // Verify workspace title is displayed again
+    expect(await screen.findByRole('heading', { name: /BRD → Engineering Plan/i })).toBeInTheDocument();
+  });
+});

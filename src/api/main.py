@@ -49,9 +49,11 @@ import json
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Response, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Response, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 
 from src.core.config import settings
@@ -116,6 +118,12 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_os.environ.get("SESSION_SECRET_KEY", "em-copilot-secret-key-32-chars-long!"),
+    session_cookie="em_copilot_session",
 )
 
 
@@ -206,6 +214,131 @@ async def test_inject(run_id: str):
     
     _runs[run_id] = state
     return {"status": "injected", "run_id": run_id}
+
+
+def get_fastapi_redirect_uri(request: Request) -> str:
+    env_uri = _os.environ.get("GOOGLE_OAUTH_REDIRECT_URI", "")
+    if env_uri:
+        if not env_uri.endswith("/auth/callback") and not env_uri.endswith("/auth/callback/"):
+            env_uri = env_uri.rstrip("/") + "/auth/callback"
+        return env_uri
+
+    host = request.headers.get("host", "localhost:8000")
+    proto = "https"
+    if "localhost" in host or "127.0.0.1" in host or "0.0.0.0" in host:
+        proto = "http"
+    return f"{proto}://{host}/auth/callback"
+
+
+def exchange_code_for_user(code: str, redirect_uri: str) -> tuple[bool, dict | str]:
+    try:
+        import requests
+        from src.security.google_auth import GOOGLE_TOKEN_URL, GOOGLE_USERINFO_URL, _env, _allowed_emails
+        token_resp = requests.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "code":          code,
+                "client_id":     _env("GOOGLE_OAUTH_CLIENT_ID"),
+                "client_secret": _env("GOOGLE_OAUTH_CLIENT_SECRET"),
+                "redirect_uri":  redirect_uri,
+                "grant_type":    "authorization_code",
+            },
+            timeout=10,
+        )
+        if not token_resp.ok:
+            return False, f"Google token exchange failed (HTTP {token_resp.status_code})."
+
+        access_token = token_resp.json().get("access_token")
+        if not access_token:
+            return False, "Google returned no access token."
+
+        user_resp = requests.get(
+            GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        if not user_resp.ok:
+            return False, "Failed to fetch your Google profile."
+
+        info  = user_resp.json()
+        email = (info.get("email") or "").lower()
+        if not email:
+            return False, "No email address was returned by Google."
+
+        allowed = _allowed_emails()
+        if allowed and email not in allowed:
+            return False, f"Sorry — {email} is not on the allowed-users list."
+
+        return True, {"email": email, "name": info.get("name", "")}
+    except Exception as e:
+        return False, f"Auth callback error: {str(e)}"
+
+
+@app.get("/auth/me")
+async def get_current_user(request: Request):
+    from src.security.google_auth import is_configured
+    if not is_configured():
+        return {
+            "authenticated": True,
+            "email": "local-dev@example.com",
+            "name": "Local Developer",
+            "message": "Auth disabled (local dev mode)"
+        }
+    
+    email = request.session.get("auth_email")
+    if email:
+        return {
+            "authenticated": True,
+            "email": email,
+            "name": request.session.get("auth_name", "")
+        }
+    return {"authenticated": False}
+
+
+@app.get("/auth/login")
+async def login(request: Request):
+    from src.security.google_auth import is_configured, GOOGLE_AUTH_URL, _env
+    from urllib.parse import urlencode
+    
+    if not is_configured():
+        request.session["auth_email"] = "local-dev@example.com"
+        request.session["auth_name"] = "Local Developer"
+        return RedirectResponse(url="/")
+        
+    redirect_uri = get_fastapi_redirect_uri(request)
+    params = {
+        "client_id":     _env("GOOGLE_OAUTH_CLIENT_ID"),
+        "redirect_uri":  redirect_uri,
+        "response_type": "code",
+        "scope":         "openid email profile",
+        "access_type":   "online",
+        "prompt":        "select_account",
+    }
+    url = f"{GOOGLE_AUTH_URL}?{urlencode(params)}"
+    return RedirectResponse(url=url)
+
+
+@app.get("/auth/callback")
+async def auth_callback(request: Request, code: str = None, error: str = None):
+    if error:
+        raise HTTPException(status_code=400, detail=f"Google authentication error: {error}")
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+        
+    redirect_uri = get_fastapi_redirect_uri(request)
+    success, result = exchange_code_for_user(code, redirect_uri)
+    if not success:
+        raise HTTPException(status_code=400, detail=str(result))
+        
+    request.session["auth_email"] = result["email"]
+    request.session["auth_name"] = result["name"]
+    return RedirectResponse(url="/")
+
+
+@app.get("/auth/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/")
 
 
 @app.get("/health")
@@ -487,25 +620,33 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
             from src.core.rag import ingest_document
             # Reconstruct the text from sections since raw text is dropped from state for security
             brd_full_text = "\n\n".join(f"### {sec.section_name}\n{sec.content}" for sec in state.brd_sections)
-            doc_id = state.brd_name or f"brd_{run_id}"
-            
-            ingest_res = ingest_document(
-                text=brd_full_text,
-                doc_id=doc_id,
-                source_type="brd",
-                domain="generic"
-            )
-            log.info(f"[{run_id}] BRD ingested to Pinecone | {ingest_res}")
-            _push_event(run_id, {
-                "type": "pinecone_ingest",
-                "status": "ok",
-                "detail": ingest_res
-            })
+            if not brd_full_text.strip():
+                log.info(f"[{run_id}] Skipping Pinecone ingestion: empty BRD text.")
+                _push_event(run_id, {
+                    "type": "pinecone_ingest",
+                    "status": "skipped",
+                    "detail": "Empty BRD text"
+                })
+            else:
+                doc_id = state.brd_name or f"brd_{run_id}"
+                ingest_res = ingest_document(
+                    text=brd_full_text,
+                    doc_id=doc_id,
+                    source_type="brd",
+                    domain="generic"
+                )
+                log.info(f"[{run_id}] BRD ingested to Pinecone | {ingest_res}")
+                _push_event(run_id, {
+                    "type": "pinecone_ingest",
+                    "status": "ok",
+                    "detail": ingest_res
+                })
         except Exception as e:
             err_msg = str(e)[:240]
             log.error(f"[{run_id}] Failed to ingest BRD to Pinecone: {err_msg}")
             _push_event(run_id, {
-                "type": "pinecone_ingest_failed",
+                "type": "pinecone_ingest",
+                "status": "failed",
                 "error": err_msg
             })
 
@@ -638,7 +779,14 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
         from src.agents.pipeline import run_pipeline
         state = run_pipeline(brd_text, brd_hash, run_id, brd_name)
         _runs[run_id] = state
-        _push_event(run_id, {"type": "pipeline_complete", "status": state.pipeline_status})
+        _push_event(run_id, {
+            "type":                "pipeline_complete",
+            "status":              state.pipeline_status,
+            "final_status":        state.pipeline_status,  # legacy alias used by some clients
+            "processing_time_sec": getattr(state, "processing_time_sec", 0),
+            "total_input_tokens":  getattr(state, "total_input_tokens", 0),
+            "total_output_tokens": getattr(state, "total_output_tokens", 0),
+        })
         log.info(f"[{run_id}] Pipeline task complete | status={state.pipeline_status}")
     except Exception as e:
         log.error(f"[{run_id}] Pipeline task failed | error={e}")
@@ -677,6 +825,15 @@ def _push_event(run_id: str, data: dict) -> None:
     if run_id not in _run_events:
         _run_events[run_id] = []
     _run_events[run_id].append(json.dumps(data))
+
+
+frontend_dist_dir = _os.path.join(
+    _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 
+    "frontend", 
+    "dist"
+)
+_os.makedirs(frontend_dist_dir, exist_ok=True)
+app.mount("/", StaticFiles(directory=frontend_dist_dir, html=True), name="static")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
