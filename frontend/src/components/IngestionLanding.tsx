@@ -77,42 +77,22 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     <div className="space-y-8 max-w-6xl mx-auto py-4">
       {/* Welcome & Subtitle Section */}
       <div className="space-y-3">
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">
+        <h2 className="text-base font-semibold tracking-tight text-slate-300">
           Transform BRDs into Implementation Plans in Minutes
         </h2>
         <p className="text-sm text-slate-400 max-w-3xl leading-relaxed">
-          EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to Human with Decision Gate. Upon approval, it pushes the Artifacts results into Jira.
+          EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon approval, it pushes the Artifacts into Jira.
         </p>
+        {/* Runtime hint — formerly inside the File Ingestion Guide box */}
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <span>Anticipate <strong className="text-slate-300">45s &ndash; 90s</strong> total run time per BRD.</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Side: Upload Zone & Guides */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* File-Format & Constraints Guide */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-4 shadow-md">
-            <h3 className="text-xs font-bold text-slate-450 uppercase tracking-wider">File Ingestion Guide</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Please use the sidebar panel on the left to upload your BRD and launch the multi-agent pipeline.
-            </p>
-            <ul className="text-xs text-slate-400 space-y-3 pt-2">
-              <li className="flex items-start gap-2">
-                <span className="text-indigo-400 font-bold select-none">•</span>
-                <span><strong>Supported formats:</strong> Clean PDF layouts, DOCX files, and plain text UTF-8 files.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-indigo-400 font-bold select-none">•</span>
-                <span><strong>Size constraints:</strong> Strict 25MB upload boundary. Files exceeding this are blocked by security validation.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-indigo-400 font-bold select-none">•</span>
-                <span><strong>Processing time:</strong> The pipeline spans multiple parallel LLM steps and evaluation loops. Anticipate 30s - 90s total run time.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Right Side: Interactive Flowchart / Hub-and-Spoke Explainer */}
-        <div className="lg:col-span-7 space-y-6">
+      {/* System Architecture Diagram — full width (File Ingestion Guide removed per UX request) */}
+      <div>
+        <div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6 shadow-md">
             <div>
               <h3 className="text-sm font-bold text-slate-200">System Architecture Diagram</h3>

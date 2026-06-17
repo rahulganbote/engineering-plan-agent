@@ -1,0 +1,105 @@
+# ────────────────────────────────────────────────────────────────────────────
+# cloudbuild.yaml — Cloud Build trigger config for EM Copilot React UI
+# ────────────────────────────────────────────────────────────────────────────
+# Pipeline: pull → docker build → push → deploy
+#
+# Trigger setup (one-time, from gcloud or Console):
+#   gcloud builds triggers create github \
+#     --name=em-copilot-react-ci \
+#     --repo-owner=rahulganbote \
+#     --repo-name=engineering-plan-agent \
+#     --branch-pattern=^dev-react-ui-upgrade$ \
+#     --build-config=cloudbuild.yaml
+#
+# Required substitutions (passed at trigger creation OR as defaults below):
+#   _REGION         — Cloud Run + Artifact Registry region (e.g. europe-west1)
+#   _SERVICE        — Cloud Run service name (default em-copilot-react)
+#   _REPO           — Artifact Registry repository (default em-copilot)
+#
+# Required secrets (must already exist in Secret Manager and be readable by
+# the Cloud Build service account):
+#   OPENAI_API_KEY, PINECONE_API_KEY, LANGCHAIN_API_KEY,
+#   GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_SA_B64, JIRA_API_TOKEN,
+#   ELEVENLABS_API_KEY
+# ────────────────────────────────────────────────────────────────────────────
+
+substitutions:
+  _REGION:       europe-west1
+  _SERVICE:      em-copilot-react
+  _REPO:         em-copilot
+  _IMAGE_TAG:    "${SHORT_SHA}"   # use commit SHA so each deploy is traceable
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8       # multi-stage Docker (Node build + Python runtime) benefits from extra CPU
+
+timeout: 1800s                    # 30 min cap — typical build is ~6-8 min
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${_IMAGE_TAG}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest"
+
+steps:
+  # ── 1. Build the multi-stage Docker image ─────────────────────────────────
+  - id: 'build'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${_IMAGE_TAG}'
+      - '--tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest'
+      - '--cache-from=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest'
+      - '.'
+
+  # ── 2. Push both tags (commit SHA + latest) ───────────────────────────────
+  - id: 'push'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['build']
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}'
+
+  # ── 3. Deploy a new Cloud Run revision pointing at the SHA-tagged image ───
+  #
+  # NOTE: secret refs (--update-secrets=KEY=SECRET_NAME:latest) must be set up
+  # ONCE on the service (the gcp_deploy_secrets.sh you ran earlier handled this).
+  # This step only updates the image — it does NOT re-set env vars or secrets,
+  # preserving whatever you've configured manually.
+  - id: 'deploy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    waitFor: ['push']
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${_IMAGE_TAG}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--port=7860'
+      - '--allow-unauthenticated'
+      - '--quiet'
+
+  # ── 4. Smoke test the new revision ────────────────────────────────────────
+  - id: 'smoke'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    waitFor: ['deploy']
+    args:
+      - '-c'
+      - |
+        URL=$(gcloud run services describe ${_SERVICE} \
+                --region=${_REGION} \
+                --format='value(status.url)')
+        echo "Service URL: $$URL"
+        # /health endpoint must return 200 within 30 seconds of deploy
+        for i in $$(seq 1 6); do
+          if curl -sf "$$URL/health" >/dev/null; then
+            echo "✓ /health OK"
+            exit 0
+          fi
+          echo "Attempt $$i/6 — waiting for /health to respond..."
+          sleep 5
+        done
+        echo "✗ /health did not respond — failing build"
+        exit 1

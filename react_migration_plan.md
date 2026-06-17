@@ -831,7 +831,7 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Disclaimer notice banner — TODO replace text with project-level disclaimer */}
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg text-xs leading-relaxed text-slate-300">
-                <span className="font-bold text-slate-100 uppercase">Disclaimer:</span> This is a capstone demo. Outputs may contain errors. Validate before acting on them.
+                <span className="font-bold text-slate-100 uppercase">Disclaimer:</span> This application is for demo purposes only. The AI can make mistakes.Validate before acting on them.
               </div>
 
               {/* Tabs list */}

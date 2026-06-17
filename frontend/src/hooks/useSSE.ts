@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../lib/apiClient';
 
 export interface LogEvent {
   type: string;
@@ -43,6 +44,12 @@ export interface ApprovalResult {
   sheet_url?: string;
   jira_url?: string;
   rejection_count: number;
+  export_status?: string;
+  export_mode?: string;
+  export_detail?: string;
+  jira_status?: string;
+  jira_issue_key?: string;
+  jira_detail?: string;
 }
 
 // Backend returns these as Pydantic objects (structured), not strings.
@@ -56,6 +63,37 @@ export interface ArtifactsState {
   stack_output?: unknown;
   brd_sections?: unknown;
   critic_output?: unknown;
+}
+
+interface ArtifactsResponse {
+  brd_sections?: unknown[];
+  plan_output?: unknown;
+  schedule_output?: unknown;
+  arch_output?: unknown;
+  poc_output?: unknown;
+  stack_output?: unknown;
+  processing_time_sec?: number;
+  total_input_tokens?: number;
+  total_output_tokens?: number;
+  critic_output?: {
+    revision_number: number;
+    overall_score: number;
+    badge?: string;
+    dimensions?: Record<string, CriticDimension>;
+  };
+  export?: {
+    sheet_url?: string | null;
+    mode?: string;
+    status?: string;
+    detail?: string;
+    fallback_reason?: string | null;
+    jira?: {
+      url?: string | null;
+      mode?: string;
+      issue_key?: string | null;
+      detail?: string | null;
+    };
+  };
 }
 
 export const useSSE = (runId: string | null, apiBaseUrl: string) => {
@@ -209,67 +247,79 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const fetchArtifacts = useCallback(async () => {
     if (!runId) return;
     try {
-      const response = await fetch(`${apiBaseUrl}/artifacts/${runId}`, { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.brd_sections) {
-          setArtifacts({
-            plan_output: data.plan_output || undefined,
-            schedule_output: data.schedule_output || undefined,
-            arch_output: data.arch_output || undefined,
-            poc_output: data.poc_output || undefined,
-            stack_output: data.stack_output || undefined,
-            brd_sections: data.brd_sections || undefined,
-          });
-        }
-        // Pick up time + tokens from /artifacts response (works on refresh)
-        if (data.processing_time_sec != null && data.processing_time_sec > 0) {
-          setElapsedSeconds(Math.round(data.processing_time_sec));
-        }
-        if (data.total_input_tokens != null || data.total_output_tokens != null) {
-          setTokenUsage({
-            input: data.total_input_tokens || 0,
-            output: data.total_output_tokens || 0,
-          });
-        }
-
-        if (data.critic_output) {
-          setCriticOutput({
-            revisionNumber: data.critic_output.revision_number,
-            overallScore: data.critic_output.overall_score,
-            badge: data.critic_output.badge?.toLowerCase() as 'green' | 'amber' | 'red',
-            dimensions: data.critic_output.dimensions || {},
-          });
-        }
-
-        // Force-fill completed agents if artifacts exist
-        setCompletedAgents((prev) => {
-          const next = new Set(prev);
-          if (data.brd_sections && data.brd_sections.length > 0) {
-            next.add('orchestrator');
-          }
-          if (data.plan_output) {
-            next.add('engineering_plan_generator');
-          }
-          if (data.schedule_output) {
-            next.add('schedule_estimator');
-          }
-          if (data.arch_output) {
-            next.add('solution_architect');
-          }
-          if (data.poc_output) {
-            next.add('poc_planner');
-          }
-          if (data.stack_output) {
-            next.add('tech_stack_recommender');
-          }
-          if (data.critic_output) {
-            next.add('critic');
-          }
-          return next;
+      const data = await apiFetch<ArtifactsResponse>(`${apiBaseUrl}/artifacts/${runId}`);
+      
+      if (data.brd_sections) {
+        setArtifacts({
+          plan_output: data.plan_output || undefined,
+          schedule_output: data.schedule_output || undefined,
+          arch_output: data.arch_output || undefined,
+          poc_output: data.poc_output || undefined,
+          stack_output: data.stack_output || undefined,
+          brd_sections: data.brd_sections || undefined,
         });
       }
+      // Pick up time + tokens from /artifacts response (works on refresh)
+      if (data.processing_time_sec != null && data.processing_time_sec > 0) {
+        setElapsedSeconds(Math.round(data.processing_time_sec));
+      }
+      if (data.total_input_tokens != null || data.total_output_tokens != null) {
+        setTokenUsage({
+          input: data.total_input_tokens || 0,
+          output: data.total_output_tokens || 0,
+        });
+      }
+
+      if (data.critic_output) {
+        setCriticOutput({
+          revisionNumber: data.critic_output.revision_number,
+          overallScore: data.critic_output.overall_score,
+          badge: data.critic_output.badge?.toLowerCase() as 'green' | 'amber' | 'red',
+          dimensions: data.critic_output.dimensions || {},
+        });
+      }
+
+      if (data.export) {
+        setApprovalResult({
+          decision: data.export.status === 'rejected' ? 'rejected' : 'approved',
+          sheet_url: data.export.sheet_url || undefined,
+          jira_url: data.export.jira?.url || undefined,
+          rejection_count: 0,
+          export_status: data.export.status || undefined,
+          export_mode: data.export.mode || undefined,
+          export_detail: data.export.detail || undefined,
+          jira_status: data.export.jira?.mode || undefined,
+          jira_issue_key: data.export.jira?.issue_key || undefined,
+          jira_detail: data.export.jira?.detail || undefined,
+        });
+      }
+
+      // Force-fill completed agents if artifacts exist
+      setCompletedAgents((prev) => {
+        const next = new Set(prev);
+        if (data.brd_sections && data.brd_sections.length > 0) {
+          next.add('orchestrator');
+        }
+        if (data.plan_output) {
+          next.add('engineering_plan_generator');
+        }
+        if (data.schedule_output) {
+          next.add('schedule_estimator');
+        }
+        if (data.arch_output) {
+          next.add('solution_architect');
+        }
+        if (data.poc_output) {
+          next.add('poc_planner');
+        }
+        if (data.stack_output) {
+          next.add('tech_stack_recommender');
+        }
+        if (data.critic_output) {
+          next.add('critic');
+        }
+        return next;
+      });
     } catch (e) {
       console.error('Failed to fetch artifacts:', e);
     }
@@ -279,7 +329,9 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     if (!runId) return;
 
     if (['awaiting_hitl', 'exported', 'export_failed', 'rejected', 'error'].includes(pipelineStatus)) {
-      fetchArtifacts();
+      Promise.resolve().then(() => {
+        fetchArtifacts();
+      });
     }
   }, [runId, pipelineStatus, fetchArtifacts]);
 

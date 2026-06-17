@@ -4,31 +4,25 @@ import { useAuth } from '../context/AuthContext';
 import { PlanSkeleton } from './PlanSkeleton';
 import { ErrorBoundary } from './ErrorBoundary';
 import { HITLApprovalGate, type ApprovalResponse } from './HITLApprovalGate';
+import { apiFetch } from '../lib/apiClient';
 import { IngestionLanding } from './IngestionLanding';
 import { TimelineStepper } from './TimelineStepper';
 import { LogConsole } from './LogConsole';
-import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check } from 'lucide-react';
-import { toast } from 'sonner';
+import { PlanTab } from './PlanTab';
+import { ScheduleTab } from './ScheduleTab';
+import { ArchitectureTab } from './ArchitectureTab';
+import { PoCTab } from './PoCTab';
+import { TechStackTab } from './TechStackTab';
+import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2 } from 'lucide-react';
 
-// Sprint 3 stopgap: backend artifacts are structured objects (EngineeringPlanOutput,
-// ScheduleOutput, etc.). React can't render an object as a child — it throws and
-// the ErrorBoundary catches it. JSON.stringify gives us a readable view until Sprint 4
-// builds proper structured renderers.
-function renderArtifact(value: unknown, fallback: string): string {
-  if (value == null) return fallback;
-  if (typeof value === "string") return value;
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-}
+
 
 export const AgentWorkspace: React.FC = () => {
   const { user, loading, login, logout, isAuthenticated } = useAuth();
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [runIdCopied, setRunIdCopied] = useState(false);
+  const [isStartingPipeline, setIsStartingPipeline] = useState(false);
 
   const {
     runId,
@@ -79,20 +73,19 @@ export const AgentWorkspace: React.FC = () => {
 
   const triggerPipeline = async () => {
     if (!selectedFile) return;
+    setIsStartingPipeline(true);
     const form = new FormData();
     form.append("file", selectedFile);
     try {
-      const response = await fetch(`${apiBaseUrl}/run-pipeline`, {
+      const data = await apiFetch<{ run_id: string }>(`${apiBaseUrl}/run-pipeline`, {
         method: "POST",
         body: form,
-        credentials: "include",
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
       setRunId(data.run_id);
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : String(e);
-      toast.error(`Failed to start pipeline: ${errMsg}`);
+      console.error("Failed to start pipeline:", e);
+    } finally {
+      setIsStartingPipeline(false);
     }
   };
 
@@ -115,7 +108,7 @@ export const AgentWorkspace: React.FC = () => {
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500 font-medium">Signed in:</span>
-                <button 
+                <button
                   onClick={logout}
                   className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1 font-semibold"
                 >
@@ -142,16 +135,16 @@ export const AgentWorkspace: React.FC = () => {
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Upload BRD</h3>
               <p className="text-xs text-slate-500">Drop a PDF, DOCX, or TXT BRD</p>
-              
-              <div 
+
+              <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleFileDrop}
                 className="border-2 border-dashed border-slate-800 rounded-lg p-6 bg-slate-950 hover:bg-slate-900/60 hover:border-indigo-500/50 transition cursor-pointer text-center relative"
               >
-                <input 
-                  type="file" 
-                  onChange={handleFileChange} 
-                  accept=".pdf,.docx,.txt" 
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".pdf,.docx,.txt"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
                 <Upload className="mx-auto text-slate-600 mb-2" size={24} />
@@ -192,16 +185,22 @@ export const AgentWorkspace: React.FC = () => {
           {isAuthenticated && (
             <button
               onClick={triggerPipeline}
-              disabled={!selectedFile || !!runId}
-              className={`w-full py-2.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2 ${
-                runId 
-                  ? 'bg-slate-850 text-slate-600 border border-slate-800 cursor-not-allowed'
-                  : selectedFile 
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md' 
+              disabled={!selectedFile || !!runId || isStartingPipeline}
+              className={`w-full py-2.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2 ${runId || isStartingPipeline
+                  ? 'bg-slate-850 text-slate-500 border border-slate-800 cursor-not-allowed'
+                  : selectedFile
+                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md cursor-pointer'
                     : 'bg-slate-850 text-slate-600 border border-slate-800 cursor-not-allowed'
-              }`}
+                }`}
             >
-              Generate Engineering Plan
+              {isStartingPipeline ? (
+                <>
+                  <Loader2 className="animate-spin text-indigo-400" size={16} />
+                  <span>Starting Pipeline...</span>
+                </>
+              ) : (
+                <span>Generate Engineering Plan</span>
+              )}
             </button>
           )}
 
@@ -248,7 +247,7 @@ export const AgentWorkspace: React.FC = () => {
 
         {/* Collapsible Advanced Settings Accordion */}
         <div className="border-t border-slate-800 bg-slate-900/40">
-          <button 
+          <button
             onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
             className="w-full px-6 py-4 flex items-center justify-between text-xs font-bold text-slate-400 hover:bg-slate-850/40 transition uppercase tracking-wider"
           >
@@ -259,9 +258,9 @@ export const AgentWorkspace: React.FC = () => {
             <div className="px-6 pb-6 pt-2 space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">API Base URL</label>
-                <input 
-                  type="text" 
-                  value={apiBaseUrl} 
+                <input
+                  type="text"
+                  value={apiBaseUrl}
                   onChange={(e) => setApiBaseUrl(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-200 font-mono"
                 />
@@ -276,7 +275,7 @@ export const AgentWorkspace: React.FC = () => {
         {/* Main Header */}
         <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-slate-900 shrink-0 shadow-sm">
           <div>
-            <h1 className="text-lg font-bold text-slate-100">BRD → Engineering Plan</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-100 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">BRD → Engineering Plan</h1>
             <p className="text-xs text-slate-500">EM Copilot | Multi-Agent BRD-to-Engineering Plan System with HITL</p>
           </div>
           <div className="flex items-center gap-2">
@@ -310,8 +309,8 @@ export const AgentWorkspace: React.FC = () => {
                       <p className="text-xs text-amber-300/80">The multi-agent pipeline is paused. Please review the generated plans and approve below.</p>
                     </div>
                   </div>
-                  <a 
-                    href="#decision-gate" 
+                  <a
+                    href="#decision-gate"
                     className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded transition shadow-sm shrink-0"
                   >
                     👇 Scroll to Decision Gate
@@ -330,42 +329,53 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Critic Rubric Scoring Cards */}
               {criticOutput && (
-                <div className="space-y-4 border border-slate-800 rounded-xl p-6 bg-slate-900 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Critic — Quality Assessment</h3>
-                      <div className="text-xs text-slate-500">
-                        Revision {criticOutput.revisionNumber} · Overall <strong className="text-slate-200">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
-                      </div>
+                <ErrorBoundary fallback={
+                  <div className="p-6 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-red-400 font-bold text-sm uppercase tracking-wider">
+                      <ShieldAlert size={16} />
+                      <span>Critic Component Failure</span>
                     </div>
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${
-                      criticOutput.badge === 'green'
-                        ? 'bg-green-950/50 text-green-400 border border-green-800/50' 
-                        : criticOutput.badge === 'amber'
-                          ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50'
-                          : 'bg-red-950/50 text-red-400 border border-red-800/50'
-                    }`}>
-                      {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
-                    </span>
+                    <p className="text-xs text-red-300/80 leading-relaxed">
+                      An error occurred while rendering the Critic scorecards. The rest of the workspace remains active.
+                    </p>
                   </div>
-
-                  {/* Metrics block */}
-                  <div className="grid grid-cols-4 gap-4 pt-2">
-                    {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
-                      const data = criticOutput.dimensions[metric];
-                      if (!data) return null;
-                      return (
-                        <div key={metric} className="p-4 bg-slate-950 rounded-lg border border-slate-800 text-center">
-                          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider capitalize">{metric}</div>
-                          <div className="text-2xl font-extrabold text-slate-200 my-1">{data.score.toFixed(2)}</div>
-                          <div className={`text-xs font-semibold ${data.passed ? 'text-green-400' : 'text-red-400'}`}>
-                            {data.passed ? `✓ Passed (≥ ${data.threshold})` : `✗ Failed (≥ ${data.threshold})`}
-                          </div>
+                }>
+                  <div className="space-y-4 border border-slate-800 rounded-xl p-6 bg-slate-900 shadow-lg">
+                    <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Critic — Quality Assessment</h3>
+                        <div className="text-xs text-slate-500">
+                          Revision {criticOutput.revisionNumber} · Overall <strong className="text-slate-200">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
                         </div>
-                      );
-                    })}
+                      </div>
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
+                          ? 'bg-green-950/50 text-green-400 border border-green-800/50'
+                          : criticOutput.badge === 'amber'
+                            ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50'
+                            : 'bg-red-950/50 text-red-400 border border-red-800/50'
+                        }`}>
+                        {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
+                      </span>
+                    </div>
+
+                    {/* Metrics block */}
+                    <div className="grid grid-cols-4 gap-4 pt-2">
+                      {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
+                        const data = criticOutput.dimensions[metric];
+                        if (!data) return null;
+                        return (
+                          <div key={metric} className="p-4 bg-slate-950 rounded-lg border border-slate-800 text-center">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider capitalize">{metric}</div>
+                            <div className="text-2xl font-extrabold text-slate-200 my-1">{data.score.toFixed(2)}</div>
+                            <div className={`text-xs font-semibold ${data.passed ? 'text-green-400' : 'text-red-400'}`}>
+                              {data.passed ? `✓ Passed (≥ ${data.threshold})` : `✗ Failed (≥ ${data.threshold})`}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                </ErrorBoundary>
               )}
 
               {/* Performance Metrics Summary */}
@@ -380,9 +390,6 @@ export const AgentWorkspace: React.FC = () => {
                   <strong>Tokens used:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
                 </div>
               </div>
-
-              {/* Live Log Console */}
-              <LogConsole logs={logs} />
 
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (
@@ -399,7 +406,7 @@ export const AgentWorkspace: React.FC = () => {
 
                   {/* Disclaimer notice banner */}
                   <div className="bg-slate-950 border border-slate-850 p-4 rounded-lg text-xs leading-relaxed text-slate-400">
-                    <span className="font-bold text-slate-200 uppercase">Disclaimer:</span> This is a capstone demo. Outputs may contain errors. Validate before acting on them.
+                    <span className="font-bold text-slate-200 uppercase">Disclaimer:</span> This application is for demo purposes only. AI can make mistakes. Validate before acting on them.
                   </div>
 
                   {/* Tabs list */}
@@ -408,11 +415,10 @@ export const AgentWorkspace: React.FC = () => {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all ${
-                          activeTab === tab 
-                            ? 'bg-slate-900 text-slate-100 shadow-sm border border-slate-800' 
+                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all ${activeTab === tab
+                            ? 'bg-slate-900 text-slate-100 shadow-sm border border-slate-800'
                             : 'text-slate-500 hover:text-slate-350'
-                        }`}
+                          }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
                       </button>
@@ -427,44 +433,19 @@ export const AgentWorkspace: React.FC = () => {
                       ) : (
                         <div>
                           {activeTab === 'plan' && (
-                            <div className="text-slate-350 text-sm">
-                              <h4 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wide">Engineering Plan</h4>
-                              <pre className="p-4 bg-slate-950 rounded border border-slate-850 font-mono text-xs overflow-x-auto whitespace-pre-wrap text-slate-300">
-                                {renderArtifact(artifacts.plan_output, "Plan content is loading or not generated.")}
-                              </pre>
-                            </div>
+                            <PlanTab planData={artifacts.plan_output} />
                           )}
                           {activeTab === 'schedule' && (
-                            <div className="text-slate-355 text-sm">
-                              <h4 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wide">Timeline & Milestones</h4>
-                              <pre className="p-4 bg-slate-950 rounded border border-slate-850 font-mono text-xs overflow-x-auto whitespace-pre-wrap text-slate-300">
-                                {renderArtifact(artifacts.schedule_output, "Timeline schedule is loading or not generated.")}
-                              </pre>
-                            </div>
+                            <ScheduleTab scheduleData={artifacts.schedule_output} />
                           )}
                           {activeTab === 'arch' && (
-                            <div className="text-slate-355 text-sm">
-                              <h4 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wide">Architecture Spec</h4>
-                              <pre className="p-4 bg-slate-950 rounded border border-slate-850 font-mono text-xs overflow-x-auto whitespace-pre-wrap text-slate-300">
-                                {renderArtifact(artifacts.arch_output, "Architecture diagram source is loading or not generated.")}
-                              </pre>
-                            </div>
+                            <ArchitectureTab architectureData={artifacts.arch_output} />
                           )}
                           {activeTab === 'poc' && (
-                            <div className="text-slate-355 text-sm">
-                              <h4 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wide">PoC Code Scope</h4>
-                              <pre className="p-4 bg-slate-950 rounded border border-slate-850 font-mono text-xs overflow-x-auto whitespace-pre-wrap text-slate-300">
-                                {renderArtifact(artifacts.poc_output, "PoC code is loading or not generated.")}
-                              </pre>
-                            </div>
+                            <PoCTab pocData={artifacts.poc_output} />
                           )}
                           {activeTab === 'stack' && (
-                            <div className="text-slate-355 text-sm">
-                              <h4 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-wide">Tech Stack Matrix</h4>
-                              <pre className="p-4 bg-slate-950 rounded border border-slate-850 font-mono text-xs overflow-x-auto whitespace-pre-wrap text-slate-300">
-                                {renderArtifact(artifacts.stack_output, "Tech stack information is loading or not generated.")}
-                              </pre>
-                            </div>
+                            <TechStackTab techStackData={artifacts.stack_output} />
                           )}
                         </div>
                       )}
@@ -476,9 +457,133 @@ export const AgentWorkspace: React.FC = () => {
               {/* Decision Gate Section */}
               {pipelineStatus === "awaiting_hitl" && (
                 <div className="border-t border-slate-800 pt-8">
-                  <HITLApprovalGate runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
+                  <ErrorBoundary fallback={
+                    <div className="p-6 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
+                      <div className="flex items-center gap-2 text-red-400 font-bold text-sm uppercase tracking-wider">
+                        <ShieldAlert size={16} />
+                        <span>Decision Gate Component Failure</span>
+                      </div>
+                      <p className="text-xs text-red-300/80 leading-relaxed">
+                        An error occurred while loading the Decision Gate. Please try refreshing or restarting the run.
+                      </p>
+                    </div>
+                  }>
+                    <HITLApprovalGate runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
+                  </ErrorBoundary>
                 </div>
               )}
+
+              {/* Export Status / Final Decision Section */}
+              {(pipelineStatus === "exported" || pipelineStatus === "export_failed" || pipelineStatus === "rejected") && (
+                <div className="border-t border-slate-800 pt-8">
+                  <div className="max-w-3xl mx-auto p-6 bg-slate-900 border border-slate-800 rounded-xl space-y-6 shadow-xl animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Export Results</h3>
+                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                        pipelineStatus === 'exported'
+                          ? 'bg-emerald-950/20 border border-emerald-800/40 text-emerald-400'
+                          : pipelineStatus === 'rejected'
+                            ? 'bg-red-950/20 border border-red-800/40 text-red-400'
+                            : 'bg-amber-950/20 border border-amber-800/40 text-amber-400'
+                      }`}>
+                        {pipelineStatus === 'exported' ? '✓ Exported Successfully' : pipelineStatus === 'rejected' ? '✗ Plan Rejected' : '⚠ Export Failed'}
+                      </span>
+                    </div>
+
+                    {pipelineStatus === 'rejected' && (
+                      <div className="p-4 bg-red-950/10 border border-red-900/30 text-red-450 rounded-lg space-y-1">
+                        <div className="text-xs font-bold uppercase tracking-wider">Re-evaluation Required</div>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          This plan was rejected by the manager. Review the feedback logs and adjust details before starting a new run.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      {/* Google Sheets Status Box */}
+                      {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
+                        <div className="p-4 bg-emerald-950/15 border border-emerald-500/30 rounded-lg space-y-3 animate-fade-in">
+                          <div className="text-xs font-bold text-emerald-450">
+                            Artifacts exported to Google Sheets
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-relaxed">
+                            {approvalResult?.export_detail || "Wrote Run Summary + Plan + Schedule + Tech Stack tabs to Google Sheets"}
+                          </div>
+                          <a
+                            href={approvalResult.sheet_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold text-xs transition duration-150 shadow-sm"
+                          >
+                            Open Google Sheet
+                          </a>
+                        </div>
+                      ) : approvalResult?.export_status === 'local_fallback' ? (
+                        <div className="p-4 bg-amber-950/15 border border-amber-500/30 rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-amber-405">
+                            Artifacts saved to local fallback CSV
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-relaxed">
+                            {approvalResult?.export_detail || "Google Sheets integration is not configured — local CSV backup exported instead."}
+                          </div>
+                        </div>
+                      ) : approvalResult?.export_status === 'failed' ? (
+                        <div className="p-4 bg-red-950/15 border border-red-500/30 rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-red-450">
+                            Google Sheets export failed
+                          </div>
+                          <div className="text-[11px] text-red-300 leading-relaxed font-mono">
+                            {approvalResult?.export_detail || "Failed to push decision. Google Sheets export failed."}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {/* Jira Status Box */}
+                      {approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
+                        <div className="p-4 bg-emerald-950/15 border border-emerald-500/30 rounded-lg space-y-3 animate-fade-in">
+                          <div className="text-xs font-bold text-emerald-450">
+                            Pushed to Jira: {approvalResult.jira_issue_key}
+                          </div>
+                          <div className="text-[11px] text-slate-400 leading-relaxed">
+                            {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
+                          </div>
+                          <a
+                            href={approvalResult.jira_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold text-xs transition duration-150 shadow-sm"
+                          >
+                            Open Jira issue {approvalResult.jira_issue_key}
+                          </a>
+                        </div>
+                      ) : approvalResult?.jira_status === 'skipped' ? (
+                        <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-1 animate-fade-in">
+                          <div className="text-xs font-bold text-slate-450">
+                            Jira push skipped
+                          </div>
+                          <div className="text-[11px] text-slate-500 leading-relaxed">
+                            {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
+                          </div>
+                        </div>
+                      ) : approvalResult?.jira_status === 'failed' ? (
+                        <div className="p-4 bg-red-950/15 border border-red-500/30 rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-red-450">
+                            Jira push failed
+                          </div>
+                          <div className="text-[11px] text-red-350 leading-relaxed font-mono">
+                            {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Live Log Console */}
+              <div className="border-t border-slate-800 pt-8">
+                <LogConsole logs={logs} />
+              </div>
             </>
           )}
         </div>

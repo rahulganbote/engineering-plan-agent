@@ -1,0 +1,93 @@
+import React, { useEffect, useState, useRef } from 'react';
+import mermaid from 'mermaid';
+import { AlertCircle } from 'lucide-react';
+
+interface MermaidRendererProps {
+  diagramSvg?: string | null;
+  diagramMermaid?: string | null;
+}
+
+export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagramSvg, diagramMermaid }) => {
+  const [renderedSvg, setRenderedSvg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (diagramSvg) {
+      Promise.resolve().then(() => {
+        setRenderedSvg(diagramSvg);
+        setError(null);
+      });
+      return;
+    }
+
+    if (!diagramMermaid) {
+      Promise.resolve().then(() => {
+        setRenderedSvg(null);
+        setError(null);
+      });
+      return;
+    }
+
+    const renderChart = async () => {
+      try {
+        // Initialize mermaid with appropriate theme and variables matching dark slate dashboard
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'dark',
+          securityLevel: 'loose',
+          themeVariables: {
+            background: '#090d16',
+            primaryColor: '#6366f1',
+            lineColor: '#334155',
+          }
+        });
+
+        const id = `mermaid-svg-${Math.floor(Math.random() * 100000)}`;
+        const { svg } = await mermaid.render(id, diagramMermaid);
+        setRenderedSvg(svg);
+        setError(null);
+      } catch (e: unknown) {
+        console.error("Mermaid client-side render error:", e);
+        const errMsg = e instanceof Error ? e.message : String(e);
+        setError(errMsg);
+      }
+    };
+
+    renderChart();
+  }, [diagramSvg, diagramMermaid]);
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-450 rounded-lg text-xs space-y-2">
+        <div className="flex items-center gap-2 font-bold text-red-400">
+          <AlertCircle size={16} />
+          <span>Mermaid client-side render failed</span>
+        </div>
+        <p className="text-[11px] text-red-300 font-mono">
+          {error}
+        </p>
+        <p className="text-[10px] text-slate-500 italic">
+          You can still copy and run the source code below in any Mermaid-aware editor.
+        </p>
+      </div>
+    );
+  }
+
+  if (!renderedSvg) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500 mb-3" />
+        <span>Generating diagram...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className="w-full overflow-x-auto p-4 bg-slate-950 rounded-lg border border-slate-850 flex justify-center [&>svg]:max-w-full [&>svg]:h-auto text-slate-200"
+      dangerouslySetInnerHTML={{ __html: renderedSvg }}
+    />
+  );
+};

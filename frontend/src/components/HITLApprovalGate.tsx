@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Check, X, ThumbsUp, AlertCircle } from 'lucide-react';
+import { Check, X, ThumbsUp, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { apiFetch } from '../lib/apiClient';
 
 export interface ApprovalResponse {
   run_id: string;
@@ -43,7 +44,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
     toast.info("Recording decision and exporting artifacts...", { duration: 1500 });
     
     try {
-      const response = await fetch(`${apiBaseUrl}/approve/${runId}`, {
+      const data = await apiFetch<ApprovalResponse>(`${apiBaseUrl}/approve/${runId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,19 +55,14 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         })
       });
 
-      if (response.ok) {
-        toast.success(`Pipeline successfully ${decision}!`, {
-          icon: <ThumbsUp className="text-green-500" />
-        });
-        const data = (await response.json()) as ApprovalResponse;
-        if (onDecisionSubmitted) {
-          onDecisionSubmitted(data);
-        }
-      } else {
-        toast.error("Failed to post decision. Please retry.");
+      toast.success(`Pipeline successfully ${decision}!`, {
+        icon: <ThumbsUp className="text-green-500" />
+      });
+      if (onDecisionSubmitted) {
+        onDecisionSubmitted(data);
       }
-    } catch {
-      toast.error("Network connection failed.");
+    } catch (error) {
+      console.error("Failed to submit decision:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -125,24 +121,36 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         />
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
-        <button
-          onClick={() => handleSubmit('rejected')}
-          disabled={isSubmitting}
-          className="px-4 py-2 rounded-lg bg-slate-950 hover:bg-red-950/25 text-slate-300 hover:text-red-400 border border-slate-800 hover:border-red-900/30 transition flex items-center gap-2 text-xs font-bold"
-        >
-          <X size={14} />
-          Reject Plan
-        </button>
-        <button
-          onClick={() => handleSubmit('approved')}
-          disabled={isSubmitting}
-          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-2 text-xs font-bold"
-        >
-          <Check size={14} />
-          Approve & Export
-        </button>
+      <div className="grid grid-cols-3 items-center pt-2">
+        <div /> {/* Left spacer */}
+        <div className="flex justify-center">
+          <button
+            onClick={() => handleSubmit('approved')}
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-2 text-xs font-bold"
+          >
+            <Check size={14} />
+            Approve & Export
+          </button>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={() => handleSubmit('rejected')}
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg bg-slate-950 hover:bg-red-950/25 text-slate-300 hover:text-red-400 border border-slate-800 hover:border-red-900/30 transition flex items-center gap-2 text-xs font-bold"
+          >
+            <X size={14} />
+            Reject Plan
+          </button>
+        </div>
       </div>
+
+      {isSubmitting && (
+        <div className="flex items-center gap-3 text-xs text-slate-400 justify-start pt-4 border-t border-slate-800/60 animate-pulse">
+          <Loader2 className="animate-spin text-indigo-400 shrink-0" size={16} />
+          <span>Recording decision · Pushing to Jira, writing to Google Sheets...</span>
+        </div>
+      )}
     </div>
   );
 };
