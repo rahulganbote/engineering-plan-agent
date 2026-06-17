@@ -105,6 +105,14 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [tokenUsage, setTokenUsage] = useState<{ input: number; output: number } | null>(null);
   const [criticOutput, setCriticOutput] = useState<CriticOutput | null>(null);
   const [approvalResult, setApprovalResult] = useState<ApprovalResult | null>(null);
+  const [prevRunId, setPrevRunId] = useState<string | null>(null);
+
+  if (runId !== prevRunId) {
+    setPrevRunId(runId);
+    if (runId) {
+      setPipelineStatus('initializing');
+    }
+  }
 
   const clearRun = useCallback(() => {
     setLogs([]);
@@ -121,9 +129,6 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     if (!runId) return;
 
     const es = new EventSource(`${apiBaseUrl}/status/${runId}`, { withCredentials: true });
-    const statusTimeout = setTimeout(() => {
-      setPipelineStatus('initializing');
-    }, 0);
     const startTs = Date.now();
     const tick = setInterval(() => {
       setElapsedSeconds(Math.round((Date.now() - startTs) / 1000));
@@ -237,7 +242,6 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     };
 
     return () => {
-      clearTimeout(statusTimeout);
       clearInterval(tick);
       es.close();
     };

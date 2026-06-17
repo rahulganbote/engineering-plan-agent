@@ -2,6 +2,13 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HITLApprovalGate } from '../HITLApprovalGate';
 
+// Mock WorkspaceContext
+vi.mock('../../context/WorkspaceContext', () => ({
+  useWorkspace: () => ({
+    apiBaseUrl: 'http://localhost:8000',
+  }),
+}));
+
 // Mock sonner — toast triggers shouldn't blow up tests
 vi.mock('sonner', () => ({
   toast: {

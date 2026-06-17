@@ -18,12 +18,12 @@ describe('TimelineStepper', () => {
   it('shows all 6 business-focused stage labels', () => {
     render(<TimelineStepper {...baseProps} />);
     // 6 steps: Security, Orchestrator, Specialists, Critic, HITL Gate, Decision
-    expect(screen.getByText(/Security/i)).toBeInTheDocument();
-    expect(screen.getByText(/Orchestrator/i)).toBeInTheDocument();
-    expect(screen.getByText(/Specialists/i)).toBeInTheDocument();
-    expect(screen.getByText(/Critic/i)).toBeInTheDocument();
-    expect(screen.getByText(/HITL Gate/i)).toBeInTheDocument();
-    expect(screen.getByText(/Decision/i)).toBeInTheDocument();
+    expect(screen.getByText('Security')).toBeInTheDocument();
+    expect(screen.getByText('Orchestrator')).toBeInTheDocument();
+    expect(screen.getByText('Specialists')).toBeInTheDocument();
+    expect(screen.getByText('Critic')).toBeInTheDocument();
+    expect(screen.getByText('HITL Gate')).toBeInTheDocument();
+    expect(screen.getByText('Decision')).toBeInTheDocument();
   });
 
   it('reflects completed orchestrator status visually', () => {

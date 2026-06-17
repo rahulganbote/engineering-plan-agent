@@ -25,6 +25,6 @@ describe('ArchitectureTab', () => {
     };
     render(<ArchitectureTab architectureData={arch} />);
     expect(screen.getByText(/Microservices/i)).toBeInTheDocument();
-    expect(screen.getByText(/API Gateway/i)).toBeInTheDocument();
+    expect(screen.getByText('API Gateway')).toBeInTheDocument();
   });
 });

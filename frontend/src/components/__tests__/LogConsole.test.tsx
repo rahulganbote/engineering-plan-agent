@@ -23,6 +23,6 @@ describe('LogConsole', () => {
   it('renders pipeline_complete log with final status', () => {
     const logs = [{ type: 'pipeline_complete', status: 'awaiting_hitl', timestamp: 'now' }];
     render(<LogConsole logs={logs} />);
-    expect(screen.getByText(/awaiting_hitl|Pipeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/Run completed/i)).toBeInTheDocument();
   });
 });

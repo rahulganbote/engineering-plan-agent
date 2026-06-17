@@ -11,17 +11,19 @@ describe('TechStackTab', () => {
     const stack = {
       options: [{
         name: 'FastAPI + PostgreSQL',
-        scalability: 4,
-        familiarity: 5,
+        components: { backend: 'FastAPI', database: 'PostgreSQL' },
+        scalability_rating: 4,
+        team_familiarity_rating: 5,
         integration_risk: 'low',
-        monthly_cost_usd: 2000,
+        estimated_monthly_cost_usd: 2000,
         pros: ['High perf'],
         cons: ['Newer'],
+        citation: 'ref1',
       }],
       recommended_option: 'FastAPI + PostgreSQL',
       recommendation_rationale: 'Team familiarity + fit',
     };
     render(<TechStackTab techStackData={stack} />);
-    expect(screen.getByText(/FastAPI \+ PostgreSQL/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/FastAPI \+ PostgreSQL/i).length).toBeGreaterThan(0);
   });
 });
