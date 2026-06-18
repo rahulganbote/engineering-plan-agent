@@ -49,7 +49,7 @@ import json
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Response, UploadFile, Request
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Response, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -74,26 +74,8 @@ _run_export: dict[str, dict]          = {}   # run_id → {sheet_url, status, er
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("EM Copilot API starting up")
-    yield
-    log.info("EM Copilot API shutting down")
 
-
-app = FastAPI(
-    title="EM Copilot — BRD to Engineering Plan API",
-    description=(
-        "7-agent LangGraph system that transforms BRDs into engineering artifacts. "
-        "Hub-and-spoke architecture with Pinecone RAG, Critic revision loop, and HITL gate."
-    ),
-    version="1.1.0",
-    lifespan=lifespan,
-)
-
-
-# ── Phase 8 + 10 wiring — cache backend + observability sink ────────────────
-@app.on_event("startup")
-async def _wire_resilience_and_cache() -> None:
-    """Initialise the process-default cache backend and bridge resilience
-    events into the per-run event stream. Idempotent."""
+    # ── Phase 8 + 10 wiring — cache backend + observability sink ────────────────
     try:
         from src.core.cache import init_default_backend_from_env
         init_default_backend_from_env()
@@ -112,6 +94,20 @@ async def _wire_resilience_and_cache() -> None:
         set_event_sink(_bridge)
     except Exception as e:
         log.warning(f"event sink wiring failed: {e}")
+
+    yield
+    log.info("EM Copilot API shutting down")
+
+
+app = FastAPI(
+    title="EM Copilot — BRD to Engineering Plan API",
+    description=(
+        "7-agent LangGraph system that transforms BRDs into engineering artifacts. "
+        "Hub-and-spoke architecture with Pinecone RAG, Critic revision loop, and HITL gate."
+    ),
+    version="1.1.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -346,12 +342,81 @@ async def health_check():
     return {"status": "ok", "version": "1.1.0"}
 
 
+# ── Provider availability — drives the frontend model-family dropdown ─────────
+#
+# WHY:
+#   The dropdown can't statically know which API keys are set on the deployment.
+#   Without this endpoint, a user could pick "Anthropic" in the UI when
+#   ANTHROPIC_API_KEY isn't configured, and only discover the mistake mid-pipeline
+#   with a runtime error. Calling /api/providers at app boot lets the dropdown
+#   gray-out unavailable families with a helpful reason instead of failing late.
+#
+# RESPONSE SHAPE:
+#   {
+#     "openai":    {"available": true},
+#     "anthropic": {"available": true},
+#     "llama":     {"available": false, "reason": "coming soon"},
+#     "mistral":   {"available": false, "reason": "coming soon"}
+#   }
+#
+#   - "available" gates the <option disabled> attribute in the dropdown.
+#   - "reason" surfaces as the hover-tooltip + the option label suffix.
+#
+# WHY a single endpoint (vs reading env vars from frontend at build time):
+#   - Build-time env vars baked into bundle leak across deploys
+#   - Runtime fetch makes "rotate the Anthropic key on Cloud Run" a no-redeploy op
+#   - Same SPA can serve users with different provider availability (multi-tenant
+#     future) without rebuilding.
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/providers")
+async def list_providers():
+    """
+    Return the availability of each LLM model family based on which API keys are
+    configured on this deployment. Used by the React UI to auto-disable
+    unavailable families in the model-selection dropdown.
+    """
+    return {
+        # OpenAI is the default. Without OPENAI_API_KEY the entire pipeline can't
+        # run, but we report it honestly anyway so the UI can surface the issue.
+        "openai": {
+            "available": bool(settings.openai_api_key),
+            "reason": "API key not configured" if not settings.openai_api_key else None,
+        },
+        # Anthropic was added in Option B (multi-provider). Optional — the user
+        # can run the full pipeline without it if they don't pick "Anthropic".
+        "anthropic": {
+            "available": bool(settings.anthropic_api_key),
+            "reason": "ANTHROPIC_API_KEY not set on this deployment" if not settings.anthropic_api_key else None,
+        },
+        # Llama + Mistral are stubbed in Option B (would require TOGETHER_API_KEY
+        # or OpenRouter — see react_migration_plan.md "Option C via OpenRouter"
+        # for the future path).
+        "llama": {
+            "available": False,
+            "reason": "Coming soon — requires OpenRouter or Together AI integration",
+        },
+        "mistral": {
+            "available": False,
+            "reason": "Coming soon — requires OpenRouter or Together AI integration",
+        },
+    }
+
+
+
 @app.post("/run-pipeline", response_model=PipelineRunResponse)
 async def trigger_pipeline(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="BRD document (PDF, DOCX, or TXT)"),
+    model_family: str = Form("openai", description="Model family to run: openai, anthropic, llama, mistral"),
+    enable_fallback: bool = Form(True, description="Enable automatic provider fallback if primary fails"),
 ):
     """BRD upload → Security validation → Agent pipeline → Artifacts."""
+    if model_family.lower() not in ("openai", "anthropic"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model family '{model_family}' is coming soon. Please select OpenAI or Anthropic."
+        )
+
     content = await file.read()
 
     validator = SecurityValidator()
@@ -381,9 +446,9 @@ async def trigger_pipeline(
             "message":   val_result.user_message,
         })
 
-    background_tasks.add_task(_run_pipeline_task, brd_text, brd_hash, run_id, file.filename or "upload.txt")
+    background_tasks.add_task(_run_pipeline_task, brd_text, brd_hash, run_id, file.filename or "upload.txt", model_family, enable_fallback)
 
-    log.info(f"Pipeline triggered | run_id={run_id} | file={file.filename}")
+    log.info(f"Pipeline triggered | run_id={run_id} | file={file.filename} | family={model_family} | fallback={enable_fallback}")
     return PipelineRunResponse(
         run_id=run_id,
         status="started",
@@ -772,12 +837,12 @@ async def log_download(run_id: str, req: LogDownloadRequest):
 
 # ── Background task ───────────────────────────────────────────────────────────
 
-async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name: str) -> None:
+def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name: str, model_family: str = "openai", enable_fallback: bool = True) -> None:
     state = None
     try:
         _push_event(run_id, {"type": "agent_start", "agent": "orchestrator"})
         from src.agents.pipeline import run_pipeline
-        state = run_pipeline(brd_text, brd_hash, run_id, brd_name)
+        state = run_pipeline(brd_text, brd_hash, run_id, brd_name, model_family, enable_fallback)
         _runs[run_id] = state
         _push_event(run_id, {
             "type":                "pipeline_complete",
@@ -786,11 +851,17 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
             "processing_time_sec": getattr(state, "processing_time_sec", 0),
             "total_input_tokens":  getattr(state, "total_input_tokens", 0),
             "total_output_tokens": getattr(state, "total_output_tokens", 0),
+            "total_cost_usd":      getattr(state, "total_cost_usd", 0.0),
         })
         log.info(f"[{run_id}] Pipeline task complete | status={state.pipeline_status}")
     except Exception as e:
+        from src.core.resilience import QuotaExceededError
+        err_msg = str(e)
+        if isinstance(e, QuotaExceededError) or "your api credits/tokens" in err_msg.lower():
+            err_msg = "Your API Credits/Tokens has expired or reached limit. Please try again later. Sorry."
+
         log.error(f"[{run_id}] Pipeline task failed | error={e}")
-        _push_event(run_id, {"type": "error", "message": str(e)})
+        _push_event(run_id, {"type": "error", "message": err_msg})
         # Pipeline raised before producing a state — synthesize a minimal error
         # state so the failed run is still recorded and visible to the EM.
         if state is None:
@@ -801,8 +872,8 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
                 state = None
         if state is not None:
             state.pipeline_status = "error"
-            if str(e)[:500] not in state.errors:
-                state.errors.append(str(e)[:500])
+            if err_msg not in state.errors:
+                state.errors.append(err_msg)
             _runs[run_id] = state
 
     # A failed run never reaches the HITL gate / POST /approve, so log a Run
@@ -824,7 +895,11 @@ async def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name
 def _push_event(run_id: str, data: dict) -> None:
     if run_id not in _run_events:
         _run_events[run_id] = []
-    _run_events[run_id].append(json.dumps(data))
+    log.info(f"[_push_event] run_id={run_id} type={data.get('type')} data={data}")
+    try:
+        _run_events[run_id].append(json.dumps(data))
+    except Exception as e:
+        log.error(f"[_push_event] failed to serialize: {e}")
 
 
 frontend_dist_dir = _os.path.join(
@@ -844,5 +919,7 @@ if __name__ == "__main__":
         host=settings.fastapi_host,
         port=settings.fastapi_port,
         reload=True,
+        reload_dirs=["src"],
         log_level="info",
     )
+

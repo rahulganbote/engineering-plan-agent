@@ -484,6 +484,13 @@ class PipelineState(BaseModel):
     processing_time_sec: float = 0.0
     total_input_tokens:  int   = 0   # Sum across all LLM calls in this run
     total_output_tokens: int   = 0   # ── displayed alongside processing time
+    model_family:        str   = "openai"
+    enable_fallback:     bool  = True
+    total_cost_usd:      float = 0.0
+
+    fallback_occurred:   bool  = False
+    fallback_from:       str   = ""
+    fallback_to:         str   = ""
     brd_raw_hash: str   # sha256 of original BRD — for audit, never log raw
 
     # Populated by Orchestrator after Security Validator passes

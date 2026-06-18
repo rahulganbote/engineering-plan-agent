@@ -63,6 +63,12 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
         return `[Resilience Bulkhead] Timeout! Specialist "${log.agent || 'unknown'}" timed out after ${log.timeout_sec || 90}s (bulkhead isolation triggered).`;
       case 'error':
         return `[System Error] Critical exception: ${log.message || 'unknown error'}`;
+      case 'provider_fallback': {
+        const fromFam = log.from_family || (log.payload as Record<string, string>)?.from_family || 'unknown';
+        const toFam = log.to_family || (log.payload as Record<string, string>)?.to_family || 'unknown';
+        const reason = log.reason || (log.payload as Record<string, string>)?.reason || '';
+        return `[LLM Engine] Fallback Triggered: ${fromFam.toUpperCase()} API limits reached or key expired. Switched to ${toFam.toUpperCase()} successfully.${reason ? ` Reason: ${reason}` : ''}`;
+      }
       case 'token_update': {
         const payload = (log.payload || log) as LogEvent;
         return `[Token Engine] Usage update: ${payload.input?.toLocaleString() || 0} in / ${payload.output?.toLocaleString() || 0} out`;
@@ -96,7 +102,8 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'breaker_short_circuit':
       case 'hitl_escalated':
       case 'jira_skipped':
-        return 'text-amber-500';
+      case 'provider_fallback':
+        return 'text-amber-500 font-bold';
 
       // Red (Critical/Error)
       case 'error':

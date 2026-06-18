@@ -371,22 +371,30 @@ Return ONLY valid JSON with this exact structure:
   "actionability_suggestion": "specific fix"
 }}"""
 
+        family = state.model_family or "openai"
+        from src.core.providers import complete_with_fallback, map_model
+        from src.core.pricing import calculate_cost
+
         try:
-            response = client.chat.completions.create(
-                model=settings.openai_model_mini,
+            content, prompt_tokens, completion_tokens, final_family = complete_with_fallback(
+                model_family=family,
                 messages=[{"role": "user", "content": prompt}],
+                model="mini",
                 temperature=0.1,
-                response_format={"type": "json_object"},
+                response_format={"type": "json_object"}
             )
 
-            _critic_usage = getattr(response, 'usage', None)
+            mapped_model = map_model(final_family, "mini")
 
-            if _critic_usage is not None:
+            from src.agents.base_agent import add_tokens as _add_tokens, add_cost as _add_cost
+            _add_tokens(prompt_tokens, completion_tokens, run_id=state.run_id)
+            cost = calculate_cost(final_family, mapped_model, prompt_tokens, completion_tokens)
+            _add_cost(cost, run_id=state.run_id)
 
-                from src.agents.base_agent import add_tokens as _add_tokens
+            if final_family != family:
+                state.model_family = final_family
 
-                _add_tokens(getattr(_critic_usage, 'prompt_tokens', 0) or 0, getattr(_critic_usage, 'completion_tokens', 0) or 0)
-            return json.loads(response.choices[0].message.content)
+            return json.loads(content)
         except Exception as e:
             log.error(f"Critic LLM judge failed | error={e}")
             # Return middling scores on failure — don't block pipeline

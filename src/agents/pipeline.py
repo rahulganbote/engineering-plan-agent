@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.agents.base_agent import (
-    set_current_run_id, reset_token_counter, get_token_counts,
+    set_current_run_id, reset_token_counter, get_token_counts, get_cost, _current_model_family,
 )
 import time
 from typing import Literal
@@ -99,7 +99,7 @@ def _revision_targets(ps: PipelineState) -> list[str]:
 
 def _run_agent(agent_name: str, ps: PipelineState):
     """Run one specialist spoke. Called from Orchestrator dispatch worker threads."""
-    set_current_run_id(ps.run_id)
+    set_current_run_id(ps.run_id, ps.model_family, ps.enable_fallback)
     _safe_emit("agent_start", agent=agent_name)
     feedback = _feedback_for(ps, agent_name)
     cls = get_specialist(agent_name)
@@ -165,7 +165,17 @@ def node_dispatch_specialists(state: dict) -> dict:
     # doesn't return within settings.agent_timeout_sec is cancelled; its agent
     # output stays None, which the Critic's FM-3 cap catches downstream.
     from concurrent.futures import TimeoutError as _BulkheadTimeout
-    _bulkhead_budget = float(getattr(settings, "agent_timeout_sec", 90))
+    # Per-family bulkhead budget. Anthropic's Claude is genuinely slower than
+    # GPT-4o for the same verbose JSON outputs (~3-5× in observed runs), so we
+    # give it a bigger budget when the run is configured for anthropic. OpenAI
+    # keeps the tighter 90s budget because retries that exceed that almost
+    # always indicate genuine quota/network problems, not slow generation.
+    _family = (getattr(ps, "model_family", "openai") or "openai").lower()
+    _default_budget = float(getattr(settings, "agent_timeout_sec", 120))
+    if _family == "anthropic":
+        _bulkhead_budget = max(_default_budget, float(getattr(settings, "anthropic_agent_timeout_sec", 240)))
+    else:
+        _bulkhead_budget = _default_budget
 
     # Explicit executor lifecycle (NOT `with`) so we can return immediately on
     # bulkhead trip. A `with` block would call shutdown(wait=True) on __exit__,
@@ -454,7 +464,7 @@ _graph = build_graph().compile()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "") -> PipelineState:
+def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "", model_family: str = "openai", enable_fallback: bool = True) -> PipelineState:
     """
     Run the full central Orchestrator hub-and-spoke pipeline synchronously.
 
@@ -467,11 +477,11 @@ def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "") 
         Final PipelineState with pipeline_status="awaiting_hitl" or "error".
     """
     pipeline_start = time.perf_counter()
-    log.info(f"[{run_id}] Pipeline starting | words={len(brd_text.split())}")
+    log.info(f"[{run_id}] Pipeline starting | words={len(brd_text.split())} | family={model_family} | fallback={enable_fallback}")
     reset_token_counter(run_id)
-    set_current_run_id(run_id)
+    set_current_run_id(run_id, model_family, enable_fallback)
 
-    initial = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name).model_dump()
+    initial = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name, model_family=model_family, enable_fallback=enable_fallback).model_dump()
     initial["_brd_text"] = brd_text
     initial["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
 
@@ -479,11 +489,19 @@ def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "") 
     clean = {k: v for k, v in final.items() if not k.startswith("_")}
     result = PipelineState(**clean)
 
+    final_family = _current_model_family()
+    result.model_family = final_family
+    if final_family != model_family:
+        result.fallback_occurred = True
+        result.fallback_from = model_family
+        result.fallback_to = final_family
+
     total_ms = int((time.perf_counter() - pipeline_start) * 1000)
     result.processing_time_sec = total_ms / 1000.0
     _tin, _tout = get_token_counts(run_id)
     result.total_input_tokens  = _tin
     result.total_output_tokens = _tout
+    result.total_cost_usd      = get_cost(run_id)
     agent_logs = [
         {"agent": agent_name, "success": getattr(result, field_name) is not None}
         for agent_name, field_name in AGENT_OUTPUT_FIELDS.items()

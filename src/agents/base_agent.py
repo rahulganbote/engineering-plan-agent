@@ -45,7 +45,7 @@ from tenacity import (
 # ── Phase 1: distributed-systems primitives ──────────────────────────────────
 import threading as _threading2
 from src.core.resilience import (
-    CircuitBreaker, CallPolicy, resilient, CircuitOpenError, OPENAI_POLICY,
+    CircuitBreaker, CallPolicy, resilient, CircuitOpenError, OPENAI_POLICY, ANTHROPIC_POLICY,
 )
 from src.core.cache import cached, hash_args, CACHE_LLM
 
@@ -57,31 +57,74 @@ log    = get_logger(__name__)
 client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
 
 
-# ── Token usage tracker — per-run counters, thread-safe ──────────────────────
-# Each pipeline run has its own input/output token tally. Agents running in the
+# ── Token & Cost usage tracker — per-run counters, thread-safe ────────────────
+# Each pipeline run has its own input/output token tally and USD cost. Agents running in the
 # ThreadPoolExecutor set a thread-local run_id; LLM callers add to the dict via
-# add_tokens(); pipeline.py reads totals at the end via get_token_counts().
+# add_tokens() and add_cost(); pipeline.py reads totals at the end.
 import threading as _threading
 from collections import defaultdict as _defaultdict
 
 _TOKEN_LOCK    = _threading.Lock()
 _TOKEN_COUNTER: dict[str, dict[str, int]] = _defaultdict(lambda: {"input": 0, "output": 0})
+_COST_COUNTER:  dict[str, float] = _defaultdict(float)
+_RUN_FAMILY:    dict[str, str] = _defaultdict(lambda: "openai")
+_RUN_FALLBACK:  dict[str, bool] = _defaultdict(lambda: True)
 _CURRENT_RUN   = _threading.local()
 
 
-def set_current_run_id(run_id: str) -> None:
-    """Set the run_id for this thread so subsequent LLM calls are attributed."""
+def set_current_run_id(run_id: str, model_family: str = "openai", enable_fallback: bool = True) -> None:
+    """Set the run_id, model_family and enable_fallback for this thread so subsequent LLM calls are attributed."""
+    if not run_id:
+        if hasattr(_CURRENT_RUN, "run_id"):
+            delattr(_CURRENT_RUN, "run_id")
+        if hasattr(_CURRENT_RUN, "model_family"):
+            delattr(_CURRENT_RUN, "model_family")
+        if hasattr(_CURRENT_RUN, "enable_fallback"):
+            delattr(_CURRENT_RUN, "enable_fallback")
+        return
+
     _CURRENT_RUN.run_id = run_id
+    _CURRENT_RUN.model_family = model_family
+    _CURRENT_RUN.enable_fallback = enable_fallback
+    with _TOKEN_LOCK:
+        if run_id not in _RUN_FAMILY:
+            _RUN_FAMILY[run_id] = model_family
+        if run_id not in _RUN_FALLBACK:
+            _RUN_FALLBACK[run_id] = enable_fallback
 
 
 def _current_run_id() -> str | None:
     return getattr(_CURRENT_RUN, "run_id", None)
 
 
+def _current_model_family() -> str:
+    rid = _current_run_id()
+    if rid:
+        with _TOKEN_LOCK:
+            if rid in _RUN_FAMILY:
+                return _RUN_FAMILY[rid]
+    return getattr(_CURRENT_RUN, "model_family", "openai")
+
+
+def _current_enable_fallback() -> bool:
+    rid = _current_run_id()
+    from src.core.config import settings
+    if not rid:
+        return settings.enable_provider_fallback
+    with _TOKEN_LOCK:
+        if rid in _RUN_FALLBACK:
+            return _RUN_FALLBACK[rid]
+    return getattr(_CURRENT_RUN, "enable_fallback", settings.enable_provider_fallback)
+
+
+
 def reset_token_counter(run_id: str) -> None:
-    """Zero the counter for a run — call at pipeline start."""
+    """Zero the counters for a run — call at pipeline start."""
     with _TOKEN_LOCK:
         _TOKEN_COUNTER[run_id] = {"input": 0, "output": 0}
+        _COST_COUNTER[run_id] = 0.0
+        _RUN_FAMILY.pop(run_id, None)
+        _RUN_FALLBACK.pop(run_id, None)
 
 
 def add_tokens(prompt: int, completion: int, run_id: str | None = None) -> None:
@@ -95,15 +138,35 @@ def add_tokens(prompt: int, completion: int, run_id: str | None = None) -> None:
         d["output"] += int(completion or 0)
 
 
+def add_cost(cost: float, run_id: str | None = None) -> None:
+    """Add USD cost to the current run's tally."""
+    rid = run_id or _current_run_id()
+    if not rid:
+        return
+    with _TOKEN_LOCK:
+        _COST_COUNTER[rid] += float(cost or 0.0)
+
+
 def get_token_counts(run_id: str) -> tuple[int, int]:
     with _TOKEN_LOCK:
         d = _TOKEN_COUNTER.get(run_id, {"input": 0, "output": 0})
         return d["input"], d["output"]
 
 
+def get_cost(run_id: str) -> float:
+    with _TOKEN_LOCK:
+        return _COST_COUNTER.get(run_id, 0.0)
+
+
 def cleanup_token_counter(run_id: str) -> None:
     with _TOKEN_LOCK:
         _TOKEN_COUNTER.pop(run_id, None)
+        _COST_COUNTER.pop(run_id, None)
+        _RUN_FAMILY.pop(run_id, None)
+        _RUN_FALLBACK.pop(run_id, None)
+    if getattr(_CURRENT_RUN, "run_id", None) == run_id:
+        set_current_run_id("")
+
 
 
 # ── Phase 1: Per-agent-class circuit breakers ────────────────────────────────
@@ -236,30 +299,53 @@ class BaseAgent:
         # Capture per-agent policies at call time so subclass overrides are
         # respected — class-level @cached/@resilient decorators can't do this.
         cache_policy     = self.CACHE_POLICY
-        resilience_policy = self.RESILIENCE_POLICY
+        # Family-aware resilience policy. Reading current family at call time
+        # (vs class attribute) lets the same agent class work transparently
+        # across providers. Anthropic gets ANTHROPIC_POLICY (90s timeout, 2
+        # attempts) because Claude's verbose JSON outputs routinely exceed
+        # OPENAI_POLICY's 30s ceiling.
+        _family = (_current_model_family() or "openai").lower()
+        if _family == "anthropic":
+            resilience_policy = ANTHROPIC_POLICY
+        else:
+            resilience_policy = self.RESILIENCE_POLICY
+
+        # Capture current run context before entering the resilient / thread execution
+        current_rid = _current_run_id()
+        current_family = _current_model_family()
+        current_fallback = _current_enable_fallback()
 
         def _llm_key(sys_p, usr_p, mdl, fmt):
             return hash_args(sys_p, usr_p, mdl, fmt)
 
         def _call(sys_p, usr_p, mdl, fmt) -> str:
-            kwargs = {
-                "model":    mdl,
-                "messages": [
+            from src.core.providers import complete_with_fallback, map_model
+            from src.core.pricing import calculate_cost
+
+            if current_rid:
+                set_current_run_id(current_rid, current_family, current_fallback)
+
+            family = _current_model_family()
+            content, prompt_tokens, completion_tokens, final_family = complete_with_fallback(
+                model_family=family,
+                messages=[
                     {"role": "system", "content": sys_p},
                     {"role": "user",   "content": usr_p},
                 ],
-                "temperature": 0.2,
-            }
-            if fmt:
-                kwargs["response_format"] = fmt
-            response = client.chat.completions.create(**kwargs)
-            usage = getattr(response, "usage", None)
-            if usage is not None:
-                add_tokens(
-                    getattr(usage, "prompt_tokens", 0) or 0,
-                    getattr(usage, "completion_tokens", 0) or 0,
-                )
-            return response.choices[0].message.content
+                model=mdl,
+                temperature=0.2,
+                response_format=fmt,
+            )
+
+            if final_family != family:
+                set_current_run_id(current_rid or "", final_family, current_fallback)
+
+            mapped_model = map_model(final_family, mdl)
+            add_tokens(prompt_tokens, completion_tokens)
+            cost = calculate_cost(final_family, mapped_model, prompt_tokens, completion_tokens)
+            add_cost(cost)
+            return content
+
 
         # Apply wrappers inside-out: resilient first, then cached on top
         # so a cache hit pays zero resilience/retry cost.

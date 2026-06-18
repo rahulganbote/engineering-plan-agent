@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../context/AuthContext';
 import { PlanSkeleton } from './PlanSkeleton';
@@ -23,6 +24,28 @@ export const AgentWorkspace: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [runIdCopied, setRunIdCopied] = useState(false);
   const [isStartingPipeline, setIsStartingPipeline] = useState(false);
+  const [modelFamily, setModelFamily] = useState('openai');
+
+  // Provider availability map — populated at mount from /api/providers so the
+  // dropdown reflects whichever API keys are configured on this deployment.
+  // Shape: { openai: {available: true}, anthropic: {available: true, reason?: string}, ... }
+  // The "Coming soon" entries (llama, mistral) are always present but disabled.
+  const [providers, setProviders] = useState<Record<string, { available: boolean; reason?: string | null }>>({});
+
+  // Fetch the provider availability once on mount. We rely on the existing
+  // Vite proxy (/api → :8000 in dev; same-origin in prod via FastAPI StaticFiles)
+  // so no special CORS handling needed.
+  useEffect(() => {
+    fetch('/api/providers')
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setProviders(data))
+      .catch((err) => {
+        // Soft-fail: dropdown falls back to its default state (OpenAI enabled,
+        // others disabled). Worst case the user sees the legacy hardcoded
+        // options. Logged for debugging without breaking the page.
+        console.warn('[providers] Could not load /api/providers:', err);
+      });
+  }, []);
 
   const {
     runId,
@@ -35,13 +58,35 @@ export const AgentWorkspace: React.FC = () => {
     artifacts,
     elapsedSeconds,
     tokenUsage,
+    costUsd,
     criticOutput,
     approvalResult,
     clearRun,
     fetchArtifacts,
     setPipelineStatus,
     setApprovalResult,
+    errorMessage,
+    fallbackActive,
   } = useWorkspace();
+
+  // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
+  // The inline banner (further down in JSX) persists for the rest of the run,
+  // which is good for context. But the EM might be scrolling through artifacts
+  // when the swap happens — a toast adds an attention-grabbing notification
+  // for the moment of the swap so they see it immediately.
+  // Auto-dismisses after 6s; the banner stays as durable context.
+  useEffect(() => {
+    if (!fallbackActive) return;
+    const fromName = fallbackActive.from.charAt(0).toUpperCase() + fallbackActive.from.slice(1);
+    const toName   = fallbackActive.to.charAt(0).toUpperCase()   + fallbackActive.to.slice(1);
+    toast.warning(
+      `${fromName} quota exceeded — using ${toName} for this run.`,
+      {
+        duration: 6000,
+        description: 'Cost is computed against the active provider. See the banner above for full details.',
+      }
+    );
+  }, [fallbackActive]);
 
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
     setPipelineStatus(data.pipeline_status);
@@ -76,6 +121,7 @@ export const AgentWorkspace: React.FC = () => {
     setIsStartingPipeline(true);
     const form = new FormData();
     form.append("file", selectedFile);
+    form.append("model_family", modelFamily);
     try {
       const data = await apiFetch<{ run_id: string }>(`${apiBaseUrl}/run-pipeline`, {
         method: "POST",
@@ -130,6 +176,52 @@ export const AgentWorkspace: React.FC = () => {
             </div>
           )}
 
+          {/* Model Selection Section */}
+          {isAuthenticated && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Model Selection</h3>
+              <div className="relative">
+                <select
+                  id="model-family-select"
+                  value={modelFamily}
+                  onChange={(e) => setModelFamily(e.target.value)}
+                  disabled={!!runId || isStartingPipeline}
+                  className="w-full bg-slate-950 border border-slate-800 text-slate-350 rounded px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {/* Family options — dynamic from /api/providers.
+                      `disabled` reflects real backend availability (missing API key,
+                      "coming soon" for unimplemented providers). Hover-title surfaces
+                      the reason so the user knows WHY an option is greyed out. */}
+                  {[
+                    { key: 'openai',    label: 'OpenAI (Default: gpt-4o)' },
+                    { key: 'anthropic', label: 'Anthropic (Claude 3.5 Sonnet)' },
+                    { key: 'llama',     label: 'Llama' },
+                    { key: 'mistral',   label: 'Mistral' },
+                  ].map(({ key, label }) => {
+                    // Default to "available" if we haven't received the providers
+                    // payload yet — keeps the dropdown usable on first paint.
+                    const p = providers[key];
+                    const isAvailable = p?.available ?? (key === 'openai');
+                    const reason = p?.reason;
+                    return (
+                      <option
+                        key={key}
+                        value={key}
+                        disabled={!isAvailable}
+                        title={reason || undefined}
+                      >
+                        {label}{!isAvailable && reason ? ` — ${reason}` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Upload BRD Section */}
           {isAuthenticated && (
             <div className="space-y-3">
@@ -171,16 +263,6 @@ export const AgentWorkspace: React.FC = () => {
             </div>
           )}
 
-          {/* Demo Warning Banner */}
-          {isAuthenticated && (
-            <div className="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-lg flex gap-2">
-              <ShieldAlert className="text-indigo-400 shrink-0" size={16} />
-              <p className="text-[11px] leading-relaxed text-indigo-300">
-                <strong>Demo Purpose Only:</strong> This application is for demo purposes only. The AI can make mistakes. Validate outputs.
-              </p>
-            </div>
-          )}
-
           {/* Trigger Button */}
           {isAuthenticated && (
             <button
@@ -203,6 +285,17 @@ export const AgentWorkspace: React.FC = () => {
               )}
             </button>
           )}
+
+          {/* Demo Warning Banner */}
+          {isAuthenticated && (
+            <div className="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-lg flex gap-2">
+              <ShieldAlert className="text-indigo-400 shrink-0" size={16} />
+              <p className="text-[11px] leading-relaxed text-indigo-300">
+                <strong>Demo Purpose Only:</strong> This application is for demo purposes only. The AI can make mistakes. Validate outputs.
+              </p>
+            </div>
+          )}
+
 
           {/* Current Run Panel */}
           {runId && (
@@ -237,7 +330,7 @@ export const AgentWorkspace: React.FC = () => {
                   clearRun();
                   setRunId(null);
                 }}
-                className="w-full py-1.5 border border-slate-800 hover:bg-slate-850 rounded text-xs font-medium text-slate-300 transition"
+                className="w-full py-1.5 border border-rose-800 bg-rose-950/20 hover:bg-rose-900/40 rounded text-xs font-semibold text-rose-300 hover:text-rose-200 transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
               >
                 Clear Plan & Reset
               </button>
@@ -299,6 +392,33 @@ export const AgentWorkspace: React.FC = () => {
             />
           ) : (
             <>
+              {/* Fallback Active Alert Banner */}
+              {fallbackActive && (
+                <div className="bg-amber-950/20 border-l-4 border-amber-600 p-4 rounded shadow-sm text-xs text-amber-300 flex items-center justify-between animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">⚠️</span>
+                    <div>
+                      <h4 className="font-bold text-amber-400">Automatic LLM Provider Fallback Triggered</h4>
+                      <p className="text-amber-300/80">
+                        The primary <strong>{fallbackActive.from.toUpperCase()}</strong> provider limits were reached or key expired. Switched to <strong>{fallbackActive.to.toUpperCase()}</strong> successfully to complete execution.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pipeline Error Alert Banner */}
+              {pipelineStatus === "error" && (
+                <div className="bg-red-950/30 border border-red-900/50 p-5 rounded-xl shadow-lg flex flex-col gap-2 animate-fade-in">
+                  <h4 className="text-sm font-bold text-red-400 flex items-center gap-2">
+                    <span>❌</span> Pipeline Execution Failed
+                  </h4>
+                  <p className="text-xs text-red-300/90 leading-relaxed font-semibold">
+                    {errorMessage || "An unexpected error occurred during execution. Please check the logs."}
+                  </p>
+                </div>
+              )}
+
               {/* HITL Awaiting Alert Banner */}
               {pipelineStatus === "awaiting_hitl" && !approvalResult && (
                 <div className="bg-amber-950/20 border-l-4 border-amber-600 p-4 rounded shadow-sm flex items-center justify-between">
@@ -325,7 +445,9 @@ export const AgentWorkspace: React.FC = () => {
                 artifacts={artifacts}
                 criticOutput={criticOutput}
                 approvalResult={approvalResult}
+                logs={logs}
               />
+
 
               {/* Critic Rubric Scoring Cards */}
               {criticOutput && (
@@ -379,7 +501,7 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Performance Metrics Summary */}
-              <div className="flex justify-between items-center text-xs text-slate-400 bg-slate-900 p-4 rounded-lg border border-slate-800">
+              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-slate-400 bg-slate-900 p-4 rounded-lg border border-slate-800">
                 <div>
                   <strong>Current Status:</strong> <span className="text-slate-200 capitalize font-medium">{pipelineStatus || "—"}</span>
                 </div>
@@ -388,6 +510,9 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
                 <div>
                   <strong>Tokens used:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
+                </div>
+                <div>
+                  <strong>Cost (USD):</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-emerald-400 font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '—'}</code>
                 </div>
               </div>
 
@@ -406,7 +531,7 @@ export const AgentWorkspace: React.FC = () => {
 
                   {/* Disclaimer notice banner */}
                   <div className="bg-slate-950 border border-slate-850 p-4 rounded-lg text-xs leading-relaxed text-slate-400">
-                    <span className="font-bold text-slate-200 uppercase">Disclaimer:</span> This application is for demo purposes only. AI can make mistakes. Validate before acting on them.
+                    <span className="font-bold text-slate-200 uppercase">⚠️ Disclaimer:</span> This application is for demo purposes only. AI can make mistakes. Validate before acting on them.
                   </div>
 
                   {/* Tabs list */}

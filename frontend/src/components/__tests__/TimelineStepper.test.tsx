@@ -9,7 +9,9 @@ describe('TimelineStepper', () => {
     artifacts: null,
     criticOutput: null,
     approvalResult: null,
+    logs: [],
   };
+
 
   it('renders without throwing', () => {
     render(<TimelineStepper {...baseProps} />);

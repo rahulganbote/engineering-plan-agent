@@ -117,10 +117,12 @@ def _():
         f"Got {settings.rag_similarity_threshold}"
     )
 
-@test("Config: openai_model is gpt-4o", group="config")
+@test("Config: openai_model is configured", group="config")
 def _():
     from src.core.config import settings
-    assert settings.openai_model == "gpt-4o"
+    import os
+    expected = os.getenv("OPENAI_DEFAULT_MODEL") or "gpt-4o"
+    assert settings.openai_model == expected
 
 @test("Config: max_critic_revisions is 2", group="config")
 def _():

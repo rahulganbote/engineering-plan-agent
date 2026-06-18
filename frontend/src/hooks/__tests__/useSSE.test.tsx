@@ -53,7 +53,7 @@ describe('useSSE', () => {
     expect(MockEventSource.instances[0].url).toContain('/status/test-run');
   });
 
-  it('populates elapsedSeconds and tokens from pipeline_complete event (refresh recovery)', () => {
+  it('populates elapsedSeconds, tokens, and costUsd from pipeline_complete event (refresh recovery)', () => {
     const { result } = renderHook(() => useSSE('test-run', 'http://localhost:8000'));
     act(() => {
       MockEventSource.instances[0].fire({
@@ -62,10 +62,12 @@ describe('useSSE', () => {
         processing_time_sec: 27.5,
         total_input_tokens: 12345,
         total_output_tokens: 4567,
+        total_cost_usd: 0.0825,
       });
     });
     expect(result.current.elapsedSeconds).toBe(28);
     expect(result.current.tokenUsage).toEqual({ input: 12345, output: 4567 });
+    expect(result.current.costUsd).toBe(0.0825);
     expect(result.current.pipelineStatus).toBe('awaiting_hitl');
   });
 
@@ -97,12 +99,49 @@ describe('useSSE', () => {
   it('clearRun resets all state', async () => {
     const { result } = renderHook(() => useSSE('test-run', 'http://localhost:8000'));
     act(() => {
-      MockEventSource.instances[0].fire({ type: 'agent_complete', agent: 'plan_generator' });
+      MockEventSource.instances[0].fire({
+        type: 'pipeline_complete',
+        status: 'awaiting_hitl',
+        processing_time_sec: 27.5,
+        total_input_tokens: 12345,
+        total_output_tokens: 4567,
+        total_cost_usd: 0.0825,
+      });
     });
-    expect(result.current.completedAgents.size).toBeGreaterThan(0);
+    expect(result.current.costUsd).toBe(0.0825);
     act(() => { result.current.clearRun(); });
     await waitFor(() => expect(result.current.completedAgents.size).toBe(0));
     expect(result.current.pipelineStatus).toBe('idle');
     expect(result.current.tokenUsage).toBeNull();
+    expect(result.current.costUsd).toBeNull();
+  });
+
+  it('populates costUsd and other fields from fallback artifacts API', async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          brd_sections: [{ title: 'Overview' }],
+          plan_output: { agent_name: 'engineering_plan_generator' },
+          processing_time_sec: 15.2,
+          total_input_tokens: 2000,
+          total_output_tokens: 1000,
+          total_cost_usd: 0.015,
+        }),
+      } as Response)
+    );
+
+    const { result } = renderHook(() => useSSE('test-run', 'http://localhost:8000'));
+    act(() => {
+      MockEventSource.instances[0].fire({
+        type: 'pipeline_complete',
+        status: 'awaiting_hitl',
+        processing_time_sec: 15.2,
+      });
+    });
+
+    await waitFor(() => expect(result.current.costUsd).toBe(0.015));
+    expect(result.current.tokenUsage).toEqual({ input: 2000, output: 1000 });
+    expect(result.current.elapsedSeconds).toBe(15);
   });
 });

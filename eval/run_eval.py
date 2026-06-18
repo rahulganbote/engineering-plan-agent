@@ -55,6 +55,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.core.logger import get_logger
+from src.core.config import settings
 
 log      = get_logger(__name__)
 EVAL_DIR = Path(__file__).parent
@@ -439,7 +440,7 @@ Respond ONLY with valid JSON:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=settings.openai_model_mini,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             response_format={"type": "json_object"},

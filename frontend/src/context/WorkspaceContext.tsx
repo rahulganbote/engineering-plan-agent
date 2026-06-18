@@ -12,12 +12,15 @@ interface WorkspaceContextType {
   artifacts: ArtifactsState | null;
   elapsedSeconds: number;
   tokenUsage: { input: number; output: number } | null;
+  costUsd: number | null;
   criticOutput: CriticOutput | null;
   approvalResult: ApprovalResult | null;
   clearRun: () => void;
   fetchArtifacts: () => Promise<void>;
   setPipelineStatus: (status: string) => void;
   setApprovalResult: (result: ApprovalResult | null) => void;
+  errorMessage: string | null;
+  fallbackActive: { from: string; to: string } | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);

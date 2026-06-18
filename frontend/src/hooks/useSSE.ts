@@ -20,6 +20,9 @@ export interface LogEvent {
   detail?: string;
   key?: string;
   circuit?: string;
+  from_family?: string;
+  to_family?: string;
+  reason?: string;
   attempt?: number;
   timeout_sec?: number;
   input?: number;
@@ -75,6 +78,12 @@ interface ArtifactsResponse {
   processing_time_sec?: number;
   total_input_tokens?: number;
   total_output_tokens?: number;
+  total_cost_usd?: number;
+  fallback_occurred?: boolean;
+  fallback_from?: string;
+  fallback_to?: string;
+  errors?: string[];
+  pipeline_status?: string;
   critic_output?: {
     revision_number: number;
     overall_score: number;
@@ -103,8 +112,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [artifacts, setArtifacts] = useState<ArtifactsState | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [tokenUsage, setTokenUsage] = useState<{ input: number; output: number } | null>(null);
+  const [costUsd, setCostUsd] = useState<number | null>(null);
   const [criticOutput, setCriticOutput] = useState<CriticOutput | null>(null);
   const [approvalResult, setApprovalResult] = useState<ApprovalResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fallbackActive, setFallbackActive] = useState<{ from: string; to: string } | null>(null);
   const [prevRunId, setPrevRunId] = useState<string | null>(null);
 
   if (runId !== prevRunId) {
@@ -121,8 +133,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     setArtifacts(null);
     setElapsedSeconds(0);
     setTokenUsage(null);
+    setCostUsd(null);
     setCriticOutput(null);
     setApprovalResult(null);
+    setErrorMessage(null);
+    setFallbackActive(null);
   }, []);
 
   useEffect(() => {
@@ -134,115 +149,150 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       setElapsedSeconds(Math.round((Date.now() - startTs) / 1000));
     }, 1000);
 
+    let processedIndex = 0;
+
+    const processEvent = (data: LogEvent) => {
+      setLogs((prev) => {
+        // Guard against duplicate logs if both SSE and polling receive them
+        const isDuplicate = prev.some(l => 
+          l.type === data.type && 
+          l.agent === data.agent && 
+          (l.timestamp === data.timestamp || (!l.timestamp && !data.timestamp))
+        );
+        if (isDuplicate) return prev;
+        return [...prev, data];
+      });
+
+      switch (data.type) {
+        case 'status':
+        case 'pipeline_status': {
+          const status = data.status || (data.payload as Record<string, string>)?.status;
+          setPipelineStatus(status || 'unknown');
+          break;
+        }
+        case 'provider_fallback': {
+          setFallbackActive({
+            from: data.from_family || '',
+            to: data.to_family || '',
+          });
+          break;
+        }
+        case 'agent_start': {
+          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
+          if (agent) {
+            setCompletedAgents((prev) => {
+              const next = new Set(prev);
+              next.delete(agent);
+              return next;
+            });
+          }
+          break;
+        }
+        case 'agent_complete': {
+          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
+          if (agent) {
+            setCompletedAgents((prev) => {
+              const next = new Set(prev);
+              next.add(agent);
+              return next;
+            });
+          }
+          break;
+        }
+        case 'agent_failed': {
+          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
+          if (agent) {
+            setCompletedAgents((prev) => {
+              const next = new Set(prev);
+              next.add(agent);
+              return next;
+            });
+          }
+          break;
+        }
+        case 'artifacts_update': {
+          const artifactsPayload = data.payload || data;
+          setArtifacts(artifactsPayload as unknown as ArtifactsState);
+          break;
+        }
+        case 'token_update': {
+          const payload = (data.payload || data) as Record<string, number> | undefined;
+          if (payload) {
+            setTokenUsage({ input: payload.input || 0, output: payload.output || 0 });
+          }
+          break;
+        }
+        case 'critic_complete': {
+          const criticPayload = data.payload || data;
+          setCriticOutput(criticPayload as unknown as CriticOutput);
+          break;
+        }
+        case 'hitl_decision': {
+          const hitlPayload = data.payload || data;
+          setApprovalResult(hitlPayload as unknown as ApprovalResult);
+          break;
+        }
+        case 'pipeline_complete': {
+          const finalStatus = data.status || data.final_status || (data.payload as Record<string, string>)?.final_status || (data.payload as Record<string, string>)?.status;
+          setPipelineStatus(finalStatus || 'completed');
+          const flat = data as unknown as Record<string, unknown>;
+          const inner = (data.payload as Record<string, unknown>) || {};
+          const pt = (flat.processing_time_sec ?? inner.processing_time_sec) as number | undefined;
+          if (pt != null && pt > 0) setElapsedSeconds(Math.round(pt));
+          const tin = (flat.total_input_tokens ?? inner.total_input_tokens) as number | undefined;
+          const tout = (flat.total_output_tokens ?? inner.total_output_tokens) as number | undefined;
+          if (tin != null || tout != null) setTokenUsage({ input: tin || 0, output: tout || 0 });
+          const cost = (flat.total_cost_usd ?? inner.total_cost_usd) as number | undefined;
+          if (cost != null) setCostUsd(cost);
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
+          break;
+        }
+        case 'error': {
+          setPipelineStatus('error');
+          setErrorMessage(data.message || 'An unexpected error occurred.');
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
+          break;
+        }
+      }
+    };
+
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as LogEvent;
-        setLogs((prev) => [...prev, data]);
-
-        switch (data.type) {
-          case 'status':
-          case 'pipeline_status': {
-            const status = data.status || (data.payload as Record<string, string>)?.status;
-            setPipelineStatus(status || 'unknown');
-            break;
-          }
-          case 'agent_start': {
-            const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-            if (agent) {
-              setCompletedAgents((prev) => {
-                const next = new Set(prev);
-                next.delete(agent);
-                return next;
-              });
-            }
-            break;
-          }
-          case 'agent_complete': {
-            const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-            if (agent) {
-              setCompletedAgents((prev) => {
-                const next = new Set(prev);
-                next.add(agent);
-                return next;
-              });
-            }
-            break;
-          }
-          case 'agent_failed': {
-            // Backend emits this when an agent raises. Mark the chip as
-            // "completed" (stops spinner). Sprint 5 polish: distinct "failed"
-            // visual state on the TimelineStepper chip.
-            const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-            if (agent) {
-              setCompletedAgents((prev) => {
-                const next = new Set(prev);
-                next.add(agent);
-                return next;
-              });
-            }
-            break;
-          }
-          case 'artifacts_update': {
-            const artifactsPayload = data.payload || data;
-            setArtifacts(artifactsPayload as unknown as ArtifactsState);
-            break;
-          }
-          case 'token_update': {
-            const payload = (data.payload || data) as Record<string, number> | undefined;
-            if (payload) {
-              setTokenUsage({ input: payload.input || 0, output: payload.output || 0 });
-            }
-            break;
-          }
-          case 'critic_complete': {
-            const criticPayload = data.payload || data;
-            setCriticOutput(criticPayload as unknown as CriticOutput);
-            break;
-          }
-          case 'hitl_decision': {
-            const hitlPayload = data.payload || data;
-            setApprovalResult(hitlPayload as unknown as ApprovalResult);
-            break;
-          }
-          case 'pipeline_complete': {
-            const finalStatus = data.status || data.final_status || (data.payload as Record<string, string>)?.final_status || (data.payload as Record<string, string>)?.status;
-            setPipelineStatus(finalStatus || 'completed');
-            // Populate time + tokens from the event payload (covers refresh case —
-            // SSE replay delivers pipeline_complete instantly so the per-second tick
-            // has no chance to fire). Backend includes processing_time_sec +
-            // total_input_tokens + total_output_tokens on this event.
-            const flat = data as unknown as Record<string, unknown>;
-            const inner = (data.payload as Record<string, unknown>) || {};
-            const pt = (flat.processing_time_sec ?? inner.processing_time_sec) as number | undefined;
-            if (pt != null && pt > 0) setElapsedSeconds(Math.round(pt));
-            const tin = (flat.total_input_tokens ?? inner.total_input_tokens) as number | undefined;
-            const tout = (flat.total_output_tokens ?? inner.total_output_tokens) as number | undefined;
-            if (tin != null || tout != null) setTokenUsage({ input: tin || 0, output: tout || 0 });
-            clearInterval(tick);
-            es.close();
-            break;
-          }
-          case 'error': {
-            setPipelineStatus('error');
-            clearInterval(tick);
-            es.close();
-            break;
-          }
-        }
+        processEvent(data);
       } catch (e) {
         console.error('SSE parse error:', e);
       }
     };
 
     es.onerror = (err) => {
-      console.error('SSE connection failed:', err);
-      setPipelineStatus('error');
-      clearInterval(tick);
-      es.close();
+      console.warn('SSE connection failed; relying on polling fallback.', err);
     };
+
+    // Robust Polling Fallback (Polls every 2 seconds for updates)
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await apiFetch<{ events: LogEvent[], next_index: number }>(
+          `${apiBaseUrl}/events/${runId}?since=${processedIndex}`
+        );
+        if (res && res.events && res.events.length > 0) {
+          res.events.forEach(data => {
+            processEvent(data);
+          });
+          processedIndex = res.next_index;
+        }
+      } catch (e) {
+        console.error('Event polling fallback failed:', e);
+      }
+    }, 2000);
 
     return () => {
       clearInterval(tick);
+      clearInterval(pollInterval);
       es.close();
     };
   }, [runId, apiBaseUrl]);
@@ -272,6 +322,19 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           input: data.total_input_tokens || 0,
           output: data.total_output_tokens || 0,
         });
+      }
+      if (data.total_cost_usd != null) {
+        setCostUsd(data.total_cost_usd);
+      }
+      if (data.fallback_occurred) {
+        setFallbackActive({
+          from: data.fallback_from || '',
+          to: data.fallback_to || '',
+        });
+      }
+      if (data.pipeline_status === 'error') {
+        setPipelineStatus('error');
+        setErrorMessage(data.errors?.[0] || 'An unexpected error occurred.');
       }
 
       if (data.critic_output) {
@@ -346,11 +409,14 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     artifacts,
     elapsedSeconds,
     tokenUsage,
+    costUsd,
     criticOutput,
     approvalResult,
     clearRun,
     fetchArtifacts,
     setPipelineStatus,
     setApprovalResult,
+    errorMessage,
+    fallbackActive,
   };
 };

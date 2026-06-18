@@ -19,6 +19,7 @@ Usage:
 """
 
 from functools import lru_cache
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 from dotenv import load_dotenv
@@ -46,8 +47,15 @@ class Settings(BaseSettings):
     openai_api_key:       str = ""
     openai_model:         str = "gpt-4o"
     openai_model_mini:    str = "gpt-4o-mini"   # used for Critic scoring + injection scan
+    openai_default_model: str = ""
+    openai_mini_model:    str = ""
     openai_embedding_model: str = "text-embedding-3-large"
     embedding_dimension: int = 1024
+
+    # ── Anthropic ─────────────────────────────────────────────────────────────
+    anthropic_api_key:    str = ""
+    anthropic_default_model: str = "claude-3-5-sonnet-latest"
+    anthropic_mini_model:    str = "claude-3-5-haiku-20241022"
 
     # ── Pinecone ──────────────────────────────────────────────────────────────
     pinecone_api_key:     str = ""
@@ -82,7 +90,10 @@ class Settings(BaseSettings):
     max_critic_revisions: int   = 2
     max_agent_retries:    int   = 2
     pipeline_timeout_sec: int   = 300   # 5 min hard limit
-    agent_timeout_sec:    int   = 90    # Per-agent bulkhead — Phase 9
+    agent_timeout_sec:           int   = 90    # Per-agent bulkhead — Phase 9
+    anthropic_agent_timeout_sec: int   = 180   # Anthropic is 3-5× slower than OpenAI; per-family override    # Per-agent bulkhead — Phase 9
+    enable_provider_fallback: bool = True
+
 
     # ── Security ──────────────────────────────────────────────────────────────
     max_brd_file_size_mb: int   = 25   # MUST match .streamlit/config.toml maxUploadSize
@@ -105,6 +116,14 @@ class Settings(BaseSettings):
     smtp_user:            str = ""
     smtp_pass:            str = ""
     audit_email:          str = ""
+
+    @model_validator(mode="after")
+    def resolve_model_defaults(self) -> "Settings":
+        if self.openai_default_model:
+            self.openai_model = self.openai_default_model
+        if self.openai_mini_model:
+            self.openai_model_mini = self.openai_mini_model
+        return self
 
 
 @lru_cache(maxsize=1)

@@ -21,7 +21,7 @@ Usage
 ─────
     class PlanGenerator(BaseAgent):
         # Each agent OWNS its breaker and its policy
-        _llm_breaker = CircuitBreaker(name="plan.llm", fail_threshold=5, reset_sec=30)
+        _llm_breaker = CircuitBreaker(name="plan.llm", fail_threshold=5, reset_sec=40)
 
         @resilient(policy=OPENAI_POLICY, breaker=_llm_breaker)
         def _call_openai(self, sys, usr):
@@ -53,7 +53,7 @@ class CallPolicy:
     Frozen policy for a call site. Callers may construct their own; defaults
     below are sensible starting points for OpenAI / Pinecone / generic HTTP.
     """
-    timeout_sec:    float = 30.0
+    timeout_sec:    float = 40.0
     max_attempts:   int   = 3      # 1 initial attempt + (max_attempts-1) retries
     backoff_min:    float = 1.0    # seconds — base for exponential backoff
     backoff_max:    float = 8.0    # seconds — clamp
@@ -63,10 +63,19 @@ class CallPolicy:
     enforce_timeout: bool = True          # If False, rely on the underlying SDK
 
 
-OPENAI_POLICY   = CallPolicy(timeout_sec=30.0, max_attempts=3, backoff_min=1.0, backoff_max=8.0)
-PINECONE_POLICY = CallPolicy(timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0)
-EMBEDDING_POLICY = CallPolicy(timeout_sec=15.0, max_attempts=3, backoff_min=0.5, backoff_max=4.0)
-HTTP_POLICY     = CallPolicy(timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0)
+class QuotaExceededError(Exception):
+    """Raised when API credits/tokens have expired or reached limit."""
+
+
+OPENAI_POLICY   = CallPolicy(timeout_sec=40.0, max_attempts=3, backoff_min=1.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,))
+# Anthropic's Claude models routinely take 50-120s for verbose JSON outputs.
+# Giving each attempt 90s and using 2 attempts (vs OpenAI's 3) avoids the
+# 40s x 3 = 120s wall-clock loss that triggered the cascading bulkhead trip we
+# saw in runs 1c82f453-137b and 1c82f453-e588. Backoff is the same shape.
+ANTHROPIC_POLICY = CallPolicy(timeout_sec=120.0, max_attempts=2, backoff_min=2.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,))
+PINECONE_POLICY = CallPolicy(timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,))
+EMBEDDING_POLICY = CallPolicy(timeout_sec=15.0, max_attempts=3, backoff_min=0.5, backoff_max=4.0, do_not_retry=(QuotaExceededError,))
+HTTP_POLICY     = CallPolicy(timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,))
 
 
 # ── Circuit breaker ──────────────────────────────────────────────────────────
@@ -81,6 +90,7 @@ class CircuitOpenError(Exception):
     """Raised when a call is short-circuited by an open breaker."""
 
 
+
 @dataclass
 class CircuitBreaker:
     """
@@ -93,7 +103,7 @@ class CircuitBreaker:
     """
     name:           str
     fail_threshold: int = 5
-    reset_sec:      float = 30.0
+    reset_sec:      float = 40.0
     _state:         BreakerState = field(default=BreakerState.CLOSED, init=False)
     _fail_count:    int = field(default=0, init=False)
     _opened_at:     float = field(default=0.0, init=False)

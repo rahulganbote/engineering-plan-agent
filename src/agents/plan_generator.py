@@ -97,11 +97,18 @@ class PlanGeneratorAgent(BaseAgent):
         )
         log.info(f"[{state.run_id}] PlanGenerator RAG | chunks={len(citation_ids)}")
 
-        # ── Reflection Step 1: Draft ──────────────────────────────────────────
-        draft = self._draft(brd_text, context_str, feedback)
+        from src.agents.base_agent import _current_model_family
+        _family = (_current_model_family() or "openai").lower()
 
-        # ── Reflection Step 2+3: Critique + Final JSON ────────────────────────
-        raw = self._reflect_and_finalize(brd_text, draft, context_str, citation_ids)
+        if _family == "anthropic":
+            log.info(f"[{state.run_id}] PlanGenerator using optimized single-turn generation for Anthropic")
+            raw = self._generate_direct(brd_text, context_str, feedback, citation_ids)
+        else:
+            # ── Reflection Step 1: Draft ──────────────────────────────────────────
+            draft = self._draft(brd_text, context_str, feedback)
+
+            # ── Reflection Step 2+3: Critique + Final JSON ────────────────────────
+            raw = self._reflect_and_finalize(brd_text, draft, context_str, citation_ids)
 
         # ── Parse + validate ──────────────────────────────────────────────────
         output = self._parse(raw, state.run_id, citation_ids)
@@ -153,6 +160,33 @@ class PlanGeneratorAgent(BaseAgent):
                 "Review the draft. Fix: missing owner_role, vague deliverables, "
                 "risk citations, total_duration_weeks arithmetic. "
                 f"Output ONLY JSON:\n{SCHEMA}"
+            ),
+            response_format={"type": "json_object"},
+        )
+
+    def _generate_direct(
+        self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str]
+    ) -> str:
+        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        cites = "\n".join(f"  - {c}" for c in citation_ids)
+        return self._call_llm_with_retry(
+            system_prompt="""You are a senior Engineering Manager generating a structured
+engineering plan from a BRD.
+
+Rules:
+1. Every milestone MUST have owner_role (e.g. "Tech Lead", "EM", "QA Engineer", "DevOps")
+2. Every risk MUST have a citation field — use a chunk ID from the context below
+3. total_duration_weeks MUST equal the exact sum of all phase.duration_weeks
+4. reflection_notes MUST document how you optimized the plan structure and risks
+5. When BRD is ambiguous, choose the CONSERVATIVE interpretation and document it
+6. Output ONLY valid JSON — no markdown fences, no explanation""",
+            user_prompt=(
+                f"{feedback_block}"
+                f"AVAILABLE CITATION IDs (use for risk.citation):\n{cites}\n\n"
+                f"BRD:\n{brd_text}\n\n"
+                f"KNOWLEDGE BASE:\n{context_str}\n\n"
+                f"Generate an engineering plan based on the BRD and knowledge base. "
+                f"Output ONLY JSON matching the schema below:\n{SCHEMA}"
             ),
             response_format={"type": "json_object"},
         )
