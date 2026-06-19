@@ -299,10 +299,10 @@ def _append_or_write_csv(path: Path, headers: list[str], row: list[Any]) -> None
 
 def _summary_headers() -> list[str]:
     return [
-        "run_id", "brd_name", "timestamp", "badge", "overall_score",
+        "run_id", "email-id", "brd_name", "timestamp", "badge", "overall_score",
         "groundedness", "completeness", "consistency", "actionability",
         "revisions", "hitl_decision", "notes", "em_rating", "processing_time_sec",
-        "plan_duration_weeks", "plan_confidence", "pipeline_status", "email-id"
+        "plan_duration_weeks", "plan_confidence", "pipeline_status"
     ]
 
 
@@ -317,6 +317,7 @@ def _summary_row(state: PipelineState, ts: str, email: str = "") -> list[Any]:
     em_rating = state.hitl_em_ratings[-1].get("em_rating", "") if state.hitl_em_ratings else ""
     return [
         state.run_id,
+        email,
         state.brd_name,
         ts,
         critic.badge.value         if critic else "N/A",
@@ -333,7 +334,6 @@ def _summary_row(state: PipelineState, ts: str, email: str = "") -> list[Any]:
         plan.total_duration_weeks  if plan else 0,
         plan.confidence_score      if plan else 0.0,
         state.pipeline_status,
-        email,
     ]
 
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Check, X, ThumbsUp, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 
 export interface ApprovalResponse {
@@ -27,6 +28,7 @@ interface HITLApprovalGateProps {
 
 export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDecisionSubmitted }) => {
   const { apiBaseUrl } = useWorkspace();
+  const { user } = useAuth();
   const [reviewer, setReviewer] = useState('Engineering Manager');
   const [rating, setRating] = useState(4);
   const [notes, setNotes] = useState('');
@@ -52,6 +54,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           reviewer,
           notes,
           em_rating: rating,
+          email: user?.email || '',
         })
       });
 
