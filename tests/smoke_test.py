@@ -1216,11 +1216,61 @@ def _():
         set_event_sink(None)
 
 
+# ════════════════════════════════════════════════════════════════════════════════
+# GROUP: providers
+# ════════════════════════════════════════════════════════════════════════════════
+
+@test("Providers: get_provider('openai') returns OpenAIProvider", group="providers")
+def _():
+    from src.core.providers import get_provider, OpenAIProvider
+    p = get_provider("openai")
+    assert isinstance(p, OpenAIProvider)
+
+@test("Providers: get_provider('anthropic') returns AnthropicProvider", group="providers")
+def _():
+    from src.core.providers import get_provider, AnthropicProvider
+    p = get_provider("anthropic")
+    assert isinstance(p, AnthropicProvider)
+
+@test("Providers: get_provider('llama') raises ValueError (coming soon)", group="providers")
+def _():
+    from src.core.providers import get_provider
+    try:
+        get_provider("llama")
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "coming soon" in str(e).lower()
+
+@test("Providers: map_model('openai', 'gpt-4o') passes through unchanged", group="providers")
+def _():
+    from src.core.providers import map_model
+    assert map_model("openai", "gpt-4o") == "gpt-4o"
+
+@test("Providers: map_model('anthropic', 'claude-sonnet-4-5') passes through unchanged", group="providers")
+def _():
+    from src.core.providers import map_model
+    assert map_model("anthropic", "claude-sonnet-4-5") == "claude-sonnet-4-5"
+
+@test("Providers: PRICING_TABLE has gpt-4o and claude-sonnet-4-5 with non-zero rates", group="providers")
+def _():
+    from src.core.pricing import PRICING_TABLE
+    gpt = PRICING_TABLE["openai"]["gpt-4o"]
+    assert gpt["input"] > 0 and gpt["output"] > 0
+    sonnet = PRICING_TABLE["anthropic"]["claude-sonnet-4-5"]
+    assert sonnet["input"] > 0 and sonnet["output"] > 0
+
+@test("Providers: calculate_cost('anthropic', 'claude-sonnet-4-5', 1000, 1000) returns non-zero float", group="providers")
+def _():
+    from src.core.pricing import calculate_cost
+    cost = calculate_cost("anthropic", "claude-sonnet-4-5", 1000, 1000)
+    assert isinstance(cost, float) and cost > 0
+
+
 if __name__ == "__main__":
     filter_group = sys.argv[1] if len(sys.argv) > 1 else None
     groups = ["config", "models", "agents", "pipeline", "security",
               "resilience", "cache", "rag", "registry", "manifest",
-              "integrations", "bulkhead", "events"]
+              "integrations", "bulkhead", "events", "providers"]
     if filter_group == "day3":
         groups = ["day3"]
     elif filter_group:
