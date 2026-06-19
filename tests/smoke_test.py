@@ -124,10 +124,13 @@ def _():
     expected = os.getenv("OPENAI_DEFAULT_MODEL") or "gpt-4o"
     assert settings.openai_model == expected
 
-@test("Config: max_critic_revisions is 2", group="config")
+@test("Config: max_critic_revisions is configured", group="config")
 def _():
     from src.core.config import settings
-    assert settings.max_critic_revisions == 2
+    import os
+    env_val = os.getenv("MAX_CRITIC_REVISIONS")
+    expected = int(env_val) if env_val is not None else 2
+    assert settings.max_critic_revisions == expected
 
 @test("Config: pipeline_timeout_sec is 300", group="config")
 def _():
@@ -462,7 +465,7 @@ def _():
 def _():
     from src.agents.pipeline import MAX_REVISIONS
     from src.core.config import settings
-    assert MAX_REVISIONS == settings.max_critic_revisions == 2
+    assert MAX_REVISIONS == settings.max_critic_revisions
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -756,6 +759,9 @@ def _():
     c.set("k1", "v1", ttl_sec=60, namespace="test")
     assert c.get("k1", namespace="test") == "v1"
     assert c.get("missing", namespace="test") is None
+    # Test support for ttl keyword argument
+    c.set("k1_ttl", "v1_ttl", ttl=60, namespace="test")
+    assert c.get("k1_ttl", namespace="test") == "v1_ttl"
 
 @test("InMemoryCache TTL set/get path", group="cache")
 def _():
@@ -840,6 +846,10 @@ def _():
     tc.set("k", "v", ttl_sec=60, namespace="t")
     assert tc.get("k", namespace="t") == "v"
     assert l2.get_calls == 0, "L1 hit should not consult L2"
+
+    # Test support for ttl keyword argument
+    tc.set("k2", "v2", ttl=60, namespace="t")
+    assert tc.get("k2", namespace="t") == "v2"
 
 @test("TieredCache: L2 hit back-fills L1", group="cache")
 def _():

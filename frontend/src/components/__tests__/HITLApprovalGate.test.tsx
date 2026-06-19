@@ -9,6 +9,14 @@ vi.mock('../../context/WorkspaceContext', () => ({
   }),
 }));
 
+// Mock AuthContext
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { email: 'manager@example.com', name: 'Test Manager' },
+    isAuthenticated: true,
+  }),
+}));
+
 // Mock sonner — toast triggers shouldn't blow up tests
 vi.mock('sonner', () => ({
   toast: {

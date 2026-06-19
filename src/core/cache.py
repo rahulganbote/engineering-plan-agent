@@ -71,7 +71,15 @@ CACHE_EMBEDDING = CachePolicy(mode="exact", ttl_sec=86400, namespace="embed")
 
 class CacheBackend(Protocol):
     def get(self, key: str, namespace: str) -> Optional[Any]: ...
-    def set(self, key: str, value: Any, ttl_sec: int, namespace: str) -> None: ...
+    def set(
+        self,
+        key: str,
+        value: Any,
+        ttl_sec: int = 3600,
+        namespace: str = "default",
+        *,
+        ttl: Optional[int] = None,
+    ) -> None: ...
     def clear(self, namespace: str = "") -> None: ...
     def stats(self) -> dict: ...
 
@@ -116,7 +124,17 @@ class InMemoryCache:
             self._hits += 1
             return value
 
-    def set(self, key: str, value: Any, ttl_sec: int, namespace: str) -> None:
+    def set(
+        self,
+        key: str,
+        value: Any,
+        ttl_sec: int = 3600,
+        namespace: str = "default",
+        *,
+        ttl: Optional[int] = None,
+    ) -> None:
+        if ttl is not None:
+            ttl_sec = ttl
         nskey = self._nskey(key, namespace)
         with self._lock:
             if nskey in self._store:
@@ -343,7 +361,17 @@ class RedisCache:
             log.warning(f"[cache:redis] get failed ({type(e).__name__}); degrading")
             return None
 
-    def set(self, key: str, value: Any, ttl_sec: int, namespace: str) -> None:
+    def set(
+        self,
+        key: str,
+        value: Any,
+        ttl_sec: int = 3600,
+        namespace: str = "default",
+        *,
+        ttl: Optional[int] = None,
+    ) -> None:
+        if ttl is not None:
+            ttl_sec = ttl
         try:
             payload = _gzip.compress(_pickle.dumps(value), compresslevel=3)
             self._redis.set(self._full_key(key, namespace), payload, ex=max(1, ttl_sec))
@@ -402,7 +430,17 @@ class TieredCache:
                 pass
         return v
 
-    def set(self, key: str, value: Any, ttl_sec: int, namespace: str) -> None:
+    def set(
+        self,
+        key: str,
+        value: Any,
+        ttl_sec: int = 3600,
+        namespace: str = "default",
+        *,
+        ttl: Optional[int] = None,
+    ) -> None:
+        if ttl is not None:
+            ttl_sec = ttl
         try:
             self._l1.set(key, value, ttl_sec, namespace)
         except Exception as e:
@@ -470,7 +508,15 @@ class SemanticBackend:
         """Stub — @cached routes semantic-mode calls to semantic_get instead."""
         return None
 
-    def set(self, key: str, value: Any, ttl_sec: int, namespace: str) -> None:
+    def set(
+        self,
+        key: str,
+        value: Any,
+        ttl_sec: int = 3600,
+        namespace: str = "default",
+        *,
+        ttl: Optional[int] = None,
+    ) -> None:
         """Stub — @cached routes semantic-mode calls to semantic_set instead."""
         pass
 
