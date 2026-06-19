@@ -27,7 +27,7 @@ substitutions:
   _REGION:       europe-west1
   _SERVICE:      em-copilot-react
   _REPO:         em-copilot
-  _IMAGE_TAG:    "${SHORT_SHA}"   # use commit SHA so each deploy is traceable
+  _IMAGE_TAG:    "${BUILD_ID}"   # always-defined; trigger or manual
 
 options:
   logging: CLOUD_LOGGING_ONLY
