@@ -20,7 +20,7 @@
 # the Cloud Build service account):
 #   OPENAI_API_KEY, PINECONE_API_KEY, LANGCHAIN_API_KEY,
 #   GOOGLE_OAUTH_CLIENT_SECRET, GOOGLE_SA_B64, JIRA_API_TOKEN,
-#   ELEVENLABS_API_KEY
+#   ELEVENLABS_API_KEY, ANTHROPIC_API_KEY
 # ────────────────────────────────────────────────────────────────────────────
 
 substitutions:

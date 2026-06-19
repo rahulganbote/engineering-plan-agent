@@ -93,7 +93,7 @@ class AnthropicProvider:
         kwargs = {
             "model": model,
             "messages": user_msgs,
-            "max_tokens": 8192,
+            "max_tokens": 16384,  # 16384 default. Sonnet 4.5 supports up to 64K output tokens.
             "temperature": temperature,
         }
         if system_msg:
