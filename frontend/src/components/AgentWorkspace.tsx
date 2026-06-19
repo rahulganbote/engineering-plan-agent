@@ -194,7 +194,7 @@ export const AgentWorkspace: React.FC = () => {
                       the reason so the user knows WHY an option is greyed out. */}
                   {[
                     { key: 'openai',    label: 'OpenAI (Default: gpt-4o)' },
-                    { key: 'anthropic', label: 'Anthropic (Claude 3.5 Sonnet)' },
+                    { key: 'anthropic', label: 'Anthropic (Default: Claude 4.5 Sonnet)' },
                     { key: 'llama',     label: 'Llama' },
                     { key: 'mistral',   label: 'Mistral' },
                   ].map(({ key, label }) => {

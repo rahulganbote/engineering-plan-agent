@@ -4,6 +4,7 @@ from typing import Protocol, Type, Dict, Tuple, List, Optional
 import openai
 import anthropic
 from src.core.config import settings
+from langsmith import traceable
 from langsmith.wrappers import wrap_openai
 
 
@@ -23,6 +24,7 @@ class LLMProvider(Protocol):
 
 
 class OpenAIProvider:
+    @traceable(run_type="llm", name="OpenAI Completion")
     def complete(
         self,
         messages: List[Dict[str, str]],
@@ -47,6 +49,7 @@ class OpenAIProvider:
 
 
 class AnthropicProvider:
+    @traceable(run_type="llm", name="Anthropic Completion")
     def complete(
         self,
         messages: List[Dict[str, str]],
