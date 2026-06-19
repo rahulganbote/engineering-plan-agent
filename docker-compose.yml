@@ -1,0 +1,43 @@
+# ────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Local development services
+# ────────────────────────────────────────────────────────────────────────────
+#
+# Spin up the optional L2 cache backend with:
+#     docker compose up -d redis
+#
+# Then add to your secrets/.env:
+#     REDIS_URL=redis://localhost:6379
+#
+# Tear down with:
+#     docker compose down
+#
+# Data persists across restarts via the named volume (em-copilot-redis-data).
+# To wipe the cache entirely:
+#     docker compose down -v
+#
+# This file is for LOCAL DEV ONLY — production caching uses GCP Memorystore
+# or another managed Redis. The FastAPI app + frontend run via `uvicorn` /
+# `npm run dev` directly on the host, not inside compose.
+# ────────────────────────────────────────────────────────────────────────────
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: em-copilot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - em-copilot-redis-data:/data
+    # Persist L2 cache across `docker compose down` (use `-v` flag to wipe)
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  em-copilot-redis-data:
+    driver: local
