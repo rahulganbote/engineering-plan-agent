@@ -17,22 +17,23 @@ short_description: BRD to Engineering Plan Multi-Agent System
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2.28-green)](https://github.com/langchain-ai/langgraph)
 [![Pinecone](https://img.shields.io/badge/RAG-Pinecone-purple)](https://pinecone.io)
 [![LangSmith](https://img.shields.io/badge/Observability-LangSmith-orange)](https://smith.langchain.com)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
 [![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 [![Slack](https://img.shields.io/badge/Alerts-Slack-4A154B)](https://slack.com)
+[![React](https://img.shields.io/badge/UI-React%2019%20%2B%20Vite-61DAFB)](https://react.dev)
+[![Anthropic](https://img.shields.io/badge/Multi--Provider-OpenAI%20%2B%20Anthropic-D97757)](https://www.anthropic.com)
 
 > **EM Copilot** is an multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
 
-🔗 **Live Demo:** [em-copilot on Google Cloud Run](https://em-copilot-1-809545615573.europe-west1.run.app/) · *Streamlit v1 deployed · React v2 in progress ([migration plan](./react_migration_plan.md) · [mockups](./docs/react_mockups/))*
+🔗 **Live Demo (React v2):** [em-copilot-react on Google Cloud Run](https://em-copilot-react-no2qcbw2sa-ew.a.run.app/) · *Streamlit v1 retained for rollback at [em-copilot-1](https://em-copilot-1-809545615573.europe-west1.run.app/) ([migration plan](./react_migration_plan.md) · [mockups](./docs/react_mockups/))*
 
 ---
 
 ## Executive Summary (TL;DR)
 
 * **What it is:** A production-grade, RAG-augmented multi-agent system that automates the translation of Business Requirements Documents (BRDs) into audit-ready engineering deliverables (System Architecture, Project Schedules, Tech Stacks, and PoC specifications) grounded in organizational standards.
-* **The ROI:** Redefines the standard planning lifecycle, reducing scoping and drafting time from weeks to minutes (~50s execution) with a low operational cost (~$0.31 per run).
-* **Enterprise Grade:** Built on LangGraph with Pinecone RAG for knowledge grounding, type-safe schemas, a 7-stage security sanitization pipeline (inc. PII redacting), isolated resilience, a dual-tier (L1/L2) cache, and full execution observability via LangSmith.
+* **The ROI:** Redefines the standard planning lifecycle, reducing scoping and drafting time from weeks to minutes. Measured wall-clock — **OpenAI:** p50 ~50s · p95 ~90s · **Anthropic:** p50 ~100s · p95 ~190s (Critic revision cycle compounds Anthropic's per-call latency). Operational cost **~$0.31 per run** on either provider.
+* **Enterprise Grade:** Built on LangGraph with Pinecone RAG for knowledge grounding, type-safe schemas, a 7-stage security sanitization pipeline (inc. PII redacting), isolated resilience (per-family bulkhead budgets: 90s OpenAI / 180s Anthropic), a dual-tier (L1/L2) cache, multi-provider LLM with intelligent failover, and full execution observability via LangSmith.
 * **Integrations:** Closes the feedback loop via Slack alerts, a voice/UI Human-in-the-Loop (HITL) gate, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP).
 
 ---
@@ -85,8 +86,8 @@ Engineering Managers (EMs) face a persistent bottleneck in translating complex B
 ```
                          ┌─────────────────────────────────────────────────┐
                          │         SECURITY VALIDATION LAYER               │
-BRD Upload ──► FastAP ──►│  File check → Parse → Injection Guard (regex)   │
-(Streamlit)     POST     │  → Injection Guard (LLM) → PII Redact → BRD ✓   │
+BRD Upload ──► FastAPI ─►│  File check → Parse → Injection Guard (regex)   │
+ (React SPA)    POST     │  → Injection Guard (LLM) → PII Redact → BRD ✓   │
             run-pipeline └─────────────────────────────────────────────────┘
                                               │ validated BRD text
                                               ▼
@@ -193,7 +194,7 @@ EM Copilot incorporates a production-grade resilience and caching architecture m
 *   **Graceful Degradation:** The pipeline automatically downgrades to L1 cache if Redis is offline, falls back to direct REST APIs if the Atlassian MCP server is down, and renders architecture diagrams client-side if the Kroki API fails.
 
 #### Event-Driven Observability
-*   A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`). These are streamed live to the Streamlit UI via Server-Sent Events (SSE) without affecting pipeline execution.
+*   A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`, `provider_fallback`). These are streamed live to the React UI via Server-Sent Events (SSE) without affecting pipeline execution.
 
 #### Failure Mitigation Matrix
 The system maps infrastructure faults and LLM cognitive errors directly to specific resilience strategies:
@@ -206,7 +207,8 @@ The system maps infrastructure faults and LLM cognitive errors directly to speci
 | **MCP Server Offline** | Dynamic fallback directly to Jira Cloud REST APIs with idempotency hashes |
 | **Kroki Rendering Down** | UI automatically renders architectural charts client-side via `mermaid.js` |
 | **JSON Parse Failures** | Dynamic self-correction retries → safe mock sentinel fallback (badges Critic Amber) |
-| **Slow Agent (Bulkhead)** | ThreadPool executor halts hung agents after 90s timeout, using sentinel fallbacks |
+| **Slow Agent (Bulkhead)** | ThreadPool executor halts hung agents after per-family timeout (90s OpenAI / 180s Anthropic), using sentinel fallbacks |
+| **Provider Quota / Rate Limit** | `complete_with_fallback()` intelligently swaps providers (OpenAI ↔ Anthropic) on `RateLimitError` / `AuthenticationError`; surfaces toast + persistent banner in UI |
 
 ### 5. Observability & Tracing
 
@@ -222,14 +224,15 @@ The system maps infrastructure faults and LLM cognitive errors directly to speci
 | **Agent State** | LangGraph v0.2.28 | State Graph model with native routing, cycle tracking, and async interrupts |
 | **Vector DB** | Pinecone Serverless | Fully managed index with fast cosine-similarity search over technical standards |
 | **Embeddings** | `text-embedding-3-large` (1024) | High dimensionality with customized text projection for dense architectural guides |
-| **Models** | GPT-4o (specialists) + GPT-4o-mini (critic) | Balance between specialist reasoning quality and critic execution cost |
-| **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, and non-blocking exports |
-| **Frontend UI** | Streamlit | Rapid internal prototyping & dashboard (easily swappable with a React/Next.js frontend backing the FastAPI server) |
+| **Models — OpenAI** | GPT-4o (specialists) + GPT-4o-mini (critic) | Balance between specialist reasoning quality and critic execution cost |
+| **Models — Anthropic** | Claude Sonnet 4.5 (specialists) + Claude Haiku 4.5 (critic) | Multi-provider abstraction; family-level selection in UI, intelligent failover on rate-limit/auth errors |
+| **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, OAuth via SessionMiddleware, and non-blocking exports |
+| **Frontend UI** | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui | Type-safe SPA served from same origin (`/dist/`) by FastAPI; SSE-driven live progress, sonner toasts, modular feature-driven directory structure |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
 | **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol — chosen at runtime via `init_default_backend_from_env()` |
-| **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`; surfaced into Streamlit SSE stream |
+| **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`, `provider_fallback`; surfaced into React UI via FastAPI SSE stream |
 
 ---
 
@@ -283,7 +286,7 @@ The Critic loop drives a significant quality improvement, as demonstrated in our
 | **v1 (Post-Critic)** | 3.90 | 4.80 | 4.60 | 4.00 | **4.33 / 5.00** | 🟢 Green |
 | **Net Delta** | **+1.50** | **+1.00** | **+0.50** | **+0.80** | **+0.95** | **+1 Badge** |
 
-For a complete breakdown of evaluation methods and the LangSmith trace logs, see [EVAL_RESULTS.md](file:///Users/rahul/Library/CloudStorage/OneDrive-Personal/Rahul/InterviewKickstart/AgenticAI/Capstone_Project/BRD_to_Engineering_Agent/engineering-plan-agent/docs/EVAL_RESULTS.md).
+For a complete breakdown of evaluation methods and the LangSmith trace logs, see [EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
 
 ---
 
@@ -292,7 +295,7 @@ For a complete breakdown of evaluation methods and the LangSmith trace logs, see
 The pipeline exposes four automated output integrations triggered only upon human approval:
 *   **Google Sheets Export:** Writes the complete state (summary, phases, schedule, stack) as a multi-tab row log using `gspread` to power a centralized historical insights dashboard. If credentials or network connection are missing, it falls back to writing CSV bundles locally in `logs/exports/<run_id>/`.
 *   **Jira Epic Integration (MCP):** On approval, creates a Jira **Epic** by calling an `mcp-atlassian` MCP server over stdio transport (MCP handshake → `list_tools` → `jira_create_issue`). If the server cannot be spawned, it falls back to a direct REST call. Either path builds the Epic description in Atlassian Document Format (ADF), containing the Critic's quality scores, architectural components, NFR mappings, and a link to the rendered Kroki architecture diagram.
-*   **Kroki.io SVG Render:** Converts Mermaid markup into a rendered SVG schema. If Kroki is down, the Streamlit frontend falls back gracefully to local client-side `mermaid.js` rendering.
+*   **Kroki.io SVG Render:** Converts Mermaid markup into a rendered SVG schema. If Kroki is down, the React frontend falls back gracefully to local client-side `mermaid.js` rendering.
 *   **PDF Exporter (ReportLab):** Generates a structured PDF document containing the full engineering plan, phase breakdowns, and critic badges on a local endpoint (`/download/{run_id}`).
 
 ---
@@ -302,6 +305,8 @@ The pipeline exposes four automated output integrations triggered only upon huma
 Below is the token usage and cost breakdown for a single full execution of the EM Copilot pipeline (using a standard 5-section BRD):
 
 ### Models in Use & Rate Limits
+The model family is selected per-run in the UI. The table below shows the OpenAI defaults; the Anthropic path uses `claude-sonnet-4-5` for specialists and `claude-haiku-4-5` for the Critic, configurable via `ANTHROPIC_DEFAULT_MODEL` / `ANTHROPIC_MINI_MODEL` env vars.
+
 *   **Specialist Agents:** `gpt-4o` (optimal reasoning & schema compliance)
     *   Max Response Tokens: 4096 per response
     *   Rate Limit: 150,000 input tokens/minute (Tier 1 standard)
@@ -338,18 +343,32 @@ See [screenshots/README.md](docs/screenshots/README.md) for sample run with scre
 engineering-plan-agent/
 │
 ├── README.md                       ← system documentation
-├── requirements.txt                ← locked dependencies
-├── Dockerfile                      ← Docker build configuration
+├── requirements.txt                ← locked Python dependencies
+├── Dockerfile                      ← multi-stage build (Node frontend → Python runtime)
+├── cloudbuild.yaml                 ← GCP Cloud Build pipeline (build → push → deploy → smoke)
+├── docker-compose.yml              ← local dev services (Redis L2 cache)
 ├── .env.example                    ← environment configuration keys template
+│
+├── frontend/                       ← React 19 + Vite + TypeScript SPA
+│   ├── src/components/             ← feature components (AgentWorkspace, HITLApprovalGate, TimelineStepper, …)
+│   ├── src/context/                ← Auth + Workspace contexts
+│   ├── src/hooks/useSSE.ts         ← server-sent events client for live progress
+│   └── playwright.config.ts        ← E2E happy-path tests
+│
+├── scripts/                        ← administrative deployment helper scripts
+│   ├── gcp_deploy_secrets.sh       ← idempotent Secret Manager wiring for Cloud Run
+│   └── ingest_kb.py                ← Pinecone knowledge-base ingestion
 │
 ├── src/                            ← application source code
 │   ├── core/
 │   │   ├── models.py               ← Pydantic schemas and pipeline state contracts
 │   │   ├── config.py               ← configuration settings loader
+│   │   ├── providers.py            ← LLMProvider protocol + OpenAI/Anthropic + complete_with_fallback
+│   │   ├── pricing.py              ← per-model rate table for per-run USD cost tracking
 │   │   ├── rag.py                  ← vector store ingestion and retrieval logic (cached + resilient)
 │   │   ├── cache.py                ← CachePolicy, backends (InMemory / Redis / Tiered / Semantic), @cached
 │   │   ├── resilience.py           ← CallPolicy, CircuitBreaker, @resilient, sensible defaults
-│   │   ├── events.py               ← observability event bus (cache_hit / retry / breaker_open ...)
+│   │   ├── events.py               ← observability event bus (cache_hit / retry / breaker_open / provider_fallback ...)
 │   │   └── logger.py               ← JSONL logger with criteria trackers
 │   ├── agents/
 │   │   ├── base_agent.py           ← shared agent class wrapping LLM calls (per-agent breaker registry)
@@ -363,7 +382,7 @@ engineering-plan-agent/
 │   │   ├── critic.py               ← quality auditor and revision loop controller
 │   │   └── pipeline.py             ← LangGraph orchestrator state graph
 │   ├── api/
-│   │   └── main.py                 ← FastAPI web server endpoints
+│   │   └── main.py                 ← FastAPI web server endpoints (mounts React /dist at /)
 │   ├── security/
 │   │   └── validator.py            ← 7-check security sanitization layers
 │   └── integrations/
@@ -377,9 +396,8 @@ engineering-plan-agent/
 │
 ├── knowledge_base/                 ← RAG engineering standards text assets
 ├── eval/                           ← test BRD scenarios & run_eval.py
-├── scripts/                        ← administrative deployment helper scripts
-├── tests/                          ← unit & integration tests
-├── docs/                           ← system architecture design, architectural diagrams, sprint implementation schedule, progress log & scripts
+├── tests/                          ← unit (pytest) + smoke (custom registry, 14 groups) tests
+├── docs/                           ← system architecture, diagrams, sprint plans, screenshots
 └── logs/                           ← execution telemetry and export files
 ```
 
@@ -391,10 +409,11 @@ engineering-plan-agent/
 
 Clone this repository, initialize your virtual environment, and install dependencies:
 ```bash
-git clone https://github.com/morya99/engineering-plan-agent.git
+git clone https://github.com/rahulganbote/engineering-plan-agent.git
 cd engineering-plan-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cd frontend && npm ci && cd ..
 ```
 
 ### 2. Configuration
@@ -404,8 +423,10 @@ Create your environment configuration:
 cp .env.example secrets/.env
 ```
 Fill out the keys in `secrets/.env`. Standard required keys are:
-*   `OPENAI_API_KEY`
-*   `PINECONE_API_KEY`
+*   `OPENAI_API_KEY` (required if running with OpenAI family — default)
+*   `ANTHROPIC_API_KEY` (required if running with Anthropic family)
+*   `PINECONE_API_KEY` (required for RAG retrieval)
+*   `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` + `SESSION_SECRET_KEY` (required for sign-in)
 
 
 For observability and integrations, configure:
@@ -433,11 +454,14 @@ ELEVENLABS_AGENT_ID=your_agent_id
 For the optional distributed cache & resilience tuning:
 ```env
 # Optional — Distributed Cache & Resilience (Phases 8-9)
-REDIS_URL=rediss://default:<password>@<host>:<port>   # enables L2 cache; absent = L1 only
-AGENT_TIMEOUT_SEC=90                                   # per-agent bulkhead budget
+REDIS_URL=redis://localhost:6379                       # enables L2 cache; absent = L1 only
+AGENT_TIMEOUT_SEC=90                                   # per-agent bulkhead, OpenAI default
+ANTHROPIC_AGENT_TIMEOUT_SEC=180                        # per-family override (Anthropic is 3-5× slower per call)
 SEMANTIC_CACHE_THRESHOLD=0.95                          # Critic semantic match threshold
+MAX_CRITIC_REVISIONS=0                                 # set to 0 during local dev to save ~50% tokens; default 2
+ENABLE_PROVIDER_FALLBACK=true                          # false to surface primary-provider errors instead of auto-falling-back
 ```
-Without `REDIS_URL`, the cache layer runs L1-only (in-process LRU+TTL) and the pipeline behaves exactly as before. With Redis configured, cache state survives container restarts and is shared across replicas. See `docs/DEPLOYMENT_HUGGINGFACE.md` for the Upstash setup walkthrough.
+Without `REDIS_URL`, the cache layer runs L1-only (in-process LRU+TTL) and the pipeline behaves exactly as before. With Redis configured, cache state survives uvicorn restarts and is shared across container instances. For production on GCP, point `REDIS_URL` at a Memorystore instance; for local dev use `docker compose up -d redis` (see [docker-compose.yml](./docker-compose.yml)).
 
 ### 3. Database Ingestion (One-Time Setup)
 
@@ -448,16 +472,37 @@ python scripts/ingest_kb.py
 
 ### 4. Running the Application
 
-Start the backend API server and the Streamlit frontend in separate terminals:
+Two-process dev loop — FastAPI backend serves the API + (in production) the built React SPA; the Vite dev server hot-reloads frontend changes locally.
 
 ```bash
-# Terminal 1 — Backend API
+# Terminal 1 — Backend API (serves /api/* + /auth/* + SSE)
 uvicorn src.api.main:app --reload --port 8000
 
-# Terminal 2 — UI
-streamlit run streamlit_app.py
+# Terminal 2 — React dev server (Vite HMR, proxies API to :8000)
+cd frontend && npm run dev
 ```
-Access the application UI by visiting `http://localhost:8501`.
+Access the application UI by visiting `http://localhost:5173`.
+
+**Optional — start the L2 Redis cache for faster repeat runs:**
+```bash
+docker compose up -d redis
+# Add REDIS_URL=redis://localhost:6379 to secrets/.env (already present if you copied .env.example)
+# Restart uvicorn to pick up the new backend
+```
+
+### 5. Running Tests
+
+```bash
+# Backend smoke tests (custom registry, ~80 tests across 14 groups, no LLM calls)
+python tests/smoke_test.py                # all groups
+python tests/smoke_test.py providers      # single group
+
+# Backend unit tests (pytest, ~30 tests covering providers + integrations)
+pytest tests/unit/ -q
+
+# Frontend tests (Vitest, ~30 tests + Playwright E2E)
+cd frontend && npm test
+```
 
 
 
