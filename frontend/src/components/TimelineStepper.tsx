@@ -249,7 +249,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   ].map(spec => {
                     const { status } = getDetailedStatus(spec.key);
                     let specCardClass = "flex items-center justify-between px-2 py-1 rounded border text-[9px] font-semibold transition-all duration-300 ";
-                    let statusIcon = null;
+                    let statusIcon: React.ReactNode;
 
                     if (status === 'completed') {
                       specCardClass += "bg-emerald-950/20 border-emerald-800/40 text-emerald-400";
