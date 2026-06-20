@@ -58,20 +58,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     },
   ];
 
-  const mermaidCode = `graph TD
-    Security[1. Security Validation] --> Orchestrator[2. Orchestrator Parser]
-    Orchestrator --> Specialists[3. 5 Specialist Agents]
-    subgraph Specialists [Specialists Spoke]
-        Plan[Plan Generator]
-        Schedule[Schedule Estimator]
-        Arch[Solution Architect]
-        PoC[PoC Scope]
-        Stack[Tech Stack Matcher]
-    end
-    Specialists --> Critic[4. Critic Rubric Grade]
-    Critic -->|Below Threshold| Specialists
-    Critic -->|Passed| HITL[5. EM HITL Approval Gate]
-    HITL -->|Approved| Export[6. Google Sheets & Jira Export]`;
+
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-4">
@@ -86,7 +73,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
         {/* Runtime hint — formerly inside the File Ingestion Guide box */}
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <span className="inline-flex h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
-          <span>Anticipate <strong className="text-slate-300">60s &ndash; 240s</strong> total run time per BRD.</span>
+          <span>Anticipate <strong className="text-slate-300">60s &ndash; 180s</strong> total run time per BRD.</span>
         </div>
       </div>
 
@@ -184,17 +171,6 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
             ))}
           </div>
         </div>
-
-        {/* Mermaid Syntax Accordion — collapsed by default, ~32px overhead */}
-        <details className="group border border-slate-900 rounded-lg overflow-hidden bg-slate-950">
-          <summary className="px-4 py-2 bg-slate-950 hover:bg-slate-900/50 cursor-pointer flex justify-between items-center text-[11px] font-bold text-slate-400 select-none">
-            <span>📋 View Mermaid Diagram Source</span>
-            <span className="text-[10px] group-open:rotate-180 transition-transform">▼</span>
-          </summary>
-          <div className="p-3 border-t border-slate-900 font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre bg-slate-950 leading-relaxed">
-            {mermaidCode}
-          </div>
-        </details>
       </div>
     </div>
   );

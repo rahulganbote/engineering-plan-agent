@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, ThumbsUp, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/apiClient';
+
+// Declare the custom element ElevenLabs Conversational AI widget for TypeScript/React compatibility
+declare global {
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements {
+        'elevenlabs-convai': React.DetailedHTMLProps<
+          React.HTMLAttributes<HTMLElement> & {
+            'agent-id': string;
+            'dynamic-variables'?: string;
+          },
+          HTMLElement
+        >;
+      }
+    }
+  }
+}
 
 export interface ApprovalResponse {
   run_id: string;
@@ -27,12 +44,18 @@ interface HITLApprovalGateProps {
 }
 
 export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDecisionSubmitted }) => {
-  const { apiBaseUrl } = useWorkspace();
+  const { apiBaseUrl, elevenlabsAgentId } = useWorkspace();
   const { user } = useAuth();
   const [reviewer, setReviewer] = useState('Engineering Manager');
   const [rating, setRating] = useState(4);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  useEffect(() => {
+    // Reset submission state when loading a different pipeline run
+    setHasSubmitted(false);
+  }, [runId]);
 
   const handleSubmit = async (decision: 'approved' | 'rejected') => {
     if (decision === 'rejected' && !notes.trim()) {
@@ -58,6 +81,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         })
       });
 
+      setHasSubmitted(true);
       toast.success(`Pipeline successfully ${decision}!`, {
         icon: <ThumbsUp className="text-green-500" />
       });
@@ -84,6 +108,22 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard.
       </div>
 
+      {/* ElevenLabs Voice-Assisted Review widget, rendered BEFORE inputs so the manager can ask questions first */}
+      {elevenlabsAgentId && (
+        <div className="border-t border-slate-800 pt-4">
+          <h3 className="text-sm font-semibold text-slate-300 mb-2">
+            Voice-Assisted Review
+          </h3>
+          <p className="text-xs text-slate-400 mb-3">
+            Ask questions about the plan before approving.
+          </p>
+          <elevenlabs-convai
+            agent-id={elevenlabsAgentId}
+            dynamic-variables={JSON.stringify({ run_id: runId })}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-6">
         <div>
           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Reviewer</label>
@@ -91,7 +131,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
             type="text" 
             value={reviewer} 
             onChange={(e) => setReviewer(e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasSubmitted}
             className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-100"
           />
         </div>
@@ -105,7 +145,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
             max={5} 
             value={rating} 
             onChange={(e) => setRating(Number(e.target.value))}
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasSubmitted}
             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 mt-3.5"
           />
         </div>
@@ -119,7 +159,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           placeholder="Provide context or feedback on output quality..." 
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          disabled={isSubmitting}
+          disabled={isSubmitting || hasSubmitted}
           className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none h-20 text-slate-100"
         />
       </div>
@@ -129,7 +169,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         <div className="flex justify-center">
           <button
             onClick={() => handleSubmit('approved')}
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasSubmitted}
             className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-2 text-xs font-bold"
           >
             <Check size={14} />
@@ -139,7 +179,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         <div className="flex justify-end">
           <button
             onClick={() => handleSubmit('rejected')}
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasSubmitted}
             className="px-4 py-2 rounded-lg bg-slate-950 hover:bg-red-950/25 text-slate-300 hover:text-red-400 border border-slate-800 hover:border-red-900/30 transition flex items-center gap-2 text-xs font-bold"
           >
             <X size={14} />

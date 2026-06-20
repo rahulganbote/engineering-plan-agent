@@ -44,7 +44,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     },
     {
       id: 3,
-      label: 'Specialists',
+      label: 'Specialist Agents',
       description: '5 Parallel Spokes',
       icon: Cpu,
       get isCompleted() {

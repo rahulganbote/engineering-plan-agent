@@ -81,6 +81,12 @@ def _safe_emit(event_type: str, **fields) -> None:
         pass
 
 
+def _set_status(ps: PipelineState, status: str) -> None:
+    """Set pipeline_status and emit a status event to the client."""
+    ps.pipeline_status = status
+    _safe_emit("pipeline_status", status=status)
+
+
 def _revision_targets(ps: PipelineState) -> list[str]:
     """
     Decide which agents should rerun during a revision cycle.
@@ -121,15 +127,16 @@ def node_orchestrator_hub(state: dict) -> dict:
     brd_text = state.get("_brd_text", "")
     log.info(f"[{ps.run_id}] NODE orchestrator_hub")
     _safe_emit("agent_start", agent="orchestrator")
+    _set_status(ps, "running")
 
     if not brd_text:
         ps.errors.append("No BRD text provided")
-        ps.pipeline_status = "error"
+        _set_status(ps, "error")
         return _dump(ps, state)
 
     output, sections = OrchestratorAgent().run(brd_text, ps.run_id)
     ps.brd_sections = sections
-    ps.pipeline_status = "dispatching" if output.validation_passed else "error"
+    _set_status(ps, "dispatching" if output.validation_passed else "error")
     state["_routing_plan"] = output.routing_plan
     state["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
 
@@ -157,7 +164,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     if ps.pipeline_status == "error":
         return _dump(ps, state)
 
-    ps.pipeline_status = "dispatching"
+    _set_status(ps, "dispatching")
     max_workers = min(len(targets), len(ALL_SPECIALIST_AGENTS)) or 1
 
     # ── Phase 9 — Bulkhead: per-agent timeout at the executor ───────────────
@@ -243,7 +250,7 @@ def node_aggregate_outputs(state: dict) -> dict:
     log.info(f"[{ps.run_id}] NODE aggregate_outputs | rev={ps.revision_count}")
 
     if ps.errors:
-        ps.pipeline_status = "error"
+        _set_status(ps, "error")
         return _dump(ps, state)
 
     missing = [
@@ -252,11 +259,11 @@ def node_aggregate_outputs(state: dict) -> dict:
         if getattr(ps, field_name) is None
     ]
     if missing:
-        ps.pipeline_status = "error"
+        _set_status(ps, "error")
         ps.errors.append(f"Missing specialist outputs before Critic: {missing}")
         return _dump(ps, state)
 
-    ps.pipeline_status = "critic_review"
+    _set_status(ps, "critic_review")
     log.info(
         f"[{ps.run_id}] Aggregated outputs | "
         f"plan={ps.plan_output is not None} schedule={ps.schedule_output is not None} "
@@ -294,7 +301,7 @@ def node_critic(state: dict) -> dict:
         _safe_emit("agent_failed", agent="critic")
         log.error(f"[{ps.run_id}] critic error: {e}")
         ps.errors.append(f"critic: {str(e)[:140]}")
-        ps.pipeline_status = "error"
+        _set_status(ps, "error")
 
     return _dump(ps, state)
 
@@ -308,12 +315,12 @@ def node_decision_router(state: dict) -> dict:
     log.info(f"[{ps.run_id}] NODE decision_router | rev={ps.revision_count}")
 
     if ps.errors:
-        ps.pipeline_status = "error"
+        _set_status(ps, "error")
         return _dump(ps, state)
 
     if not ps.critic_output:
         ps.errors.append("Critic output missing")
-        ps.pipeline_status = "error"
+        _set_status(ps, "error")
         return _dump(ps, state)
 
     should_revise = (
@@ -330,14 +337,14 @@ def node_decision_router(state: dict) -> dict:
                 "rerunning all specialists"
             )
         ps.revision_count += 1
-        ps.pipeline_status = "revising"
+        _set_status(ps, "revising")
         state["_revision_targets"] = targets
         log.info(
             f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS} | "
             f"targets={targets}"
         )
     else:
-        ps.pipeline_status = "awaiting_hitl"
+        _set_status(ps, "awaiting_hitl")
         state["_revision_targets"] = []
         reason = "max_revisions" if ps.revision_count >= MAX_REVISIONS else "quality_gate"
         log.info(
@@ -351,7 +358,7 @@ def node_decision_router(state: dict) -> dict:
 def node_await_hitl(state: dict) -> dict:
     """Pause point for FastAPI/Streamlit HITL approval."""
     ps = _ps(state)
-    ps.pipeline_status = "awaiting_hitl"
+    _set_status(ps, "awaiting_hitl")
     badge = ps.critic_output.badge.value if ps.critic_output else "unknown"
     log.info(f"[{ps.run_id}] Awaiting HITL | badge={badge}")
     return _dump(ps, state)
@@ -359,7 +366,7 @@ def node_await_hitl(state: dict) -> dict:
 
 def node_error(state: dict) -> dict:
     ps = _ps(state)
-    ps.pipeline_status = "error"
+    _set_status(ps, "error")
     log.error(f"[{ps.run_id}] NODE error | errors={ps.errors}")
     return _dump(ps, state)
 

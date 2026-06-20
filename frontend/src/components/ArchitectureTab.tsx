@@ -98,9 +98,7 @@ export const ArchitectureTab: React.FC<ArchitectureTabProps> = ({ architectureDa
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800/60 pb-2">System Architecture Blueprint</h3>
           <MermaidRenderer diagramSvg={arch.diagram_svg} diagramMermaid={arch.diagram_mermaid} />
 
-          {/* Mermaid source accordion intentionally hidden in Workspace per UX request.
-              The source is still available via Sandbox > Architecture demo
-              for design-mode / power-user inspection. */}
+          {/* Mermaid source accordion hidden in Workspace per UX request. */}
         </div>
       )}
 

@@ -368,6 +368,17 @@ async def health_check():
 #   - Same SPA can serve users with different provider availability (multi-tenant
 #     future) without rebuilding.
 # ─────────────────────────────────────────────────────────────────────────────
+@app.get("/api/config")
+async def public_config():
+    """
+    Public runtime config — exposed to frontend at boot. NO secrets.
+    Exposes ElevenLabs voice-assisted review agent ID if configured.
+    """
+    return {
+        "elevenlabs_agent_id": settings.elevenlabs_agent_id or "",
+    }
+
+
 @app.get("/api/providers")
 async def list_providers():
     """
@@ -393,11 +404,11 @@ async def list_providers():
         # for the future path).
         "llama": {
             "available": False,
-            "reason": "Coming soon — requires OpenRouter or Together AI integration",
+            "reason": "Coming soon",
         },
         "mistral": {
             "available": False,
-            "reason": "Coming soon — requires OpenRouter or Together AI integration",
+            "reason": "Coming soon",
         },
     }
 

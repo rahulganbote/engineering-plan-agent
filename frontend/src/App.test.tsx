@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import App from './App';
 
@@ -36,29 +35,5 @@ describe('App (Sprint 1 workspace and sandbox)', () => {
     render(<App />);
     expect(await screen.findByRole('button', { name: /Browse files/i })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Generate Engineering Plan/i })).toBeInTheDocument();
-  });
-
-  it('can toggle to the sandbox view and back', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-
-    // Switcher buttons
-    const sandboxBtn = await screen.findByRole('button', { name: /Sandbox/i });
-    const workspaceBtn = await screen.findByRole('button', { name: /Workspace/i });
-
-    expect(sandboxBtn).toBeInTheDocument();
-    expect(workspaceBtn).toBeInTheDocument();
-
-    // Click Sandbox button
-    await user.click(sandboxBtn);
-
-    // Verify sandbox title is displayed
-    expect(await screen.findByRole('heading', { name: /Storybook-style Sandbox/i })).toBeInTheDocument();
-
-    // Click Workspace button to toggle back
-    await user.click(workspaceBtn);
-
-    // Verify workspace title is displayed again
-    expect(await screen.findByRole('heading', { name: /BRD → Engineering Plan/i })).toBeInTheDocument();
   });
 });

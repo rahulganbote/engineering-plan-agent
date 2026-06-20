@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useSSE, type LogEvent, type CriticOutput, type ApprovalResult, type ArtifactsState } from '../hooks/useSSE';
 
 interface WorkspaceContextType {
@@ -21,6 +21,7 @@ interface WorkspaceContextType {
   setApprovalResult: (result: ApprovalResult | null) => void;
   errorMessage: string | null;
   fallbackActive: { from: string; to: string } | null;
+  elevenlabsAgentId: string;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -34,6 +35,15 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     }
     return 'http://localhost:8000';
   });
+  const [elevenlabsAgentId, setElevenlabsAgentId] = useState<string>('');
+
+  // Fetch ElevenLabs widget config on component mount
+  useEffect(() => {
+    fetch(`${apiBaseUrl}/api/config`)
+      .then(r => r.json())
+      .then(cfg => setElevenlabsAgentId(cfg.elevenlabs_agent_id || ''))
+      .catch(err => console.error('Failed to load ElevenLabs config:', err));
+  }, [apiBaseUrl]);
 
   const sseData = useSSE(runId, apiBaseUrl);
 
@@ -45,6 +55,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         apiBaseUrl,
         setApiBaseUrl,
         ...sseData,
+        elevenlabsAgentId,
       }}
     >
       {children}
