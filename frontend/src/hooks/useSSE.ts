@@ -223,8 +223,13 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           break;
         }
         case 'critic_complete': {
-          const criticPayload = data.payload || data;
-          setCriticOutput(criticPayload as unknown as CriticOutput);
+          const criticPayload = (data.payload || data) as any;
+          setCriticOutput({
+            revisionNumber: criticPayload.revision_number ?? criticPayload.revisionNumber,
+            overallScore: criticPayload.overall_score ?? criticPayload.overallScore,
+            badge: (criticPayload.badge?.toLowerCase() || criticPayload.badge) as 'green' | 'amber' | 'red',
+            dimensions: criticPayload.dimensions || {},
+          });
           break;
         }
         case 'hitl_decision': {

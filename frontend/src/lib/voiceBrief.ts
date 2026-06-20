@@ -63,7 +63,7 @@ export function generateVoiceBrief(
   const parts: string[] = [];
 
   // ── Critic score + badge ────────────────────────────────────────────────
-  const score = criticOutput.overall_score?.toFixed(2) ?? '?';
+  const score = criticOutput.overallScore?.toFixed(2) ?? '?';
   const badge = (criticOutput.badge ?? '').toString();
   parts.push(
     `Run ${runId.slice(0, 8)}. The Critic gave this plan ${score} out of 5 with a ${badge} badge.`,

@@ -22,7 +22,7 @@ describe('TimelineStepper', () => {
     // 6 steps: Security, Orchestrator, Specialists, Critic, HITL Gate, Decision
     expect(screen.getByText('Security')).toBeInTheDocument();
     expect(screen.getByText('Orchestrator')).toBeInTheDocument();
-    expect(screen.getByText('Specialists')).toBeInTheDocument();
+    expect(screen.getByText('Specialist Agents')).toBeInTheDocument();
     expect(screen.getByText('Critic')).toBeInTheDocument();
     expect(screen.getByText('HITL Gate')).toBeInTheDocument();
     expect(screen.getByText('Decision')).toBeInTheDocument();
