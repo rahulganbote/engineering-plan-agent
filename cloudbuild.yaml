@@ -24,8 +24,8 @@
 # ────────────────────────────────────────────────────────────────────────────
 
 substitutions:
-  _REGION:       europe-west1
-  _SERVICE:      em-copilot-react
+  _REGION:       us-east4
+  _SERVICE:      em-copilot   # uri
   _REPO:         em-copilot
   _IMAGE_TAG:    "${BUILD_ID}"   # always-defined; trigger or manual
 
