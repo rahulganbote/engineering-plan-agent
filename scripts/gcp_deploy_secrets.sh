@@ -52,6 +52,7 @@ SECRETS=(
   "ELEVENLABS_API_KEY"
   "ANTHROPIC_API_KEY"
   "SLACK_WEBHOOK_URL"
+  "REDIS_URL"                  # Upstash Redis (us-east-2 / Ohio); enables L2 cache
 )
 
 echo "Verifying secrets and granting permissions..."
@@ -92,7 +93,8 @@ GOOGLE_SA_B64=GOOGLE_SA_B64:latest,\
 JIRA_API_TOKEN=JIRA_API_TOKEN:latest,\
 ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,\
 ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,\
-SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest \
+SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,\
+REDIS_URL=REDIS_URL:latest \
   --update-env-vars=\
 ANTHROPIC_DEFAULT_MODEL="${ANTHROPIC_DEFAULT_MODEL:-claude-sonnet-4-5}",\
 ANTHROPIC_MINI_MODEL="${ANTHROPIC_MINI_MODEL:-claude-haiku-4-5}",\
