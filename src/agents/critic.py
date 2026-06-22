@@ -648,6 +648,10 @@ Return ONLY valid JSON with this exact structure:
             1. Architecture complexity vs schedule duration
             2. Tech stack familiarity vs schedule buffer
             3. PoC duration vs Phase 1 duration
+            4. Team size vs architecture complexity (over-engineering signal)
+            5. Critical/high risks vs schedule buffer (no margin for risk)
+            6. Plan duration vs schedule effort (math sanity check)
+            7. Architecture pattern vs component count (pattern fit)
         """
         issues: list[ConsistencyIssue] = []
 
@@ -695,6 +699,108 @@ Return ONLY valid JSON with this exact structure:
                         f"PoC duration ({state.poc_output.duration_weeks}w) exceeds "
                         f"Phase 1 duration ({phase1.duration_weeks}w). "
                         "Reduce PoC scope or extend Phase 1."
+                    ),
+                    severity=RiskLevel.MEDIUM,
+                ))
+
+        # Check 4: Architecture complexity vs team size (over-engineering signal)
+        # Heuristic: each engineer can sustainably own ~2 components long-term.
+        # When components/engineer ratio exceeds 3, the team will struggle to
+        # maintain the architecture — common failure mode when an architect
+        # designs without knowing team capacity.
+        if state.arch_output and state.plan_output and state.plan_output.team_composition:
+            component_count = len(state.arch_output.components)
+            team_size = sum(state.plan_output.team_composition.values())
+            if team_size > 0 and component_count > team_size * 3 and team_size < 8:
+                issues.append(ConsistencyIssue(
+                    agents_involved=["solution_architect", "engineering_plan_generator"],
+                    conflict_description=(
+                        f"Architecture has {component_count} components but team is only "
+                        f"{team_size} engineers ({component_count / team_size:.1f} per person). "
+                        "Architecture likely over-engineered for team capacity — consolidate components "
+                        "or expand team."
+                    ),
+                    severity=RiskLevel.HIGH,
+                ))
+
+        # Check 5: Critical/high risks vs schedule buffer (no risk margin)
+        # Heuristic: when multiple high-impact risks are flagged, the schedule
+        # needs at least 2 weeks of buffer for unplanned mitigation work. Tight
+        # schedules with severe risks typically slip mid-project.
+        if state.plan_output and state.schedule_output:
+            severe_risks = [
+                r for r in (state.plan_output.risks or [])
+                if r.impact in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+                or r.likelihood in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+            ]
+            buffer = getattr(state.schedule_output, "buffer_weeks", 0) or 0
+            if len(severe_risks) >= 2 and buffer < 2:
+                issues.append(ConsistencyIssue(
+                    agents_involved=["engineering_plan_generator", "schedule_estimator"],
+                    conflict_description=(
+                        f"{len(severe_risks)} high or critical risks identified, but schedule "
+                        f"only allocates {buffer} buffer weeks. Add risk-mitigation buffer or "
+                        "downgrade risks if they're over-stated."
+                    ),
+                    severity=RiskLevel.HIGH,
+                ))
+
+        # Check 6: Plan duration vs schedule effort (math sanity)
+        # Cross-checks the agents' arithmetic: plan_weeks × team × 5 working
+        # days should approximately equal schedule effort_days. Deviations
+        # over 50% suggest one agent is silently disagreeing with the other.
+        if (
+            state.plan_output
+            and state.schedule_output
+            and state.plan_output.team_composition
+            and state.plan_output.total_duration_weeks
+        ):
+            team_size = sum(state.plan_output.team_composition.values())
+            implied_effort = state.plan_output.total_duration_weeks * team_size * 5
+            actual_effort = state.schedule_output.total_effort_days or 0
+            if implied_effort > 0 and actual_effort > 0:
+                ratio = abs(actual_effort - implied_effort) / implied_effort
+                if ratio > 0.5:
+                    direction = "exceeds" if actual_effort > implied_effort else "is under"
+                    issues.append(ConsistencyIssue(
+                        agents_involved=["engineering_plan_generator", "schedule_estimator"],
+                        conflict_description=(
+                            f"Schedule effort ({actual_effort} days) {direction} "
+                            f"plan implied effort ({implied_effort} days for "
+                            f"{state.plan_output.total_duration_weeks}w × {team_size} engineers). "
+                            f"Discrepancy is {ratio * 100:.0f}% — agents disagree on workload."
+                        ),
+                        severity=RiskLevel.MEDIUM,
+                    ))
+
+        # Check 7: Architecture pattern vs component count (pattern fit)
+        # Microservices for <4 components = over-engineered (no benefit at low scale).
+        # Monolith for >12 components = under-engineered (modularity costs at scale).
+        # Catches the common case where the architect picked a fashionable pattern
+        # without verifying it suits the actual system size.
+        if state.arch_output and state.arch_output.pattern:
+            pattern_lower = state.arch_output.pattern.lower()
+            component_count = len(state.arch_output.components)
+            is_microservices = "microservice" in pattern_lower
+            is_monolith = "monolith" in pattern_lower or "monolithic" in pattern_lower
+            if is_microservices and component_count < 4:
+                issues.append(ConsistencyIssue(
+                    agents_involved=["solution_architect"],
+                    conflict_description=(
+                        f"Pattern '{state.arch_output.pattern}' chosen but only "
+                        f"{component_count} components. Microservices add operational "
+                        "complexity that isn't justified below ~4 services — consider "
+                        "modular monolith."
+                    ),
+                    severity=RiskLevel.MEDIUM,
+                ))
+            elif is_monolith and component_count > 12:
+                issues.append(ConsistencyIssue(
+                    agents_involved=["solution_architect"],
+                    conflict_description=(
+                        f"Pattern '{state.arch_output.pattern}' chosen but "
+                        f"{component_count} components. Monolith pattern struggles with "
+                        "this many internal modules — consider modular decomposition."
                     ),
                     severity=RiskLevel.MEDIUM,
                 ))
@@ -773,28 +879,108 @@ Return ONLY valid JSON with this exact structure:
     def _detect_scope_creep(self, state) -> list:
         """
         Scope creep detection — org AI safety standard 8.2.
-        Cross-checks agent output objectives against BRD anchor vocabulary.
-        Flags phase objectives containing >3 novel terms not present in BRD.
+
+        Cross-checks specialist outputs against the BRD's anchor vocabulary.
+        Anything with too many novel (non-BRD, non-stopword) terms is flagged
+        as potential scope creep — work the EM didn't ask for.
+
+        Coverage:
+            1. Plan phase objectives           — wordy claims, >3 novel terms
+            2. Architecture component names    — short labels, >1 novel term
+            3. Tech stack recommended option   — almost-no-overlap with BRD
+            4. PoC scope_in items              — wordy claims, >3 novel terms
+
+        Each flag includes the novel terms that triggered it so the EM knows
+        exactly what to question — not just "something looks off".
+
         Returns HallucinationFlag list (advisory, not hard block).
         """
         flags = []
         brd_text  = " ".join(s.content for s in state.brd_sections).lower()
         brd_terms = set(brd_text.split())
-        stop = {"shall","must","will","implement","develop","build","create",
-                "establish","ensure","provide","support","enable","allow","manage"}
 
+        # Words that are too common to be evidence of scope creep
+        stop = {
+            "shall","must","will","implement","develop","build","create",
+            "establish","ensure","provide","support","enable","allow","manage",
+            "using","based","through","across","within","including","various",
+            "system","systems","service","services","layer","module","modules",
+        }
+
+        def _novel(text: str) -> set[str]:
+            """Tokenize text and return the set of novel >4-char words."""
+            tokens = text.lower().replace("-", " ").replace("_", " ").replace("/", " ").split()
+            return {w for w in tokens if len(w) > 4 and w not in brd_terms and w not in stop}
+
+        def _flag(agent: str, location: str, snippet: str, novel: set[str]) -> None:
+            flags.append(HallucinationFlag(
+                agent=agent,
+                claim=(
+                    f"Possible scope creep in {location}: '{snippet[:80]}'. "
+                    f"Novel terms not in BRD: {', '.join(sorted(novel))}"
+                ),
+                status="partially_supported",
+                supporting_chunk_id=None,
+            ))
+
+        # ── 1. Plan phase objectives ────────────────────────────────────────
         if state.plan_output:
             for phase in state.plan_output.phases:
                 for objective in phase.objectives:
-                    novel = {w for w in set(objective.lower().split())
-                             if len(w) > 4 and w not in brd_terms and w not in stop}
+                    novel = _novel(objective)
                     if len(novel) > 3:
-                        flags.append(HallucinationFlag(
-                            agent="engineering_plan_generator",
-                            claim=f"Possible scope creep in phase objective: '{objective[:80]}'",
-                            status="partially_supported",
-                            supporting_chunk_id=None,
-                        ))
+                        _flag("engineering_plan_generator", "phase objective", objective, novel)
+
+        # ── 2. Architecture component names ─────────────────────────────────
+        # Component names are short — a single novel term is meaningful here.
+        # We skip components whose name is purely generic ("Database", "API")
+        # because those are descriptors, not custom choices.
+        if state.arch_output:
+            for component in state.arch_output.components:
+                name = getattr(component, "name", "") or ""
+                if not name:
+                    continue
+                novel = _novel(name)
+                if len(novel) >= 1:
+                    _flag("solution_architect", "component name", name, novel)
+
+        # ── 3. Tech stack recommended option ────────────────────────────────
+        # If the recommended option's name + components have NO overlap with
+        # BRD vocabulary, the architect likely picked a fashionable stack
+        # rather than one matching the requirements.
+        if state.stack_output and state.stack_output.recommended_option:
+            recommended = next(
+                (o for o in state.stack_output.options
+                 if o.name == state.stack_output.recommended_option),
+                 None,
+            )
+            if recommended is not None:
+                # Build a vocabulary from the option name + its layer components
+                stack_text = recommended.name
+                for tech in (recommended.components or {}).values():
+                    stack_text += " " + str(tech)
+                tokens = stack_text.lower().replace("-", " ").replace("_", " ").split()
+                long_tokens = [w for w in tokens if len(w) > 4 and w not in stop]
+                novel = [w for w in long_tokens if w not in brd_terms]
+                # Flag when ~all stack vocabulary is novel — almost nothing came from BRD.
+                # Use >=80% novel and >=3 long tokens so we don't flag tiny names.
+                if len(long_tokens) >= 3 and len(novel) / len(long_tokens) >= 0.8:
+                    _flag(
+                        "tech_stack_recommender",
+                        "recommended stack",
+                        recommended.name,
+                        set(novel),
+                    )
+
+        # ── 4. PoC scope_in items ───────────────────────────────────────────
+        if state.poc_output and getattr(state.poc_output, "scope_in", None):
+            for item in state.poc_output.scope_in:
+                if not isinstance(item, str):
+                    continue
+                novel = _novel(item)
+                if len(novel) > 3:
+                    _flag("poc_planner", "PoC scope_in", item, novel)
+
         if flags:
             log.warning(f"[{state.run_id}] Scope creep: {len(flags)} items flagged for EM review")
         return flags

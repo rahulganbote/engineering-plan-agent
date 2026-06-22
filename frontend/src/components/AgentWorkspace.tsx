@@ -9,6 +9,7 @@ import { apiFetch } from '../lib/apiClient';
 import { IngestionLanding } from './IngestionLanding';
 import { TimelineStepper } from './TimelineStepper';
 import { LogConsole } from './LogConsole';
+import { CriticFindings } from './CriticFindings';
 import { PlanTab } from './PlanTab';
 import { ScheduleTab } from './ScheduleTab';
 import { ArchitectureTab } from './ArchitectureTab';
@@ -166,7 +167,7 @@ export const AgentWorkspace: React.FC = () => {
           ) : (
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm space-y-3 text-center">
               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Authentication</div>
-              <p className="text-xs text-slate-500">Sign in to unlock BRD processing pipeline.</p>
+              <p className="text-xs text-slate-500">Sign in with Google to run a live demo of EM Copilot. Authentication helps prevent bots so the demo stays free for everyone. We only read your email to mark the run. We don't store anything else.</p>
               <button
                 onClick={login}
                 className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold text-xs transition duration-155"
@@ -593,7 +594,7 @@ export const AgentWorkspace: React.FC = () => {
                       </p>
                     </div>
                   }>
-                    <HITLApprovalGate runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
+                    <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
                   </ErrorBoundary>
                 </div>
               )}
@@ -704,6 +705,9 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Critic findings — consistency issues + hallucination flags */}
+              <CriticFindings criticDetail={artifacts?.critic_output} />
 
               {/* Live Log Console */}
               <div className="border-t border-slate-800 pt-8">

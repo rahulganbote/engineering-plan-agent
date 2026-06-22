@@ -223,12 +223,12 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           break;
         }
         case 'critic_complete': {
-          const criticPayload = (data.payload || data) as any;
+          const criticPayload = (data.payload || data) as Record<string, unknown>;
           setCriticOutput({
-            revisionNumber: criticPayload.revision_number ?? criticPayload.revisionNumber,
-            overallScore: criticPayload.overall_score ?? criticPayload.overallScore,
-            badge: (criticPayload.badge?.toLowerCase() || criticPayload.badge) as 'green' | 'amber' | 'red',
-            dimensions: criticPayload.dimensions || {},
+            revisionNumber: (criticPayload.revision_number ?? criticPayload.revisionNumber) as number,
+            overallScore: (criticPayload.overall_score ?? criticPayload.overallScore) as number,
+            badge: ((criticPayload.badge as string)?.toLowerCase() || criticPayload.badge) as 'green' | 'amber' | 'red',
+            dimensions: (criticPayload.dimensions || {}) as Record<string, CriticDimension>,
           });
           break;
         }

@@ -407,6 +407,157 @@ def _():
     assert stack.recommended_option in [o.name for o in stack.options]
 
 
+# ── Scope creep detection (Critic) ────────────────────────────────────────────
+# Helper: build a minimal PipelineState wrapping just the output under test.
+# Keeps each test small and avoids constructing fields the function doesn't read.
+def _scope_creep_state(brd_text: str, **outputs):
+    from src.core.models import PipelineState, BRDSection
+    return PipelineState(
+        run_id="scope-test",
+        brd_raw_hash="0" * 64,
+        pipeline_status="critic_scoring",
+        brd_sections=[BRDSection(
+            section_name="Requirements",
+            content=brd_text,
+            word_count=len(brd_text.split()),
+        )],
+        **outputs,
+    )
+
+
+@test("Critic: scope creep flag includes novel terms in claim message", group="agents")
+def _():
+    """Win #1 — the claim string must list the actual ungrounded words so EM
+    can review them, not just say 'something looks off'."""
+    from src.agents.critic import CriticAgent
+    from src.agents.plan_generator import PlanGeneratorAgent
+
+    plan = PlanGeneratorAgent()._fallback("scope-test", ["plan_chunk_0"], "test")
+    # Inject an objective with 4+ novel terms so the detector fires
+    plan.phases[0].objectives = [
+        "Integrate quantum cryptography sidecar telemetry beacons",
+    ]
+    state = _scope_creep_state(
+        "build a simple checkout flow with stripe payments",
+        plan_output=plan,
+    )
+
+    flags = CriticAgent()._detect_scope_creep(state)
+    assert len(flags) >= 1, "expected scope creep flag for novel-term objective"
+    plan_flags = [f for f in flags if f.agent == "engineering_plan_generator"]
+    assert plan_flags, "expected a flag attributed to plan_generator"
+    # Win #1 contract: the actual novel terms must appear in the claim message
+    assert "Novel terms not in BRD:" in plan_flags[0].claim
+    assert any(
+        term in plan_flags[0].claim.lower()
+        for term in ("quantum", "cryptography", "sidecar", "telemetry")
+    )
+
+
+@test("Critic: scope creep detection covers architecture component names", group="agents")
+def _():
+    """Win #2a — components with no BRD grounding should be flagged."""
+    from src.agents.critic import CriticAgent
+    from src.agents.architect import SolutionArchitectAgent
+
+    arch = SolutionArchitectAgent()._fallback("scope-test", ["arch_chunk_0"], "test")
+    # Replace fallback components with ones whose names are obviously off-spec
+    # (multi-word, non-BRD vocabulary).
+    from src.core.models import Component
+    arch.components = [
+        Component(
+            name="Quantum Federated Telemetry Sidecar",
+            responsibility="emits metrics",
+            technology="rust",
+            interfaces=["internal telemetry bus"],
+        ),
+    ]
+    state = _scope_creep_state(
+        "build a checkout flow with stripe payments",
+        arch_output=arch,
+    )
+
+    flags = CriticAgent()._detect_scope_creep(state)
+    arch_flags = [f for f in flags if f.agent == "solution_architect"]
+    assert arch_flags, "expected a flag attributed to solution_architect"
+    assert "component name" in arch_flags[0].claim.lower()
+    assert "Novel terms not in BRD:" in arch_flags[0].claim
+
+
+@test("Critic: scope creep detection covers tech stack recommendations", group="agents")
+def _():
+    """Win #2b — a recommended stack whose vocabulary has no BRD overlap
+    should be flagged."""
+    from src.agents.critic import CriticAgent
+    from src.agents.tech_stack import TechStackAgent
+    from src.core.models import StackOption, RiskLevel
+
+    stack = TechStackAgent()._fallback("scope-test", ["tech_chunk_0"], "test")
+    # Replace recommended option with a vocabulary-distant pick
+    stack.options = [
+        StackOption(
+            name="Erlang Riak Phoenix Mesh",
+            components={
+                "backend":  "erlang",
+                "database": "riak",
+                "runtime":  "phoenix",
+            },
+            scalability_rating=4,
+            team_familiarity_rating=1,
+            integration_risk=RiskLevel.HIGH,
+            estimated_monthly_cost_usd=1000.0,
+            pros=["scales horizontally"],
+            cons=["unfamiliar to team"],
+            citation="tech_chunk_0",
+        ),
+        StackOption(
+            name="Python FastAPI Postgres",
+            components={"backend": "python", "database": "postgres"},
+            scalability_rating=3,
+            team_familiarity_rating=4,
+            integration_risk=RiskLevel.LOW,
+            estimated_monthly_cost_usd=500.0,
+            pros=["familiar"],
+            cons=["less horizontal"],
+            citation="tech_chunk_0",
+        ),
+    ]
+    stack.recommended_option = "Erlang Riak Phoenix Mesh"
+
+    state = _scope_creep_state(
+        "checkout flow with payments",
+        stack_output=stack,
+    )
+
+    flags = CriticAgent()._detect_scope_creep(state)
+    stack_flags = [f for f in flags if f.agent == "tech_stack_recommender"]
+    assert stack_flags, "expected a flag attributed to tech_stack_recommender"
+    assert "Novel terms not in BRD:" in stack_flags[0].claim
+
+
+@test("Critic: scope creep detection covers PoC scope_in items", group="agents")
+def _():
+    """Win #2c — PoC scope items that introduce out-of-BRD work should be
+    flagged the same way plan objectives are."""
+    from src.agents.critic import CriticAgent
+    from src.agents.poc_planner import PoCPlannerAgent
+
+    poc = PoCPlannerAgent()._fallback("scope-test", ["poc_chunk_0"], "test")
+    poc.scope_in = [
+        "Quantum entanglement telemetry validation sidecar prototype",
+    ]
+    state = _scope_creep_state(
+        "validate stripe checkout in two weeks",
+        poc_output=poc,
+    )
+
+    flags = CriticAgent()._detect_scope_creep(state)
+    poc_flags = [f for f in flags if f.agent == "poc_planner"]
+    assert poc_flags, "expected a flag attributed to poc_planner"
+    assert "PoC scope_in" in poc_flags[0].claim
+    assert "Novel terms not in BRD:" in poc_flags[0].claim
+
+
 # ════════════════════════════════════════════════════════════════════════════════
 # GROUP: pipeline  (graph structure only — no API calls)
 # ════════════════════════════════════════════════════════════════════════════════

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable @typescript-eslint/no-namespace */
+import React, { useState } from 'react';
 import { Check, X, ThumbsUp, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
@@ -53,11 +54,6 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
-
-  useEffect(() => {
-    // Reset submission state when loading a different pipeline run
-    setHasSubmitted(false);
-  }, [runId]);
 
   const handleSubmit = async (decision: 'approved' | 'rejected') => {
     if (decision === 'rejected' && !notes.trim()) {
