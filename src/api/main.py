@@ -528,13 +528,38 @@ async def get_events(run_id: str, since: int = 0):
 
 
 @app.post("/approve/{run_id}", response_model=ApprovalResponse)
-async def hitl_approve(run_id: str, request: ApprovalRequest):
+async def hitl_approve(
+    run_id: str,
+    request: ApprovalRequest,
+    background_tasks: BackgroundTasks,
+):
     """
-    Human-in-the-loop decision gate.
-    On APPROVAL  : triggers Google Sheets export and returns sheet_url.
-    On REJECTION : records rejection, increments counter; Gate 2 reject pushes
-                   an escalation event for the UI to surface.
+    Human-in-the-loop decision gate — fast path.
+
+    Records the EM's decision synchronously in <1s and schedules the heavyweight
+    export work (Google Sheets, Jira via MCP, Pinecone re-indexing) as a
+    background task. Returns immediately so:
+
+      • The ElevenLabs voice agent doesn't hit its 20s tool timeout
+      • The React UI shows instant feedback after the Approve/Reject button click
+
+    Background task progress is observable via SSE events the frontend listens
+    to:
+      • `export_complete`     — Google Sheets done
+      • `jira_pushed` / `jira_skipped` — Jira Epic created (or skipped)
+      • `pinecone_ingest`     — BRD re-indexed (approved runs only)
+      • `exports_finalized`   — terminal event with the full ApprovalResponse
+                                 payload, so the UI can hydrate sheet_url,
+                                 jira_url, etc. without a /artifacts poll
+
+    Pipeline state transitions:
+      awaiting_hitl  → exporting  (set synchronously)
+      exporting      → exported | rejected | export_failed  (set in background)
+
+    A second call while status is `exporting` returns 400 — idempotency guard
+    that protects against voice/button double-submit.
     """
+    # ── 1. Validate state ────────────────────────────────────────────────────
     state = _runs.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -552,6 +577,7 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
             detail="decision must be 'approved' or 'rejected'",
         )
 
+    # ── 2. Record decision in state (fast, pure in-memory update) ────────────
     state.hitl_decision = decision
     if hasattr(state, "hitl_em_ratings") and request.em_rating > 0:
         state.hitl_em_ratings.append({
@@ -561,9 +587,25 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
             "em_rating":       request.em_rating,
             "notes":           request.notes,
         })
+    if hasattr(state, "hitl_latest_note"):
+        state.hitl_latest_note = request.notes
+
+    if decision == HITLDecision.REJECTED:
+        if request.notes:
+            state.hitl_rejection_notes.append(request.notes)
+        state.hitl_rejection_count += 1
+        if state.hitl_rejection_count >= 2:
+            _push_event(run_id, {
+                "type":    "hitl_escalated",
+                "message": "Two rejections — flagging for audit review",
+            })
+
+    # ── 3. Transition to "exporting" so concurrent retries are rejected ──────
+    state.pipeline_status = "exporting"
+
     log.info(
         f"[{run_id}] HITL decision: {decision.value} by {request.reviewer} "
-        f"| em_rating={request.em_rating}"
+        f"| em_rating={request.em_rating} | exports scheduled in background"
     )
 
     _push_event(run_id, {
@@ -572,36 +614,59 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
         "reviewer": request.reviewer,
     })
 
-    sheet_url:        str | None = None
-    export_status:    str | None = None
-    export_mode:      str | None = None
-    export_detail:    str | None = None
-    jira_url:         str | None = None
-    jira_status:      str | None = None
-    jira_detail:      str | None = None
-    jira_issue_key:   str | None = None
+    # ── 4. Schedule heavyweight exports as a background task ─────────────────
+    # FastAPI's BackgroundTasks runs AFTER the HTTP response is sent. The
+    # voice agent / browser get their 200 OK in <1s; the slow integrations
+    # proceed independently.
+    background_tasks.add_task(
+        _run_export_handlers_background,
+        run_id, decision, request.email,
+    )
 
-    state.hitl_decision = decision
-    if hasattr(state, "hitl_latest_note"):
-        state.hitl_latest_note = request.notes
+    # ── 5. Return immediately with pending markers ───────────────────────────
+    # sheet_url + jira_url come back later via the `exports_finalized` SSE event.
+    return ApprovalResponse(
+        run_id=run_id,
+        decision=decision.value,
+        message=(
+            f"Decision recorded: {decision.value}. "
+            "Exports running in the background — watch for the exports_finalized event."
+        ),
+        sheet_url=None,
+        export_status="pending",
+        export_mode=None,
+        export_detail=None,
+        jira_url=None,
+        jira_status="pending",
+        jira_detail=None,
+        jira_issue_key=None,
+        pipeline_status=state.pipeline_status,   # "exporting"
+        rejection_count=state.hitl_rejection_count,
+    )
 
-    if decision == HITLDecision.REJECTED:
-        if request.notes:
-            state.hitl_rejection_notes.append(request.notes)
-        state.hitl_rejection_count += 1
-        
-        if state.hitl_rejection_count >= 2:
-            _push_event(run_id, {
-                "type":    "hitl_escalated",
-                "message": "Two rejections — flagging for audit review",
-            })
 
-    # ── Export registry (Phase 7) ─────────────────────────────────────────────
-    # Import integration modules so they register themselves on first access.
-    import src.integrations.sheets    # noqa: F401
-    import src.integrations.jira_mcp  # noqa: F401
-    import src.integrations.pdf_export  # noqa: F401
-    from src.integrations.export_registry import get_handlers_for_decision
+async def _run_export_handlers_background(
+    run_id: str,
+    decision: HITLDecision,
+    email: str,
+) -> None:
+    """
+    Background worker for /approve — runs Sheets, Jira (via MCP), and Pinecone
+    re-indexing. Emits SSE events at each step so the UI can update progressively
+    instead of waiting for a synchronous response that ElevenLabs would time out
+    on after 20s.
+
+    Wrapped in a top-level try/finally so any uncaught exception still:
+      • sets pipeline_status to `export_failed`
+      • marks _run_export[run_id]["finalized"] = True (so the UI poll path exits)
+      • emits a terminal `exports_finalized` event with the failure reason
+
+    No return value — observability is via SSE events and the /artifacts endpoint.
+    """
+    state = _runs.get(run_id)
+    if not state:
+        log.error(f"[{run_id}] background export: state lost during dispatch")
+        return
 
     sheet_url:      str | None = None
     export_status:  str | None = None
@@ -612,140 +677,160 @@ async def hitl_approve(run_id: str, request: ApprovalRequest):
     jira_detail:    str | None = None
     jira_issue_key: str | None = None
 
-    decision_key = decision.value  # "approved" | "rejected"
-    registry_decision = "approve" if decision_key == "approved" else "reject"
-    export_results: dict = {}
+    try:
+        # Import integration modules so they register themselves on first access.
+        import src.integrations.sheets    # noqa: F401
+        import src.integrations.jira_mcp  # noqa: F401
+        import src.integrations.pdf_export  # noqa: F401
+        from src.integrations.export_registry import get_handlers_for_decision
 
-    for handler_name, handler_fn in get_handlers_for_decision(registry_decision):
-        try:
-            import inspect as _inspect
-            sig = _inspect.signature(handler_fn)
-            kwargs = {}
-            if "email" in sig.parameters:
-                kwargs["email"] = request.email
+        registry_decision = "approve" if decision == HITLDecision.APPROVED else "reject"
+        export_results: dict = {}
 
-            if _inspect.iscoroutinefunction(handler_fn):
-                result = await handler_fn(state, **kwargs)
-            else:
-                result = handler_fn(state, **kwargs)
-            export_results[handler_name] = result
-            log.info(f"[{run_id}] export handler '{handler_name}' ok | {result.get('mode','?')}")
-        except Exception as e:
-            err = f"{type(e).__name__}: {str(e)[:200]}"
-            export_results[handler_name] = {"mode": "failed", "error": err}
-            log.error(f"[{run_id}] export handler '{handler_name}' failed | {err}")
+        for handler_name, handler_fn in get_handlers_for_decision(registry_decision):
+            try:
+                import inspect as _inspect
+                sig = _inspect.signature(handler_fn)
+                kwargs = {}
+                if "email" in sig.parameters:
+                    kwargs["email"] = email
 
-    # ── Unpack sheets result (shape-stable for ApprovalResponse) ─────────────
-    sheets_result = export_results.get("sheets", {})
-    if sheets_result:
-        sheet_url     = sheets_result.get("url")
-        export_mode   = sheets_result.get("mode")
-        export_detail = sheets_result.get("detail")
-        export_status = "ok" if export_mode == "sheets" else (
-            "local_fallback" if export_mode == "local" else "failed"
-        )
-        if decision == HITLDecision.APPROVED:
-            state.pipeline_status = "exported"
-        elif decision == HITLDecision.REJECTED:
-            state.pipeline_status = "rejected"
-        _run_export[run_id] = {
-            "sheet_url":       sheet_url,
-            "mode":            export_mode,
-            "detail":          export_detail,
-            "files":           sheets_result.get("files", []),
-            "fallback_reason": sheets_result.get("fallback_reason"),
-            "status":          export_status,
-        }
-        _push_event(run_id, {
-            "type":      "export_complete",
-            "mode":      export_mode,
-            "sheet_url": sheet_url,
-            "detail":    export_detail,
-        })
-    elif sheets_result.get("mode") == "failed":
-        if decision == HITLDecision.APPROVED:
-            state.pipeline_status = "export_failed"
-        elif decision == HITLDecision.REJECTED:
-            # Rejection still happens — audit row went to local CSV fallback.
-            state.pipeline_status = "rejected"
-        export_status = "failed"
-        err_msg = sheets_result.get("error", "unknown")
-        _run_export[run_id] = {"sheet_url": None, "status": "failed", "error": err_msg}
-        _push_event(run_id, {"type": "export_failed", "error": err_msg})
+                if _inspect.iscoroutinefunction(handler_fn):
+                    result = await handler_fn(state, **kwargs)
+                else:
+                    result = handler_fn(state, **kwargs)
+                export_results[handler_name] = result
+                log.info(f"[{run_id}] export handler '{handler_name}' ok | {result.get('mode','?')}")
+            except Exception as e:
+                err = f"{type(e).__name__}: {str(e)[:200]}"
+                export_results[handler_name] = {"mode": "failed", "error": err}
+                log.error(f"[{run_id}] export handler '{handler_name}' failed | {err}")
 
-    # ── Unpack jira result ────────────────────────────────────────────────────
-    jresult = export_results.get("jira", {})
-    if jresult:
-        jira_url       = jresult.get("url")
-        jira_mode      = jresult.get("mode") or "skipped"
-        jira_detail    = jresult.get("detail")
-        jira_issue_key = jresult.get("issue_key")
-        jira_status    = jira_mode
-        _run_export.setdefault(run_id, {})["jira"] = jresult
-        _push_event(run_id, {
-            "type":      "jira_pushed" if jira_url else "jira_skipped",
-            "mode":      jira_mode,
-            "url":       jira_url,
-            "issue_key": jira_issue_key,
-            "detail":    jira_detail,
-        })
-        log.info(f"[{run_id}] Jira {jira_mode} | key={jira_issue_key} | url={jira_url}")
-
-        # ── Pinecone BRD Ingestion ──
-        try:
-            from src.core.rag import ingest_document
-            # Reconstruct the text from sections since raw text is dropped from state for security
-            brd_full_text = "\n\n".join(f"### {sec.section_name}\n{sec.content}" for sec in state.brd_sections)
-            if not brd_full_text.strip():
-                log.info(f"[{run_id}] Skipping Pinecone ingestion: empty BRD text.")
-                _push_event(run_id, {
-                    "type": "pinecone_ingest",
-                    "status": "skipped",
-                    "detail": "Empty BRD text"
-                })
-            else:
-                doc_id = state.brd_name or f"brd_{run_id}"
-                ingest_res = ingest_document(
-                    text=brd_full_text,
-                    doc_id=doc_id,
-                    source_type="brd",
-                    domain="generic"
-                )
-                log.info(f"[{run_id}] BRD ingested to Pinecone | {ingest_res}")
-                _push_event(run_id, {
-                    "type": "pinecone_ingest",
-                    "status": "ok",
-                    "detail": ingest_res
-                })
-        except Exception as e:
-            err_msg = str(e)[:240]
-            log.error(f"[{run_id}] Failed to ingest BRD to Pinecone: {err_msg}")
+        # ── Unpack sheets result ───────────────────────────────────────────
+        sheets_result = export_results.get("sheets", {})
+        if sheets_result:
+            sheet_url     = sheets_result.get("url")
+            export_mode   = sheets_result.get("mode")
+            export_detail = sheets_result.get("detail")
+            export_status = "ok" if export_mode == "sheets" else (
+                "local_fallback" if export_mode == "local" else "failed"
+            )
+            if decision == HITLDecision.APPROVED:
+                state.pipeline_status = "exported"
+            elif decision == HITLDecision.REJECTED:
+                state.pipeline_status = "rejected"
+            _run_export[run_id] = {
+                "sheet_url":       sheet_url,
+                "mode":            export_mode,
+                "detail":          export_detail,
+                "files":           sheets_result.get("files", []),
+                "fallback_reason": sheets_result.get("fallback_reason"),
+                "status":          export_status,
+            }
             _push_event(run_id, {
-                "type": "pinecone_ingest",
-                "status": "failed",
-                "error": err_msg
+                "type":      "export_complete",
+                "mode":      export_mode,
+                "sheet_url": sheet_url,
+                "detail":    export_detail,
             })
+        elif sheets_result.get("mode") == "failed":
+            if decision == HITLDecision.APPROVED:
+                state.pipeline_status = "export_failed"
+            elif decision == HITLDecision.REJECTED:
+                state.pipeline_status = "rejected"
+            export_status = "failed"
+            err_msg = sheets_result.get("error", "unknown")
+            _run_export[run_id] = {"sheet_url": None, "status": "failed", "error": err_msg}
+            _push_event(run_id, {"type": "export_failed", "error": err_msg})
 
-    # The whole /approve handler (Sheets + Jira + Pinecone) is now done. The UI
-    # polls until it sees this flag, so it never freezes on a half-finished
-    # export — e.g. Jira still creating the Epic when the page last refreshed.
-    _run_export.setdefault(run_id, {})["finalized"] = True
+        # ── Unpack jira result + Pinecone ingestion ────────────────────────
+        jresult = export_results.get("jira", {})
+        if jresult:
+            jira_url       = jresult.get("url")
+            jira_mode      = jresult.get("mode") or "skipped"
+            jira_detail    = jresult.get("detail")
+            jira_issue_key = jresult.get("issue_key")
+            jira_status    = jira_mode
+            _run_export.setdefault(run_id, {})["jira"] = jresult
+            _push_event(run_id, {
+                "type":      "jira_pushed" if jira_url else "jira_skipped",
+                "mode":      jira_mode,
+                "url":       jira_url,
+                "issue_key": jira_issue_key,
+                "detail":    jira_detail,
+            })
+            log.info(f"[{run_id}] Jira {jira_mode} | key={jira_issue_key} | url={jira_url}")
 
-    return ApprovalResponse(
-        run_id=run_id,
-        decision=decision.value,
-        message=f"Decision recorded: {decision.value}",
-        sheet_url=sheet_url,
-        export_status=export_status,
-        export_mode=export_mode,
-        export_detail=export_detail,
-        jira_url=jira_url,
-        jira_status=jira_status,
-        jira_detail=jira_detail,
-        jira_issue_key=jira_issue_key,
-        pipeline_status=state.pipeline_status,
-        rejection_count=state.hitl_rejection_count,
-    )
+            # ── Pinecone BRD ingestion (approved runs only — gated by jira block) ──
+            try:
+                from src.core.rag import ingest_document
+                brd_full_text = "\n\n".join(
+                    f"### {sec.section_name}\n{sec.content}" for sec in state.brd_sections
+                )
+                if not brd_full_text.strip():
+                    log.info(f"[{run_id}] Skipping Pinecone ingestion: empty BRD text.")
+                    _push_event(run_id, {
+                        "type":   "pinecone_ingest",
+                        "status": "skipped",
+                        "detail": "Empty BRD text",
+                    })
+                else:
+                    doc_id = state.brd_name or f"brd_{run_id}"
+                    ingest_res = ingest_document(
+                        text=brd_full_text,
+                        doc_id=doc_id,
+                        source_type="brd",
+                        domain="generic",
+                    )
+                    log.info(f"[{run_id}] BRD ingested to Pinecone | {ingest_res}")
+                    _push_event(run_id, {
+                        "type":   "pinecone_ingest",
+                        "status": "ok",
+                        "detail": ingest_res,
+                    })
+            except Exception as e:
+                err_msg = str(e)[:240]
+                log.error(f"[{run_id}] Failed to ingest BRD to Pinecone: {err_msg}")
+                _push_event(run_id, {
+                    "type":   "pinecone_ingest",
+                    "status": "failed",
+                    "error":  err_msg,
+                })
+
+    except Exception as e:
+        # Catch-all so the run never gets stuck in "exporting" — sets terminal
+        # state + emits the finalized event with the failure reason. The UI
+        # surfaces this so the EM knows to retry.
+        err_msg = f"{type(e).__name__}: {str(e)[:300]}"
+        log.error(f"[{run_id}] Background export crashed | {err_msg}")
+        state.pipeline_status = "export_failed"
+        export_status = "failed"
+        _run_export.setdefault(run_id, {})["error"] = err_msg
+
+    finally:
+        # ── Terminal event — the UI's single source of truth for "done" ──
+        # Carries the full ApprovalResponse-shaped payload so the React frontend
+        # can hydrate sheet_url, jira_url, etc. without polling /artifacts.
+        _run_export.setdefault(run_id, {})["finalized"] = True
+        _push_event(run_id, {
+            "type":            "exports_finalized",
+            "run_id":          run_id,
+            "decision":        decision.value,
+            "pipeline_status": state.pipeline_status,
+            "sheet_url":       sheet_url,
+            "export_status":   export_status,
+            "export_mode":     export_mode,
+            "export_detail":   export_detail,
+            "jira_url":        jira_url,
+            "jira_status":     jira_status,
+            "jira_detail":     jira_detail,
+            "jira_issue_key":  jira_issue_key,
+            "rejection_count": state.hitl_rejection_count,
+        })
+        log.info(
+            f"[{run_id}] Background exports finalized | "
+            f"status={state.pipeline_status} sheet={bool(sheet_url)} jira={bool(jira_url)}"
+        )
 
 
 @app.get("/results/{run_id}", response_model=ArtifactSummary)

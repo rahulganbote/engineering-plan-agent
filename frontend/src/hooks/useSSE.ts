@@ -237,6 +237,30 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           setApprovalResult(hitlPayload as unknown as ApprovalResult);
           break;
         }
+        case 'exports_finalized': {
+          // Terminal event from the /approve background task — carries the
+          // fully-resolved ApprovalResponse payload (sheet_url, jira_url,
+          // export_status, etc.) so the UI can hydrate after the async exports
+          // complete. Without this handler, the button-click flow would never
+          // see the integration URLs because the initial POST /approve response
+          // is now async-pending.
+          const payload = (data.payload as Record<string, unknown>) || (data as unknown as Record<string, unknown>);
+          setApprovalResult({
+            decision: (payload.decision as 'approved' | 'rejected') || 'approved',
+            sheet_url: payload.sheet_url as string | undefined,
+            jira_url: payload.jira_url as string | undefined,
+            rejection_count: (payload.rejection_count as number) ?? 0,
+            export_status: payload.export_status as string | undefined,
+            export_mode: payload.export_mode as string | undefined,
+            export_detail: payload.export_detail as string | undefined,
+            jira_status: payload.jira_status as string | undefined,
+            jira_issue_key: payload.jira_issue_key as string | undefined,
+            jira_detail: payload.jira_detail as string | undefined,
+          });
+          const finalStatus = payload.pipeline_status as string | undefined;
+          if (finalStatus) setPipelineStatus(finalStatus);
+          break;
+        }
         case 'pipeline_complete': {
           const finalStatus = data.status || data.final_status || (data.payload as Record<string, string>)?.final_status || (data.payload as Record<string, string>)?.status;
           setPipelineStatus(finalStatus || 'completed');
