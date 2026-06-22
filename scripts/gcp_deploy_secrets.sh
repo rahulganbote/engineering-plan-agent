@@ -79,7 +79,11 @@ JIRA_PROJECT_KEY="${JIRA_PROJECT_KEY:-SCRUM}"
 JIRA_ISSUE_TYPE="${JIRA_ISSUE_TYPE:-Task}"
 ELEVENLABS_AGENT_ID="${ELEVENLABS_AGENT_ID:-agent_7001krh802v5fadsw06e8h0czdha}"
 GOOGLE_OAUTH_CLIENT_ID="${GOOGLE_OAUTH_CLIENT_ID:-809545615573-pbj5sns33o31b8p0gqnbto02d20m76fe.apps.googleusercontent.com}"
-GOOGLE_OAUTH_REDIRECT_URI="${GOOGLE_OAUTH_REDIRECT_URI:-https://em-copilot-react-no2qcbw2sa-ew.a.run.app/}"
+
+# Derive the redirect URI from the actual service URL — prevents stale-fallback bugs
+# during region migrations. Override via env var only if pointing at a custom domain.
+SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format='value(status.url)')
+GOOGLE_OAUTH_REDIRECT_URI="${GOOGLE_OAUTH_REDIRECT_URI:-${SERVICE_URL}/auth/callback}"
 
 gcloud run services update "$SERVICE_NAME" \
   --region="$REGION" \
