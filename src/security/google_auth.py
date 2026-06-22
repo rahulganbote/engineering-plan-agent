@@ -472,7 +472,7 @@ def render_signin_required(message: str = "") -> None:
     st.info("🔒 " + (message or "Sign in with Google to continue."))
     render_signin_button()
     st.caption(
-        "Please sign in to help us prevent spam abuse and keep this public tool free for everyone. We only use your email for human authentication."
+        "Sign in with Google to run a live demo. Authentication helps prevent bots so the demo stays free for everyone. We only read your email to mark the run. We don't store anything else."
     )
 
 
