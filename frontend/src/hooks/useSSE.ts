@@ -259,6 +259,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           });
           const finalStatus = payload.pipeline_status as string | undefined;
           if (finalStatus) setPipelineStatus(finalStatus);
+          // This is the TRUE end of the run lifecycle (pipeline + exports done).
+          // Now safe to close SSE; useEffect cleanup also closes on unmount.
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
           break;
         }
         case 'pipeline_complete': {
@@ -273,9 +278,21 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           if (tin != null || tout != null) setTokenUsage({ input: tin || 0, output: tout || 0 });
           const cost = (flat.total_cost_usd ?? inner.total_cost_usd) as number | undefined;
           if (cost != null) setCostUsd(cost);
+          // ── IMPORTANT: do NOT close SSE here ─────────────────────────────────
+          // pipeline_complete fires when the orchestrator + critic + HITL routing
+          // is done, BUT the run lifecycle continues:
+          //   1. User reviews artifacts at HITL gate
+          //   2. User clicks Approve (button) OR talks to voice agent
+          //   3. Backend emits hitl_decision + (later) exports_finalized
+          //
+          // If we closed SSE here, those post-decision events would arrive at a
+          // dead connection — the UI would never see sheet_url / jira_url and
+          // the HITL gate would never transition to "approved" state.
+          //
+          // SSE stays open until exports_finalized fires (true end of lifecycle)
+          // or the React component unmounts (useEffect cleanup closes it).
+          // The tick interval is the only thing safe to stop now.
           clearInterval(tick);
-          clearInterval(pollInterval);
-          es.close();
           break;
         }
         case 'error': {
