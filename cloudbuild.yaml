@@ -79,6 +79,15 @@ steps:
       - '--port=7860'
       - '--allow-unauthenticated'
       - '--quiet'
+      # ── Single-instance constraint ────────────────────────────────────────
+      # Pipeline run state (_runs dict in src/api/main.py) lives in-process
+      # memory. With multiple instances, ElevenLabs's voice approval webhook
+      # can land on a different instance than the one holding the run state,
+      # returning 404 "Run not found". Until _runs is moved to Redis, lock to
+      # a single instance. Trade-off: no horizontal scaling. Fine for demo
+      # and portfolio-grade traffic.
+      - '--max-instances=1'
+      - '--min-instances=0'
 
   # ── 4. Smoke test the new revision ────────────────────────────────────────
   - id: 'smoke'
