@@ -373,9 +373,9 @@ export const AgentWorkspace: React.FC = () => {
             <p className="text-xs text-slate-500">EM Copilot | Multi-Agent BRD-to-Engineering Plan System with HITL</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${runId ? 'bg-green-500 animate-pulse' : 'bg-slate-650'}`} />
+            <span className={`h-2.5 w-2.5 rounded-full ${Object.keys(providers).length > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-650'}`} />
             <span className="text-xs font-semibold text-slate-400">
-              {runId ? "API connected" : "API Offline"}
+              {Object.keys(providers).length > 0 ? "API connected" : "API Offline"}
             </span>
           </div>
         </header>
