@@ -393,11 +393,12 @@ export const AgentWorkspace: React.FC = () => {
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-100 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">BRD → Engineering Plan</h1>
             <p className="text-xs text-slate-500">EM Copilot | Multi-Agent BRD-to-Engineering Plan System with HITL</p>
           </div>
-          {elevenlabsAgentId && runId && (
+          {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
               agentId={elevenlabsAgentId}
               runId={runId}
               voiceBrief={generateVoiceBrief(artifacts, criticOutput, runId)}
+              apiBaseUrl={apiBaseUrl}
             />
           )}
           <div className="flex items-center gap-2">

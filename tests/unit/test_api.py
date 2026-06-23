@@ -1,4 +1,3 @@
-# tests/unit/test_api.py
 import pytest
 from unittest.mock import patch, PropertyMock
 from fastapi.testclient import TestClient
@@ -13,6 +12,19 @@ def mock_run():
     _runs[run_id] = state
     yield run_id
     _runs.pop(run_id, None)
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+def _seed_run(status: str, decision: HITLDecision | None = None) -> str:
+    run_id = f"test-seeded-{status}-{decision.value if decision else 'none'}"
+    state = PipelineState(run_id=run_id, brd_raw_hash="seeded_hash", brd_name="seeded_test.txt")
+    state.pipeline_status = status
+    state.hitl_decision = decision
+    _runs[run_id] = state
+    return run_id
+
 
 def test_approve_email_from_request_body(mock_run):
     """Scenario 1: email is explicitly provided in the request body."""
@@ -103,3 +115,116 @@ def test_approve_email_anonymous_fallback(mock_run):
             )
             assert response.status_code == 200
             mock_export.assert_called_once_with(mock_run, HITLDecision.APPROVED, "anonymous@example.com")
+
+def test_approve_idempotent_on_same_approved(client):
+    """Voice agent re-fires approve after export → 200 no-op."""
+    run_id = _seed_run(status="exported", decision=HITLDecision.APPROVED)
+    r = client.post(f"/approve/{run_id}",
+                    json={"decision": "approved", "reviewer": "Voice EM", "em_rating": 3})
+    assert r.status_code == 200
+    assert "idempotent" in r.json()["message"].lower()
+
+
+def test_reject_idempotent_on_same_rejected(client):
+    """Voice agent re-fires reject after rejection → 200 no-op."""
+    run_id = _seed_run(status="rejected", decision=HITLDecision.REJECTED)
+    r = client.post(f"/approve/{run_id}",
+                    json={"decision": "rejected", "reviewer": "Voice EM", "em_rating": 1})
+    assert r.status_code == 200
+    assert "idempotent" in r.json()["message"].lower()
+
+
+def test_reject_after_approve_returns_conflict(client):
+    """User tries to flip an exported run to rejected → 409 with structured detail."""
+    run_id = _seed_run(status="exported", decision=HITLDecision.APPROVED)
+    r = client.post(f"/approve/{run_id}",
+                    json={"decision": "rejected", "reviewer": "EM", "em_rating": 2})
+    assert r.status_code == 409
+    detail = r.json()["detail"]
+    assert detail["code"] == "decision_immutable"
+    assert "already approved" in detail["message"].lower()
+    assert "Clear Plan" in detail["next_step"]
+
+
+def test_approve_after_reject_returns_conflict(client):
+    """User tries to flip a rejected run to approved → 409 with structured detail."""
+    run_id = _seed_run(status="rejected", decision=HITLDecision.REJECTED)
+    r = client.post(f"/approve/{run_id}",
+                    json={"decision": "approved", "reviewer": "EM", "em_rating": 4})
+    assert r.status_code == 409
+    detail = r.json()["detail"]
+    assert detail["code"] == "decision_immutable"
+    assert "already rejected" in detail["message"].lower()
+    assert "Clear Plan" in detail["next_step"]
+
+
+# ── Defensive input-hardening tests for voice-agent quirks ────────────────────
+# These exercise the three pre-validators on ApprovalRequest. They protect
+# against regressions if pydantic config or the validator implementations
+# change in future refactors.
+
+def test_approve_accepts_nested_params_payload(mock_run):
+    """ElevenLabs may post {"params": {...}} instead of flat fields — should unwrap."""
+    with patch("src.api.main._run_export_handlers_background") as mock_export:
+        client = TestClient(app)
+        response = client.post(
+            f"/approve/{mock_run}",
+            json={"params": {
+                "decision": "approved",
+                "reviewer": "Voice EM",
+                "em_rating": 3,
+                "email": "voice@example.com",
+            }},
+        )
+        assert response.status_code == 200
+        mock_export.assert_called_once_with(mock_run, HITLDecision.APPROVED, "voice@example.com")
+
+
+def test_approve_normalizes_verb_decision(mock_run):
+    """Voice agent emits 'approve' (verb) — validator maps to 'approved'."""
+    with patch("src.api.main._run_export_handlers_background") as mock_export:
+        client = TestClient(app)
+        response = client.post(
+            f"/approve/{mock_run}",
+            json={"decision": "approve", "reviewer": "Voice EM", "em_rating": 3,
+                  "email": "voice@example.com"},
+        )
+        assert response.status_code == 200
+        mock_export.assert_called_once_with(mock_run, HITLDecision.APPROVED, "voice@example.com")
+
+
+def test_reject_normalizes_verb_decision(mock_run):
+    """Voice agent emits 'reject' (verb) — validator maps to 'rejected'."""
+    with patch("src.api.main._run_export_handlers_background") as mock_export:
+        client = TestClient(app)
+        response = client.post(
+            f"/approve/{mock_run}",
+            json={"decision": "Reject", "reviewer": "Voice EM", "em_rating": 1,
+                  "email": "voice@example.com"},
+        )
+        assert response.status_code == 200
+        mock_export.assert_called_once_with(mock_run, HITLDecision.REJECTED, "voice@example.com")
+
+
+def test_em_rating_accepts_whole_float(mock_run):
+    """em_rating=5.0 (float) is coerced to int 5 by the field validator."""
+    with patch("src.api.main._run_export_handlers_background"):
+        client = TestClient(app)
+        response = client.post(
+            f"/approve/{mock_run}",
+            json={"decision": "approved", "reviewer": "EM", "em_rating": 5.0,
+                  "email": "em@example.com"},
+        )
+        assert response.status_code == 200
+
+
+def test_em_rating_accepts_half_float(mock_run):
+    """em_rating=4.5 (float) is rounded to int by the field validator (not 422'd)."""
+    with patch("src.api.main._run_export_handlers_background"):
+        client = TestClient(app)
+        response = client.post(
+            f"/approve/{mock_run}",
+            json={"decision": "approved", "reviewer": "EM", "em_rating": 4.5,
+                  "email": "em@example.com"},
+        )
+        assert response.status_code == 200

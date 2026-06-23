@@ -19,7 +19,17 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
       try {
         const errorData = await response.json();
         if (errorData && typeof errorData === 'object') {
-          errorMsg = errorData.detail || errorData.message || JSON.stringify(errorData);
+          const detail = errorData.detail;
+          // FastAPI HTTPException allows `detail` to be either a string
+          // (legacy / most endpoints) or a structured object
+          // (e.g., /approve 409: {code, message, next_step}). Handle both
+          // so structured payloads surface their actionable hint in the toast.
+          if (detail && typeof detail === 'object') {
+            const parts = [detail.message, detail.next_step].filter(Boolean);
+            errorMsg = parts.length > 0 ? parts.join(' — ') : JSON.stringify(detail);
+          } else {
+            errorMsg = detail || errorData.message || JSON.stringify(errorData);
+          }
         }
       } catch {
         // Fallback to generic status text if response is not JSON

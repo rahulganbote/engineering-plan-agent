@@ -24,8 +24,8 @@ Security:
     - Raw BRD content is never stored in run state or logged
     - Only brd_hash is persisted for audit trail
 """
-
 from __future__ import annotations
+
 
 # Load env vars BEFORE any module that reads them at import time.
 # Without this, uvicorn started outside `source secrets/.env` would miss
@@ -54,7 +54,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 
 from src.core.config import settings
 from src.core.logger import get_logger, log_agent_run
@@ -132,11 +132,70 @@ class PipelineRunResponse(BaseModel):
 
 
 class ApprovalRequest(BaseModel):
-    decision:  str       # "approved" | "rejected"
+    """
+    Defensive input model for /approve.
+
+    Three pre-validators normalize voice-agent quirks so the endpoint never
+    422s on inputs the LLM-driven ElevenLabs agent typically emits:
+
+      1. `_unwrap_params`     — accepts either flat `{decision, …}` or nested
+                                `{params: {decision, …}}` (some webhook configs)
+      2. `_normalize_decision` — maps verb forms ("approve" → "approved",
+                                "reject" → "rejected") to enum values
+      3. `_coerce_rating_to_int` — accepts float em_rating (e.g. `5.0`, `4.5`)
+                                and rounds to the nearest int
+    """
+
+    decision:  str       # "approved" | "rejected" (normalized by validator)
     reviewer:  str = "Engineering Manager"
     notes:     str = ""
     em_rating: int = 0   # 1-5 — EM rating for Method 5 eval tracking
     email:     str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unwrap_params(cls, values):
+        """
+        Some ElevenLabs webhook configurations wrap arguments as
+        `{"params": {...}}`. Accept that shape transparently by unwrapping.
+        Top-level keys outside `params` are preserved (rare but possible).
+        """
+        if isinstance(values, dict) and isinstance(values.get("params"), dict):
+            unwrapped = dict(values["params"])
+            for k, v in values.items():
+                if k != "params" and k not in unwrapped:
+                    unwrapped[k] = v
+            return unwrapped
+        return values
+
+    @field_validator("decision", mode="before")
+    @classmethod
+    def _normalize_decision(cls, v):
+        """
+        Voice agents sometimes emit verb forms ("approve" / "reject") instead
+        of the enum values ("approved" / "rejected"). Normalize before the
+        endpoint constructs the HITLDecision enum.
+        """
+        if not isinstance(v, str):
+            return v
+        s = v.strip().lower()
+        if s in ("approve", "approved"):
+            return "approved"
+        if s in ("reject", "rejected"):
+            return "rejected"
+        return s
+
+    @field_validator("em_rating", mode="before")
+    @classmethod
+    def _coerce_rating_to_int(cls, v):
+        """
+        Voice LLMs frequently emit numeric ratings as floats ("4.5", "5.0").
+        Round to nearest int. Non-numeric or None values pass through unchanged
+        for the default Pydantic int-coercion / default-value path.
+        """
+        if isinstance(v, float):
+            return int(round(v))
+        return v
 
 
 class ApprovalResponse(BaseModel):
@@ -564,19 +623,60 @@ async def hitl_approve(
     state = _runs.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    # Parse incoming decision once so we can compare against existing
+    try:
+        incoming_decision = HITLDecision(request.decision.strip().lower())
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="decision must be 'approved' or 'rejected'",
+        )
+
+    # Idempotency on any post-decision state.
+    # Covers voice-agent double-fires, UI/voice races, and client retries
+    # on the green path of either approve or reject.
+    POST_DECISION_STATES = ("exporting", "exported", "rejected", "export_failed")
+    if state.pipeline_status in POST_DECISION_STATES and state.hitl_decision is not None:
+        if state.hitl_decision == incoming_decision:
+            # Same decision retry — return existing export payload so the caller
+            # gets a consistent response shape regardless of whether they were first.
+            existing = _run_export.get(run_id, {})
+            return ApprovalResponse(
+                run_id=run_id,
+                status=state.pipeline_status,
+                decision=state.hitl_decision.value,
+                sheet_url=existing.get("sheet_url"),
+                jira_url=existing.get("jira_url"),
+                message=(
+                    f"Already {state.hitl_decision.value} "
+                    f"(idempotent retry — no-op)."
+                ),
+            )
+        # Different decision attempted after terminal state → conflict.
+        # Structured detail lets the frontend surface a `next_step` hint
+        # without parsing free-form strings.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "decision_immutable",
+                "message": (
+                    f"Run {run_id} was already {state.hitl_decision.value}; "
+                    f"cannot change to {incoming_decision.value}."
+                ),
+                "next_step": "Start a new run via the Clear Plan & Reset button.",
+            },
+        )
+
+    # Mid-pipeline (e.g., running, security_check) → preserve existing 400
     if state.pipeline_status != "awaiting_hitl":
         raise HTTPException(
             status_code=400,
             detail=f"Run {run_id} is not awaiting approval (status={state.pipeline_status})",
         )
 
-    try:
-        decision = HITLDecision(request.decision.lower())
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail="decision must be 'approved' or 'rejected'",
-        )
+    # Use parsed decision; no additional validation needed.
+    decision = incoming_decision
 
     # ── 2. Record decision in state (fast, pure in-memory update) ────────────
     state.hitl_decision = decision

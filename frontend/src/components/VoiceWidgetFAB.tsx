@@ -19,12 +19,14 @@ interface VoiceWidgetFABProps {
   agentId: string;
   runId: string;
   voiceBrief: string;
+  apiBaseUrl: string;
 }
 
 export const VoiceWidgetFAB: React.FC<VoiceWidgetFABProps> = ({
   agentId,
   runId,
   voiceBrief,
+  apiBaseUrl,
 }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +76,8 @@ export const VoiceWidgetFAB: React.FC<VoiceWidgetFABProps> = ({
             variant="compact"
             dynamic-variables={JSON.stringify({
               run_id: runId,
+              api_base_url: apiBaseUrl,
+              artifact_brief: voiceBrief,
               voice_brief: voiceBrief,
             })}
           />

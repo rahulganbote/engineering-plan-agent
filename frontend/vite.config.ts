@@ -20,20 +20,22 @@ export default defineConfig({
 
   server: {
     port: 5173,
+    host: true,
+    allowedHosts: ['dev.localtest.me'],
     proxy: {
       // During dev, proxy /api, /run-pipeline, /status, /approve, /download, /auth
       // to FastAPI so the React app can call them without CORS headaches.
-      '/api':          'http://localhost:8000',
+      '/api': 'http://localhost:8000',
       '/run-pipeline': 'http://localhost:8000',
 
-      '/status':       { target: 'http://localhost:8000', changeOrigin: true },
-      '/events':       'http://localhost:8000',
-      '/approve':      'http://localhost:8000',
-      '/download':     'http://localhost:8000',
-      '/auth':         'http://localhost:8000',
-      '/results':      'http://localhost:8000',
-      '/artifacts':    'http://localhost:8000',
-      '/health':       'http://localhost:8000',
+      '/status': { target: 'http://localhost:8000', changeOrigin: true },
+      '/events': 'http://localhost:8000',
+      '/approve': 'http://localhost:8000',
+      '/download': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
+      '/results': 'http://localhost:8000',
+      '/artifacts': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
     },
   },
   test: {
