@@ -325,18 +325,56 @@ To avoid rigid, closed-loop agent behaviors, EM Copilot is designed with **open-
    - Used for **Jira Export**. The orchestrator utilizes a Model Context Protocol integration running over a subprocess to create, update, and manage Jira stories/epics.
 
 ### Resilient Execution & Shape Validation
-- **Conservative Timeouts**: All tool calls are bound to a strict **3.0s timeout** to prevent external API latency from dragging down execution.
-- **Circuit Breaking & Retry**: Decorated with `@resilient(policy=TOOL_CALL_POLICY)`, allowing up to **2 attempts** (1 retry) with exponential backoff and jitter.
+- **Per-Tool Timeouts**: Tool calls have right-sized SLOs codified in `src/core/resilience.py`:
+  - **Tavily**: 5.0s timeout, 3 attempts (2 retries). Web search legitimately takes 1.5–4s for complex queries; a tight 3s budget would cause false-degraded fallbacks on healthy calls.
+  - **GitHub**: 3.0s timeout, 2 attempts (1 retry). GitHub's API is reliably sub-500ms; a tight budget catches real issues.
+- **Circuit Breaking & Retry**: Decorated with `@resilient(policy=TAVILY_POLICY)` or `@resilient(policy=GITHUB_POLICY)`. Both policies exclude `QuotaExceededError` from the retry-do list (no point retrying a hard cap).
 - **Strict Schema Enforcement**: JSON contracts are validated via Pydantic (`TavilyResponse`, `GitHubRepoResponse`, `GitHubSearchResponse`) to immediately detect shape deviation.
-- **Graceful Degradation**: If a tool fails (validation error, network outage, or timeout), the error is caught, logged, and a safe offline fallback string is returned. The agent proceeds using alternative context instead of failing the pipeline.
+- **Graceful Degradation**: If a tool fails (validation error, network outage, or timeout), the error is caught, logged, and a structured `ToolResult` with `used_fallback=True` is returned. The agent proceeds using alternative context instead of failing the pipeline.
+
+### Trust-Tier Citations (Critic Integration)
+Every `ToolResult` carries a `trust_level` field that flows into the Critic's groundedness scoring:
+
+| Source | Trust Level | Why |
+|---|---|---|
+| **RAG / Pinecone** | `high` | Curated organization knowledge base — verified content |
+| **GitHub API** | `medium` | Verified upstream, but third-party data (repo descriptions, star counts) |
+| **Tavily web search** | `low` | Arbitrary web content — useful for fallback grounding, but not authoritative |
+
+The Critic downweights low-trust citations in its groundedness rubric, so a plan grounded entirely in Tavily results cannot achieve a Green badge without additional RAG citations. This prevents agents from confidently citing random web content as if it were org policy.
+
+### Privacy Boundary on External Search
+**Tavily is a third-party service.** Sending raw BRD content there = potential data exposure (PII, customer names, financial details, internal codenames, etc.). Policy enforced at the source by `build_tavily_query()` in `src/integrations/tavily.py`:
+
+- **Allowed in queries**: section names ("Objectives", "NFRs"), bounded concept keywords from `_SAFE_CONCEPT_KEYWORDS` (`availability`, `scalability`, `microservices`, `event-driven`, `payments`, etc.).
+- **Forbidden in queries**: raw BRD paragraphs, customer/org names, requirement text, risk descriptions.
+
+Both `SolutionArchitect` and `TechStackRecommender` call `build_tavily_query(role, state.brd_sections)` rather than constructing query strings inline. This makes the privacy boundary syntactically enforceable — a code reviewer can grep for `tavily_search` calls and verify the query argument is the helper's output.
+
+### Observability — Per-Tool SSE Events
+Every tool call emits three structured events into the existing event bus, surfaced live in the React UI's pipeline engine console:
+- `tool_call_started` — `{tool, run_id, query_len OR owner/repo}`
+- `tool_call_succeeded` — `{tool, run_id, latency_ms, result_count OR stars}`
+- `tool_call_degraded` — `{tool, run_id, reason, latency_ms}`
+
+Recruiters can see in real time which tools fired, how fast they responded, and whether they degraded — same observability bar as the cache/breaker events from Phases 1–10.
 
 ### Input/Output Security Boundary (Injection Guard)
 To prevent prompt injection from propagating into agent generation contexts:
-- **Scans on External Outputs**: Every external text snippet (RAG vector chunk, Tavily search result, or GitHub repository description) is scanned using the public helper `check_external_injection(text)`.
+- **Scans on External Outputs**: Every external text snippet (RAG vector chunk, Tavily search result, or GitHub repository description) is scanned using the public helper `check_external_injection(text)` (`src/security/validator.py`).
+- **Regex-Only by Design** (Layer 1): we intentionally skip Layer 5 (LLM semantic guard) for tool outputs because (a) per-result LLM scan adds 200–500ms × N results, (b) per-result LLM cost adds materially, (c) tool outputs are bounded (≤3 Tavily results + 1 GitHub call per run). Regex catches ~85% of known injection signatures; the residual blast radius is bounded to a single agent's context (vs whole-prompt poisoning). Future enhancement: escalate to Layer 5 selectively when regex confidence is medium (using the existing Pinecone semantic cache as an embedding similarity check against known injection signatures).
 - **Dynamic Censorship**: If a regex prompt injection signature is detected:
-  - Malicious RAG chunks are dropped entirely.
+  - Malicious RAG chunks are dropped entirely (and a `security_drop` event is emitted).
   - Flagged Tavily search snippets are skipped from the formatting list.
   - Malicious GitHub fields are redacted (e.g. `[Redacted due to security policy]`) or the entire tool response is blocked.
+
+### GitHub Owner/Repo Allowlist
+The LLM constructs the `owner/repo` arguments passed to `get_github_velocity()`. Without a guardrail, a hallucinated repo would hit any public GitHub repository — security AND accuracy concern.
+
+`GITHUB_ALLOWLIST` in `src/integrations/github.py` is a hard allowlist of approved `(owner, repo)` tuples drawn from the org's `tech_decision_log.txt`. If the LLM passes an unapproved repo, the tool short-circuits BEFORE any network call and returns a `used_fallback=True` ToolResult.
+
+### Demo BRD: Niche Tech Triggers Tavily Fallback
+`eval/test_brd_niche_tech.txt` is a deliberately-crafted BRD that mentions tools NOT in the Pinecone knowledge base (FerretDB, libSQL, Bloop, Sourcebot, Toolbox). Running this BRD through the pipeline triggers `has_no_rag_hits` on both `SolutionArchitect` and `TechStackRecommender`, which fires the Tavily fallback path. Used for portfolio/Loom demos of the autonomous tool-calling story.
 
 ---
 

@@ -25,7 +25,9 @@ short_description: BRD to Engineering Plan Multi-Agent System
 
 > **EM Copilot** is an multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
 
-🔗 **Live Demo (React v2):** [em-copilot-react on Google Cloud Run](https://em-copilot-react-no2qcbw2sa-ew.a.run.app/) · *Streamlit v1 retained for rollback at [em-copilot-1](https://em-copilot-1-809545615573.europe-west1.run.app/) ([migration plan](./react_migration_plan.md) · [mockups](./docs/react_mockups/))*
+🔗 **Live Demo :** [EM-Copilot on Google Cloud](https://em-copilot-809545615573.us-east4.run.app/) 
+
+*Streamlit v1: [EM-Copilot-beta](https://em-copilot-1-809545615573.europe-west1.run.app/)*
 
 ---
 
@@ -139,8 +141,10 @@ This section outlines the architectural foundation, security validations, and re
 | **Distributed Resilience** | Per-instance circuit breakers, jittered exponential backoff, bulkhead isolation, and sentinel fallbacks |
 | **Dual-Tier Hybrid Caching** | Local L1 (InMemory LRU+TTL) and distributed L2 (Redis) with semantic cache fallback for Critic queries |
 | **Specialist Registry & Policy Manifest** | Decoupled dynamic agent registration; policy manifests allow per-agent timeout/cache configuration |
-| **Visual Architecture Renderer** | LLM Mermaid syntax generation validated and rendered to SVG via Kroki API with local JS fallback | 
-| **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting natural language feedback and scoring inputs | 
+| **Visual Architecture Renderer** | LLM Mermaid syntax generation validated and rendered to SVG via Kroki API with local JS fallback |
+| **ElevenLabs Voice HITL Gate** | Conversational approval flow with structured tool call (`record_em_decision`); the agent receives a `voice_brief` dynamic variable summarizing the plan so it can answer EM questions before approving |
+| **Autonomous Tool Calling** | Three integration patterns — **REST** (Tavily web grounding fallback on RAG miss), **LangChain `@tool`** (GitHub repo velocity signal), **MCP server** (Jira Epic creation) — each protected by Pydantic contracts, regex injection scan, per-tool resilience policies, and trust-tier citations (`high`/`medium`/`low`) feeding the Critic's groundedness rubric |
+| **Async Approval + SSE Hydration** | `/approve/{run_id}` returns in <1s; Sheets + Jira + Pinecone re-indexing run as background tasks, with a terminal `exports_finalized` SSE event carrying the full result payload for the UI to hydrate. Designed to fit ElevenLabs's 20s tool-call timeout. |
 | **Jira Epic Integration via MCP** | MCP-native Atlassian server (stdio transport) with automatic fallback to Jira Cloud REST API |
 | **Google Sheets Logging** | Centralized audit row export powering historical insights with local CSV fallback |
 | **Slack Failure Alerting** | Webhook alerts trigger on critical execution errors for real-time alerting |
@@ -194,7 +198,14 @@ EM Copilot incorporates a production-grade resilience and caching architecture m
 *   **Graceful Degradation:** The pipeline automatically downgrades to L1 cache if Redis is offline, falls back to direct REST APIs if the Atlassian MCP server is down, and renders architecture diagrams client-side if the Kroki API fails.
 
 #### Event-Driven Observability
-*   A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`, `provider_fallback`). These are streamed live to the React UI via Server-Sent Events (SSE) without affecting pipeline execution.
+*   A thread-safe, best-effort event emitter publishes resilience and tool-call events to the React UI via Server-Sent Events (SSE) without affecting pipeline execution. Event types include:
+    *   **Cache/resilience**: `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`, `provider_fallback`
+    *   **Autonomous tool calls**: `tool_call_started`, `tool_call_succeeded` (with `latency_ms`), `tool_call_degraded` (with reason) — fired per Tavily / GitHub invocation
+    *   **Security**: `security_drop` (when prompt-injection-bearing RAG chunk, Tavily snippet, or GitHub field is dropped)
+    *   **Approval lifecycle**: `hitl_decision`, `export_complete`, `jira_pushed` / `jira_skipped`, `pinecone_ingest`, `exports_finalized`
+
+#### Cloud Run Deployment Note
+The current deployment pins `--max-instances=1` because the in-memory `_runs: dict[str, PipelineState]` is per-process. ElevenLabs voice-approval webhooks hit Cloud Run statelessly from outside, and without single-instance routing the webhook can land on an instance that doesn't hold the run — returning 404 "Run not found." A future enhancement moves `_runs` to Upstash Redis (already wired) to enable true horizontal scaling.
 
 #### Failure Mitigation Matrix
 The system maps infrastructure faults and LLM cognitive errors directly to specific resilience strategies:
@@ -229,7 +240,9 @@ The system maps infrastructure faults and LLM cognitive errors directly to speci
 | **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, OAuth via SessionMiddleware, and non-blocking exports |
 | **Frontend UI** | React 19 + Vite + TypeScript + Tailwind v4 + shadcn/ui | Type-safe SPA served from same origin (`/dist/`) by FastAPI; SSE-driven live progress, sonner toasts, modular feature-driven directory structure |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
-| **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
+| **Tool Integration — REST** | Tavily Search API | Live web grounding fallback when RAG returns no hits. 5s timeout, 2 retries via `@resilient(TAVILY_POLICY)`. Pydantic-validated response shape; regex injection scan on every result; trust level `low` so the Critic downweights web-grounded claims |
+| **Tool Integration — LangChain `@tool`** | GitHub public API | Repo velocity signal (stars/week) and issue close rate for tech stack recommendations. 3s timeout, 1 retry. Owner/repo allowlist (`GITHUB_ALLOWLIST`) gates against LLM hallucination of repo names. Trust level `medium` |
+| **Tool Integration — MCP** | Model Context Protocol (`mcp-atlassian`) | Standardized Agent-to-Tool transport; Jira Epic push runs through an MCP server spawned over stdio with automatic REST-API fallback |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
 | **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol — chosen at runtime via `init_default_backend_from_env()` |
 | **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`, `provider_fallback`; surfaced into React UI via FastAPI SSE stream |
