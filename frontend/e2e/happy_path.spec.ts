@@ -35,10 +35,10 @@ test.describe('EM Copilot — happy path', () => {
     expect(signInVisible || signedInVisible).toBe(true);
   });
 
-  test('upload area shows the 25MB limit', async ({ page }) => {
+  test('upload area shows the 5MB limit', async ({ page }) => {
     await page.goto('/');
     // The dropzone helper text mentions the file size cap
-    await expect(page.getByText(/25\s*MB/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/5\s*MB/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test('backend health endpoint responds (via /health proxy)', async ({ request }) => {

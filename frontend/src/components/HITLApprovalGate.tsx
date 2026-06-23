@@ -5,24 +5,6 @@ import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/apiClient';
-import { generateVoiceBrief } from '../lib/voiceBrief';
-
-// Declare the custom element ElevenLabs Conversational AI widget for TypeScript/React compatibility
-declare global {
-  namespace React {
-    namespace JSX {
-      interface IntrinsicElements {
-        'elevenlabs-convai': React.DetailedHTMLProps<
-          React.HTMLAttributes<HTMLElement> & {
-            'agent-id': string;
-            'dynamic-variables'?: string;
-          },
-          HTMLElement
-        >;
-      }
-    }
-  }
-}
 
 export interface ApprovalResponse {
   run_id: string;
@@ -46,8 +28,7 @@ interface HITLApprovalGateProps {
 }
 
 export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDecisionSubmitted }) => {
-  const { apiBaseUrl, elevenlabsAgentId, artifacts, criticOutput } = useWorkspace();
-  const voiceBrief = generateVoiceBrief(artifacts, criticOutput, runId);
+  const { apiBaseUrl } = useWorkspace();
   const { user } = useAuth();
   const [reviewer, setReviewer] = useState('Engineering Manager');
   const [rating, setRating] = useState(4);
@@ -106,24 +87,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard.
       </div>
 
-      {/* ElevenLabs Voice-Assisted Review widget, rendered BEFORE inputs so the manager can ask questions first */}
-      {elevenlabsAgentId && (
-        <div className="border-t border-slate-800 pt-4">
-          <h3 className="text-sm font-semibold text-slate-300 mb-2">
-            Voice-Assisted Review
-          </h3>
-          <p className="text-xs text-slate-400 mb-3">
-            Ask questions about the plan before approving.
-          </p>
-          <elevenlabs-convai
-            agent-id={elevenlabsAgentId}
-            dynamic-variables={JSON.stringify({
-              run_id: runId,
-              voice_brief: voiceBrief,
-            })}
-          />
-        </div>
-      )}
+
 
       <div className="grid grid-cols-2 gap-6">
         <div>

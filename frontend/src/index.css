@@ -30,3 +30,39 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
+
+/* ElevenLabs widget — positioning is handled by VoiceWidgetFAB wrapper.
+ * Here we only:
+ *   1) reset the widget's default fixed-bottom-right inside the FAB container
+ *      so it renders relative to its parent
+ *   2) attempt to hide the "Powered by ElevenLabs" branding via ::part()
+ *      (no-op if the widget doesn't expose the part; falls back to the
+ *      pseudo-overlay below)
+ */
+.voice-widget-fab elevenlabs-convai {
+  position: static !important;
+  display: block;
+  min-width: 240px;
+  min-height: 56px;
+}
+
+elevenlabs-convai::part(branding),
+elevenlabs-convai::part(footer),
+elevenlabs-convai::part(powered-by) {
+  display: none !important;
+}
+
+/* Fallback: cover the "Powered by ElevenLabs" footer if ::part() didn't work.
+ * Sits flush at the bottom of the FAB-expanded widget. Matches slate-950. */
+.voice-widget-fab > div::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: #020617;
+  pointer-events: none;
+  border-radius: 0 0 12px 12px;
+}
+

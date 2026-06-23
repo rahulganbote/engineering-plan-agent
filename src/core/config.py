@@ -107,7 +107,7 @@ class Settings(BaseSettings):
 
 
     # ── Security ──────────────────────────────────────────────────────────────
-    max_brd_file_size_mb: int   = 25   # MUST match .streamlit/config.toml maxUploadSize
+    max_brd_file_size_mb: int   = 5   # MUST match .streamlit/config.toml maxUploadSize
     injection_llm_confidence_threshold: float = 0.85
 
     # ── Jira ──────────────────────────────────────────────────────────────

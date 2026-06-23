@@ -16,6 +16,26 @@ import { ArchitectureTab } from './ArchitectureTab';
 import { PoCTab } from './PoCTab';
 import { TechStackTab } from './TechStackTab';
 import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2 } from 'lucide-react';
+import { generateVoiceBrief } from '../lib/voiceBrief';
+import { VoiceWidgetFAB } from './VoiceWidgetFAB';
+
+// Declare the custom element ElevenLabs Conversational AI widget for TypeScript/React compatibility
+declare global {
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements {
+        'elevenlabs-convai': React.DetailedHTMLProps<
+          React.HTMLAttributes<HTMLElement> & {
+            'agent-id': string;
+            'dynamic-variables'?: string;
+            'variant'?: string;
+          },
+          HTMLElement
+        >;
+      }
+    }
+  }
+}
 
 
 
@@ -68,6 +88,7 @@ export const AgentWorkspace: React.FC = () => {
     setApprovalResult,
     errorMessage,
     fallbackActive,
+    elevenlabsAgentId,
   } = useWorkspace();
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
@@ -242,7 +263,7 @@ export const AgentWorkspace: React.FC = () => {
                 />
                 <Upload className="mx-auto text-slate-600 mb-2" size={24} />
                 <p className="text-xs font-semibold text-slate-400">Drag and drop file here</p>
-                <p className="text-[10px] text-slate-600 mt-1">Limit 25MB per file • PDF, DOCX, TXT</p>
+                <p className="text-[10px] text-slate-600 mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
                 <button className="mt-3 px-3 py-1.5 bg-slate-900 text-slate-300 border border-slate-800 rounded hover:bg-slate-800 text-xs font-medium">
                   Browse files
                 </button>
@@ -367,11 +388,18 @@ export const AgentWorkspace: React.FC = () => {
       {/* Main Workstation Panel */}
       <main className="flex-1 flex flex-col overflow-hidden bg-slate-950">
         {/* Main Header */}
-        <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-slate-900 shrink-0 shadow-sm">
+        <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-slate-900 shrink-0 shadow-sm relative">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-100 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">BRD → Engineering Plan</h1>
             <p className="text-xs text-slate-500">EM Copilot | Multi-Agent BRD-to-Engineering Plan System with HITL</p>
           </div>
+          {elevenlabsAgentId && runId && (
+            <VoiceWidgetFAB
+              agentId={elevenlabsAgentId}
+              runId={runId}
+              voiceBrief={generateVoiceBrief(artifacts, criticOutput, runId)}
+            />
+          )}
           <div className="flex items-center gap-2">
             <span className={`h-2.5 w-2.5 rounded-full ${Object.keys(providers).length > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-650'}`} />
             <span className="text-xs font-semibold text-slate-400">
@@ -450,6 +478,22 @@ export const AgentWorkspace: React.FC = () => {
               />
 
 
+              {/* Performance Metrics Summary */}
+              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-slate-400 bg-slate-900 p-4 rounded-lg border border-slate-800">
+                <div>
+                  <strong>Current Status:</strong> <span className="text-slate-200 capitalize font-medium">{pipelineStatus || "—"}</span>
+                </div>
+                <div>
+                  <strong>Total Processing Time:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{elapsedSeconds ? `${elapsedSeconds}s` : '—'}</code>
+                </div>
+                <div>
+                  <strong>Tokens used:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
+                </div>
+                <div>
+                  <strong>Cost Spent:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-emerald-400 font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '—'}</code>
+                </div>
+              </div>
+
               {/* Critic Rubric Scoring Cards */}
               {criticOutput && (
                 <ErrorBoundary fallback={
@@ -500,22 +544,6 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
                 </ErrorBoundary>
               )}
-
-              {/* Performance Metrics Summary */}
-              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-slate-400 bg-slate-900 p-4 rounded-lg border border-slate-800">
-                <div>
-                  <strong>Current Status:</strong> <span className="text-slate-200 capitalize font-medium">{pipelineStatus || "—"}</span>
-                </div>
-                <div>
-                  <strong>Total Processing Time:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{elapsedSeconds ? `${elapsedSeconds}s` : '—'}</code>
-                </div>
-                <div>
-                  <strong>Tokens used:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
-                </div>
-                <div>
-                  <strong>Cost (USD):</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-emerald-400 font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '—'}</code>
-                </div>
-              </div>
 
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (

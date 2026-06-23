@@ -50,7 +50,7 @@ class TestFileFormatCheck:
         assert result.status != ValidationStatus.BLOCKED or "too large" not in result.user_message
 
     def test_file_too_large(self):
-        big_content = b"x" * (26 * 1024 * 1024)  # 26MB > 25MB limit
+        big_content = b"x" * (6 * 1024 * 1024)  # 6MB > 5MB limit
         result = validator.validate(big_content, "brd.txt", "text/plain")
         assert result.status == ValidationStatus.BLOCKED
         assert "too large" in result.user_message.lower()

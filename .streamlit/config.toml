@@ -5,7 +5,7 @@
 # Maximum BRD upload size in MB. Must match max_brd_file_size_mb in
 # src/core/config.py — keep both in sync so the UI display agrees with
 # the server-side security validator.
-maxUploadSize = 25
+maxUploadSize = 5
 
 # Enable XSRF protection (default true, listed for clarity)
 enableXsrfProtection = true
