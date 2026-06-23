@@ -1,4 +1,5 @@
 # src/integrations/github.py
+import time
 from datetime import datetime, timezone
 import requests
 from pydantic import BaseModel, Field, ValidationError
@@ -7,6 +8,8 @@ from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.resilience import resilient, GITHUB_POLICY
 from src.core.models import ToolResult
+from src.core.events import emit
+from src.agents.base_agent import _current_run_id
 
 log = get_logger(__name__)
 
@@ -69,13 +72,27 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
     Retrieve repository engineering signals from the public GitHub API.
     Returns stargazers, open issues, stars-per-week velocity, and issue close rate.
     Uses strict schema validation, timeout, retry, allowlist check, and injection scanning.
+
+    Emits SSE observability events:
+      • `tool_call_started`   — at entry, with the owner/repo
+      • `tool_call_succeeded` — on green path, with latency_ms
+      • `tool_call_degraded`  — on any failure mode, with the reason
     """
+    run_id = _current_run_id() or "unknown"
+    t0 = time.perf_counter()
+    emit("tool_call_started", tool="github", run_id=run_id, owner=owner, repo=repo)
+
+    def _emit_degraded(reason: str) -> None:
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        emit("tool_call_degraded", tool="github", run_id=run_id, reason=reason, latency_ms=latency_ms)
+
     owner_clean = owner.strip().lower()
     repo_clean = repo.strip().lower()
-    
+
     # 0. Allowlist check to guard against LLM hallucination and unapproved endpoints
     if (owner_clean, repo_clean) not in GITHUB_ALLOWLIST:
         log.warning(f"GitHub API tool call rejected: unapproved repository {owner}/{repo}")
+        _emit_degraded("repo_not_in_allowlist")
         return ToolResult(
             content=f"unknown repo {owner}/{repo}, no velocity signal",
             used_fallback=True,
@@ -118,12 +135,9 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
         #   - Per-result LLM scan adds latency and cost.
         #   - Tool outputs are bounded (1 GitHub call/run).
         from src.security.validator import check_external_injection
-        from src.agents.base_agent import _current_run_id
-        from src.core.events import emit
-        
+
         safe_desc = description
         if description and check_external_injection(description):
-            run_id = _current_run_id() or "unknown"
             log.warning(
                 f"[security] dropped github description injection for run={run_id} | "
                 f"first_50_chars={description[:50]!r}"
@@ -142,12 +156,12 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
 
         # Final check on total output
         if check_external_injection(output):
-            run_id = _current_run_id() or "unknown"
             log.warning(
                 f"[security] dropped github final output for run={run_id} | "
                 f"first_50_chars={output[:50]!r}"
             )
             emit("security_drop", source="github", run_id=run_id)
+            _emit_degraded("output_injection_detected")
             return ToolResult(
                 content=f"GitHub public signal for {owner}/{repo} is currently blocked for security.",
                 used_fallback=True,
@@ -155,6 +169,14 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
                 trust_level="medium"
             )
 
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        emit(
+            "tool_call_succeeded",
+            tool="github",
+            run_id=run_id,
+            latency_ms=latency_ms,
+            stars=stars,
+        )
         return ToolResult(
             content=output,
             used_fallback=False,
@@ -164,6 +186,7 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
 
     except ValidationError as ve:
         log.error(f"GitHub JSON contract validation failed for {owner}/{repo} | {ve}")
+        _emit_degraded("contract_validation_failed")
         return ToolResult(
             content=f"GitHub velocity signal unavailable for {owner}/{repo} (validation failure).",
             used_fallback=True,
@@ -172,6 +195,7 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
         )
     except Exception as e:
         log.warning(f"GitHub velocity tool failed (graceful degradation) for {owner}/{repo} | error={e}")
+        _emit_degraded(f"exception:{type(e).__name__}")
         return ToolResult(
             content=f"GitHub velocity signal unavailable for {owner}/{repo} (tool offline).",
             used_fallback=True,

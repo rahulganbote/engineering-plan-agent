@@ -261,9 +261,15 @@ def test_rag_drops_injection_chunks(mock_emit, mock_get_index, mock_embed):
 
 
 @patch("requests.post")
-@patch("src.core.events.emit")
+@patch("src.integrations.tavily.emit")
 def test_tavily_search_filters_injection_snippets(mock_emit, mock_post):
-    """Verify Tavily search filters out individual snippets containing prompt injection."""
+    """Verify Tavily search filters out individual snippets containing prompt injection.
+
+    Patches `src.integrations.tavily.emit` (not `src.core.events.emit`) because
+    tavily.py imports `emit` at module-top; patching the source path no longer
+    rebinds the local reference. Uses `assert_any_call` since emit also fires
+    for `tool_call_started` and `tool_call_succeeded` in the same code path.
+    """
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
@@ -284,13 +290,18 @@ def test_tavily_search_filters_injection_snippets(mock_emit, mock_post):
         assert res.used_fallback is False
         assert res.sources == ["http://example.com/safe"]
         assert res.trust_level == "low"
-        mock_emit.assert_called_once_with("security_drop", source="tavily", run_id="unknown")
+        mock_emit.assert_any_call("security_drop", source="tavily", run_id="unknown")
 
 
 @patch("requests.get")
-@patch("src.core.events.emit")
+@patch("src.integrations.github.emit")
 def test_github_velocity_redacts_injected_description(mock_emit, mock_get):
-    """Verify GitHub velocity tool redacts repository descriptions containing prompt injection."""
+    """Verify GitHub velocity tool redacts repository descriptions containing prompt injection.
+
+    Patches `src.integrations.github.emit` (not `src.core.events.emit`) because
+    github.py imports `emit` at module-top. Uses `assert_any_call` since emit
+    also fires for `tool_call_started` and `tool_call_succeeded`.
+    """
     mock_repo_resp = MagicMock()
     mock_repo_resp.status_code = 200
     
@@ -320,13 +331,18 @@ def test_github_velocity_redacts_injected_description(mock_emit, mock_get):
     assert res.used_fallback is False
     assert res.sources == ["github_api:test_owner/test_repo"]
     assert res.trust_level == "medium"
-    mock_emit.assert_called_once_with("security_drop", source="github", run_id="unknown")
+    mock_emit.assert_any_call("security_drop", source="github", run_id="unknown")
 
 
 @patch("requests.get")
-@patch("src.core.events.emit")
+@patch("src.integrations.github.emit")
 def test_github_velocity_blocks_entire_output_on_parameter_injection(mock_emit, mock_get):
-    """Verify GitHub velocity blocks the entire response if injection propagates to the final output."""
+    """Verify GitHub velocity blocks the entire response if injection propagates to the final output.
+
+    Patches `src.integrations.github.emit` (not `src.core.events.emit`) — see
+    module-top import comment above. Uses `assert_any_call` since emit also
+    fires for `tool_call_started` and `tool_call_degraded` on this code path.
+    """
     mock_repo_resp = MagicMock()
     mock_repo_resp.status_code = 200
     
@@ -355,7 +371,7 @@ def test_github_velocity_blocks_entire_output_on_parameter_injection(mock_emit, 
     assert res.used_fallback is True
     assert res.sources == []
     assert res.trust_level == "medium"
-    mock_emit.assert_called_once_with("security_drop", source="github", run_id="unknown")
+    mock_emit.assert_any_call("security_drop", source="github", run_id="unknown")
 
 
 def test_critic_low_trust_dominance_penalty():

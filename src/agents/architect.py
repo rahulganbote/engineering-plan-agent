@@ -115,10 +115,18 @@ class SolutionArchitectAgent(BaseAgent):
         guardrail_triggers = []
         if self.has_no_rag_hits(citation_ids):
             log.info(f"[{state.run_id}] No RAG hits for SolutionArchitect. Calling Tavily for live web grounding...")
-            from src.integrations.tavily import tavily_search
-            web_results = tavily_search(f"best architecture pattern for {brd_text[:150]}")
+            # ── Privacy boundary ────────────────────────────────────────────────
+            # Tavily is third-party. Query MUST be derived metadata (section names
+            # + bounded concept keywords), NOT raw BRD content. Use the helper:
+            from src.integrations.tavily import tavily_search, build_tavily_query
+            safe_query = build_tavily_query("best architecture pattern", state.brd_sections)
+            web_results = tavily_search(safe_query)
             context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
             guardrail_triggers.append("tavily_web_grounding_used")
+            # Record the tool invocation regardless of outcome so the Critic can
+            # cross-check that a tavily_web_grounding citation appears in the output.
+            if "tavily_search" not in state.tools_used:
+                state.tools_used.append("tavily_search")
             if not web_results.used_fallback:
                 citation_ids = ["tavily_web_grounding"] + web_results.sources
 

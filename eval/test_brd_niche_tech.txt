@@ -1,0 +1,51 @@
+# BRD: AI-Powered Code-Search Service for Distributed Polyglot Repos
+# ────────────────────────────────────────────────────────────────────────────
+# Purpose: this BRD intentionally mentions niche tech NOT covered in the
+# Pinecone-indexed knowledge base (FerretDB, Sourcebot, libSQL, Bloop, Toolbox).
+# Triggers the RAG → Tavily fallback path for both SolutionArchitect and
+# TechStackRecommender. Useful for Loom demo of the autonomous tool-calling
+# story.
+
+## Objectives
+The platform team needs an AI-powered code-search service over our distributed
+polyglot repositories. The system should match natural-language developer
+intent to code symbols, with semantic ranking, fuzzy filename match, and
+contextual snippets. We are evaluating Bloop and Sourcebot as candidates over
+hosted alternatives (Sourcegraph). The service must serve approximately 200
+internal engineers initially.
+
+## Requirements
+- Index 4,200 Git repositories (140 GB total, mostly Python, TypeScript, Go).
+- Sub-200ms search latency at the 95th percentile.
+- Support semantic similarity ranking using Toolbox or similar local embedding
+  servers (NOT a hosted embedding API — data sovereignty).
+- Provide a REST endpoint that other internal services can hit.
+- Allow filtering by repo, language, file extension, and last-modified date.
+
+## Constraints
+- All embeddings must be computed and stored on-prem; no third-party hosting.
+- Storage backend candidates: FerretDB (Postgres-flavored Mongo-compatible),
+  libSQL (open-source SQLite fork), or DuckDB.
+- Search index candidates: Bloop's tantivy fork, Sourcebot's Zoekt fork.
+- The service must not exfiltrate code snippets to any external LLM or
+  search-as-a-service vendor.
+
+## Non-Functional Requirements
+- Availability: 99.5% during business hours; downtime acceptable overnight.
+- Throughput: 50 search QPS sustained, bursts to 200 QPS during all-hands.
+- Security: code is the company's most sensitive asset — all snippets must
+  stay inside the VPC.
+- Compliance: SOC 2 Type II (we're already certified at the org level).
+
+## Risks
+- Vendor longevity: FerretDB and libSQL are young projects with single-digit
+  maintainer counts. Bus-factor risk.
+- Embedding model drift: if Toolbox releases a breaking change, our semantic
+  ranking degrades silently.
+- Performance unknowns: Bloop's tantivy fork hasn't been benchmarked at 4K+
+  repo scale.
+
+## Stakeholders
+- Platform Engineering (primary)
+- DevEx team
+- InfoSec (for the VPC + SOC 2 compliance review)

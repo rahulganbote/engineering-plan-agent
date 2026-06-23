@@ -72,6 +72,9 @@ class TechStackAgent(BaseAgent):
         try:
             github_result = get_github_velocity.invoke({"owner": "fastapi", "repo": "fastapi"})
             github_signal = github_result.content
+            # Record the tool invocation so the Critic can detect unciteed usage.
+            if "get_github_velocity" not in state.tools_used:
+                state.tools_used.append("get_github_velocity")
             if not github_result.used_fallback:
                 github_sources = github_result.sources
         except Exception as e:
@@ -84,10 +87,17 @@ class TechStackAgent(BaseAgent):
 
         if self.has_no_rag_hits(citation_ids):
             log.info(f"[{state.run_id}] No RAG hits for TechStackAgent. Calling Tavily for live web grounding...")
-            from src.integrations.tavily import tavily_search
-            web_results = tavily_search(f"recommended technology stack for {brd_text[:150]}")
+            # ── Privacy boundary ────────────────────────────────────────────────
+            # Tavily is third-party. Query MUST be derived metadata (section names
+            # + bounded concept keywords), NOT raw BRD content. Use the helper:
+            from src.integrations.tavily import tavily_search, build_tavily_query
+            safe_query = build_tavily_query("recommended technology stack", state.brd_sections)
+            web_results = tavily_search(safe_query)
             context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
             guardrail_triggers.append("tavily_web_grounding_used")
+            # Record the tool invocation so the Critic can detect unciteed usage.
+            if "tavily_search" not in state.tools_used:
+                state.tools_used.append("tavily_search")
             if not web_results.used_fallback:
                 citation_ids = ["tavily_web_grounding"] + web_results.sources
 
