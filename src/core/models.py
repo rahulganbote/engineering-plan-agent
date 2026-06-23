@@ -531,6 +531,22 @@ class PipelineState(BaseModel):
     pipeline_status: str          = "initializing"
     errors:          list[str]    = Field(default_factory=list)
 
+    # ── Autonomous tool-call tracking ────────────────────────────────────────
+    # Records which external tools were invoked during this run. The Critic
+    # uses this to detect a specific class of hallucination: agent invokes a
+    # tool but the output contains no citation traceable to that tool's
+    # sources (e.g., GitHub velocity numbers reported without a github_api:*
+    # citation, or Tavily-grounded claims without a tavily_web_grounding
+    # citation). Populated by the integration wrappers via state.tools_used.append().
+    tools_used: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of external tools invoked during this run "
+            "(e.g., 'tavily_search', 'get_github_velocity'). "
+            "Critic cross-references with citations to flag unciteed tool usage."
+        ),
+    )
+
     # ── Evaluation tracking (rubric: measurable improvement = 5 pts) ─────────
     critic_scores_history: list[dict] = Field(
         default_factory=list,

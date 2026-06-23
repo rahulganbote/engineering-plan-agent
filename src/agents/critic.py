@@ -110,6 +110,14 @@ class CriticAgent:
         # Merge scope creep as unsupported hallucination flags
         hallucination_flags.extend(scope_creep_flags)
 
+        # Step 3c: Tool-citation cross-check — flag tools invoked without citation.
+        # When an agent invokes a tool but the output contains no citation
+        # traceable to that tool's source, the LLM is implicitly trusting the
+        # tool output without attribution — a class of hallucination that
+        # neither the regex grounding check nor scope creep catches.
+        tool_citation_flags = self._detect_unciteed_tool_usage(state)
+        hallucination_flags.extend(tool_citation_flags)
+
         # Step 4: Cross-agent consistency check (rubric 3 pts)
         consistency_issues = self._check_cross_agent_consistency(state)
 
@@ -926,6 +934,73 @@ Return ONLY valid JSON with this exact structure:
         elif below <= 1 and overall >= AMBER_THRESHOLD:
             return QualityBadge.AMBER
         return QualityBadge.RED
+
+    def _detect_unciteed_tool_usage(self, state) -> list:
+        """
+        Cross-checks tools_used against agent citations.
+
+        When an agent invokes an external tool (Tavily, GitHub) but the
+        downstream output contains no citation traceable to that tool's
+        sources, the LLM has implicitly trusted the tool output without
+        attribution. That's a hallucination class that neither term-overlap
+        grounding nor scope creep catches.
+
+        Citation markers we expect:
+            tavily_search       → 'tavily_web_grounding' or 'http*' source URL
+            get_github_velocity → 'github_api:<owner>/<repo>'
+
+        Surfaced as HallucinationFlag(status='partially_supported') so they
+        show up in the Critic findings UI alongside other grounding issues.
+        """
+        flags = []
+
+        # Collect all citation IDs across all specialist outputs
+        all_citations: set[str] = set()
+        for output in (state.plan_output, state.schedule_output, state.arch_output,
+                       state.poc_output, state.stack_output):
+            if not output:
+                continue
+            for cite in getattr(output, "citations", []):
+                all_citations.add(cite)
+
+        # Helper: does any citation match the prefix?
+        def _has_prefix(prefix: str) -> bool:
+            return any(c.startswith(prefix) or prefix in c for c in all_citations)
+
+        # Rule 1: tavily_search was invoked but no tavily_web_grounding citation
+        if "tavily_search" in (state.tools_used or []):
+            if not (_has_prefix("tavily_web_grounding") or _has_prefix("http")):
+                flags.append(HallucinationFlag(
+                    agent="solution_architect",  # primary Tavily caller; tech_stack also
+                    claim=(
+                        "Tavily web search was invoked but no tavily_web_grounding "
+                        "or web URL citation appears in any specialist output — "
+                        "web-grounded facts may be cited without attribution."
+                    ),
+                    status="partially_supported",
+                    supporting_chunk_id=None,
+                ))
+
+        # Rule 2: get_github_velocity was invoked but no github_api:* citation
+        if "get_github_velocity" in (state.tools_used or []):
+            if not _has_prefix("github_api:"):
+                flags.append(HallucinationFlag(
+                    agent="tech_stack_recommender",
+                    claim=(
+                        "GitHub velocity tool was invoked but no github_api: "
+                        "citation appears in tech stack output — velocity / "
+                        "issue close-rate numbers may be reported without source."
+                    ),
+                    status="partially_supported",
+                    supporting_chunk_id=None,
+                ))
+
+        if flags:
+            log.warning(
+                f"[{state.run_id}] Unciteed tool usage flags: {len(flags)} | "
+                f"tools_used={state.tools_used}"
+            )
+        return flags
 
     def _detect_scope_creep(self, state) -> list:
         """

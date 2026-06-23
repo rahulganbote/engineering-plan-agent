@@ -79,6 +79,11 @@ class Settings(BaseSettings):
 
     # ── Tavily (web search tool) ──────────────────────────────────────────────
     tavily_api_key:       str = ""
+    # Free-tier monthly cap is 1000 queries. The tool tracks invocations and
+    # disables itself (returns degraded ToolResult) when this budget is reached
+    # within the current calendar month. Reset at month boundary via the helper.
+    # Set to 0 to disable budget enforcement (unlimited).
+    tavily_monthly_budget: int = 1000
 
     # ── GitHub (metrics tool) ─────────────────────────────────────────────────
     github_token:         str = ""
