@@ -245,6 +245,7 @@ HITL Gate
 | OpenAI | All agents + Critic | LLM generation | API key |
 | Kroki.io | Solution Architect | Mermaid → SVG diagram | None (free) |
 | GitHub API | Tech Stack | Velocity data | None (public) |
+| Tavily | Solution Architect, Tech Stack | Live web grounding fallback | API key |
 | Google Sheets | Pipeline export | Write artifacts | Service account |
 | Jira | Pipeline export | Formatted report | Service account |
 | ElevenLabs | HITL | Voice approval | API key (optional) |
@@ -311,6 +312,31 @@ streamlit run streamlit_app.py
 
 # Open: http://localhost:8501
 ```
+
+## Open-Set Tool Extensibility
+
+To avoid rigid, closed-loop agent behaviors, EM Copilot is designed with **open-set tool extensibility**. Specialist agents can access external capabilities through three distinct integration patterns:
+
+1. **REST Tool Pattern (Direct HTTP Requests)**:
+   - Used for **Tavily Web Search**. When the internal RAG system returns no document chunks (`has_no_rag_hits`), the agent executes a direct REST call using `requests.post` to Tavily for live web grounding.
+2. **LangChain `@tool` Pattern (Annotated Python Functions)**:
+   - Used for the **GitHub API**. The `get_github_velocity` tool is declared using LangChain's `@tool` decorator, encapsulating calls to fetch repository statistics, calculate weekly star velocity, and compute issue close rates.
+3. **Model Context Protocol (MCP) Pattern (Subprocess Server integration)**:
+   - Used for **Jira Export**. The orchestrator utilizes a Model Context Protocol integration running over a subprocess to create, update, and manage Jira stories/epics.
+
+### Resilient Execution & Shape Validation
+- **Conservative Timeouts**: All tool calls are bound to a strict **3.0s timeout** to prevent external API latency from dragging down execution.
+- **Circuit Breaking & Retry**: Decorated with `@resilient(policy=TOOL_CALL_POLICY)`, allowing up to **2 attempts** (1 retry) with exponential backoff and jitter.
+- **Strict Schema Enforcement**: JSON contracts are validated via Pydantic (`TavilyResponse`, `GitHubRepoResponse`, `GitHubSearchResponse`) to immediately detect shape deviation.
+- **Graceful Degradation**: If a tool fails (validation error, network outage, or timeout), the error is caught, logged, and a safe offline fallback string is returned. The agent proceeds using alternative context instead of failing the pipeline.
+
+### Input/Output Security Boundary (Injection Guard)
+To prevent prompt injection from propagating into agent generation contexts:
+- **Scans on External Outputs**: Every external text snippet (RAG vector chunk, Tavily search result, or GitHub repository description) is scanned using the public helper `check_external_injection(text)`.
+- **Dynamic Censorship**: If a regex prompt injection signature is detected:
+  - Malicious RAG chunks are dropped entirely.
+  - Flagged Tavily search snippets are skipped from the formatting list.
+  - Malicious GitHub fields are redacted (e.g. `[Redacted due to security policy]`) or the entire tool response is blocked.
 
 ---
 

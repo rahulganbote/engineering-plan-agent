@@ -174,3 +174,10 @@ Rationale: Without limits, one misbehaving pod can exhaust node resources and ca
   LimitRange at namespace level prevents new deployments without limits (operator cannot forget).
   AI/LLM workloads particularly prone to memory exhaustion under unexpected load.
 Outcome: Zero noisy-neighbor incidents since adoption. Memory-related pod crashes reduced by 94%.
+
+### DL-2025-001 — GitHub Tool Approved Repositories (Allowlist)
+Date: 2025-01-15
+Context: Allowlist of GitHub repositories approved for engineering signal velocity checking
+Decision: Limit GitHub API velocity tool to approved repositories: fastapi/fastapi, pallets/flask, django/django, langchain-ai/langgraph, openai/openai-python, anthropic/anthropic-sdk-python
+Rationale: Prevents arbitrary external API calls and guards against LLM hallucination of repository coordinates.
+Outcome: Security validator allowlist checked by get_github_velocity tool.

@@ -274,7 +274,7 @@ DOCUMENTS.extend(STANDARDS_DOCUMENTS)
 # ── Additional Tech Stack Recommendation ──────────────────────────────
 TECH_STACK_RECOMMENDATION_DOCUMENTS = [
     {
-        "filename":    "Tech Stack Recommender for Microservices and WebApp Development.txt",
+        "filename":    "Tech_Stack_Recommender_Microservices_WebApp.txt",
         "source_type": "tech_log",
         "domain":      "Microservices or WebApp",
         "complexity":  "complex",
@@ -282,7 +282,7 @@ TECH_STACK_RECOMMENDATION_DOCUMENTS = [
                         "aws-native", "scalable", "generic", "byok", "security"],
     },
        {
-        "filename":    "Tech Stack Recommender for AIML and Data Science.txt",
+        "filename":    "Tech_Stack_Recommender_AIML_DataScience.txt",
         "source_type": "tech_log",
         "domain":      "AIML and Data Science Engineering",
         "complexity":  "complex",

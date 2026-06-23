@@ -77,6 +77,12 @@ class Settings(BaseSettings):
     elevenlabs_api_key:   str = ""
     elevenlabs_agent_id:  str = ""
 
+    # ── Tavily (web search tool) ──────────────────────────────────────────────
+    tavily_api_key:       str = ""
+
+    # ── GitHub (metrics tool) ─────────────────────────────────────────────────
+    github_token:         str = ""
+
     # ── Google Sheets (write action) ─────────────────────────────────────────
     google_service_account_json: str = "./secrets/google_service_account.json"
     google_sheet_id:      str = ""

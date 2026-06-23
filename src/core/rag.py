@@ -382,16 +382,30 @@ def retrieve(
         return []
 
     # Filter by similarity threshold and build RetrievedChunk objects
-    chunks = [
-        RetrievedChunk(
-            chunk_id=match.metadata.get("chunk_id", match.id),
-            text=match.metadata.get("text", ""),
-            metadata=match.metadata,
-            score=match.score,
-        )
-        for match in results.matches
-        if match.score >= threshold
-    ]
+    from src.security.validator import check_external_injection
+    chunks = []
+    for match in results.matches:
+        if match.score >= threshold:
+            text = match.metadata.get("text", "")
+            if check_external_injection(text):
+                from src.agents.base_agent import _current_run_id
+                from src.core.events import emit
+                run_id = _current_run_id() or "unknown"
+                log.warning(
+                    f"[security] dropped RAG content for run={run_id} | "
+                    f"id={match.id} | score={match.score:.3f} | "
+                    f"first_50_chars={text[:50]!r}"
+                )
+                emit("security_drop", source="rag", run_id=run_id)
+                continue
+            chunks.append(
+                RetrievedChunk(
+                    chunk_id=match.metadata.get("chunk_id", match.id),
+                    text=text,
+                    metadata=match.metadata,
+                    score=match.score,
+                )
+            )
 
     log.debug(
         f"Retrieved {len(chunks)} chunks | "

@@ -769,3 +769,17 @@ Example format:
         explicit = re.findall(r"\b(?:FR|NFR|REQ)[-\s]?\d+\b", text, flags=re.IGNORECASE)
         shall = re.findall(r"\b(system|application|platform|service)\s+shall\b", text, flags=re.IGNORECASE)
         return max(len(explicit), len(shall))
+
+
+def check_external_injection(text: str) -> bool:
+    """
+    Scans external inputs (e.g. RAG chunks, search results) for prompt injection.
+    Returns True if an injection signature is matched, False otherwise.
+    """
+    if not text:
+        return False
+    text_lower = text.lower()
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, text_lower, re.IGNORECASE):
+            return True
+    return False

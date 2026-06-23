@@ -532,6 +532,7 @@ async def hitl_approve(
     run_id: str,
     request: ApprovalRequest,
     background_tasks: BackgroundTasks,
+    fastapi_request: Request,
 ):
     """
     Human-in-the-loop decision gate — fast path.
@@ -614,13 +615,28 @@ async def hitl_approve(
         "reviewer": request.reviewer,
     })
 
+    # Resolve email from request body, session, or default
+    resolved_email = request.email.strip() if request.email else ""
+    if not resolved_email:
+        resolved_email = fastapi_request.session.get("auth_email") or ""
+
+    if not resolved_email:
+        from src.security.google_auth import is_configured
+        if not is_configured():
+            resolved_email = "local-dev@example.com"
+        else:
+            if "voice" in request.reviewer.lower() or "eleven" in request.reviewer.lower():
+                resolved_email = "voice-agent@example.com"
+            else:
+                resolved_email = "anonymous@example.com"
+
     # ── 4. Schedule heavyweight exports as a background task ─────────────────
     # FastAPI's BackgroundTasks runs AFTER the HTTP response is sent. The
     # voice agent / browser get their 200 OK in <1s; the slow integrations
     # proceed independently.
     background_tasks.add_task(
         _run_export_handlers_background,
-        run_id, decision, request.email,
+        run_id, decision, resolved_email,
     )
 
     # ── 5. Return immediately with pending markers ───────────────────────────

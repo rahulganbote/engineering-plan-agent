@@ -125,6 +125,17 @@ class AgentOutputBase(BaseModel):
         return v
 
 
+class ToolResult(BaseModel):
+    """
+    Structured response contract from external tools (Tavily search / GitHub metrics).
+    Enforces shape validation, keeps track of fallback status, sources, and trust level.
+    """
+    content:             str
+    used_fallback:       bool
+    sources:             list[str] = Field(default_factory=list)
+    trust_level:         str  # e.g., "high" | "medium" | "low"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Agent 1: Orchestrator
 # ──────────────────────────────────────────────────────────────────────────────

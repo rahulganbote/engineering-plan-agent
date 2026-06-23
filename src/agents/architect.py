@@ -112,6 +112,16 @@ class SolutionArchitectAgent(BaseAgent):
             source_types=["arch_pattern", "standard"],
         )
 
+        guardrail_triggers = []
+        if self.has_no_rag_hits(citation_ids):
+            log.info(f"[{state.run_id}] No RAG hits for SolutionArchitect. Calling Tavily for live web grounding...")
+            from src.integrations.tavily import tavily_search
+            web_results = tavily_search(f"best architecture pattern for {brd_text[:150]}")
+            context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
+            guardrail_triggers.append("tavily_web_grounding_used")
+            if not web_results.used_fallback:
+                citation_ids = ["tavily_web_grounding"] + web_results.sources
+
         raw = self._generate(brd_text, context_str, citation_ids, feedback)
         output = self._parse(raw, state.run_id, citation_ids)
 
@@ -129,6 +139,7 @@ class SolutionArchitectAgent(BaseAgent):
             critic_score=None,
             start_time=start,
             revision_count=state.revision_count,
+            guardrail_triggers=guardrail_triggers,
         )
         log.info(
             f"[{state.run_id}] SolutionArchitect done | "

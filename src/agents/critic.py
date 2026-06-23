@@ -470,6 +470,38 @@ Return ONLY valid JSON with this exact structure:
             )
             evidence_notes.append("groundedness capped by unsupported claims")
 
+        # Check citation trust tiers across all outputs to apply groundedness penalty for low-trust dominance
+        citations: list[str] = []
+        for output in [
+            state.plan_output,
+            state.schedule_output,
+            state.arch_output,
+            state.poc_output,
+            state.stack_output,
+        ]:
+            if output and hasattr(output, "citations") and output.citations:
+                for cite in output.citations:
+                    if cite not in ("kb_no_results", "kb_no_results_ungrounded"):
+                        citations.append(cite)
+
+        if citations:
+            low_trust_count = 0
+            for cite in citations:
+                # low trust check: Tavily web search results or web grounding URLs
+                if cite.startswith("tavily_web_grounding") or cite.startswith("http://") or cite.startswith("https://") or "tavily" in cite.lower():
+                    low_trust_count += 1
+            
+            ratio = low_trust_count / len(citations)
+            if ratio > 0.5:
+                calibrated["groundedness"] = max(0.0, float(calibrated.get("groundedness", 0.0)) - 0.5)
+                evidence_notes.append(f"groundedness penalised by 0.5 for low-trust dominance ({low_trust_count}/{len(citations)} low trust)")
+                
+                # Update suggestion if it's there
+                orig_suggestion = calibrated.get("groundedness_suggestion", "")
+                add_msg = " Reduce reliance on web searches and add more citations to retrieved RAG chunks."
+                if add_msg not in orig_suggestion:
+                    calibrated["groundedness_suggestion"] = (orig_suggestion + add_msg).strip()
+
         if evidence_notes:
             log.info(
                 f"[{state.run_id}] Critic deterministic calibration | "
@@ -622,10 +654,29 @@ Return ONLY valid JSON with this exact structure:
         brd_text: str,
         citations: list[str],
     ) -> str:
-        """Classify a single claim as supported, partially_supported, or unsupported."""
+        """Classify a single claim as supported, partially_supported, or unsupported, weighted by citation trust level."""
         # Supported if agent provided citations
-        if citations and citations[0] != "kb_no_results":
-            return "supported"
+        if citations and citations[0] not in ("kb_no_results", "kb_no_results_ungrounded"):
+            # Determine the highest trust level among the citations
+            highest_trust = "low"
+            for cite in citations:
+                cite_lower = cite.lower()
+                # Low trust: Tavily / web URL search results
+                if "tavily" in cite_lower or cite_lower.startswith("http") or "web_grounding" in cite_lower:
+                    pass  # remains low trust
+                # Medium trust: GitHub API
+                elif "github" in cite_lower:
+                    if highest_trust == "low":
+                        highest_trust = "medium"
+                # High trust: RAG (org-curated knowledge base) or standards
+                else:
+                    highest_trust = "high"
+            
+            if highest_trust in ("high", "medium"):
+                return "supported"
+            else:
+                # Tavily search is low-trust, treat as partially_supported
+                return "partially_supported"
 
         # Partially supported if key claim terms appear in BRD
         claim_words = set(claim.lower().split())

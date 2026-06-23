@@ -1176,6 +1176,21 @@ def _():
 def _():
     from src.integrations import export_registry  # noqa: F401
 
+@test("tavily tool imports and resolves", group="integrations")
+def _():
+    from src.integrations.tavily import tavily_search
+    from src.core.config import settings
+    from unittest.mock import patch
+    with patch.object(settings, "tavily_api_key", ""):
+        res = tavily_search("test")
+        assert "Web search unavailable — Tavily key missing." in res.content
+
+@test("github tool imports and resolves", group="integrations")
+def _():
+    from src.integrations.github import get_github_velocity
+    res = get_github_velocity.invoke({"owner": "owner", "repo": "repo"})
+    assert "no velocity signal" in res.content or "GitHub public signal" in res.content
+
 
 # ── group: bulkhead ──────────────────────────────────────────────────────────
 @test("settings.agent_timeout_sec is present with sensible default", group="bulkhead")

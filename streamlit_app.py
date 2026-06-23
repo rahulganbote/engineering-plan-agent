@@ -936,11 +936,14 @@ def _build_voice_briefing(artifacts: dict) -> str:
 
     arch = artifacts.get("arch_output") or {}
     if arch:
+        citations = arch.get("citations") or []
+        is_tavily = any("tavily" in c.lower() or "web_grounding" in c.lower() for c in citations)
+        pattern_phrase = "pattern" if not is_tavily else "provisional web-grounded pattern"
         comps = ", ".join(
             c.get("name", "?") for c in (arch.get("components") or [])
         ) or "n/a"
         lines.append(
-            f"ARCHITECTURE: {arch.get('pattern', '?')} pattern, deployed on "
+            f"ARCHITECTURE: {arch.get('pattern', '?')} {pattern_phrase}, deployed on "
             f"{arch.get('deployment_model', '?')}. Components: {comps}."
         )
 
@@ -953,8 +956,11 @@ def _build_voice_briefing(artifacts: dict) -> str:
 
     stack = artifacts.get("stack_output") or {}
     if stack:
+        citations = stack.get("citations") or []
+        is_tavily = any("tavily" in c.lower() or "web_grounding" in c.lower() for c in citations)
+        rec_phrase = "recommended option is" if not is_tavily else "provisional web-grounded recommendation is"
         lines.append(
-            f"TECH STACK: recommended option is {stack.get('recommended_option', '?')}. "
+            f"TECH STACK: {rec_phrase} {stack.get('recommended_option', '?')}. "
             f"{_clip(stack.get('recommendation_rationale'), 240)}"
         )
 

@@ -65,7 +65,31 @@ class TechStackAgent(BaseAgent):
             query=query,
             source_types=["tech_log", "standard"],
         )
-        github_signal = self._github_velocity_signal()
+
+        from src.integrations.github import get_github_velocity
+        github_signal = ""
+        github_sources = []
+        try:
+            github_result = get_github_velocity.invoke({"owner": "fastapi", "repo": "fastapi"})
+            github_signal = github_result.content
+            if not github_result.used_fallback:
+                github_sources = github_result.sources
+        except Exception as e:
+            log.warning(f"Error calling GitHub LangChain tool: {e}")
+            github_signal = ""
+
+        guardrail_triggers = ["github_api_signal_used"] if github_signal else []
+        if github_sources:
+            citation_ids.extend(github_sources)
+
+        if self.has_no_rag_hits(citation_ids):
+            log.info(f"[{state.run_id}] No RAG hits for TechStackAgent. Calling Tavily for live web grounding...")
+            from src.integrations.tavily import tavily_search
+            web_results = tavily_search(f"recommended technology stack for {brd_text[:150]}")
+            context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
+            guardrail_triggers.append("tavily_web_grounding_used")
+            if not web_results.used_fallback:
+                citation_ids = ["tavily_web_grounding"] + web_results.sources
 
         raw = self._generate(brd_text, context_str, citation_ids, feedback, github_signal)
         output = self._parse(raw, state.run_id, citation_ids)
@@ -77,7 +101,7 @@ class TechStackAgent(BaseAgent):
             critic_score=None,
             start_time=start,
             revision_count=state.revision_count,
-            guardrail_triggers=["github_api_signal_used"] if github_signal else [],
+            guardrail_triggers=guardrail_triggers,
         )
         log.info(
             f"[{state.run_id}] TechStack done | "
@@ -87,28 +111,6 @@ class TechStackAgent(BaseAgent):
 
     def _brd_text(self, state: PipelineState) -> str:
         return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
-
-    def _github_velocity_signal(self) -> str:
-        """
-        Lightweight public GitHub API signal for tool-call coverage.
-        Failure is non-blocking because stack recommendation must still work offline.
-        """
-        try:
-            response = requests.get(
-                "https://api.github.com/repos/fastapi/fastapi",
-                timeout=3,
-                headers={"Accept": "application/vnd.github+json"},
-            )
-            if response.status_code != 200:
-                return ""
-            data = response.json()
-            return (
-                f"GitHub public signal: fastapi stars={data.get('stargazers_count')}, "
-                f"open_issues={data.get('open_issues_count')}."
-            )
-        except Exception as e:
-            log.warning(f"GitHub API signal unavailable | {type(e).__name__}: {e}")
-            return ""
 
     def _generate(
         self,

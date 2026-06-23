@@ -76,6 +76,8 @@ ANTHROPIC_POLICY = CallPolicy(timeout_sec=120.0, max_attempts=2, backoff_min=2.0
 PINECONE_POLICY = CallPolicy(timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,))
 EMBEDDING_POLICY = CallPolicy(timeout_sec=15.0, max_attempts=3, backoff_min=0.5, backoff_max=4.0, do_not_retry=(QuotaExceededError,))
 HTTP_POLICY     = CallPolicy(timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,))
+TAVILY_POLICY   = CallPolicy(timeout_sec=5.0, max_attempts=3, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,))
+GITHUB_POLICY   = CallPolicy(timeout_sec=3.0, max_attempts=2, backoff_min=0.5, backoff_max=1.0, do_not_retry=(QuotaExceededError,))
 
 
 # ── Circuit breaker ──────────────────────────────────────────────────────────
