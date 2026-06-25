@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-namespace */
 import React, { useState } from 'react';
 import { Check, X, ThumbsUp, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';

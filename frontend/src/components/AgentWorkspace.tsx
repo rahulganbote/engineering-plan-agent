@@ -19,7 +19,7 @@ import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy,
 import { generateVoiceBrief } from '../lib/voiceBrief';
 import { VoiceWidgetFAB } from './VoiceWidgetFAB';
 
-// Declare the custom element ElevenLabs Conversational AI widget for TypeScript/React compatibility
+/* eslint-disable @typescript-eslint/no-namespace */
 declare global {
   namespace React {
     namespace JSX {
@@ -36,6 +36,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 
 
