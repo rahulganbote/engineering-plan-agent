@@ -63,7 +63,7 @@ class CachePolicy:
 
 # Sensible defaults per call site
 CACHE_LLM       = CachePolicy(mode="exact", ttl_sec=3600,  namespace="llm")
-CACHE_RAG       = CachePolicy(mode="exact", ttl_sec=1800,  namespace="rag")
+CACHE_RAG       = CachePolicy(mode="exact", ttl_sec=28800, namespace="rag")
 CACHE_EMBEDDING = CachePolicy(mode="exact", ttl_sec=86400, namespace="embed")
 
 

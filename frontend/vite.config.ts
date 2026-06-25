@@ -21,7 +21,7 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    allowedHosts: ['dev.localtest.me'],
+    allowedHosts: ['dev.localtest.me', '.ngrok.io', '.ngrok-free.app'],
     proxy: {
       // During dev, proxy /api, /run-pipeline, /status, /approve, /download, /auth
       // to FastAPI so the React app can call them without CORS headaches.
