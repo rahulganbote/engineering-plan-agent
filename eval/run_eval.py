@@ -174,6 +174,33 @@ GUARDRAIL_TESTS = [
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Trust-boundary helper — strip dev-only markers before any validator sees them
+# ══════════════════════════════════════════════════════════════════════════════
+# Eval BRDs (e.g. test_brd_niche_tech.txt) may contain inline annotations like
+# "EVAL NOTE: ..." used by the test harness for traceability. These are NOT
+# user input — they are author-controlled dev metadata.
+#
+# Trust boundary policy: strip these markers HERE in the harness, before the
+# text ever reaches the SecurityValidator. We must NOT teach the validator's
+# LLM prompt to recognize them, because doing so creates a published bypass
+# vector (anyone uploading a real BRD could prefix `EVAL NOTE:` to evade the
+# injection scanner). The validator must treat all incoming text as untrusted.
+
+_EVAL_MARKER_PREFIXES = ("EVAL NOTE:", "# EVAL NOTE:", "// EVAL NOTE:")
+
+
+def strip_eval_metadata(text: str) -> str:
+    """
+    Remove any line starting with an EVAL NOTE marker from a BRD text.
+    Called ONLY from the eval harness — never from production code paths.
+    """
+    return "\n".join(
+        line for line in text.splitlines()
+        if not any(line.lstrip().startswith(p) for p in _EVAL_MARKER_PREFIXES)
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # METHOD 1 — Rule-based
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -971,7 +998,9 @@ def main():
             print(f"  ⚠️  SKIP {test['test_id']} — {test['brd_file']}")
             continue
 
-        brd_text    = Path(test["brd_file"]).read_text(encoding="utf-8")
+        brd_text    = strip_eval_metadata(
+            Path(test["brd_file"]).read_text(encoding="utf-8")
+        )
         test_result = {"test_id": test["test_id"], "name": test["name"]}
         print(f"\n  {test['test_id']}: {test['name']}")
 
