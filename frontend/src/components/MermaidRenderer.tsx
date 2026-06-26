@@ -84,10 +84,43 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagramSvg, di
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className="w-full overflow-x-auto p-4 bg-slate-950 rounded-lg border border-slate-850 flex justify-center [&>svg]:max-w-full [&>svg]:h-auto text-slate-200"
-      dangerouslySetInnerHTML={{ __html: renderedSvg }}
-    />
+    <div className="w-full">
+      <style>{`
+        .mermaid-container svg {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+        /* Override Kroki/Mermaid dark/light connector lines for dark mode compatibility */
+        .mermaid-container svg path.path,
+        .mermaid-container svg .edgePath .path,
+        .mermaid-container svg .edgePaths path,
+        .mermaid-container svg .transition path,
+        .mermaid-container svg g.edgePaths path,
+        .mermaid-container svg g.edgePaths .path {
+          stroke: #94a3b8 !important; /* Tailwind slate-400 */
+          stroke-width: 1.5px !important;
+        }
+        .mermaid-container svg marker path,
+        .mermaid-container svg .marker path,
+        .mermaid-container svg path.arrowheadPath,
+        .mermaid-container svg marker .arrowheadPath,
+        .mermaid-container svg .arrowheadPath {
+          fill: #94a3b8 !important;
+          stroke: #94a3b8 !important;
+        }
+        /* Override labels on connector lines if any */
+        .mermaid-container svg .edgeLabel rect {
+          fill: #090d16 !important; /* Matches background */
+        }
+        .mermaid-container svg .edgeLabel span {
+          color: #cbd5e1 !important; /* Tailwind slate-300 */
+        }
+      `}</style>
+      <div 
+        ref={containerRef}
+        className="mermaid-container w-full overflow-x-auto p-4 bg-slate-950 rounded-lg border border-slate-850 flex justify-center [&>svg]:max-w-full [&>svg]:h-auto text-slate-200"
+        dangerouslySetInnerHTML={{ __html: renderedSvg }}
+      />
+    </div>
   );
 };
