@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     # ── FastAPI ───────────────────────────────────────────────────────────────
     fastapi_host:         str = "0.0.0.0"
     fastapi_port:         int = 8000
-    api_base:             str = "https://emcopilot.ai"
+    api_base:             str = "http://localhost:8000"
 
     # ── Pipeline behaviour ────────────────────────────────────────────────────
     max_critic_revisions: int   = 2
