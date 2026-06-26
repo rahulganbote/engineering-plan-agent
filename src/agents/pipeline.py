@@ -19,16 +19,20 @@ Hub-and-spoke invariants:
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from src.agents.base_agent import (
-    set_current_run_id, reset_token_counter, get_token_counts, get_cost, _current_model_family,
-)
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
 import src.agents  # noqa: F401 — side-effect: registers all specialists
+from src.agents.base_agent import (
+    _current_model_family,
+    get_cost,
+    get_token_counts,
+    reset_token_counter,
+    set_current_run_id,
+)
 from src.agents.critic import CriticAgent
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.registry import get_specialist
@@ -51,6 +55,7 @@ ALL_SPECIALIST_AGENTS = list(AGENT_OUTPUT_FIELDS.keys())
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _ps(state: dict) -> PipelineState:
     """Deserialize dict → PipelineState while preserving private graph keys outside it."""
@@ -76,6 +81,7 @@ def _safe_emit(event_type: str, **fields) -> None:
     """Best-effort event emit. Never raises — observability cannot break the pipeline."""
     try:
         from src.core.events import emit
+
         emit(event_type, **fields)
     except Exception:
         pass
@@ -121,6 +127,7 @@ def _run_agent(agent_name: str, ps: PipelineState):
 
 # ── Node functions ────────────────────────────────────────────────────────────
 
+
 def node_orchestrator_hub(state: dict) -> dict:
     """Parse BRD, build routing plan, and initialize hub-owned PipelineState."""
     ps = _ps(state)
@@ -156,10 +163,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     """
     ps = _ps(state)
     targets = state.get("_revision_targets") or ALL_SPECIALIST_AGENTS.copy()
-    log.info(
-        f"[{ps.run_id}] NODE dispatch_specialists | "
-        f"rev={ps.revision_count} targets={targets}"
-    )
+    log.info(f"[{ps.run_id}] NODE dispatch_specialists | rev={ps.revision_count} targets={targets}")
 
     if ps.pipeline_status == "error":
         return _dump(ps, state)
@@ -172,6 +176,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     # doesn't return within settings.agent_timeout_sec is cancelled; its agent
     # output stays None, which the Critic's FM-3 cap catches downstream.
     from concurrent.futures import TimeoutError as _BulkheadTimeout
+
     # Per-family bulkhead budget. Anthropic's Claude is genuinely slower than
     # GPT-4o for the same verbose JSON outputs (~3-5× in observed runs), so we
     # give it a bigger budget when the run is configured for anthropic. OpenAI
@@ -190,10 +195,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     executor = ThreadPoolExecutor(max_workers=max_workers)
     bulkhead_tripped = False
     try:
-        futures = {
-            executor.submit(_run_agent, agent_name, ps): agent_name
-            for agent_name in targets
-        }
+        futures = {executor.submit(_run_agent, agent_name, ps): agent_name for agent_name in targets}
         try:
             for future in as_completed(futures, timeout=_bulkhead_budget):
                 agent_name = futures[future]
@@ -216,14 +218,13 @@ def node_dispatch_specialists(state: dict) -> dict:
                 if not fut.done():
                     fut.cancel()
                     log.warning(
-                        f"[{ps.run_id}] {agent_name} bulkhead timeout after "
-                        f"{_bulkhead_budget}s — proceeding without it"
+                        f"[{ps.run_id}] {agent_name} bulkhead timeout after {_bulkhead_budget}s — proceeding without it"
                     )
                     ps.errors.append(f"{agent_name}: bulkhead timeout ({_bulkhead_budget}s)")
                     try:
                         from src.core.events import emit as _evt
-                        _evt("bulkhead_timeout", agent=agent_name,
-                             timeout_sec=_bulkhead_budget)
+
+                        _evt("bulkhead_timeout", agent=agent_name, timeout_sec=_bulkhead_budget)
                     except Exception:
                         pass
     finally:
@@ -253,11 +254,7 @@ def node_aggregate_outputs(state: dict) -> dict:
         _set_status(ps, "error")
         return _dump(ps, state)
 
-    missing = [
-        agent_name
-        for agent_name, field_name in AGENT_OUTPUT_FIELDS.items()
-        if getattr(ps, field_name) is None
-    ]
+    missing = [agent_name for agent_name, field_name in AGENT_OUTPUT_FIELDS.items() if getattr(ps, field_name) is None]
     if missing:
         _set_status(ps, "error")
         ps.errors.append(f"Missing specialist outputs before Critic: {missing}")
@@ -282,15 +279,17 @@ def node_critic(state: dict) -> dict:
 
     try:
         ps.critic_output = CriticAgent().run(ps)
-        ps.critic_scores_history.append({
-            "revision": ps.revision_count,
-            "groundedness": ps.critic_output.groundedness.score,
-            "completeness": ps.critic_output.completeness.score,
-            "consistency": ps.critic_output.consistency.score,
-            "actionability": ps.critic_output.actionability.score,
-            "overall": ps.critic_output.overall_score,
-            "badge": ps.critic_output.badge.value,
-        })
+        ps.critic_scores_history.append(
+            {
+                "revision": ps.revision_count,
+                "groundedness": ps.critic_output.groundedness.score,
+                "completeness": ps.critic_output.completeness.score,
+                "consistency": ps.critic_output.consistency.score,
+                "actionability": ps.critic_output.actionability.score,
+                "overall": ps.critic_output.overall_score,
+                "badge": ps.critic_output.badge.value,
+            }
+        )
         _safe_emit("agent_complete", agent="critic")
         log.info(
             f"[{ps.run_id}] Critic score | overall={ps.critic_output.overall_score:.2f} "
@@ -323,40 +322,28 @@ def node_decision_router(state: dict) -> dict:
         _set_status(ps, "error")
         return _dump(ps, state)
 
-    should_revise = (
-        ps.critic_output.requires_revision
-        and ps.revision_count < MAX_REVISIONS
-    )
+    should_revise = ps.critic_output.requires_revision and ps.revision_count < MAX_REVISIONS
 
     if should_revise:
         targets = _revision_targets(ps)
         if not targets:
             targets = ALL_SPECIALIST_AGENTS.copy()
-            log.warning(
-                f"[{ps.run_id}] Critic requested revision but gave no targets; "
-                "rerunning all specialists"
-            )
+            log.warning(f"[{ps.run_id}] Critic requested revision but gave no targets; rerunning all specialists")
         ps.revision_count += 1
         _set_status(ps, "revising")
         state["_revision_targets"] = targets
-        log.info(
-            f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS} | "
-            f"targets={targets}"
-        )
+        log.info(f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS} | targets={targets}")
     else:
         _set_status(ps, "awaiting_hitl")
         state["_revision_targets"] = []
         reason = "max_revisions" if ps.revision_count >= MAX_REVISIONS else "quality_gate"
-        log.info(
-            f"[{ps.run_id}] Routing to HITL | badge={ps.critic_output.badge.value} "
-            f"reason={reason}"
-        )
+        log.info(f"[{ps.run_id}] Routing to HITL | badge={ps.critic_output.badge.value} reason={reason}")
 
     return _dump(ps, state)
 
 
 def node_await_hitl(state: dict) -> dict:
-    """Pause point for FastAPI/Streamlit HITL approval."""
+    """Pause point for FastAPI/React HITL approval."""
     ps = _ps(state)
     _set_status(ps, "awaiting_hitl")
     badge = ps.critic_output.badge.value if ps.critic_output else "unknown"
@@ -372,6 +359,7 @@ def node_error(state: dict) -> dict:
 
 
 # ── Edge routing ──────────────────────────────────────────────────────────────
+
 
 def route_after_orchestrator(
     state: dict,
@@ -412,6 +400,7 @@ def route_after_decision(
 
 
 # ── Graph assembly ────────────────────────────────────────────────────────────
+
 
 def build_graph() -> StateGraph:
     g = StateGraph(dict)
@@ -471,7 +460,15 @@ _graph = build_graph().compile()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "", model_family: str = "openai", enable_fallback: bool = True) -> PipelineState:
+
+def run_pipeline(
+    brd_text: str,
+    brd_hash: str,
+    run_id: str,
+    brd_name: str = "",
+    model_family: str = "openai",
+    enable_fallback: bool = True,
+) -> PipelineState:
     """
     Run the full central Orchestrator hub-and-spoke pipeline synchronously.
 
@@ -484,11 +481,19 @@ def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "", 
         Final PipelineState with pipeline_status="awaiting_hitl" or "error".
     """
     pipeline_start = time.perf_counter()
-    log.info(f"[{run_id}] Pipeline starting | words={len(brd_text.split())} | family={model_family} | fallback={enable_fallback}")
+    log.info(
+        f"[{run_id}] Pipeline starting | words={len(brd_text.split())} | family={model_family} | fallback={enable_fallback}"
+    )
     reset_token_counter(run_id)
     set_current_run_id(run_id, model_family, enable_fallback)
 
-    initial = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name, model_family=model_family, enable_fallback=enable_fallback).model_dump()
+    initial = PipelineState(
+        run_id=run_id,
+        brd_raw_hash=brd_hash,
+        brd_name=brd_name,
+        model_family=model_family,
+        enable_fallback=enable_fallback,
+    ).model_dump()
     initial["_brd_text"] = brd_text
     initial["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
 
@@ -506,9 +511,9 @@ def run_pipeline(brd_text: str, brd_hash: str, run_id: str, brd_name: str = "", 
     total_ms = int((time.perf_counter() - pipeline_start) * 1000)
     result.processing_time_sec = total_ms / 1000.0
     _tin, _tout = get_token_counts(run_id)
-    result.total_input_tokens  = _tin
+    result.total_input_tokens = _tin
     result.total_output_tokens = _tout
-    result.total_cost_usd      = get_cost(run_id)
+    result.total_cost_usd = get_cost(run_id)
     agent_logs = [
         {"agent": agent_name, "success": getattr(result, field_name) is not None}
         for agent_name, field_name in AGENT_OUTPUT_FIELDS.items()

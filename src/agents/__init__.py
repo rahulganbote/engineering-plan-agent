@@ -18,4 +18,4 @@ Import pattern:
 """
 
 # Phase 4: Import specialist modules at package load so they register in the registry.
-from src.agents import plan_generator, schedule, architect, poc_planner, tech_stack  # noqa: F401
+from src.agents import architect, plan_generator, poc_planner, schedule, tech_stack  # noqa: F401
