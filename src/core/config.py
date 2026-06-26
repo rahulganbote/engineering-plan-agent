@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     # ── FastAPI ───────────────────────────────────────────────────────────────
     fastapi_host:         str = "0.0.0.0"
     fastapi_port:         int = 8000
-    api_base:             str = "http://localhost:8000"
+    api_base:             str = "https://emcopilot.ai"
 
     # ── Pipeline behaviour ────────────────────────────────────────────────────
     max_critic_revisions: int   = 2
@@ -109,6 +109,8 @@ class Settings(BaseSettings):
     # ── Security ──────────────────────────────────────────────────────────────
     max_brd_file_size_mb: int   = 5   # MUST match .streamlit/config.toml maxUploadSize
     injection_llm_confidence_threshold: float = 0.85
+    voice_webhook_secret: str = ""    # Token used by ElevenLabs webhook to authenticate voice approvals
+    max_pipeline_run_budget_usd: float = 2.00  # Hard budget limit per pipeline run (dollars)
 
     # ── Jira ──────────────────────────────────────────────────────────────
     jira_base_url:        str = ""

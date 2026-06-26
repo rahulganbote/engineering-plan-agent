@@ -67,6 +67,47 @@ log = get_logger(__name__)
 _runs:       dict[str, PipelineState] = {}
 _run_events: dict[str, list[str]]     = {}
 _run_export: dict[str, dict]          = {}   # run_id → {sheet_url, status, error}
+_run_owner:  dict[str, str]           = {}   # run_id → user_email
+
+
+def get_current_user_email(request: Request) -> str:
+    email = request.session.get("auth_email")
+    if email:
+        return email
+
+    from src.security.google_auth import is_configured
+    if not is_configured():
+        as_user = request.query_params.get("as")
+        if as_user:
+            return as_user.strip().lower()
+        return "local-dev@example.com"
+
+    raise HTTPException(status_code=401, detail="Not authenticated")
+
+
+def verify_run_ownership(run_id: str, request: Request, allow_voice_agent: bool = False) -> None:
+    # 1. Look up run owner
+    owner_email = _run_owner.get(run_id)
+    if not owner_email:
+        # Fallback to check if run is registered
+        state = _runs.get(run_id)
+        if not state:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+        owner_email = "local-dev@example.com"
+
+    # 2. Check if voice agent is authorized (via Bearer token webhook secret)
+    if allow_voice_agent and settings.voice_webhook_secret:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1].strip()
+            valid_secrets = [s.strip() for s in settings.voice_webhook_secret.split(",") if s.strip()]
+            if token in valid_secrets:
+                return  # Authorized voice agent bypass
+
+    # 3. Check session user
+    current_user = get_current_user_email(request)
+    if owner_email != current_user:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this run.")
 
 
 # ── App lifecycle ─────────────────────────────────────────────────────────────
@@ -475,12 +516,15 @@ async def list_providers():
 
 @app.post("/run-pipeline", response_model=PipelineRunResponse)
 async def trigger_pipeline(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="BRD document (PDF, DOCX, or TXT)"),
     model_family: str = Form("openai", description="Model family to run: openai, anthropic, llama, mistral"),
     enable_fallback: bool = Form(True, description="Enable automatic provider fallback if primary fails"),
 ):
     """BRD upload → Security validation → Agent pipeline → Artifacts."""
+    user_email = get_current_user_email(request)
+
     if model_family.lower() not in ("openai", "anthropic"):
         raise HTTPException(
             status_code=400,
@@ -503,6 +547,8 @@ async def trigger_pipeline(
     brd_text = val_result.brd_text_clean or ""
     brd_hash = val_result.brd_hash or ""
     run_id   = f"{brd_hash[:8]}-{uuid.uuid4().hex[:4]}"
+    
+    _run_owner[run_id] = user_email
 
     # Clear any prior run state for this run_id so polling never returns
     # a stale "awaiting_hitl" from a previous session for the same BRD hash.
@@ -527,8 +573,9 @@ async def trigger_pipeline(
 
 
 @app.get("/status/{run_id}")
-async def stream_status(run_id: str):
+async def stream_status(run_id: str, request: Request):
     """Server-Sent Events stream — Streamlit connects here for live updates."""
+    verify_run_ownership(run_id, request)
     async def event_generator() -> AsyncGenerator[str, None]:
         sent    = 0
         timeout = settings.pipeline_timeout_sec
@@ -564,12 +611,13 @@ async def stream_status(run_id: str):
 
 
 @app.get("/events/{run_id}")
-async def get_events(run_id: str, since: int = 0):
+async def get_events(run_id: str, request: Request, since: int = 0):
     """
     Snapshot of accumulated SSE events for a run. Easier to consume from
     Streamlit than the live SSE stream: client polls /events/{run_id}?since=N
     where N is the next index to read.
     """
+    verify_run_ownership(run_id, request)
     events_raw = _run_events.get(run_id, [])
     new_events = events_raw[since:]
     parsed: list[dict] = []
@@ -620,6 +668,7 @@ async def hitl_approve(
     that protects against voice/button double-submit.
     """
     # ── 1. Validate state ────────────────────────────────────────────────────
+    verify_run_ownership(run_id, fastapi_request, allow_voice_agent=True)
     state = _runs.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -950,8 +999,9 @@ async def _run_export_handlers_background(
 
 
 @app.get("/results/{run_id}", response_model=ArtifactSummary)
-async def get_results(run_id: str):
+async def get_results(run_id: str, request: Request):
     """Summary: badge, scores, has_* booleans + pipeline status."""
+    verify_run_ownership(run_id, request)
     state = _runs.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -972,11 +1022,12 @@ async def get_results(run_id: str):
 
 
 @app.get("/artifacts/{run_id}")
-async def get_artifacts(run_id: str):
+async def get_artifacts(run_id: str, request: Request):
     """
     Full PipelineState JSON (plan, schedule, architecture+SVG, PoC,
     tech stack, Critic detail). Returns 202 if pipeline still initializing.
     """
+    verify_run_ownership(run_id, request)
     state = _runs.get(run_id)
     if not state:
         if run_id in _run_events:
@@ -997,7 +1048,8 @@ async def get_artifacts(run_id: str):
     return payload
 
 @app.get("/download/{run_id}")
-async def download_artifacts_pdf(run_id: str):
+async def download_artifacts_pdf(run_id: str, request: Request):
+    verify_run_ownership(run_id, request)
     state = _runs.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
@@ -1068,9 +1120,12 @@ def _run_pipeline_task(brd_text: str, brd_hash: str, run_id: str, brd_name: str,
         log.info(f"[{run_id}] Pipeline task complete | status={state.pipeline_status}")
     except Exception as e:
         from src.core.resilience import QuotaExceededError
+        from src.core.exceptions import BudgetBreachedError
         err_msg = str(e)
         if isinstance(e, QuotaExceededError) or "your api credits/tokens" in err_msg.lower():
             err_msg = "Your API Credits/Tokens has expired or reached limit. Please try again later. Sorry."
+        elif isinstance(e, BudgetBreachedError):
+            err_msg = f"Pipeline execution aborted: {str(e)}"
 
         log.error(f"[{run_id}] Pipeline task failed | error={e}")
         _push_event(run_id, {"type": "error", "message": err_msg})

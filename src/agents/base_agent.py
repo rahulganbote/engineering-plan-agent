@@ -145,6 +145,17 @@ def add_cost(cost: float, run_id: str | None = None) -> None:
         return
     with _TOKEN_LOCK:
         _COST_COUNTER[rid] += float(cost or 0.0)
+        current_total = _COST_COUNTER[rid]
+
+    from src.core.config import settings
+    from src.core.exceptions import BudgetBreachedError
+
+    if current_total > settings.max_pipeline_run_budget_usd:
+        raise BudgetBreachedError(
+            f"Pipeline run cost of ${current_total:.4f} exceeded the single-run "
+            f"budget limit of ${settings.max_pipeline_run_budget_usd:.2f}. "
+            f"Aborting execution to prevent budget breach."
+        )
 
 
 def get_token_counts(run_id: str) -> tuple[int, int]:
