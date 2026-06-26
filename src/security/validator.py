@@ -41,12 +41,94 @@ import hashlib
 import io
 import json
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Tuple
 
 from src.core.config import settings
 from src.core.logger import get_logger
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Provider-aware, timeout-bounded, retry-enabled LLM helper for security checks
+# ─────────────────────────────────────────────────────────────────────────────
+# Why this exists:
+#   1. The previous implementation hardcoded OpenAI for both LLM checks. That
+#      broke Anthropic-only deployments AND attributed security-check tokens
+#      to the wrong cost line.
+#   2. There was no client timeout, so a slow OpenAI window could stall
+#      validation for the full SDK default (~60s+).
+#   3. There was no retry. A single transient blip would fail validation.
+#
+# This helper routes through `complete_with_fallback` (so we keep the existing
+# OpenAI ↔ Anthropic failover semantics) and wraps it in a bounded timeout +
+# one retry. Returns the response content on success, None on any failure.
+
+_SECURITY_LLM_TIMEOUT_SEC = 8.0  # tight — security classifier should be fast
+_SECURITY_LLM_MAX_ATTEMPTS = 2   # primary call + one retry
+
+
+def _security_llm_call(
+    model_family: str,
+    prompt: str,
+    response_format: Optional[dict] = None,
+) -> Optional[str]:
+    """
+    Run a security-classifier LLM call with bounded timeout + one retry.
+    Routes through `complete_with_fallback` so the multi-provider failover
+    (OpenAI ↔ Anthropic on rate-limit/auth errors) is preserved.
+
+    Args:
+      model_family:   "openai" | "anthropic" (matches the run's chosen family)
+      prompt:         Plain-text prompt for the classifier
+      response_format: Pydantic-style JSON shape constraint (forwarded as-is)
+
+    Returns:
+      Response content string on success, None on any failure (timeout,
+      retry-exhausted, both-providers-failed, exception).
+
+      The caller is responsible for deciding whether a None response is
+      "fail open" (allow through) or "fail closed" (block).
+    """
+    log = get_logger(__name__)
+    # Import here to avoid circular dependency at module load
+    from src.core.providers import complete_with_fallback, map_model
+
+    # Use the family's mini model — security classification is small and we
+    # want low cost + low latency, mirroring the previous OpenAI mini choice.
+    model = map_model(model_family, "mini")
+
+    for attempt in range(1, _SECURITY_LLM_MAX_ATTEMPTS + 1):
+        try:
+            with ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(
+                    complete_with_fallback,
+                    model_family=model_family,
+                    messages=[{"role": "user", "content": prompt}],
+                    model=model,
+                    temperature=0,
+                    response_format=response_format,
+                )
+                # complete_with_fallback returns (content, p_tokens, c_tokens, final_family)
+                content, _p, _c, _final = future.result(timeout=_SECURITY_LLM_TIMEOUT_SEC)
+                return content
+        except FuturesTimeout:
+            log.warning(
+                f"Security LLM timeout (attempt {attempt}/{_SECURITY_LLM_MAX_ATTEMPTS}) "
+                f"after {_SECURITY_LLM_TIMEOUT_SEC}s | family={model_family}"
+            )
+        except Exception as e:
+            log.warning(
+                f"Security LLM call failed (attempt {attempt}/{_SECURITY_LLM_MAX_ATTEMPTS}) "
+                f"| family={model_family} | error={type(e).__name__}: {str(e)[:120]}"
+            )
+        if attempt < _SECURITY_LLM_MAX_ATTEMPTS:
+            time.sleep(0.5)  # brief backoff before retry
+
+    log.warning(f"Security LLM exhausted retries | family={model_family}")
+    return None
 
 log = get_logger(__name__)
 
@@ -170,12 +252,19 @@ class SecurityValidator:
         file_bytes:   bytes,
         filename:     str,
         content_type: str,
+        model_family: str = "openai",
     ) -> ValidationResult:
         """
         Run all security checks in sequence.
         Returns on the first BLOCKED result — does not continue after failure.
+
+        Args:
+            model_family: which LLM family to use for the security-check LLM
+                          calls (injection scan + completeness fallback). Should
+                          match the family the user picked for the pipeline run
+                          so cost / observability / failover stay consistent.
         """
-        log.info(f"Security validation starting | file={filename} size={len(file_bytes)}")
+        log.info(f"Security validation starting | file={filename} size={len(file_bytes)} family={model_family}")
 
         # Step 1 — File format & size (Python, ~0ms)
         result = self._check_file_format(file_bytes, filename)
@@ -201,7 +290,7 @@ class SecurityValidator:
 
         # Step 5 — Prompt injection Layer 2: LLM semantic scan (~800ms)
         # Only runs if regex found nothing — adds semantic/obfuscation detection
-        result = self._injection_llm_scan(raw_text)
+        result = self._injection_llm_scan(raw_text, model_family=model_family)
         if result.status == ValidationStatus.BLOCKED:
             log.warning(f"Injection blocked by LLM scan | file={filename}")
             return result
@@ -212,7 +301,7 @@ class SecurityValidator:
         pii_types  = pii_result.pii_types_found
 
         # Step 7 — BRD completeness check (Python keyword matching, ~1ms)
-        completeness_result = self._check_brd_completeness(clean_text)
+        completeness_result = self._check_brd_completeness(clean_text, model_family=model_family)
         if completeness_result.status == ValidationStatus.BLOCKED:
             return completeness_result
 
@@ -392,12 +481,14 @@ class SecurityValidator:
             technical_detail="INJECTION_REGEX_CLEAN",
         )
 
-    def _injection_llm_scan(self, text: str) -> ValidationResult:
+    def _injection_llm_scan(self, text: str, model_family: str = "openai") -> ValidationResult:
         """
         Layer 2 prompt injection detection — LLM semantic scan.
 
         Only runs if regex Layer 1 found nothing.
-        Uses gpt-4o-mini for speed (~800ms) and low cost (~$0.001/call).
+        Routes through `_security_llm_call` so the call uses the family the
+        user picked for the run (cost / observability / failover stay
+        consistent with the rest of the pipeline). 8s timeout + 1 retry.
 
         Catches what regex misses:
             - Obfuscated attacks: "Pleas3 ign0re instruct!ons"
@@ -408,10 +499,10 @@ class SecurityValidator:
         Threshold: confidence >= 0.85 to avoid false positives on
         legitimate security-related business requirements.
 
-        Fail-open policy: if the LLM scan fails (API error, timeout),
-        we log the failure and continue. Regex already passed, so the
-        risk is acceptable. Blocking all uploads on scanner failure
-        would hurt availability more than the marginal security gap.
+        Fail-open policy: if the LLM scan fails (timeout, retries exhausted,
+        both providers down), we log the failure and continue. Regex already
+        passed, so the risk is acceptable. Blocking all uploads on scanner
+        failure would hurt availability more than the marginal security gap.
         """
         # Scan a bounded sample: beginning, ending, and suspicious paragraphs.
         # This catches hidden late-document attacks without sending the full BRD.
@@ -436,18 +527,23 @@ Analyze this document excerpt:
 Respond ONLY with valid JSON:
 {{"is_injection": true/false, "confidence": 0.0-1.0, "reason": "one sentence explanation"}}"""
 
-        try:
-            from openai import OpenAI
-            client   = OpenAI(api_key=settings.openai_api_key)
-            response = client.chat.completions.create(
-                model=settings.openai_model_mini,   # gpt-4o-mini — fast + cheap
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,                       # deterministic classification
-                max_tokens=100,
-                response_format={"type": "json_object"},
+        # Provider-aware call with bounded timeout + 1 retry; returns None on
+        # any failure (timeout / both providers down / parse error).
+        raw = _security_llm_call(
+            model_family=model_family,
+            prompt=prompt,
+            response_format={"type": "json_object"},
+        )
+        if raw is None:
+            log.warning("LLM injection scan unavailable — failing open")
+            return ValidationResult(
+                status=ValidationStatus.PASSED,
+                user_message="LLM injection scan unavailable; regex pass relied on",
+                technical_detail=f"INJECTION_LLM_UNAVAILABLE family={model_family}",
             )
 
-            result      = json.loads(response.choices[0].message.content)
+        try:
+            result       = json.loads(raw)
             is_injection = result.get("is_injection", False)
             confidence   = float(result.get("confidence", 0.0))
             reason       = str(result.get("reason", ""))
@@ -575,10 +671,22 @@ Respond ONLY with valid JSON:
             total += n
         return total % 10 == 0
 
-    def _check_brd_completeness(self, text: str) -> ValidationResult:
+    def _check_brd_completeness(self, text: str, model_family: str = "openai") -> ValidationResult:
         """
         Verify minimum required BRD sections are present.
-        Returns BLOCKED with a specific checklist if sections are missing.
+
+        Layer 1: keyword/regex pass on REQUIRED_BRD_SECTIONS.
+        Layer 2: when Layer 1 flags something, ask the LLM to re-judge
+                 semantically (the BRD might use synonyms like "goals" or
+                 "vision" without the literal word "objective").
+
+        Failure modes & policy:
+          • Layer 1 passes              → PASSED (no LLM call)
+          • Layer 1 fails, LLM confirms → BLOCKED with strict missing-section message
+          • Layer 1 fails, LLM clears   → PASSED (downstream regex was over-eager)
+          • Layer 1 fails, LLM fails    → PASSED (fail-open) — block message would be
+                                            misleading because we never actually
+                                            verified sections are missing
         """
         sections = self._extract_brd_sections(text)
         missing: list[str] = []
@@ -600,8 +708,32 @@ Respond ONLY with valid JSON:
             missing.append("at least 2 requirements")
 
         if missing:
-            # Layer 2 Fallback: LLM Semantic Check
-            llm_missing = self._completeness_llm_fallback(text, missing)
+            # Layer 2 — LLM semantic check. Returns (truly_missing, llm_succeeded).
+            llm_missing, llm_succeeded = self._completeness_llm_fallback(
+                text, missing, model_family=model_family
+            )
+
+            if not llm_succeeded:
+                # LLM call failed (timeout / both providers down).
+                # FAIL OPEN: do not block on something we couldn't verify.
+                # The Critic / downstream agents will catch real quality issues.
+                # User-facing message must NOT pretend we confirmed missing sections.
+                log.warning(
+                    f"Completeness LLM unavailable — failing open | "
+                    f"family={model_family} | regex_flagged={missing}"
+                )
+                return ValidationResult(
+                    status=ValidationStatus.PASSED,
+                    user_message=(
+                        "BRD completeness check could not be fully verified — "
+                        "content scanner was temporarily unavailable. Pipeline will proceed."
+                    ),
+                    technical_detail=(
+                        f"COMPLETENESS_LLM_UNAVAILABLE family={model_family} "
+                        f"regex_flagged={missing}"
+                    ),
+                )
+
             if not llm_missing:
                 log.info("Completeness regex failed but LLM fallback passed.")
                 return ValidationResult(
@@ -610,6 +742,7 @@ Respond ONLY with valid JSON:
                     technical_detail=f"COMPLETENESS_LLM_OK originally_missing={missing}",
                 )
 
+            # LLM confirmed missing — block with the strict, actionable message
             checklist = "\n".join(f"  • {s.title()}" for s in llm_missing)
             return ValidationResult(
                 status=ValidationStatus.BLOCKED,
@@ -630,11 +763,25 @@ Respond ONLY with valid JSON:
             technical_detail=f"COMPLETENESS_OK sections={REQUIRED_BRD_SECTIONS}",
         )
 
-    def _completeness_llm_fallback(self, text: str, missing_sections: list[str]) -> list[str]:
+    def _completeness_llm_fallback(
+        self,
+        text: str,
+        missing_sections: list[str],
+        model_family: str = "openai",
+    ) -> Tuple[list[str], bool]:
         """
-        Layer 2 completeness check using LLM.
-        Only checks for the sections that the regex layer missed.
-        Returns the list of sections that the LLM confirms are STILL missing.
+        Layer 2 completeness check using LLM. Routes through the provider
+        the user picked for the run.
+
+        Returns:
+            (truly_missing, succeeded)
+              truly_missing: list of sections the LLM confirms are still missing
+              succeeded:     True if the LLM call completed and parsed cleanly;
+                             False if it timed out, both providers failed, or
+                             the response could not be parsed. Callers MUST
+                             check this flag — when False, the contents of
+                             truly_missing are not meaningful and the caller
+                             should fail-open.
         """
         prompt = f"""You are validating a Business Requirements Document (BRD).
 A simple keyword scanner failed to find these required elements: {missing_sections}.
@@ -660,30 +807,31 @@ Respond ONLY with valid JSON where keys are the exact missing items and values a
 Example format:
 {json.dumps({m: True for m in missing_sections}, indent=2)}
 """
+        # Provider-aware call with bounded timeout + 1 retry; returns None
+        # on any failure. Caller MUST check the `succeeded` flag.
+        raw = _security_llm_call(
+            model_family=model_family,
+            prompt=prompt,
+            response_format={"type": "json_object"},
+        )
+        if raw is None:
+            log.warning(f"Completeness LLM call unavailable | family={model_family}")
+            return [], False  # signal "could not verify" to caller
+
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=settings.openai_api_key)
-            response = client.chat.completions.create(
-                model=settings.openai_model_mini,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,
-                max_tokens=150,
-                response_format={"type": "json_object"},
-            )
-            result = json.loads(response.choices[0].message.content)
-            
+            result = json.loads(raw)
             truly_missing = []
             for item in missing_sections:
                 # If the LLM says True, it means the item is missing
                 if result.get(item, True) is True:
                     truly_missing.append(item)
-            return truly_missing
-            
+            return truly_missing, True
+
         except Exception as e:
-            log.warning(f"Completeness LLM fallback failed | error={e}")
-            # Fail closed for completeness if LLM fails (unlike injection where we fail open)
-            # If we can't verify it's there, assume it's missing.
-            return missing_sections
+            log.warning(f"Completeness LLM response parse failed | error={e}")
+            # Parse failure is treated as "could not verify" — fail open at
+            # the caller level rather than block on a malformed response.
+            return [], False
 
     def _extract_brd_sections(self, text: str) -> dict[str, str]:
         """

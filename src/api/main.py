@@ -538,6 +538,7 @@ async def trigger_pipeline(
         file_bytes=content,
         filename=file.filename or "upload.txt",
         content_type=file.content_type or "text/plain",
+        model_family=model_family,  # route security LLM calls to the chosen family
     )
 
     if val_result.status == ValidationStatus.BLOCKED:
