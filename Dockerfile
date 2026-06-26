@@ -14,7 +14,7 @@ RUN npm run build
 # ── Stage 2: Run Python backend and serve React static files ──────────────────
 FROM python:3.11-slim
 
-# HuggingFace Spaces runs containers as UID 1000 — create a matching user
+# Create a non-root user with UID 1000 for secure container execution
 RUN useradd -m -u 1000 appuser
 
 WORKDIR /app

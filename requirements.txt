@@ -27,10 +27,6 @@ python-multipart==0.0.12    # File upload support
 sse-starlette==2.1.3        # Server-Sent Events for real-time streaming
 itsdangerous==2.2.0         # Required by Starlette SessionMiddleware for secure signed session cookies
 
-# ── UI Layer ──────────────────────────────────────────────────────────────────
-streamlit==1.40.0           # Web UI
-plotly==5.24.1              # Eval score charts (radar, before/after)
-
 # ── External Integrations ─────────────────────────────────────────────────────
 gspread==6.1.4              # Google Sheets write action
 google-auth==2.36.0         # Google service account auth

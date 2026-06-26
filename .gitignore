@@ -49,12 +49,8 @@ desktop.ini
 .project
 .pydevproject
 
-# ─── Streamlit ────────────────────────────────────────────────────────────
-.streamlit/secrets.toml
-
 # ─── Scratch / dev artifacts ──────────────────────────────────────────────
 .write_test
-streamlit_app_test.py
 agent_schemas.json
 dump_schemas.py
 outputs/
