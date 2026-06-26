@@ -15,7 +15,7 @@ import { ScheduleTab } from './ScheduleTab';
 import { ArchitectureTab } from './ArchitectureTab';
 import { PoCTab } from './PoCTab';
 import { TechStackTab } from './TechStackTab';
-import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2 } from 'lucide-react';
+import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2, Plus } from 'lucide-react';
 import { generateVoiceBrief } from '../lib/voiceBrief';
 import { VoiceWidgetFAB } from './VoiceWidgetFAB';
 
@@ -309,17 +309,6 @@ export const AgentWorkspace: React.FC = () => {
             </button>
           )}
 
-          {/* Demo Warning Banner */}
-          {isAuthenticated && (
-            <div className="bg-indigo-950/20 border border-indigo-900/30 p-4 rounded-lg flex gap-2">
-              <ShieldAlert className="text-indigo-400 shrink-0" size={16} />
-              <p className="text-[11px] leading-relaxed text-indigo-300">
-                <strong>Demo Purpose Only:</strong> This application is for demo purposes only. The AI can make mistakes. Validate outputs.
-              </p>
-            </div>
-          )}
-
-
           {/* Current Run Panel */}
           {runId && (
             <div className="border-t border-slate-800 pt-4 space-y-2">
@@ -392,7 +381,7 @@ export const AgentWorkspace: React.FC = () => {
         <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-slate-900 shrink-0 shadow-sm relative">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-100 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">BRD → Engineering Plan</h1>
-            <p className="text-xs text-slate-500">EM Copilot | Multi-Agent BRD-to-Engineering Plan System with HITL</p>
+            <p className="text-xs text-slate-500">EM Copilot · Multi-Agent BRD-to-Engineering Plan System · Demo - AI can make mistakes. Validate outputs.</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
@@ -456,8 +445,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-xl">⏸️</span>
                     <div>
-                      <h4 className="text-sm font-bold text-amber-400">Action Required: Approval Needed</h4>
-                      <p className="text-xs text-amber-300/80">The multi-agent pipeline is paused. Please review the generated plans and approve below.</p>
+                      <h4 className="text-sm font-bold text-amber-400">Action Required: Review the Artifacts. Approval needed to push this into Jira.</h4>
                     </div>
                   </div>
                   <a
@@ -731,6 +719,24 @@ export const AgentWorkspace: React.FC = () => {
                           </div>
                         </div>
                       ) : null}
+                    </div>
+
+                    {/* Primary CTA — natural "what now?" path after terminal state.
+                        Same effect as the sidebar's destructive "Clear Plan & Reset"
+                        but framed as a forward action (indigo, not red) since the
+                        user has just finished a run, not aborting one mid-flight. */}
+                    <div className="border-t border-slate-800 pt-5 flex justify-end">
+                      <button
+                        onClick={() => {
+                          setSelectedFile(null);
+                          clearRun();
+                          setRunId(null);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-indigo-500/30"
+                      >
+                        <Plus size={14} />
+                        Start New Plan
+                      </button>
                     </div>
                   </div>
                 </div>
