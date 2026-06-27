@@ -1,5 +1,7 @@
 import React from 'react';
 import { AlertCircle, Star, Sparkles, DollarSign } from 'lucide-react';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 
 interface StackOption {
   name: string;
@@ -24,6 +26,20 @@ interface TechStackTabProps {
 }
 
 export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => {
+  // Detect whether GitHub velocity signal ran authenticated. The backend emits
+  // tool_call_started with authenticated=true|false on every GitHub call. If we
+  // see at least one such event with authenticated=false, GITHUB_TOKEN was not
+  // configured and the call hit the 60 req/hour unauthenticated rate limit.
+  const { logs } = useWorkspace();
+  const githubUnauthenticated = logs.some((l) => {
+    const event = (l as unknown) as Record<string, unknown>;
+    const payload = (l.payload as Record<string, unknown> | undefined) || {};
+    const isToolStart = event.type === 'tool_call_started';
+    const tool = event.tool ?? payload.tool;
+    const auth = event.authenticated ?? payload.authenticated;
+    return isToolStart && tool === 'github' && auth === false;
+  });
+
   let stack: TechStackOutput | null = null;
   if (techStackData) {
     if (typeof techStackData === 'string') {
@@ -95,6 +111,19 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
   return (
     <div className="space-y-8 animate-fade-in text-foreground">
+      {/* GitHub fallback hint — surfaces when the Tech Stack agent's GitHub
+          velocity-signal call ran unauthenticated (no GITHUB_TOKEN configured).
+          The tool still works in unauthenticated mode, just at the 60 req/hour
+          GitHub rate limit instead of 5,000 — so this is a soft hint. */}
+      {githubUnauthenticated && (
+        <IntegrationNotConfigured
+          title="GitHub velocity signal ran unauthenticated"
+          envVars={["GITHUB_TOKEN"]}
+          description="The Tech Stack agent fetches GitHub repo velocity (stars/week, issue close rate) to inform its recommendations. Without a token, this falls back to GitHub's 60 req/hour anonymous rate limit — fine for demos, too low for repeated runs."
+          docsAnchor="#L80-L81"
+        />
+      )}
+
       {/* Recommended option and rationale */}
       {rec && (
         <div className="bg-gradient-to-r from-primary/20 to-card border border-primary/40 rounded-xl p-5 space-y-3 shadow-md relative overflow-hidden">

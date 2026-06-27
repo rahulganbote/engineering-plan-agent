@@ -14,31 +14,40 @@ interface IngestionLandingProps {
 export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
   const [activeNode, setActiveNode] = useState<string | null>(null);
 
-  // Node details for interactive flowchart
+  // Node details for interactive flowchart.
+  //
+  // Color semantics — traffic-light progression mirroring the data flow:
+  //   🔴 Security Validator (blocks unsafe input)
+  //   💜 Orchestrator + Specialists (AI agents doing the work — share token)
+  //   🟡 Critic Reviewer (judges + may loop back for revision)
+  //   🟢 Manager (HITL) Gate (approves and ships)
+  //
+  // The two AI-agent nodes intentionally share --color-ai-spark (Electric
+  // Purple) to visually group them as one agent family: hub + spokes.
   const pipelineNodes = [
     {
       id: 'security',
       label: 'Security Validator',
       desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
-      icon: <ShieldCheck size={20} className="text-success" />,
-      color: 'border-success/30 text-success bg-success/20',
-      activeColor: 'ring-success/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]',
+      icon: <ShieldCheck size={20} className="text-danger" />,
+      color: 'border-danger/30 text-danger bg-danger/10',
+      activeColor: 'ring-danger/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
     },
     {
       id: 'orchestrator',
       label: 'Orchestrator',
       desc: 'Parses the BRD sections, evaluates structure completeness, and splits tasks for specialists.',
-      icon: <Cpu size={20} className="text-blue-400" />,
-      color: 'border-blue-500/30 text-blue-400 bg-blue-950/20',
-      activeColor: 'ring-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]',
+      icon: <Cpu size={20} className="text-ai-spark" />,
+      color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
+      activeColor: 'ring-ai-spark/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]',
     },
     {
       id: 'specialists',
       label: '5 Specialists (AI Agent)',
       desc: 'Parallel agents: Plan Generator, Schedule Estimator, Solution Architect, PoC Engineer, and Tech Stack Matcher.',
-      icon: <Sparkles size={20} className="text-primary" />,
-      color: 'border-primary/30 text-primary bg-primary/10',
-      activeColor: 'ring-primary/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]',
+      icon: <Sparkles size={20} className="text-ai-spark" />,
+      color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
+      activeColor: 'ring-ai-spark/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]',
     },
     {
       id: 'critic',
@@ -52,9 +61,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       id: 'manager',
       label: 'Manager (HITL) Gate',
       desc: 'Pauses execution to obtain engineering manager approval before exporting to Google Sheets and Jira.',
-      icon: <Milestone size={20} className="text-destructive" />,
-      color: 'border-destructive/30 text-destructive bg-destructive/10',
-      activeColor: 'ring-destructive/50 shadow-[0_0_15px_rgba(244,63,94,0.3)]',
+      icon: <Milestone size={20} className="text-success" />,
+      color: 'border-success/30 text-success bg-success/10',
+      activeColor: 'ring-success/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]',
     },
   ];
 

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../lib/apiClient';
+import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 
 export interface ApprovalResponse {
   run_id: string;
@@ -27,7 +28,7 @@ interface HITLApprovalGateProps {
 }
 
 export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDecisionSubmitted }) => {
-  const { apiBaseUrl } = useWorkspace();
+  const { apiBaseUrl, elevenlabsAgentId } = useWorkspace();
   const { user } = useAuth();
   const [reviewer, setReviewer] = useState('Engineering Manager');
   const [rating, setRating] = useState(4);
@@ -85,6 +86,19 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
       <div className="bg-primary/10 border border-primary/30 p-4 rounded text-xs text-primary">
         Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard.
       </div>
+
+      {/* Voice approval fallback hint — shown when ElevenLabs is not configured on
+          this deployment. Without this, EMs wouldn't know that voice approval is
+          an intended feature; they'd just see no voice button and assume the
+          system only supports click-approval. */}
+      {!elevenlabsAgentId && (
+        <IntegrationNotConfigured
+          title="Voice approval not available"
+          envVars={["ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID"]}
+          description="The voice-based HITL approval flow (powered by ElevenLabs Conversational AI) is not configured on this deployment. Use the Approve & Export / Reject Plan buttons below."
+          docsAnchor="#L68-L70"
+        />
+      )}
 
 
 

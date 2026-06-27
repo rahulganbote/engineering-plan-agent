@@ -19,6 +19,7 @@ import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy,
 import { generateVoiceBrief } from '../lib/voiceBrief';
 import { VoiceWidgetFAB } from './VoiceWidgetFAB';
 import { ThemePicker } from './ThemePicker';
+import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -727,32 +728,13 @@ export const AgentWorkspace: React.FC = () => {
                         </div>
                       ) : (
                         /* Fallback when backend didn't include any jira_status
-                           (e.g. Jira credentials not configured on this deploy).
-                           Better than rendering nothing — the EM gets a clear
-                           reason + a direct link to the setup reference. */
-                        <div className="p-4 bg-card border border-border rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-muted-foreground">
-                            Jira push not available
-                          </div>
-                          <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            Jira integration is not configured on this deployment.
-                            Configure
-                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_API_TOKEN</code>
-                            (plus
-                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_BASE_URL</code>,
-                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_EMAIL</code>,
-                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_PROJECT_KEY</code>)
-                            to enable automatic Epic creation.
-                          </div>
-                          <a
-                            href="https://github.com/rahulganbote/engineering-plan-agent/blob/main/.env.example#L59-L65"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 hover:underline transition-colors"
-                          >
-                            View setup reference (.env.example) →
-                          </a>
-                        </div>
+                           (e.g. Jira credentials not configured on this deploy). */
+                        <IntegrationNotConfigured
+                          title="Jira push not available"
+                          envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
+                          description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
+                          docsAnchor="#L59-L65"
+                        />
                       )}
                     </div>
 
@@ -776,6 +758,30 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Tavily fallback hint — surfaces when the pipeline tried Tavily web
+                  grounding but the API key isn't configured on this deployment.
+                  The backend emits tool_call_degraded events into the SSE stream;
+                  useSSE pushes them into `logs`. We scan for a Tavily api_key_missing
+                  reason — if found, render the hint above Critic findings. */}
+              {(() => {
+                const tavilyMissing = logs.some(
+                  (l) =>
+                    l.type === 'tool_call_degraded' &&
+                    (((l as unknown) as Record<string, unknown>).tool === 'tavily' ||
+                      ((l.payload as Record<string, unknown> | undefined)?.tool === 'tavily')) &&
+                    (((l as unknown) as Record<string, unknown>).reason === 'api_key_missing' ||
+                      ((l.payload as Record<string, unknown> | undefined)?.reason === 'api_key_missing')),
+                );
+                return tavilyMissing ? (
+                  <IntegrationNotConfigured
+                    title="Web grounding fallback unavailable"
+                    envVars={['TAVILY_API_KEY']}
+                    description="The Architect or Tech Stack agent hit a RAG miss and would have used Tavily for live web grounding, but Tavily is not configured on this deployment. The pipeline continued with RAG-only context."
+                    docsAnchor="#L74-L78"
+                  />
+                ) : null;
+              })()}
 
               {/* Critic findings — consistency issues + hallucination flags */}
               <CriticFindings criticDetail={artifacts?.critic_output} />

@@ -83,7 +83,18 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
     """
     run_id = _current_run_id() or "unknown"
     t0 = time.perf_counter()
-    emit("tool_call_started", tool="github", run_id=run_id, owner=owner, repo=repo)
+    # Emit `authenticated` so the React UI can surface a fallback hint when
+    # GITHUB_TOKEN is missing. The tool still runs in this case (unauthenticated
+    # mode hits GitHub's 60 req/hour rate limit instead of 5,000), so this is a
+    # soft-degradation signal, not a failure.
+    emit(
+        "tool_call_started",
+        tool="github",
+        run_id=run_id,
+        owner=owner,
+        repo=repo,
+        authenticated=bool(settings.github_token),
+    )
 
     def _emit_degraded(reason: str) -> None:
         latency_ms = int((time.perf_counter() - t0) * 1000)
