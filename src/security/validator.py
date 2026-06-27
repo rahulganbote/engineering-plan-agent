@@ -28,11 +28,6 @@ Security rules:
     - PII is redacted in-memory before entering PipelineState
     - Injection flag details are never echoed back to the user
 
-Rubric coverage:
-    Guardrails, Safety & Reliability (10 pts):
-        - Input validation & schema compliance:  3 pts
-        - Hallucination & scope control:         4 pts  ← injection guard
-        - Cross-agent consistency & safety:      3 pts  ← handled in Critic
 """
 
 from __future__ import annotations
@@ -42,14 +37,13 @@ import io
 import json
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Tuple
 
 from src.core.config import settings
 from src.core.logger import get_logger
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Provider-aware, timeout-bounded, retry-enabled LLM helper for security checks
@@ -67,14 +61,14 @@ from src.core.logger import get_logger
 # one retry. Returns the response content on success, None on any failure.
 
 _SECURITY_LLM_TIMEOUT_SEC = 8.0  # tight — security classifier should be fast
-_SECURITY_LLM_MAX_ATTEMPTS = 2   # primary call + one retry
+_SECURITY_LLM_MAX_ATTEMPTS = 2  # primary call + one retry
 
 
 def _security_llm_call(
     model_family: str,
     prompt: str,
-    response_format: Optional[dict] = None,
-) -> Optional[str]:
+    response_format: dict | None = None,
+) -> str | None:
     """
     Run a security-classifier LLM call with bounded timeout + one retry.
     Routes through `complete_with_fallback` so the multi-provider failover
@@ -130,6 +124,7 @@ def _security_llm_call(
     log.warning(f"Security LLM exhausted retries | family={model_family}")
     return None
 
+
 log = get_logger(__name__)
 
 
@@ -138,8 +133,8 @@ log = get_logger(__name__)
 # ──────────────────────────────────────────────────────────────────────────────
 
 MAX_FILE_SIZE_BYTES = settings.max_brd_file_size_mb * 1024 * 1024
-MIN_BRD_WORDS       = 50
-ALLOWED_EXTENSIONS  = {".pdf", ".docx", ".txt", ".md"}
+MIN_BRD_WORDS = 50
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 
 # BRD sections that must be present for pipeline to proceed
 REQUIRED_BRD_SECTIONS = ["objective", "requirement", "constraint"]
@@ -160,9 +155,21 @@ PLACEHOLDER_PATTERNS = [
 ]
 
 SUSPICIOUS_LLM_SCAN_TERMS = [
-    "ignore", "system", "developer", "assistant", "prompt", "instruction",
-    "instructions", "override", "bypass", "jailbreak", "base64", "decode",
-    "persona", "forget", "disregard",
+    "ignore",
+    "system",
+    "developer",
+    "assistant",
+    "prompt",
+    "instruction",
+    "instructions",
+    "override",
+    "bypass",
+    "jailbreak",
+    "base64",
+    "decode",
+    "persona",
+    "forget",
+    "disregard",
 ]
 
 # ── Prompt injection patterns (Layer 1 — regex) ───────────────────────────────
@@ -188,26 +195,25 @@ INJECTION_PATTERNS: list[str] = [
 # ── PII patterns (regex + redaction replacement) ──────────────────────────────
 PII_PATTERNS: list[tuple[str, str, str]] = [
     # (regex_pattern, pii_type_label, redaction_replacement)
-    (r"\b\d{3}-\d{2}-\d{4}\b",                                        "SSN",          "[REDACTED-SSN]"),
-    (r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Z|a-z]{2,}\b",       "EMAIL",        "[REDACTED-EMAIL]"),
-    (r"\b(?:\+1\s?)?\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}\b",           "PHONE",        "[REDACTED-PHONE]"),
-    (r"\bDOB\s*:?\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b",            "DOB",          "[REDACTED-DOB]"),
-    (r"\bACCOUNT\s*#?\s*:?\s*\d{8,17}\b",                             "BANK_ACCOUNT", "[REDACTED-ACCOUNT]"),
+    (r"\b\d{3}-\d{2}-\d{4}\b", "SSN", "[REDACTED-SSN]"),
+    (r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Z|a-z]{2,}\b", "EMAIL", "[REDACTED-EMAIL]"),
+    (r"\b(?:\+1\s?)?\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}\b", "PHONE", "[REDACTED-PHONE]"),
+    (r"\bDOB\s*:?\s*\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b", "DOB", "[REDACTED-DOB]"),
+    (r"\bACCOUNT\s*#?\s*:?\s*\d{8,17}\b", "BANK_ACCOUNT", "[REDACTED-ACCOUNT]"),
 ]
 
-CREDIT_CARD_CANDIDATE_PATTERN = re.compile(
-    r"\b(?:\d[ -]?){13,19}\b"
-)
+CREDIT_CARD_CANDIDATE_PATTERN = re.compile(r"\b(?:\d[ -]?){13,19}\b")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Result types
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class ValidationStatus(str, Enum):
-    PASSED  = "passed"
+    PASSED = "passed"
     BLOCKED = "blocked"
-    WARNING = "warning"   # PII found + redacted — pipeline continues with warning
+    WARNING = "warning"  # PII found + redacted — pipeline continues with warning
 
 
 @dataclass
@@ -215,21 +221,23 @@ class ValidationResult:
     """
     Returned by SecurityValidator.validate().
     The pipeline proceeds only if status is PASSED or WARNING.
-    BLOCKED stops the pipeline and returns user_message to the Streamlit UI.
+    BLOCKED stops the pipeline and returns user_message to the React UI.
     """
-    status:            ValidationStatus
-    user_message:      str              # shown in Streamlit — plain English, no stack traces
-    technical_detail:  str              # logged to JSONL — no raw PII, no BRD content
-    brd_text_clean:    Optional[str]    = None   # redacted text safe to forward
-    brd_hash:          Optional[str]    = None   # sha256 of ORIGINAL pre-redaction text
-    pii_types_found:   list[str]        = field(default_factory=list)
-    injection_flags:   list[str]        = field(default_factory=list)
-    missing_sections:  list[str]        = field(default_factory=list)
+
+    status: ValidationStatus
+    user_message: str  # shown in React UI — plain English, no stack traces
+    technical_detail: str  # logged to JSONL — no raw PII, no BRD content
+    brd_text_clean: str | None = None  # redacted text safe to forward
+    brd_hash: str | None = None  # sha256 of ORIGINAL pre-redaction text
+    pii_types_found: list[str] = field(default_factory=list)
+    injection_flags: list[str] = field(default_factory=list)
+    missing_sections: list[str] = field(default_factory=list)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Main validator
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class SecurityValidator:
     """
@@ -249,8 +257,8 @@ class SecurityValidator:
 
     def validate(
         self,
-        file_bytes:   bytes,
-        filename:     str,
+        file_bytes: bytes,
+        filename: str,
         content_type: str,
         model_family: str = "openai",
     ) -> ValidationResult:
@@ -298,7 +306,7 @@ class SecurityValidator:
         # Step 6 — PII detection + redaction (Python regex, WARNING not BLOCK)
         pii_result = self._detect_and_redact_pii(raw_text)
         clean_text = pii_result.brd_text_clean or raw_text
-        pii_types  = pii_result.pii_types_found
+        pii_types = pii_result.pii_types_found
 
         # Step 7 — BRD completeness check (Python keyword matching, ~1ms)
         completeness_result = self._check_brd_completeness(clean_text, model_family=model_family)
@@ -356,8 +364,7 @@ class SecurityValidator:
             return ValidationResult(
                 status=ValidationStatus.BLOCKED,
                 user_message=(
-                    f"📄 Unsupported file type '{ext}'. "
-                    "Please upload a PDF, Word (.docx), or plain text (.txt) file."
+                    f"📄 Unsupported file type '{ext}'. Please upload a PDF, Word (.docx), or plain text (.txt) file."
                 ),
                 technical_detail=f"INVALID_EXTENSION ext={ext}",
             )
@@ -370,9 +377,9 @@ class SecurityValidator:
 
     def _parse_document(
         self,
-        file_bytes:   bytes,
+        file_bytes: bytes,
         content_type: str,
-        filename:     str,
+        filename: str,
     ) -> ValidationResult:
         """
         Extract plain text from uploaded file.
@@ -408,6 +415,7 @@ class SecurityValidator:
 
         elif ext == ".pdf" or "pdf" in content_type:
             from pypdf import PdfReader
+
             reader = PdfReader(io.BytesIO(file_bytes))
             if reader.is_encrypted:
                 raise ValueError("PDF is password-protected")
@@ -415,15 +423,12 @@ class SecurityValidator:
 
         elif ext == ".docx" or "wordprocessingml" in content_type:
             from docx import Document
+
             doc = Document(io.BytesIO(file_bytes))
             parts = [para.text for para in doc.paragraphs if para.text.strip()]
             for table in doc.tables:
                 for row in table.rows:
-                    cell_text = [
-                        cell.text.strip()
-                        for cell in row.cells
-                        if cell.text and cell.text.strip()
-                    ]
+                    cell_text = [cell.text.strip() for cell in row.cells if cell.text and cell.text.strip()]
                     if cell_text:
                         parts.append(" | ".join(cell_text))
             return "\n".join(parts)
@@ -543,10 +548,10 @@ Respond ONLY with valid JSON:
             )
 
         try:
-            result       = json.loads(raw)
+            result = json.loads(raw)
             is_injection = result.get("is_injection", False)
-            confidence   = float(result.get("confidence", 0.0))
-            reason       = str(result.get("reason", ""))
+            confidence = float(result.get("confidence", 0.0))
+            reason = str(result.get("reason", ""))
 
             if is_injection and confidence >= settings.injection_llm_confidence_threshold:
                 return ValidationResult(
@@ -709,9 +714,7 @@ Respond ONLY with valid JSON:
 
         if missing:
             # Layer 2 — LLM semantic check. Returns (truly_missing, llm_succeeded).
-            llm_missing, llm_succeeded = self._completeness_llm_fallback(
-                text, missing, model_family=model_family
-            )
+            llm_missing, llm_succeeded = self._completeness_llm_fallback(text, missing, model_family=model_family)
 
             if not llm_succeeded:
                 # LLM call failed (timeout / both providers down).
@@ -719,8 +722,7 @@ Respond ONLY with valid JSON:
                 # The Critic / downstream agents will catch real quality issues.
                 # User-facing message must NOT pretend we confirmed missing sections.
                 log.warning(
-                    f"Completeness LLM unavailable — failing open | "
-                    f"family={model_family} | regex_flagged={missing}"
+                    f"Completeness LLM unavailable — failing open | family={model_family} | regex_flagged={missing}"
                 )
                 return ValidationResult(
                     status=ValidationStatus.PASSED,
@@ -728,10 +730,7 @@ Respond ONLY with valid JSON:
                         "BRD completeness check could not be fully verified — "
                         "content scanner was temporarily unavailable. Pipeline will proceed."
                     ),
-                    technical_detail=(
-                        f"COMPLETENESS_LLM_UNAVAILABLE family={model_family} "
-                        f"regex_flagged={missing}"
-                    ),
+                    technical_detail=(f"COMPLETENESS_LLM_UNAVAILABLE family={model_family} regex_flagged={missing}"),
                 )
 
             if not llm_missing:
@@ -768,7 +767,7 @@ Respond ONLY with valid JSON:
         text: str,
         missing_sections: list[str],
         model_family: str = "openai",
-    ) -> Tuple[list[str], bool]:
+    ) -> tuple[list[str], bool]:
         """
         Layer 2 completeness check using LLM. Routes through the provider
         the user picked for the run.
@@ -805,7 +804,7 @@ Document excerpt:
 
 Respond ONLY with valid JSON where keys are the exact missing items and values are booleans indicating if they are TRULY MISSING from the text.
 Example format:
-{json.dumps({m: True for m in missing_sections}, indent=2)}
+{json.dumps(dict.fromkeys(missing_sections, True), indent=2)}
 """
         # Provider-aware call with bounded timeout + 1 retry; returns None
         # on any failure. Caller MUST check the `succeeded` flag.
@@ -846,21 +845,44 @@ Example format:
         # Split before "<n>. <Capitalized>"  e.g. "3. Business Goals", "8. Security"
         text = re.sub(r"(?<=\S)\s*(?=\b\d{1,2}\.\s+[A-Z][a-z])", "\n", text)
         # Also split before common inline sub-headings that PDFs jam together
-        for sub in ("In Scope", "Out of Scope", "Primary Goals", "Secondary Goals",
-                    "Availability", "Performance", "Scalability", "Reliability",
-                    "Security"):
+        for sub in (
+            "In Scope",
+            "Out of Scope",
+            "Primary Goals",
+            "Secondary Goals",
+            "Availability",
+            "Performance",
+            "Scalability",
+            "Reliability",
+            "Security",
+        ):
             text = re.sub(rf"(?<=\S)\s+(?={re.escape(sub)}[\s●:])", "\n", text)
 
         sections: dict[str, list[str]] = {}
-        current: Optional[str] = None
+        current: str | None = None
         aliases = {
-            "objective":  ["objective", "objectives", "goal", "goals",
-                           "aim", "aims", "purpose", "vision", "mission"],
-            "requirement": ["requirement", "requirements", "functional requirements",
-                            "non-functional requirements", "nfr", "fr",
-                            "feature", "features", "capabilities"],
-            "constraint": ["constraint", "constraints", "limitation", "limitations",
-                           "budget", "timeline", "out of scope", "boundaries"],
+            "objective": ["objective", "objectives", "goal", "goals", "aim", "aims", "purpose", "vision", "mission"],
+            "requirement": [
+                "requirement",
+                "requirements",
+                "functional requirements",
+                "non-functional requirements",
+                "nfr",
+                "fr",
+                "feature",
+                "features",
+                "capabilities",
+            ],
+            "constraint": [
+                "constraint",
+                "constraints",
+                "limitation",
+                "limitations",
+                "budget",
+                "timeline",
+                "out of scope",
+                "boundaries",
+            ],
         }
 
         # Match alias as a STANDALONE WORD anywhere in the heading line.

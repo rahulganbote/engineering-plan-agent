@@ -20,6 +20,7 @@ Contract: ScheduleOutput
 from __future__ import annotations
 
 import json
+
 from src.agents.base_agent import BaseAgent
 from src.core.logger import get_logger
 from src.core.models import PipelineState, ScheduleOutput, SprintRow
@@ -61,7 +62,7 @@ SCHEMA = """{
 class ScheduleEstimatorAgent(BaseAgent):
     """
     Estimates sprint schedule calibrated against historical project timelines.
-    comparable_projects[] makes calibration auditable (rubric requirement).
+    comparable_projects[] makes calibration auditable.
     Inherits BaseAgent for RAG, retry, timing, logging.
     """
 
@@ -94,9 +95,12 @@ class ScheduleEstimatorAgent(BaseAgent):
 
         # ── Log ───────────────────────────────────────────────────────────────
         self.log_run(
-            run_id=state.run_id, agent_name="schedule_estimator",
-            citation_ids=citation_ids, critic_score=None,
-            start_time=start, revision_count=state.revision_count,
+            run_id=state.run_id,
+            agent_name="schedule_estimator",
+            citation_ids=citation_ids,
+            critic_score=None,
+            start_time=start,
+            revision_count=state.revision_count,
         )
         log.info(
             f"[{state.run_id}] ScheduleEstimator done | "
@@ -132,13 +136,15 @@ class ScheduleEstimatorAgent(BaseAgent):
         return "\n".join(lines)
 
     def _brd_text(self, state: PipelineState) -> str:
-        return "\n\n".join(
-            f"## {s.section_name}\n{s.content}" for s in state.brd_sections
-        )
+        return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
 
     def _generate(
-        self, state: PipelineState, plan_output,
-        context_str: str, citation_ids: list[str], feedback: str,
+        self,
+        state: PipelineState,
+        plan_output,
+        context_str: str,
+        citation_ids: list[str],
+        feedback: str,
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
@@ -165,15 +171,17 @@ class ScheduleEstimatorAgent(BaseAgent):
         try:
             sprints = []
             for s in d.get("sprints", []):
-                sprints.append(SprintRow(
-                    sprint=int(s.get("sprint", len(sprints) + 1)),
-                    week_range=s.get("week_range", f"W{len(sprints)*2+1}"),
-                    deliverables=s.get("deliverables", ["Sprint deliverable"]),
-                    team_members=s.get("team_members", ["Engineer"]),
-                    effort_days=float(s.get("effort_days", 10.0)),
-                ))
+                sprints.append(
+                    SprintRow(
+                        sprint=int(s.get("sprint", len(sprints) + 1)),
+                        week_range=s.get("week_range", f"W{len(sprints) * 2 + 1}"),
+                        deliverables=s.get("deliverables", ["Sprint deliverable"]),
+                        team_members=s.get("team_members", ["Engineer"]),
+                        effort_days=float(s.get("effort_days", 10.0)),
+                    )
+                )
 
-            sprint_sum   = sum(s.effort_days for s in sprints)
+            sprint_sum = sum(s.effort_days for s in sprints)
             total_stated = float(d.get("total_effort_days", sprint_sum))
             if abs(total_stated - sprint_sum) > 0.5:
                 log.warning(f"[{run_id}] Fixing total_effort_days {total_stated}→{sprint_sum:.1f}")
@@ -201,12 +209,20 @@ class ScheduleEstimatorAgent(BaseAgent):
 
     def _default_sprints(self) -> list[SprintRow]:
         return [
-            SprintRow(sprint=1, week_range="W1-W2",
-                      deliverables=["Environment setup", "Architecture review"],
-                      team_members=["Tech Lead", "Engineer"], effort_days=10.0),
-            SprintRow(sprint=2, week_range="W3-W6",
-                      deliverables=["Core implementation", "Unit tests"],
-                      team_members=["Engineer x2"], effort_days=20.0),
+            SprintRow(
+                sprint=1,
+                week_range="W1-W2",
+                deliverables=["Environment setup", "Architecture review"],
+                team_members=["Tech Lead", "Engineer"],
+                effort_days=10.0,
+            ),
+            SprintRow(
+                sprint=2,
+                week_range="W3-W6",
+                deliverables=["Core implementation", "Unit tests"],
+                team_members=["Engineer x2"],
+                effort_days=20.0,
+            ),
         ]
 
     def _fallback(self, run_id: str, citation_ids: list[str], error: str) -> ScheduleOutput:
@@ -227,4 +243,5 @@ class ScheduleEstimatorAgent(BaseAgent):
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("schedule_estimator", ScheduleEstimatorAgent)

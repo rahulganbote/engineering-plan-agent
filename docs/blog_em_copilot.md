@@ -12,10 +12,10 @@ I spent fifteen years on this loop at Apple, Pfizer, Prudential, and other Fortu
 
 So I built **EM Copilot** — an AI system that takes a BRD as input and returns a complete, internally-consistent planning bundle: engineering plan, project schedule, system architecture (with a rendered diagram), proof-of-concept scope, and tech-stack options with trade-offs. In under a minute. For about **31 cents** in OpenAI spend.
 
-![EM Copilot — empty Streamlit landing page](./demo_01_hero_streamlit_empty.png)
+![EM Copilot — empty React landing page](./demo_01_hero_streamlit_empty.png)
 *Drop a BRD. Wait ~50 seconds. Get a complete engineering plan.*
 
-It runs on seven coordinated agents, a Critic that scores every artifact against a four-dimensional rubric, a human-in-the-loop approval gate (voice or button), and integrations that push the approved bundle to Jira, Google Sheets, and a downloadable PDF.
+It runs on seven coordinated agents, a Critic that scores every artifact against a four-dimensional scoring model, a human-in-the-loop approval gate (voice or button), and integrations that push the approved bundle to Jira, Google Sheets, and a downloadable PDF.
 
 This post is the architectural tour, the honest tradeoffs, and the lessons earned the hard way.
 
@@ -174,7 +174,7 @@ If you read no other section of this post, read this one.
 
 ## The Phase 1–10 follow-up: making it a distributed system
 
-The capstone version of EM Copilot was demo-ready, but it had a quiet weakness I couldn't stop thinking about: it was a single-process Python application talking to OpenAI, Pinecone, and Jira over the network, with `tenacity` retries as its only fault-tolerance story. If OpenAI returned a 503 mid-pipeline, the retry would eventually give up and the agent would fall back. If Pinecone slowed to 8-second responses, every specialist Agent would wait for it. If I ever scaled to two HF Spaces replicas, every cache hit would be process-local — repeated revisions would pay the LLM cost twice.
+The initial prototype version of EM Copilot was demo-ready, but it had a quiet weakness I couldn't stop thinking about: it was a single-process Python application talking to OpenAI, Pinecone, and Jira over the network, with `tenacity` retries as its only fault-tolerance story. If OpenAI returned a 503 mid-pipeline, the retry would eventually give up and the agent would fall back. If Pinecone slowed to 8-second responses, every specialist Agent would wait for it. If I ever scaled to two Cloud Run replicas, every cache hit would be process-local — repeated revisions would pay the LLM cost twice.
 
 So I spent another week shipping a ten-phase hardening pass that turns EM Copilot into a real distributed agentic system. The pieces:
 
@@ -190,11 +190,11 @@ So I spent another week shipping a ten-phase hardening pass that turns EM Copilo
 
 6. **Idempotent writes** — every Jira Epic carries an `em-copilot-run-<id>` label; the export path checks for an existing match before writing. If MCP succeeds and you accidentally retry with REST, you get one Epic, not two.
 
-7. **Observability event bus** — a lightweight `events.py` emits `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout` events keyed by `run_id`. FastAPI fans them into the SSE stream, so the Streamlit UI shows resilience state in real time — not just Agent progress chips, but "Plan Generator: cache hit (L1)" or "Solution Architect: breaker_open (3 consecutive failures)".
+7. **Observability event bus** — a lightweight `events.py` emits `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout` events keyed by `run_id`. FastAPI fans them into the SSE stream, so the React UI shows resilience state in real time — not just Agent progress chips, but "Plan Generator: cache hit (L1)" or "Solution Architect: breaker_open (3 consecutive failures)".
 
 The lesson, separate from the implementation:
 
-> **Distributed resilience is not a feature; it's the substrate.** I built the original capstone as a single coherent pipeline. The Phase 1–10 work didn't add any new artifacts to the engineering plan — but it changed every external call site from "happy path with a retry" to "isolated, observable, bounded in time, and cheap to repeat." The integration cost was real: ~600 lines of foundation code, ~80 lines of agent wiring, careful per-instance breaker isolation. But it's the difference between "works in the demo" and "stays up when one of your three providers has a bad afternoon."
+> **Distributed resilience is not a feature; it's the substrate.** I built the original prototype as a single coherent pipeline. The Phase 1–10 work didn't add any new artifacts to the engineering plan — but it changed every external call site from "happy path with a retry" to "isolated, observable, bounded in time, and cheap to repeat." The integration cost was real: ~600 lines of foundation code, ~80 lines of agent wiring, careful per-instance breaker isolation. But it's the difference between "works in the demo" and "stays up when one of your three providers has a bad afternoon."
 
 The same EM Copilot now ships with the same UX, the same 31-cent run cost, and the same Green-badge output. But underneath, it's a different system. The Critic's revision loop no longer pays full price the second time. A slow Pinecone region no longer cascades into a full pipeline timeout. Redis dying mid-run no longer crashes anything. And every retry, every cache hit, every breaker open is visible in the trace alongside the LLM tokens.
 
@@ -204,7 +204,7 @@ That's the architecture I'd want backing any agentic system I asked to make deci
 
 ## What this means for engineering managers
 
-I built this as a capstone, but I built it for myself first. The math is straightforward: an EM running 4–6 engagements a year and losing 2–3 days to each BRD recovers **40–60 hours** of planning time. For a consulting team at 20+ engagements, the impact compounds. The upfront cost is real — best results require populating the RAG knowledge base with *your* organization's BRDs, architecture decisions, and engineering standards. That's a one-time setup investment, but a meaningful one.
+I built this project, but I built it for myself first. The math is straightforward: an EM running 4–6 engagements a year and losing 2–3 days to each BRD recovers **40–60 hours** of planning time. For a consulting team at 20+ engagements, the impact compounds. The upfront cost is real — best results require populating the RAG knowledge base with *your* organization's BRDs, architecture decisions, and engineering standards. That's a one-time setup investment, but a meaningful one.
 
 What it isn't: a replacement for the EM. The agent prepares; the EM decides. Every artifact carries a quality badge and citations before it reaches you. You stay in control of the approval gate, the artifact content, and the integrations that downstream teams depend on.
 
@@ -217,7 +217,7 @@ The hardest part of agentic systems isn't building them — it's the unglamorous
 The project is open.
 
 - **Repo:** https://github.com/rahulganbote/engineering-plan-agent
-- **Live demo (HuggingFace Spaces):** https://huggingface.co/spaces/rganbote/em-copilot
+- **Live demo (GCP Cloud Run):** https://emcopilot.ai
 - **PRFAQ, architecture write-up, demo script:** in `/docs`
 
 If you build something similar — especially around Critic design, MCP integration, or the golden-dataset problem — I'd love to compare notes. The architecture decisions that worked for me may not work for you, and the ones that broke for me are probably the most useful thing in this post.

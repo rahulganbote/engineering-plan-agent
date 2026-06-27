@@ -6,7 +6,7 @@ Pinecone vector store — RAG ingestion and retrieval.
 All 5 specialist agents call retrieve() directly with their own queries.
 The Orchestrator does NOT call RAG — it only parses and routes.
 
-Design principle (documented for rubric 5 pts):
+Design principle:
     Each agent retrieves from the knowledge base using domain-specific queries
     tailored to what it needs:
         Plan Generator    → "engineering plan phases milestones risks"
@@ -18,7 +18,7 @@ Design principle (documented for rubric 5 pts):
     This is more effective than a single orchestrator retrieval because
     each query is semantically optimised for the agent's specific task.
 
-Chunking strategy (documented — rubric: chunking/retrieval = 5 pts):
+Chunking strategy:
 
     Source type        | Strategy              | ~Chunk size | Overlap
     ───────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ Chunking strategy (documented — rubric: chunking/retrieval = 5 pts):
     Tech decision log  | One chunk per entry   | 150 tokens  | 0
 
 Embedding model choice — text-embedding-3-large (1024-dim):
-    Chosen over text-embedding-3-large because: 
+    Chosen over text-embedding-3-large because:
     - Precision and recall are more important than capturing subtle semantic relationships in our small, domain-specific KB.
     - Cost: $0.02/million tokens vs $0.13/million (6.5× higher)
     - Quality: Marginally lower recall (~2-3%) but sufficient for our KB size (<500 chunks)
@@ -40,7 +40,7 @@ Embedding model choice — text-embedding-3-large (1024-dim):
 
 Vector DB choice — Pinecone Serverless (cloud) over ChromaDB/FAISS (local):
     Chosen because:
-    - Persistence: ChromaDB is disk-based — survives local dev but lost on Streamlit Cloud/HuggingFace restart
+    - Persistence: ChromaDB is disk-based — survives local dev but lost on GCP Cloud Run container restarts
     - Availability: Pinecone Starter is always-on (no weekly ping needed unlike Qdrant free tier)
     - Cost: Free tier covers our ~200-chunk KB with zero per-query billing
     - Deployment: Cloud-managed means ingest_kb.py runs once; no re-ingestion on redeploy
@@ -83,12 +83,11 @@ Usage:
 from __future__ import annotations
 
 import hashlib
-from typing import Optional
 
+from src.core.cache import CACHE_EMBEDDING, CACHE_RAG, cached, hash_args
 from src.core.config import settings
-from src.core.resilience import resilient, CircuitBreaker, OPENAI_POLICY, PINECONE_POLICY, EMBEDDING_POLICY
-from src.core.cache import cached, hash_args, CACHE_RAG, CACHE_EMBEDDING
 from src.core.logger import get_logger
+from src.core.resilience import EMBEDDING_POLICY, PINECONE_POLICY, CircuitBreaker, resilient
 
 log = get_logger(__name__)
 from src.core.logger import get_logger
@@ -104,8 +103,8 @@ _pinecone_index = None
 # RAG and embedding go to different surfaces (Pinecone vs OpenAI) with
 # different failure profiles, so each gets its own breaker. Independent
 # failure domains — Pinecone troubles don't trip the embedding breaker.
-_RAG_BREAKER   = CircuitBreaker(name="rag.query",      fail_threshold=4, reset_sec=20.0)
-_EMBED_BREAKER = CircuitBreaker(name="rag.embedding",  fail_threshold=5, reset_sec=30.0)
+_RAG_BREAKER = CircuitBreaker(name="rag.query", fail_threshold=4, reset_sec=20.0)
+_EMBED_BREAKER = CircuitBreaker(name="rag.embedding", fail_threshold=5, reset_sec=30.0)
 
 
 def _get_index():
@@ -116,8 +115,9 @@ def _get_index():
     """
     global _pinecone_index
     if _pinecone_index is None:
-        from pinecone import Pinecone, ServerlessSpec
         import time
+
+        from pinecone import Pinecone, ServerlessSpec
 
         pc = Pinecone(api_key=settings.pinecone_api_key)
 
@@ -127,7 +127,7 @@ def _get_index():
             log.info(f"Creating Pinecone index: {settings.pinecone_index}")
             pc.create_index(
                 name=settings.pinecone_index,
-                dimension=1024,         # text-embedding-3-large output dimension
+                dimension=1024,  # text-embedding-3-large output dimension
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1"),
             )
@@ -143,6 +143,7 @@ def _get_index():
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
 
+
 def _embed_key(texts):
     # Cache by texts only — model + dims are part of the response but stable for the process
     return hash_args(texts, settings.openai_embedding_model, settings.embedding_dimension)
@@ -156,9 +157,10 @@ def _embed(texts: list[str]) -> list[list[float]]:
     Batching all chunks in one API call is more cost-efficient than
     embedding individually (reduces API round trips).
     """
-    from openai import OpenAI
     from langsmith.wrappers import wrap_openai
-    client   = wrap_openai(OpenAI(api_key=settings.openai_api_key))
+    from openai import OpenAI
+
+    client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
     response = client.embeddings.create(
         model=settings.openai_embedding_model,
         dimensions=settings.embedding_dimension,
@@ -171,13 +173,14 @@ def _embed(texts: list[str]) -> list[list[float]]:
 # Ingestion
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def ingest_document(
-    text:        str,
-    doc_id:      str,
+    text: str,
+    doc_id: str,
     source_type: str,
-    domain:      str = "generic",
-    complexity:  str = "medium",
-    tags:        Optional[list[str]] = None,
+    domain: str = "generic",
+    complexity: str = "medium",
+    tags: list[str] | None = None,
     doc_version: str = "1.0",
 ) -> str:
     """
@@ -193,7 +196,7 @@ def ingest_document(
         complexity:  Metadata for retrieval filtering
         tags:        Searchable tag list stored in Pinecone metadata
     """
-    index  = _get_index()
+    index = _get_index()
     chunks = _chunk_text(text, source_type)
 
     if not chunks:
@@ -206,35 +209,38 @@ def ingest_document(
     vectors = []
     for i, (chunk, vector) in enumerate(zip(chunks, embeddings)):
         chunk_id = f"{doc_id}_chunk_{i}"
-        vectors.append({
-            "id":     chunk_id,
-            "values": vector,
-            "metadata": {
-                # text stored in metadata — returned on retrieval
-                "text":        chunk,
-                "source_type": source_type,
-                "source_id":   doc_id,
-                "domain":      domain,
-                "complexity":  complexity,
-                "tags":        ",".join(tags or []),
-                "chunk_index": i,
-                # chunk_id stored in metadata for easy citation tracking
-                "chunk_id":    chunk_id,
-                "chunk_hash":  hashlib.md5(chunk.encode()).hexdigest()[:8],
-                "doc_version": doc_version,
-            },
-        })
+        vectors.append(
+            {
+                "id": chunk_id,
+                "values": vector,
+                "metadata": {
+                    # text stored in metadata — returned on retrieval
+                    "text": chunk,
+                    "source_type": source_type,
+                    "source_id": doc_id,
+                    "domain": domain,
+                    "complexity": complexity,
+                    "tags": ",".join(tags or []),
+                    "chunk_index": i,
+                    # chunk_id stored in metadata for easy citation tracking
+                    "chunk_id": chunk_id,
+                    "chunk_hash": hashlib.md5(chunk.encode()).hexdigest()[:8],
+                    "doc_version": doc_version,
+                },
+            }
+        )
 
     # Upsert in batches of 100 (Pinecone API limit per request)
     batch_size = 100
     for i in range(0, len(vectors), batch_size):
-        index.upsert(vectors=vectors[i:i + batch_size])
+        index.upsert(vectors=vectors[i : i + batch_size])
 
     log.info(f"Ingested {len(chunks)} chunks from {doc_id} (type={source_type})")
     return f"{len(chunks)} chunks ingested from {doc_id}"
 
 
 # ── Chunking strategies ───────────────────────────────────────────────────────
+
 
 def _chunk_text(text: str, source_type: str) -> list[str]:
     """Route to the appropriate chunking strategy for the source type."""
@@ -259,6 +265,7 @@ def _section_split(text: str, max_tokens: int, overlap: int) -> list[str]:
     Overlap ensures context from one section bleeds into the next chunk.
     """
     import re
+
     sections = re.split(r"\n#{1,3}\s+|\n\n", text)
     return [s.strip() for s in sections if len(s.strip()) > 30] or [text]
 
@@ -285,6 +292,7 @@ def _row_split(text: str) -> list[str]:
 # Retrieval
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 class RetrievedChunk:
     """
     A single retrieved chunk from Pinecone with its citation ID.
@@ -293,21 +301,17 @@ class RetrievedChunk:
 
     def __init__(self, chunk_id: str, text: str, metadata: dict, score: float):
         self.chunk_id = chunk_id
-        self.text     = text
+        self.text = text
         self.metadata = metadata
-        self.score    = score
+        self.score = score
 
     def __repr__(self) -> str:
-        return (
-            f"Chunk({self.chunk_id} | "
-            f"type={self.metadata.get('source_type', '?')} | "
-            f"score={self.score:.3f})"
-        )
+        return f"Chunk({self.chunk_id} | type={self.metadata.get('source_type', '?')} | score={self.score:.3f})"
 
 
 def _retrieve_key(query, source_types=None, domain=None, top_k=None, threshold=None):
     # Cache key normalises sentinels (None) to their defaults so equivalent calls share the entry
-    _tk = top_k     if top_k     is not None else settings.rag_top_k
+    _tk = top_k if top_k is not None else settings.rag_top_k
     _th = threshold if threshold is not None else settings.rag_similarity_threshold
     _st = tuple(sorted(source_types)) if source_types else ()
     _dm = domain or ""
@@ -316,11 +320,11 @@ def _retrieve_key(query, source_types=None, domain=None, top_k=None, threshold=N
 
 @cached(policy=CACHE_RAG, key_fn=_retrieve_key, name="rag.retrieve")
 def retrieve(
-    query:        str,
-    source_types: Optional[list[str]] = None,
-    domain:       Optional[str] = None,
-    top_k:        int   = None,    # type: ignore[assignment]
-    threshold:    float = None,    # type: ignore[assignment]
+    query: str,
+    source_types: list[str] | None = None,
+    domain: str | None = None,
+    top_k: int = None,  # type: ignore[assignment]
+    threshold: float = None,  # type: ignore[assignment]
 ) -> list[RetrievedChunk]:
     """
     Retrieve relevant chunks from Pinecone for an agent query.
@@ -336,14 +340,14 @@ def retrieve(
         List of RetrievedChunk objects sorted by relevance score.
         The chunk_id field of each is what goes into citations[].
 
-    Rubric: grounding & citation quality = 8 pts — this is the source of all citations.
+    This is the source of all grounding citations.
     """
     if top_k is None:
         top_k = settings.rag_top_k
     if threshold is None:
         threshold = settings.rag_similarity_threshold
 
-    index     = _get_index()
+    index = _get_index()
     query_vec = _embed([query])[0]
 
     # Build Pinecone metadata filter
@@ -359,30 +363,20 @@ def retrieve(
     def _do_query():
         return index.query(
             vector=query_vec,
-            top_k=min(top_k * 2, 20),   # over-fetch then threshold filter below
+            top_k=min(top_k * 2, 20),  # over-fetch then threshold filter below
             include_metadata=True,
             filter=pinecone_filter if pinecone_filter else None,
         )
 
     try:
         results = _do_query()
-        # print("DEBUG threshold:", threshold)
-        # print("DEBUG filter:", pinecone_filter)
-        # print("DEBUG raw matches:", [
-        #     {
-        #         "id": match.id,
-        #         "score": match.score,
-        #         "source_type": match.metadata.get("source_type") if match.metadata else None,
-        #         "domain": match.metadata.get("domain") if match.metadata else None,
-        #     } 
-        #     for match in results.matches
-        # ])
     except Exception as e:
         log.error(f"Pinecone query failed | error={e}")
         return []
 
     # Filter by similarity threshold and build RetrievedChunk objects
     from src.security.validator import check_external_injection
+
     chunks = []
     for match in results.matches:
         if match.score >= threshold:
@@ -390,6 +384,7 @@ def retrieve(
             if check_external_injection(text):
                 from src.agents.base_agent import _current_run_id
                 from src.core.events import emit
+
                 run_id = _current_run_id() or "unknown"
                 log.warning(
                     f"[security] dropped RAG content for run={run_id} | "
@@ -407,11 +402,7 @@ def retrieve(
                 )
             )
 
-    log.debug(
-        f"Retrieved {len(chunks)} chunks | "
-        f"query='{query[:50]}...' | "
-        f"filters={source_types}"
-    )
+    log.debug(f"Retrieved {len(chunks)} chunks | query='{query[:50]}...' | filters={source_types}")
     return chunks[:top_k]
 
 
@@ -421,7 +412,7 @@ def format_context(chunks: list[RetrievedChunk]) -> tuple[str, list[str]]:
         1. A context string to inject into the agent's LLM prompt
         2. A list of citation IDs to populate the output citations[] field
 
-    Citation requirement (rubric: grounding & citation quality = 8 pts):
+    Citation requirement:
         Every non-trivial claim in a generated artifact must cite at least one
         retrieved chunk. The returned citation_ids are what get stored in
         AgentOutputBase.citations — enforced at schema level by Pydantic.
@@ -468,7 +459,7 @@ def format_context(chunks: list[RetrievedChunk]) -> tuple[str, list[str]]:
         )
     lines.append("\n=== End of Retrieved Context ===")
 
-    context_str  = "\n".join(lines)
+    context_str = "\n".join(lines)
     citation_ids = [chunk.chunk_id for chunk in chunks]
 
     log.debug(f"format_context: {len(chunks)} chunks formatted | ids={citation_ids}")

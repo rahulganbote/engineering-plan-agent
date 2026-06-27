@@ -1,18 +1,20 @@
 """
 Integration test to verify Jira connectivity and credentials.
 """
-import sys
-import os
+
 import base64
-import requests
+import sys
 from pathlib import Path
+
+import requests
 
 # Add project root to sys.path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.core.config import settings
-from src.integrations.jira import _credentials_status, _basic_auth_header
+from src.integrations.jira import _basic_auth_header, _credentials_status
+
 
 def test_jira_unauthorized_boundary():
     """
@@ -23,15 +25,15 @@ def test_jira_unauthorized_boundary():
     base_url = settings.jira_base_url or "https://your-domain.atlassian.net"
     email = settings.jira_email or "test@example.com"
     token = "INVALID_TOKEN_FOR_TESTING"
-    
+
     url = f"{base_url.rstrip('/')}/rest/api/3/issue"
-    auth_str = f"{email}:{token}".encode("utf-8")
+    auth_str = f"{email}:{token}".encode()
     headers = {
         "Authorization": "Basic " + base64.b64encode(auth_str).decode("ascii"),
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
-    
+
     payload = {
         "fields": {
             "project": {"key": settings.jira_project_key or "TEST"},
@@ -41,17 +43,12 @@ def test_jira_unauthorized_boundary():
                 "type": "doc",
                 "version": 1,
                 "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [
-                            {"type": "text", "text": "This is a diagnostic task test."}
-                        ]
-                    }
-                ]
-            }
+                    {"type": "paragraph", "content": [{"type": "text", "text": "This is a diagnostic task test."}]}
+                ],
+            },
         }
     }
-    
+
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=10)
         print(f"Jira API Response Code: {r.status_code}")
@@ -65,6 +62,7 @@ def test_jira_unauthorized_boundary():
     except Exception as e:
         print(f"[ERROR] Unexpected error during connection check: {e}")
         return False
+
 
 def test_jira_configured_credentials():
     """
@@ -83,7 +81,7 @@ def test_jira_configured_credentials():
         "Authorization": _basic_auth_header(),
         "Accept": "application/json",
     }
-    
+
     try:
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
@@ -96,6 +94,7 @@ def test_jira_configured_credentials():
     except Exception as e:
         print(f"[ERROR] Failed to verify configured credentials: {e}")
         raise
+
 
 if __name__ == "__main__":
     try:

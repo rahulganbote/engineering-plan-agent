@@ -1,11 +1,12 @@
 # tests/unit/test_providers.py
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from src.agents.base_agent import BaseAgent
 from src.core.config import settings
 from src.core.pricing import calculate_cost
-from src.core.providers import map_model, get_provider, OpenAIProvider, AnthropicProvider
-from src.agents.base_agent import BaseAgent
-
+from src.core.providers import AnthropicProvider, OpenAIProvider, get_provider, map_model
 
 
 def test_calculate_cost():
@@ -45,9 +46,7 @@ def test_openai_provider_complete(mock_openai_class):
 
     provider = OpenAIProvider()
     content, prompt, completion = provider.complete(
-        messages=[{"role": "user", "content": "hi"}],
-        model="gpt-4o",
-        temperature=0.2
+        messages=[{"role": "user", "content": "hi"}], model="gpt-4o", temperature=0.2
     )
 
     assert content == "OpenAI hello"
@@ -68,9 +67,7 @@ def test_anthropic_provider_complete(mock_anthropic_class):
     with patch("src.core.config.settings.anthropic_api_key", "mock-key"):
         provider = AnthropicProvider()
         content, prompt, completion = provider.complete(
-            messages=[{"role": "user", "content": "hi"}],
-            model="claude-3-5-sonnet-20241022",
-            temperature=0.2
+            messages=[{"role": "user", "content": "hi"}], model="claude-3-5-sonnet-20241022", temperature=0.2
         )
 
     assert content == "Claude hello"
@@ -96,14 +93,15 @@ def test_get_provider_invalid_family():
 
 def test_base_agent_thread_context_and_cost_tracking():
     from src.agents.base_agent import (
-        set_current_run_id,
         _current_model_family,
         add_cost,
-        get_cost,
-        reset_token_counter,
         cleanup_token_counter,
+        get_cost,
         get_token_counts,
+        reset_token_counter,
+        set_current_run_id,
     )
+
     run_id = "test-cost-run"
 
     # Reset
@@ -132,12 +130,13 @@ class DummyAgentForTesting(BaseAgent):
 @patch("src.core.providers.get_provider")
 def test_base_agent_call_llm_with_retry_token_and_cost_accumulation(mock_get_provider):
     from src.agents.base_agent import (
-        set_current_run_id,
-        reset_token_counter,
         cleanup_token_counter,
-        get_token_counts,
         get_cost,
+        get_token_counts,
+        reset_token_counter,
+        set_current_run_id,
     )
+
     mock_provider = MagicMock()
     # Mock complete to return (text, input_tokens, output_tokens)
     mock_provider.complete.return_value = ("Dummy response", 120, 80)
@@ -151,11 +150,7 @@ def test_base_agent_call_llm_with_retry_token_and_cost_accumulation(mock_get_pro
 
     with patch("src.agents.base_agent.settings") as mock_settings:
         mock_settings.openai_model = "gpt-4o"
-        response = agent._call_llm_with_retry(
-            system_prompt="sys",
-            user_prompt="usr",
-            model="gpt-4o"
-        )
+        response = agent._call_llm_with_retry(system_prompt="sys", user_prompt="usr", model="gpt-4o")
 
     assert response == "Dummy response"
 
@@ -174,9 +169,10 @@ def test_base_agent_call_llm_with_retry_token_and_cost_accumulation(mock_get_pro
 
 
 def test_complete_with_fallback_success():
-    from src.core.providers import complete_with_fallback
-    from src.core.events import set_event_sink
     import anthropic
+
+    from src.core.events import set_event_sink
+    from src.core.providers import complete_with_fallback
 
     events = []
     set_event_sink(lambda e: events.append(e))
@@ -184,7 +180,9 @@ def test_complete_with_fallback_success():
     with patch("src.core.providers.get_provider") as mock_get_provider:
         mock_primary = MagicMock()
         mock_resp = MagicMock()
-        mock_primary.complete.side_effect = anthropic.RateLimitError(message="rate limit", response=mock_resp, body=None)
+        mock_primary.complete.side_effect = anthropic.RateLimitError(
+            message="rate limit", response=mock_resp, body=None
+        )
 
         mock_fallback = MagicMock()
         mock_fallback.complete.return_value = ("Success response", 50, 50)
@@ -193,6 +191,7 @@ def test_complete_with_fallback_success():
             if family == "anthropic":
                 return mock_primary
             return mock_fallback
+
         mock_get_provider.side_effect = side_effect
 
         content, prompt, completion, final_family = complete_with_fallback(
@@ -213,10 +212,11 @@ def test_complete_with_fallback_success():
 
 
 def test_complete_with_fallback_both_fail():
-    from src.core.providers import complete_with_fallback
-    from src.core.resilience import QuotaExceededError
     import anthropic
     import openai
+
+    from src.core.providers import complete_with_fallback
+    from src.core.resilience import QuotaExceededError
 
     with patch("src.core.providers.get_provider") as mock_get_provider:
         mock_primary = MagicMock()
@@ -242,9 +242,10 @@ def test_complete_with_fallback_both_fail():
 
 
 def test_complete_with_fallback_not_found_error():
-    from src.core.providers import complete_with_fallback
-    from src.core.events import set_event_sink
     import anthropic
+
+    from src.core.events import set_event_sink
+    from src.core.providers import complete_with_fallback
 
     events = []
     set_event_sink(lambda e: events.append(e))
@@ -253,7 +254,9 @@ def test_complete_with_fallback_not_found_error():
         mock_primary = MagicMock()
         mock_resp = MagicMock()
         # NotFoundError represents HTTP 404
-        mock_primary.complete.side_effect = anthropic.NotFoundError(message="model not found", response=mock_resp, body=None)
+        mock_primary.complete.side_effect = anthropic.NotFoundError(
+            message="model not found", response=mock_resp, body=None
+        )
 
         mock_fallback = MagicMock()
         mock_fallback.complete.return_value = ("Success fallback response", 30, 40)
@@ -277,14 +280,17 @@ def test_complete_with_fallback_not_found_error():
 
 
 def test_complete_with_fallback_disabled_by_settings():
-    from src.core.providers import complete_with_fallback
-    from src.core.config import settings
     import anthropic
+
+    from src.core.config import settings
+    from src.core.providers import complete_with_fallback
 
     with patch("src.core.providers.get_provider") as mock_get_provider:
         mock_primary = MagicMock()
         mock_resp = MagicMock()
-        mock_primary.complete.side_effect = anthropic.RateLimitError(message="rate limit", response=mock_resp, body=None)
+        mock_primary.complete.side_effect = anthropic.RateLimitError(
+            message="rate limit", response=mock_resp, body=None
+        )
         mock_get_provider.return_value = mock_primary
 
         orig_val = settings.enable_provider_fallback
@@ -302,15 +308,18 @@ def test_complete_with_fallback_disabled_by_settings():
 
 
 def test_complete_with_fallback_disabled_by_context():
-    from src.core.providers import complete_with_fallback
-    from src.agents.base_agent import set_current_run_id, cleanup_token_counter
-    from src.core.config import settings
     import anthropic
+
+    from src.agents.base_agent import cleanup_token_counter, set_current_run_id
+    from src.core.config import settings
+    from src.core.providers import complete_with_fallback
 
     with patch("src.core.providers.get_provider") as mock_get_provider:
         mock_primary = MagicMock()
         mock_resp = MagicMock()
-        mock_primary.complete.side_effect = anthropic.RateLimitError(message="rate limit", response=mock_resp, body=None)
+        mock_primary.complete.side_effect = anthropic.RateLimitError(
+            message="rate limit", response=mock_resp, body=None
+        )
         mock_get_provider.return_value = mock_primary
 
         orig_val = settings.enable_provider_fallback
@@ -331,10 +340,10 @@ def test_complete_with_fallback_disabled_by_context():
             settings.enable_provider_fallback = orig_val
 
 
-
 def test_api_providers_endpoint():
-    from src.api.main import list_providers
     import asyncio
+
+    from src.api.main import list_providers
 
     res = asyncio.run(list_providers())
     assert "openai" in res
@@ -344,6 +353,3 @@ def test_api_providers_endpoint():
     assert res["llama"]["available"] is False
     assert res["mistral"]["available"] is False
     assert "coming soon" in res["llama"]["reason"].lower()
-
-
-

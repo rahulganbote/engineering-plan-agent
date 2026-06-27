@@ -13,7 +13,9 @@ on_decision values: "approve" | "reject" | "both" | "error"
 
 from __future__ import annotations
 
-from typing import Callable, Literal, Any
+from collections.abc import Callable
+from typing import Literal
+
 from src.core.models import PipelineState
 
 # Registry: name → {handler, on_decision}

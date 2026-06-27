@@ -17,13 +17,15 @@ This is the integration test for the "tools degrade gracefully, system stays
 up" claim — single test, high signal. Companion to the per-tool unit tests in
 test_tools.py.
 """
+
+from unittest.mock import MagicMock, patch
+
 import pytest
 import requests
-from unittest.mock import patch, MagicMock
 
-from src.integrations.tavily import tavily_search
-from src.integrations.github import get_github_velocity, GITHUB_ALLOWLIST
 from src.core.models import ToolResult
+from src.integrations.github import GITHUB_ALLOWLIST, get_github_velocity
+from src.integrations.tavily import tavily_search
 
 
 @pytest.fixture
@@ -32,9 +34,10 @@ def all_tools_failing():
     Mock every external tool surface to fail. Yields the patches so individual
     assertions can check call counts / args inside the test.
     """
-    with patch("src.integrations.tavily.requests.post") as tavily_mock, \
-         patch("src.integrations.github.requests.get") as github_mock:
-
+    with (
+        patch("src.integrations.tavily.requests.post") as tavily_mock,
+        patch("src.integrations.github.requests.get") as github_mock,
+    ):
         # Tavily: simulate a network timeout (the resilient decorator will retry
         # then surface — the tavily_search wrapper catches it and returns the
         # graceful fallback ToolResult).
@@ -77,7 +80,7 @@ def test_github_degrades_to_fallback_for_allowlisted_repo_under_failure(all_tool
       • Return a ToolResult with used_fallback=True
       • Set trust_level='medium' (the tool itself is trusted — it's the upstream that broke)
     """
-    GITHUB_ALLOWLIST.add(("fastapi", "fastapi"))   # ensure repo passes the allowlist gate
+    GITHUB_ALLOWLIST.add(("fastapi", "fastapi"))  # ensure repo passes the allowlist gate
     try:
         result = get_github_velocity.invoke({"owner": "fastapi", "repo": "fastapi"})
     finally:

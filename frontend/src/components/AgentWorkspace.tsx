@@ -484,7 +484,7 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               </div>
 
-              {/* Critic Rubric Scoring Cards */}
+              {/* Critic Scoring Cards */}
               {criticOutput && (
                 <ErrorBoundary fallback={
                   <div className="p-6 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
@@ -550,7 +550,7 @@ export const AgentWorkspace: React.FC = () => {
 
                   {/* Disclaimer notice banner */}
                   <div className="bg-slate-950 border border-slate-850 p-4 rounded-lg text-xs leading-relaxed text-slate-400">
-                    <span className="font-bold text-slate-200 uppercase">⚠️ Disclaimer:</span> This application is for demo purposes only. AI can make mistakes. Validate before acting on them.
+                    <span className="font-bold text-slate-200 uppercase">⚠️ Disclaimer:</span> This system is an automated engineering planning assistant. AI-generated plans may contain inaccuracies. Please review and validate all outputs before implementation.
                   </div>
 
                   {/* Tabs list */}

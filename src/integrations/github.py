@@ -1,15 +1,17 @@
 # src/integrations/github.py
 import time
 from datetime import datetime, timezone
+
 import requests
-from pydantic import BaseModel, Field, ValidationError
 from langchain_core.tools import tool
-from src.core.config import settings
-from src.core.logger import get_logger
-from src.core.resilience import resilient, GITHUB_POLICY
-from src.core.models import ToolResult
-from src.core.events import emit
+from pydantic import BaseModel, Field, ValidationError
+
 from src.agents.base_agent import _current_run_id
+from src.core.config import settings
+from src.core.events import emit
+from src.core.logger import get_logger
+from src.core.models import ToolResult
+from src.core.resilience import GITHUB_POLICY, resilient
 
 log = get_logger(__name__)
 
@@ -30,6 +32,7 @@ class GitHubRepoResponse(BaseModel):
     created_at: str = Field(default="")
     description: str = Field(default="")
 
+
 class GitHubSearchResponse(BaseModel):
     total_count: int = Field(default=0)
 
@@ -43,7 +46,7 @@ def _do_github_repo_request(owner: str, repo: str) -> dict:
         headers["Authorization"] = f"token {settings.github_token}"
     else:
         log.warning("GITHUB_TOKEN is not configured. Request will be unauthenticated with low rate limit.")
-        
+
     r = requests.get(repo_url, headers=headers, timeout=3.0)
     if r.status_code != 200:
         raise RuntimeError(f"GitHub API repo error for {owner}/{repo}: {r.status_code}")
@@ -97,19 +100,19 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
             content=f"unknown repo {owner}/{repo}, no velocity signal",
             used_fallback=True,
             sources=[],
-            trust_level="medium"
+            trust_level="medium",
         )
 
     try:
         # 1. Fetch and validate repo metadata
         repo_json = _do_github_repo_request(owner, repo)
         repo_data = GitHubRepoResponse.model_validate(repo_json)
-        
+
         stars = repo_data.stargazers_count
         open_issues = repo_data.open_issues_count
         created_at_str = repo_data.created_at
         description = repo_data.description
-        
+
         # Calculate stars per week velocity
         stars_per_week = 0.0
         if created_at_str:
@@ -156,17 +159,14 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
 
         # Final check on total output
         if check_external_injection(output):
-            log.warning(
-                f"[security] dropped github final output for run={run_id} | "
-                f"first_50_chars={output[:50]!r}"
-            )
+            log.warning(f"[security] dropped github final output for run={run_id} | first_50_chars={output[:50]!r}")
             emit("security_drop", source="github", run_id=run_id)
             _emit_degraded("output_injection_detected")
             return ToolResult(
                 content=f"GitHub public signal for {owner}/{repo} is currently blocked for security.",
                 used_fallback=True,
                 sources=[],
-                trust_level="medium"
+                trust_level="medium",
             )
 
         latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -178,10 +178,7 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
             stars=stars,
         )
         return ToolResult(
-            content=output,
-            used_fallback=False,
-            sources=[f"github_api:{owner}/{repo}"],
-            trust_level="medium"
+            content=output, used_fallback=False, sources=[f"github_api:{owner}/{repo}"], trust_level="medium"
         )
 
     except ValidationError as ve:
@@ -191,7 +188,7 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
             content=f"GitHub velocity signal unavailable for {owner}/{repo} (validation failure).",
             used_fallback=True,
             sources=[],
-            trust_level="medium"
+            trust_level="medium",
         )
     except Exception as e:
         log.warning(f"GitHub velocity tool failed (graceful degradation) for {owner}/{repo} | error={e}")
@@ -200,5 +197,5 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
             content=f"GitHub velocity signal unavailable for {owner}/{repo} (tool offline).",
             used_fallback=True,
             sources=[],
-            trust_level="medium"
+            trust_level="medium",
         )

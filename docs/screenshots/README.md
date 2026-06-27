@@ -1,18 +1,18 @@
 # Screenshots
 
-Live screenshots from the deployed EM Copilot system at [huggingface.co/spaces/rganbote/em-copilot](https://huggingface.co/spaces/rganbote/em-copilot) and LangSmith telemetry.
+Live screenshots from the deployed EM Copilot system at [emcopilot.ai](https://emcopilot.ai) and LangSmith telemetry.
 
 ---
 
-### 01 — Streamlit UI: Pipeline Complete, Critic GREEN
+### 01 — React UI: Pipeline Complete, Critic GREEN
 
-![Streamlit pipeline — all agents green, Critic 4.50/5.0](01-streamlit-pipeline-green.png)
+![React pipeline — all agents green, Critic 4.50/5.0](01-streamlit-pipeline-green.png)
 
 All 7 agent badges green (✓ Orchestrator · ✓ Plan Generator · ✓ Schedule Estimator · ✓ Solution Architect · ✓ PoC Planner · ✓ Tech Stack Recommender · ✓ Critic). Critic quality assessment: **GREEN 4.50 / 5.0**, Quality gate passed. Total processing time: **49.1s**.
 
 ---
 
-### 02 — Streamlit UI: Generated Architecture Diagram (Kroki SVG)
+### 02 — React UI: Generated Architecture Diagram (Kroki SVG)
 
 ![Artifacts tab — architecture diagram rendered by Kroki](02-streamlit-artifacts-architecture.png)
 

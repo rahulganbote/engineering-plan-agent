@@ -15,8 +15,9 @@ Run with:
     pytest tests/unit/test_security.py -v
 """
 
-import pytest
 from io import BytesIO
+
+import pytest
 
 from src.security.validator import (
     SecurityValidator,
@@ -159,12 +160,14 @@ class TestBRDCompleteness:
     @pytest.fixture(autouse=True)
     def _stub_security_llm(self, monkeypatch):
         """Return a JSON marking every requested item as STILL missing (true)."""
-        import re, json as _json
+        import json as _json
+        import re
+
         import src.security.validator as vmod
 
         def stub(model_family, prompt, response_format=None):
             keys = re.findall(r'"([^"]+)":\s*true', prompt)
-            return _json.dumps({k: True for k in keys}) if keys else '{}'
+            return _json.dumps(dict.fromkeys(keys, True)) if keys else "{}"
 
         monkeypatch.setattr(vmod, "_security_llm_call", stub)
 
@@ -262,20 +265,22 @@ class TestFullValidation:
     @pytest.fixture(autouse=True)
     def _stub_security_llm(self, monkeypatch):
         """Stub injection scan = clean; completeness = all items NOT missing."""
-        import re, json as _json
+        import json as _json
+        import re
+
         import src.security.validator as vmod
 
         def stub(model_family, prompt, response_format=None):
             if "is_injection" in prompt or "prompt injection" in prompt.lower():
                 return '{"is_injection": false, "confidence": 0.0, "reason": "clean"}'
             keys = re.findall(r'"([^"]+)":\s*true', prompt)
-            return _json.dumps({k: False for k in keys}) if keys else '{}'
+            return _json.dumps(dict.fromkeys(keys, False)) if keys else "{}"
 
         monkeypatch.setattr(vmod, "_security_llm_call", stub)
 
     def test_valid_brd_passes_all_checks(self):
         content = VALID_BRD.encode("utf-8")
-        result  = validator.validate(content, "valid_brd.txt", "text/plain")
+        result = validator.validate(content, "valid_brd.txt", "text/plain")
         assert result.status in (ValidationStatus.PASSED, ValidationStatus.WARNING)
         assert result.brd_text_clean is not None
         assert result.brd_hash is not None
@@ -289,6 +294,7 @@ class TestFullValidation:
 # ─────────────────────────────────────────────────────────────────────────────
 # Provider-aware security LLM call tests (Fix 0 / Fix 1 / Fix 2 / Fix 3)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSecurityProviderRouting:
     """
@@ -313,12 +319,15 @@ class TestSecurityProviderRouting:
             # Completeness path — the validator's example JSON shape lists each
             # missing item as a key. Parse those keys from the prompt and mark
             # every one as False (not missing) so the BRD clears the check.
-            import re, json as _json
+            import json as _json
+            import re
+
             keys = re.findall(r'"([^"]+)":\s*true', prompt)
-            return _json.dumps({k: False for k in keys}) if keys else '{}'
+            return _json.dumps(dict.fromkeys(keys, False)) if keys else "{}"
 
         # Patch the helper in-place — same import surface used by both call sites
         import src.security.validator as vmod
+
         monkeypatch.setattr(vmod, "_security_llm_call", fake_security_llm_call)
 
         # A BRD long enough to pass the content-length gate (≥ 50 words) so
@@ -371,20 +380,17 @@ class TestSecurityFailOpen:
 
         # Force the LLM helper to behave as if every retry exhausted
         monkeypatch.setattr(
-            vmod, "_security_llm_call",
+            vmod,
+            "_security_llm_call",
             lambda model_family, prompt, response_format=None: None,
         )
 
         # A BRD that the regex layer will definitely flag as incomplete
         sparse_brd = "Build it.\n"
 
-        result = vmod.SecurityValidator()._check_brd_completeness(
-            sparse_brd, model_family="openai"
-        )
+        result = vmod.SecurityValidator()._check_brd_completeness(sparse_brd, model_family="openai")
 
-        assert result.status == VS.PASSED, (
-            "Completeness must fail OPEN when LLM is unavailable, not block"
-        )
+        assert result.status == VS.PASSED, "Completeness must fail OPEN when LLM is unavailable, not block"
         assert "LLM_UNAVAILABLE" in (result.technical_detail or ""), (
             "technical_detail must reflect the LLM-unavailable cause for log triage"
         )
@@ -404,19 +410,17 @@ class TestSecurityErrorMessage:
         into rewriting a perfectly valid BRD).
         """
         import src.security.validator as vmod
-        from src.security.validator import ValidationStatus as VS
 
         # Simulate LLM-unavailable on all retries
         monkeypatch.setattr(
-            vmod, "_security_llm_call",
+            vmod,
+            "_security_llm_call",
             lambda model_family, prompt, response_format=None: None,
         )
 
         # Sparse BRD that fails the regex layer
         sparse_brd = "Build it.\n"
-        result = vmod.SecurityValidator()._check_brd_completeness(
-            sparse_brd, model_family="openai"
-        )
+        result = vmod.SecurityValidator()._check_brd_completeness(sparse_brd, model_family="openai")
 
         # The new user message must not assert missing sections
         msg = (result.user_message or "").lower()

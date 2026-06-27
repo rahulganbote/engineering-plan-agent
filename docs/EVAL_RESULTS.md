@@ -34,7 +34,7 @@ The evaluation suite runs 5 distinct validation methods, targeting specific BRD 
     *   `test_brd_ambiguous.txt` (Edge case: vague requirements)
     *   `test_brd_scope_creep.txt` (Edge case: extraneous features)
 
-### Method 2: LLM-as-Judge (Anchored Rubrics)
+### Method 2: LLM-as-Judge (Anchored Calibration)
 *   **Purpose:** GPT-4o-mini rates Groundedness, Completeness, Consistency, and Actionability. Anchored via a standard calibration set in `eval/critic_calibration_set.json` to prevent rating drift.
 *   **Test BRDs Executed On:**
     *   `test_brd_simple.txt`
@@ -70,4 +70,4 @@ Every OpenAI API call, Pinecone vector search, and Critic revision cycle is full
 
 Below is a telemetry trace from LangSmith showing the execution flow of the `em-copilot-brd-agent` pipeline:
 
-![LangSmith Tracing Telemetry](/Users/rahul/Library/CloudStorage/OneDrive-Personal/Rahul/InterviewKickstart/AgenticAI/Capstone_Project/BRD_to_Engineering_Agent/engineering-plan-agent/docs/langsmith_traces.png)
+![LangSmith Tracing Telemetry](./langsmith_traces.png)

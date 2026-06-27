@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import json
 
-import requests
-
 from src.agents.base_agent import BaseAgent
 from src.core.logger import get_logger
 from src.core.models import PipelineState, RiskLevel, StackOption, TechStackOutput
@@ -67,6 +65,7 @@ class TechStackAgent(BaseAgent):
         )
 
         from src.integrations.github import get_github_velocity
+
         github_signal = ""
         github_sources = []
         try:
@@ -90,7 +89,8 @@ class TechStackAgent(BaseAgent):
             # ── Privacy boundary ────────────────────────────────────────────────
             # Tavily is third-party. Query MUST be derived metadata (section names
             # + bounded concept keywords), NOT raw BRD content. Use the helper:
-            from src.integrations.tavily import tavily_search, build_tavily_query
+            from src.integrations.tavily import build_tavily_query, tavily_search
+
             safe_query = build_tavily_query("recommended technology stack", state.brd_sections)
             web_results = tavily_search(safe_query)
             context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
@@ -114,8 +114,7 @@ class TechStackAgent(BaseAgent):
             guardrail_triggers=guardrail_triggers,
         )
         log.info(
-            f"[{state.run_id}] TechStack done | "
-            f"options={len(output.options)} recommended={output.recommended_option}"
+            f"[{state.run_id}] TechStack done | options={len(output.options)} recommended={output.recommended_option}"
         )
         return output
 
@@ -159,24 +158,29 @@ class TechStackAgent(BaseAgent):
                 cite = o.get("citation", first_cite)
                 if cite not in citation_ids:
                     cite = first_cite
-                options.append(StackOption(
-                    name=o.get("name", f"Option {len(options) + 1}"),
-                    components=o.get("components", {
-                        "api": "FastAPI",
-                        "database": "PostgreSQL",
-                        "frontend": "Streamlit",
-                    }),
-                    scalability_rating=int(o.get("scalability_rating", 3)),
-                    team_familiarity_rating=int(o.get("team_familiarity_rating", 4)),
-                    integration_risk=_coerce_risk_level(o.get("integration_risk")),
-                    estimated_monthly_cost_usd=float(o.get("estimated_monthly_cost_usd", 500.0)),
-                    pros=o.get("pros", ["Familiar, fast to deliver"]),
-                    cons=o.get("cons", ["May need refactoring at larger scale"]),
-                    citation=cite,
-                ))
+                options.append(
+                    StackOption(
+                        name=o.get("name", f"Option {len(options) + 1}"),
+                        components=o.get(
+                            "components",
+                            {
+                                "api": "FastAPI",
+                                "database": "PostgreSQL",
+                                "frontend": "React",
+                            },
+                        ),
+                        scalability_rating=int(o.get("scalability_rating", 3)),
+                        team_familiarity_rating=int(o.get("team_familiarity_rating", 4)),
+                        integration_risk=_coerce_risk_level(o.get("integration_risk")),
+                        estimated_monthly_cost_usd=float(o.get("estimated_monthly_cost_usd", 500.0)),
+                        pros=o.get("pros", ["Familiar, fast to deliver"]),
+                        cons=o.get("cons", ["May need refactoring at larger scale"]),
+                        citation=cite,
+                    )
+                )
 
             while len(options) < 2:
-                options.extend(self._default_options(first_cite)[len(options):len(options) + 1])
+                options.extend(self._default_options(first_cite)[len(options) : len(options) + 1])
 
             recommended = d.get("recommended_option", options[0].name)
             if recommended not in [o.name for o in options]:
@@ -205,7 +209,7 @@ class TechStackAgent(BaseAgent):
                 name="Lean Python Web Stack",
                 components={
                     "api": "FastAPI",
-                    "frontend": "Streamlit",
+                    "frontend": "React",
                     "database": "PostgreSQL",
                     "hosting": "Container platform",
                 },
@@ -260,23 +264,23 @@ class TechStackAgent(BaseAgent):
 # any string to the closest valid RiskLevel rather than raising ValidationError.
 
 _RISK_LEVEL_ALIASES = {
-    "low":      "low",
-    "minimal":  "low",
-    "minor":    "low",
+    "low": "low",
+    "minimal": "low",
+    "minor": "low",
     "negligible": "low",
-    "medium":   "medium",
+    "medium": "medium",
     "moderate": "medium",
-    "mid":      "medium",
-    "normal":   "medium",
-    "high":     "high",
+    "mid": "medium",
+    "normal": "medium",
+    "high": "high",
     "elevated": "high",
-    "severe":   "high",
-    "major":    "high",
+    "severe": "high",
+    "major": "high",
     "critical": "critical",
-    "extreme":  "critical",
+    "extreme": "critical",
     "very high": "critical",
     "veryhigh": "critical",
-    "blocker":  "critical",
+    "blocker": "critical",
 }
 
 
@@ -296,4 +300,5 @@ def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("tech_stack_recommender", TechStackAgent)

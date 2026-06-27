@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from src.agents.base_agent import BaseAgent
-from src.core.cache import CachePolicy, get_semantic_backend
+from src.core.cache import CachePolicy
 from src.core.logger import get_logger
 from src.core.models import PipelineState, PoCOutput, SuccessCriterion
 
@@ -180,4 +180,5 @@ class PoCPlannerAgent(BaseAgent):
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("poc_planner", PoCPlannerAgent)

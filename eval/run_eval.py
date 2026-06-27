@@ -1,7 +1,7 @@
 """
 eval/run_eval.py
 ════════════════
-Automated evaluation runner — all 5 methods from rubric 7A.
+Automated evaluation runner — all 5 methods for quality verification.
 
 METHOD 1 — Rule-based (structural + schema + BRD coverage):
     Deterministic assertions against expected_output_*.json.
@@ -342,7 +342,7 @@ def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict)
     _add(checks, "BRD section coverage %",
          coverage_pct >= 80.0, f"{coverage_pct:.0f}%", ">= 80%")
 
-    # ── Sources diversity (Groundedness rubric: "different sources used") ──
+    # ── Sources diversity (Groundedness check: "different sources used") ──
     all_citations = []
     for output in [plan, sched, arch, poc, stack]:
         all_citations.extend(output.get("citations", []))

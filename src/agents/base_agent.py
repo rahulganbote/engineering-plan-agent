@@ -26,34 +26,30 @@ Failure modes implemented here:
 
 from __future__ import annotations
 
+# ── Phase 1: distributed-systems primitives ──────────────────────────────────
+import threading as _threading2
 import time
-from typing import Optional
 
-from openai import OpenAI
 # LangSmith auto-traces every wrapped client.chat.completions.create() call —
 # captures prompt, response, model, latency, token usage. No code changes
 # needed elsewhere; the client API is identical.
 from langsmith.wrappers import wrap_openai
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-    RetryError,
-)
+from openai import OpenAI
 
-# ── Phase 1: distributed-systems primitives ──────────────────────────────────
-import threading as _threading2
-from src.core.resilience import (
-    CircuitBreaker, CallPolicy, resilient, CircuitOpenError, OPENAI_POLICY, ANTHROPIC_POLICY,
-)
-from src.core.cache import cached, hash_args, CACHE_LLM
-
+from src.core.cache import CACHE_LLM, CachePolicy, cached, hash_args
 from src.core.config import settings
 from src.core.logger import get_logger, log_agent_run
-from src.core.rag import retrieve, format_context, RetrievedChunk
+from src.core.rag import format_context, retrieve
+from src.core.resilience import (
+    ANTHROPIC_POLICY,
+    OPENAI_POLICY,
+    CallPolicy,
+    CircuitBreaker,
+    CircuitOpenError,
+    resilient,
+)
 
-log    = get_logger(__name__)
+log = get_logger(__name__)
 client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
 
 
@@ -64,12 +60,12 @@ client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
 import threading as _threading
 from collections import defaultdict as _defaultdict
 
-_TOKEN_LOCK    = _threading.Lock()
+_TOKEN_LOCK = _threading.Lock()
 _TOKEN_COUNTER: dict[str, dict[str, int]] = _defaultdict(lambda: {"input": 0, "output": 0})
-_COST_COUNTER:  dict[str, float] = _defaultdict(float)
-_RUN_FAMILY:    dict[str, str] = _defaultdict(lambda: "openai")
-_RUN_FALLBACK:  dict[str, bool] = _defaultdict(lambda: True)
-_CURRENT_RUN   = _threading.local()
+_COST_COUNTER: dict[str, float] = _defaultdict(float)
+_RUN_FAMILY: dict[str, str] = _defaultdict(lambda: "openai")
+_RUN_FALLBACK: dict[str, bool] = _defaultdict(lambda: True)
+_CURRENT_RUN = _threading.local()
 
 
 def set_current_run_id(run_id: str, model_family: str = "openai", enable_fallback: bool = True) -> None:
@@ -109,13 +105,13 @@ def _current_model_family() -> str:
 def _current_enable_fallback() -> bool:
     rid = _current_run_id()
     from src.core.config import settings
+
     if not rid:
         return settings.enable_provider_fallback
     with _TOKEN_LOCK:
         if rid in _RUN_FALLBACK:
             return _RUN_FALLBACK[rid]
     return getattr(_CURRENT_RUN, "enable_fallback", settings.enable_provider_fallback)
-
 
 
 def reset_token_counter(run_id: str) -> None:
@@ -134,7 +130,7 @@ def add_tokens(prompt: int, completion: int, run_id: str | None = None) -> None:
         return
     with _TOKEN_LOCK:
         d = _TOKEN_COUNTER[rid]
-        d["input"]  += int(prompt or 0)
+        d["input"] += int(prompt or 0)
         d["output"] += int(completion or 0)
 
 
@@ -179,7 +175,6 @@ def cleanup_token_counter(run_id: str) -> None:
         set_current_run_id("")
 
 
-
 # ── Phase 1: Per-agent-class circuit breakers ────────────────────────────────
 # Each BaseAgent subclass gets ONE breaker per process. State persists across
 # agent INSTANCES (which are created fresh per pipeline run), but each agent
@@ -222,8 +217,8 @@ class BaseAgent:
     """
 
     # ── Phase 5: per-agent policy manifest ───────────────────────────────────
-    CACHE_POLICY:      CachePolicy = CACHE_LLM
-    RESILIENCE_POLICY: CallPolicy  = OPENAI_POLICY
+    CACHE_POLICY: CachePolicy = CACHE_LLM
+    RESILIENCE_POLICY: CallPolicy = OPENAI_POLICY
 
     # ── Timing ────────────────────────────────────────────────────────────────
 
@@ -247,9 +242,9 @@ class BaseAgent:
 
     def retrieve_context(
         self,
-        query:        str,
-        source_types: Optional[list[str]] = None,
-        domain:       Optional[str] = None,
+        query: str,
+        source_types: list[str] | None = None,
+        domain: str | None = None,
     ) -> tuple[str, list[str]]:
         """
         Retrieve RAG context and format for LLM prompt injection.
@@ -268,9 +263,7 @@ class BaseAgent:
 
         if not chunks or citation_ids == [NO_RAG_SENTINEL]:
             log.warning(
-                f"No RAG hits for query='{query[:50]}' | "
-                f"source_types={source_types} | "
-                f"FM-2: will force Amber badge"
+                f"No RAG hits for query='{query[:50]}' | source_types={source_types} | FM-2: will force Amber badge"
             )
 
         return context_str, citation_ids
@@ -284,8 +277,8 @@ class BaseAgent:
     def _call_llm_with_retry(
         self,
         system_prompt: str,
-        user_prompt:   str,
-        model:         str = None,
+        user_prompt: str,
+        model: str = None,
         response_format: dict = None,
     ) -> str:
         """
@@ -309,7 +302,7 @@ class BaseAgent:
 
         # Capture per-agent policies at call time so subclass overrides are
         # respected — class-level @cached/@resilient decorators can't do this.
-        cache_policy     = self.CACHE_POLICY
+        cache_policy = self.CACHE_POLICY
         # Family-aware resilience policy. Reading current family at call time
         # (vs class attribute) lets the same agent class work transparently
         # across providers. Anthropic gets ANTHROPIC_POLICY (90s timeout, 2
@@ -330,8 +323,8 @@ class BaseAgent:
             return hash_args(sys_p, usr_p, mdl, fmt)
 
         def _call(sys_p, usr_p, mdl, fmt) -> str:
-            from src.core.providers import complete_with_fallback, map_model
             from src.core.pricing import calculate_cost
+            from src.core.providers import complete_with_fallback, map_model
 
             if current_rid:
                 set_current_run_id(current_rid, current_family, current_fallback)
@@ -341,7 +334,7 @@ class BaseAgent:
                 model_family=family,
                 messages=[
                     {"role": "system", "content": sys_p},
-                    {"role": "user",   "content": usr_p},
+                    {"role": "user", "content": usr_p},
                 ],
                 model=mdl,
                 temperature=0.2,
@@ -357,15 +350,10 @@ class BaseAgent:
             add_cost(cost)
             return content
 
-
         # Apply wrappers inside-out: resilient first, then cached on top
         # so a cache hit pays zero resilience/retry cost.
-        _resilient_call = resilient(
-            policy=resilience_policy, breaker=breaker, name="llm.chat"
-        )(_call)
-        _cached_call = cached(
-            policy=cache_policy, key_fn=_llm_key, name="llm.chat"
-        )(_resilient_call)
+        _resilient_call = resilient(policy=resilience_policy, breaker=breaker, name="llm.chat")(_call)
+        _cached_call = cached(policy=cache_policy, key_fn=_llm_key, name="llm.chat")(_resilient_call)
 
         try:
             return _cached_call(system_prompt, user_prompt, model, response_format)
@@ -387,20 +375,19 @@ class BaseAgent:
 
     def log_run(
         self,
-        run_id:          str,
-        agent_name:      str,
-        citation_ids:    list[str],
-        critic_score:    Optional[float],
-        start_time:      float,
-        revision_count:  int = 0,
-        success:         bool = True,
-        error:           Optional[str] = None,
+        run_id: str,
+        agent_name: str,
+        citation_ids: list[str],
+        critic_score: float | None,
+        start_time: float,
+        revision_count: int = 0,
+        success: bool = True,
+        error: str | None = None,
         guardrail_triggers: list[str] = None,
     ) -> dict:
         """
         Log a single agent execution to JSONL and console.
-        MUST be called after every agent run — this is the
-        primary per-agent execution log required by the rubric.
+        MUST be called after every agent run.
 
         Logged fields (per spec):
             ✓ input:             brd_hash passed externally — never raw BRD
@@ -433,12 +420,12 @@ class BaseAgent:
         )
 
         return {
-            "agent_name":        agent_name,
-            "run_id":            run_id,
+            "agent_name": agent_name,
+            "run_id": run_id,
             "execution_time_ms": execution_time_ms,
-            "rag_chunk_count":   len(citation_ids),
-            "critic_score":      critic_score,
-            "revision_count":    revision_count,
+            "rag_chunk_count": len(citation_ids),
+            "critic_score": critic_score,
+            "revision_count": revision_count,
             "guardrail_triggers": triggers,
-            "success":           success,
+            "success": success,
         }

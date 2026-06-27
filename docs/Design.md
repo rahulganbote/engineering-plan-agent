@@ -85,45 +85,41 @@ Agent 7: Critic	→ Validation: Score outputs on completeness, consistency, acti
 
 ```
 engineering-plan-agent/
-├── Plan.md                    ← 5-day sprint plan + rubric tracker
-├── Design.md                  ← THIS FILE — system design reference
-├── State.md                   ← daily progress log
-├── README.md                  ← portfolio README
-├── requirements.txt
-├── Dockerfile
+├── docs/                      ← Design documentation and ADRs
+├── frontend/                  ← React 19 SPA frontend (Vite, TypeScript, Tailwind)
+├── knowledge_base/            ← RAG grounding source documents
+├── legacy/
+│   └── streamlit/             ← Legacy Streamlit dashboard prototype
+├── scripts/                   ← GCP deployment and RAG ingestion scripts
+├── tests/                     ← Pytest unit, integration, and E2E tests
+├── tools/                     ← Developer diagnostic scripts and utilities
+├── requirements.txt           ← Pinned Python dependencies
+├── pyproject.toml             ← Ruff styling and linting configurations
+├── Dockerfile                 ← Production build definition
 ├── .env.example
-├── streamlit_app.py           ← UI entry point (NOT YET BUILT)
+├── .github/workflows/         ← CI/CD pipeline definition
 │
 ├── src/
-│   ├── core/
-│   │   ├── models.py          ← ALL Pydantic contracts (✅ COMPLETE)
-│   │   ├── config.py          ← pydantic-settings from .env (✅ COMPLETE)
-│   │   ├── logger.py          ← JSONL logging + success criteria (✅ COMPLETE)
-│   │   └── rag.py             ← Pinecone ingest + retrieve (✅ COMPLETE)
+│   ├── core/                  ← Models, config, cache, resilience, and logging
+│   │   ├── cache.py           ← Tiered caching (L1/L2 Redis)
+│   │   ├── resilience.py      ← Circuit breakers and bulkhead timeouts
+│   │   ├── models.py          ← Pydantic output contracts
+│   │   ├── config.py          ← Environment and settings management
+│   │   └── rag.py             ← Pinecone RAG retrieval pipeline
 │   ├── agents/
-│   │   ├── orchestrator.py    ← BRD parser + routing (✅ COMPLETE)
-│   │   ├── critic.py          ← Rubric scoring + revision loop (✅ COMPLETE)
-│   │   ├── plan_generator.py  ← BUILT
-│   │   ├── schedule.py        ← BUILT
-│   │   ├── architect.py       ← BUILT (includes Mermaid + Kroki tool)
-│   │   ├── poc_planner.py     ← BUILT
-│   │   ├── tech_stack.py      ← BUILT (includes GitHub API tool)
-│   │   └── pipeline.py        ← BUILT (LangGraph StateGraph)
-│   ├── api/
-│   │   └── main.py            ← FastAPI 5 endpoints (✅ COMPLETE)
-│   ├── security/
-│   │   └── validator.py       ← 7-check security layer (✅ COMPLETE)
-│   └── integrations/
-│       ├── sheets.py          ← Google Sheets write action (✅ COMPLETE)
-│       ├── email.py           ← audit email if rejected (❌ NOT BUILT, optional)
-│       └── voice.py           ← ElevenLabs for Voice Interface (✅ COMPLETE)
-│
-├── knowledge_base/            ← 6 RAG source docs (✅ COMPLETE)
-├── eval/                      ← Test BRDs (partial)
-├── scripts/
-│   └── ingest_kb.py           ← Pinecone KB population (✅ COMPLETE)
-└── tests/
-    └── unit/test_security.py  ← Security unit tests (✅ COMPLETE)
+│   │   ├── critic/            ← Critic package (rules, judge, hallucinations)
+│   │   ├── orchestrator.py    ← BRD parsing and fan-out dispatch
+│   │   ├── plan_generator.py  ← Engineering plan builder agent
+│   │   ├── schedule.py        ← Schedule and effort estimation agent
+│   │   ├── architect.py       ← Component and data flow diagram agent
+│   │   ├── poc_planner.py     ← PoC planner agent
+│   │   ├── tech_stack.py      ← Tech stack recommendation agent
+│   │   └── pipeline.py        ← Orchestration graph (LangGraph)
+│   ├── api/                   ← Modular FastAPI app (auth, runs, SSE events)
+│   │   ├── main.py            ← Application router setup
+│   │   └── routes/            ← Concerns-based route definitions
+│   ├── security/              ← Threat sanitization and prompt validator
+│   └── integrations/          ← Sheets, Jira (MCP + REST), PDF exports, Slack
 ```
 
 ---
@@ -211,7 +207,7 @@ REGION         = "us-east-1"   # free tier only
 
 ---
 
-## Critic Rubric Thresholds
+## Critic Validation Thresholds
 
 | Dimension | Threshold | What earns full score |
 |-----------|-----------|----------------------|
@@ -341,7 +337,7 @@ Every `ToolResult` carries a `trust_level` field that flows into the Critic's gr
 | **GitHub API** | `medium` | Verified upstream, but third-party data (repo descriptions, star counts) |
 | **Tavily web search** | `low` | Arbitrary web content — useful for fallback grounding, but not authoritative |
 
-The Critic downweights low-trust citations in its groundedness rubric, so a plan grounded entirely in Tavily results cannot achieve a Green badge without additional RAG citations. This prevents agents from confidently citing random web content as if it were org policy.
+The Critic downweights low-trust citations in its groundedness scoring, so a plan grounded entirely in Tavily results cannot achieve a Green badge without additional RAG citations. This prevents agents from confidently citing random web content as if it were org policy.
 
 ### Privacy Boundary on External Search
 **Tavily is a third-party service.** Sending raw BRD content there = potential data exposure (PII, customer names, financial details, internal codenames, etc.). Policy enforced at the source by `build_tavily_query()` in `src/integrations/tavily.py`:

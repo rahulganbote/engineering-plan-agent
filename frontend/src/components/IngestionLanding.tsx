@@ -43,7 +43,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     {
       id: 'critic',
       label: 'Critic Reviewer',
-      desc: 'Grades the outputs on a 4-dimension quality rubric (1.0 - 5.0 score) and initiates revision loops if needed.',
+      desc: 'Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if needed.',
       icon: <GitPullRequest size={20} className="text-amber-400" />,
       color: 'border-amber-500/30 text-amber-400 bg-amber-950/20',
       activeColor: 'ring-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',

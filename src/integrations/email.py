@@ -5,14 +5,15 @@ Handles sending audit emails when a pipeline run is rejected at the HITL gate.
 """
 
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.models import PipelineState
 
 log = get_logger(__name__)
+
 
 def send_audit_email(state: PipelineState) -> dict:
     """
@@ -32,7 +33,7 @@ def send_audit_email(state: PipelineState) -> dict:
 
         rejections = state.hitl_rejection_notes
         notes = rejections[-1] if rejections else "No notes provided."
-        
+
         critic = state.critic_output
         scores_summary = "N/A"
         if critic:

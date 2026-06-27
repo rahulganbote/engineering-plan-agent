@@ -60,10 +60,10 @@ def _post_to_slack(payload: dict[str, Any]) -> tuple[bool, str]:
 
 def _error_alert_payload(state: PipelineState) -> dict[str, Any]:
     """Build the Slack message for a failed pipeline run."""
-    run_id   = getattr(state, "run_id", "unknown")
+    run_id = getattr(state, "run_id", "unknown")
     brd_name = getattr(state, "brd_name", "") or "(unnamed BRD)"
-    status   = getattr(state, "pipeline_status", "error")
-    errors   = list(getattr(state, "errors", []) or [])
+    status = getattr(state, "pipeline_status", "error")
+    errors = list(getattr(state, "errors", []) or [])
     error_text = "\n".join(f"• {e}" for e in errors[:5]) or "• No error detail captured."
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -71,19 +71,23 @@ def _error_alert_payload(state: PipelineState) -> dict[str, Any]:
         # `text` is the notification fallback shown in the Slack sidebar / push.
         "text": f":rotating_light: EM Copilot pipeline failed — run {run_id}",
         "blocks": [
-            {"type": "header",
-             "text": {"type": "plain_text", "text": "EM Copilot — Pipeline Failed"}},
-            {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": f"*Run ID:*\n`{run_id}`"},
-                {"type": "mrkdwn", "text": f"*BRD:*\n{brd_name}"},
-                {"type": "mrkdwn", "text": f"*Status:*\n{status}"},
-                {"type": "mrkdwn", "text": f"*Time:*\n{ts}"},
-            ]},
-            {"type": "section",
-             "text": {"type": "mrkdwn", "text": f"*Errors*\n{error_text}"}},
-            {"type": "context", "elements": [
-                {"type": "mrkdwn",
-                 "text": "Run halted before the HITL gate — no artifacts were exported."}]},
+            {"type": "header", "text": {"type": "plain_text", "text": "EM Copilot — Pipeline Failed"}},
+            {
+                "type": "section",
+                "fields": [
+                    {"type": "mrkdwn", "text": f"*Run ID:*\n`{run_id}`"},
+                    {"type": "mrkdwn", "text": f"*BRD:*\n{brd_name}"},
+                    {"type": "mrkdwn", "text": f"*Status:*\n{status}"},
+                    {"type": "mrkdwn", "text": f"*Time:*\n{ts}"},
+                ],
+            },
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Errors*\n{error_text}"}},
+            {
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": "Run halted before the HITL gate — no artifacts were exported."}
+                ],
+            },
         ],
     }
 
@@ -112,4 +116,5 @@ def send_pipeline_error_alert(state: PipelineState) -> dict[str, Any]:
 
 # Phase 7: export-handler registry
 from src.integrations.export_registry import register_export
+
 register_export("slack", send_pipeline_error_alert, "error")

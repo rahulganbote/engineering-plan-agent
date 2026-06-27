@@ -1,21 +1,22 @@
 # src/core/providers.py
-import os
-from typing import Protocol, Type, Dict, Tuple, List, Optional
-import openai
+from typing import Protocol
+
 import anthropic
-from src.core.config import settings
+import openai
 from langsmith import traceable
 from langsmith.wrappers import wrap_openai
+
+from src.core.config import settings
 
 
 class LLMProvider(Protocol):
     def complete(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         model: str,
         temperature: float,
-        response_format: Optional[Dict[str, str]] = None,
-    ) -> Tuple[str, int, int]:
+        response_format: dict[str, str] | None = None,
+    ) -> tuple[str, int, int]:
         """
         Send a completion request.
         Returns: (response_text, input_tokens, output_tokens)
@@ -27,11 +28,11 @@ class OpenAIProvider:
     @traceable(run_type="llm", name="OpenAI Completion")
     def complete(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         model: str,
         temperature: float,
-        response_format: Optional[Dict[str, str]] = None,
-    ) -> Tuple[str, int, int]:
+        response_format: dict[str, str] | None = None,
+    ) -> tuple[str, int, int]:
         client = wrap_openai(openai.OpenAI(api_key=settings.openai_api_key))
         kwargs = {
             "model": model,
@@ -52,11 +53,11 @@ class AnthropicProvider:
     @traceable(run_type="llm", name="Anthropic Completion")
     def complete(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         model: str,
         temperature: float,
-        response_format: Optional[Dict[str, str]] = None,
-    ) -> Tuple[str, int, int]:
+        response_format: dict[str, str] | None = None,
+    ) -> tuple[str, int, int]:
         if not settings.anthropic_api_key:
             raise ValueError("Anthropic API key is not configured. Please set ANTHROPIC_API_KEY.")
 
@@ -115,7 +116,7 @@ class AnthropicProvider:
         return text, input_tokens, output_tokens
 
 
-_PROVIDERS: Dict[str, LLMProvider] = {
+_PROVIDERS: dict[str, LLMProvider] = {
     "openai": OpenAIProvider(),
     "anthropic": AnthropicProvider(),
 }
@@ -158,11 +159,11 @@ def map_model(model_family: str, model: str) -> str:
 
 def complete_with_fallback(
     model_family: str,
-    messages: List[Dict[str, str]],
+    messages: list[dict[str, str]],
     model: str,
     temperature: float,
-    response_format: Optional[Dict[str, str]] = None,
-) -> Tuple[str, int, int, str]:
+    response_format: dict[str, str] | None = None,
+) -> tuple[str, int, int, str]:
     """
     Execute an LLM completion against the user-selected family. On rate-limit /
     auth / quota errors, silently swap to the other supported provider so the
@@ -194,24 +195,26 @@ def complete_with_fallback(
         Tuple: (response_content, prompt_tokens, completion_tokens, final_family)
         final_family may differ from input model_family if a fallback happened.
     """
-    from src.core.logger import get_logger
-    from src.core.events import emit
-    from src.core.resilience import QuotaExceededError
-    import openai
     import anthropic
+    import openai
+
+    from src.core.events import emit
+    from src.core.logger import get_logger
+    from src.core.resilience import QuotaExceededError
 
     log = get_logger(__name__)
 
     family = model_family.lower()
 
     from src.core.config import settings
+
     enable_fallback = settings.enable_provider_fallback
     try:
         from src.agents.base_agent import _current_enable_fallback
+
         enable_fallback = _current_enable_fallback()
     except Exception:
         pass
-
 
     if not enable_fallback or family not in ("openai", "anthropic"):
         # Just call the chosen provider; let exceptions surface
@@ -264,6 +267,7 @@ def complete_with_fallback(
             # the original LLM error we just recovered from.
             try:
                 from src.agents.base_agent import _CURRENT_RUN, _RUN_FAMILY, _TOKEN_LOCK
+
                 if hasattr(_CURRENT_RUN, "model_family"):
                     _CURRENT_RUN.model_family = fallback_family
                 rid = getattr(_CURRENT_RUN, "run_id", None)
@@ -279,4 +283,3 @@ def complete_with_fallback(
             raise QuotaExceededError(
                 "Your API Credits/Tokens has expired or reached limit. Please try again later. Sorry."
             ) from fallback_exc
-

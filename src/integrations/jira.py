@@ -25,10 +25,6 @@ What it creates:
             • Schedule highlights
             • Links to Sheets / local CSV bundle / artifacts API
 
-Rubric:
-    - Tools (external system): supplements Sheets + GitHub + Kroki as a 4th
-      working external integration. Strong demo moment — "Approve → live Jira
-      ticket with the architecture diagram rendered."
 """
 
 from __future__ import annotations
@@ -47,17 +43,18 @@ from src.core.models import PipelineState
 
 log = get_logger(__name__)
 
-JIRA_TIMEOUT_SEC  = 10
-JIRA_RETRIES      = 1   # one retry on 5xx / network blip
+JIRA_TIMEOUT_SEC = 10
+JIRA_RETRIES = 1  # one retry on 5xx / network blip
 
 # Hard limits enforced by Jira
-JIRA_SUMMARY_MAX  = 255
-JIRA_LABEL_MAX    = 255
+JIRA_SUMMARY_MAX = 255
+JIRA_LABEL_MAX = 255
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Public entry point
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
     """
@@ -78,10 +75,10 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
     if not ok:
         log.info(f"[{run_id}] Jira push skipped — {why_not}")
         return {
-            "url":             None,
-            "mode":            "skipped",
-            "detail":          "Jira push skipped (credentials not configured)",
-            "issue_key":       None,
+            "url": None,
+            "mode": "skipped",
+            "detail": "Jira push skipped (credentials not configured)",
+            "issue_key": None,
             "fallback_reason": why_not,
         }
 
@@ -93,15 +90,15 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
         log.info(f"[{run_id}] Jira REST — idempotent skip, issue already exists: {existing_key}")
         try:
             from src.core.events import emit as _evt
-            _evt("idempotent_skip", run_id=run_id, issue_key=existing_key,
-                 transport="rest", label=idempotency_label)
+
+            _evt("idempotent_skip", run_id=run_id, issue_key=existing_key, transport="rest", label=idempotency_label)
         except Exception:
             pass
         return {
-            "url":             url,
-            "mode":            "jira",
-            "detail":          f"Idempotent skip — issue {existing_key} already exists (label={idempotency_label})",
-            "issue_key":       existing_key,
+            "url": url,
+            "mode": "jira",
+            "detail": f"Idempotent skip — issue {existing_key} already exists (label={idempotency_label})",
+            "issue_key": existing_key,
             "fallback_reason": None,
         }
 
@@ -111,10 +108,10 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
         err = f"{type(e).__name__}: {str(e)[:200]}"
         log.error(f"[{run_id}] Jira push failed | {err}")
         return {
-            "url":             None,
-            "mode":            "skipped",
-            "detail":          f"Jira push failed: {err}",
-            "issue_key":       None,
+            "url": None,
+            "mode": "skipped",
+            "detail": f"Jira push failed: {err}",
+            "issue_key": None,
             "fallback_reason": err,
         }
 
@@ -122,10 +119,10 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
     url = f"{settings.jira_base_url.rstrip('/')}/browse/{key}"
     log.info(f"[{run_id}] Jira issue created | key={key} | url={url}")
     return {
-        "url":             url,
-        "mode":            "jira",
-        "detail":          f"Created Jira {settings.jira_issue_type} {key}",
-        "issue_key":       key,
+        "url": url,
+        "mode": "jira",
+        "detail": f"Created Jira {settings.jira_issue_type} {key}",
+        "issue_key": key,
         "fallback_reason": None,
     }
 
@@ -134,11 +131,12 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
 # Credentials probe
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _credentials_status() -> tuple[bool, str]:
     required = {
-        "JIRA_BASE_URL":    settings.jira_base_url,
-        "JIRA_EMAIL":       settings.jira_email,
-        "JIRA_API_TOKEN":   settings.jira_api_token,
+        "JIRA_BASE_URL": settings.jira_base_url,
+        "JIRA_EMAIL": settings.jira_email,
+        "JIRA_API_TOKEN": settings.jira_api_token,
         "JIRA_PROJECT_KEY": settings.jira_project_key,
     }
     missing = [k for k, v in required.items() if not (v or "").strip()]
@@ -153,6 +151,7 @@ def _credentials_status() -> tuple[bool, str]:
 # REST call
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _search_existing_issue(run_id: str, label: str) -> str | None:
     """
     JQL search for an existing issue with the idempotency label.
@@ -166,7 +165,8 @@ def _search_existing_issue(run_id: str, label: str) -> str | None:
             "Accept": "application/json",
         }
         r = requests.get(
-            url, headers=headers,
+            url,
+            headers=headers,
             params={"jql": jql, "maxResults": 1, "fields": "key"},
             timeout=JIRA_TIMEOUT_SEC,
         )
@@ -185,18 +185,18 @@ def _create_issue(state: PipelineState) -> dict[str, Any]:
     Returns the parsed JSON response on success.
     Raises on any non-2xx (caller catches and converts to skip).
     """
-    url     = f"{settings.jira_base_url.rstrip('/')}/rest/api/3/issue"
+    url = f"{settings.jira_base_url.rstrip('/')}/rest/api/3/issue"
     headers = {
         "Authorization": _basic_auth_header(),
-        "Accept":        "application/json",
-        "Content-Type":  "application/json",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
     }
     payload = {
         "fields": {
-            "project":     {"key": settings.jira_project_key},
-            "summary":     _build_summary(state)[:JIRA_SUMMARY_MAX],
-            "issuetype":   {"name": settings.jira_issue_type},
-            "labels":      _build_labels(state),
+            "project": {"key": settings.jira_project_key},
+            "summary": _build_summary(state)[:JIRA_SUMMARY_MAX],
+            "issuetype": {"name": settings.jira_issue_type},
+            "labels": _build_labels(state),
             "description": _build_adf_description(state),
         }
     }
@@ -226,13 +226,14 @@ def _create_issue(state: PipelineState) -> dict[str, Any]:
 
 
 def _basic_auth_header() -> str:
-    raw = f"{settings.jira_email}:{settings.jira_api_token}".encode("utf-8")
+    raw = f"{settings.jira_email}:{settings.jira_api_token}".encode()
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Summary, labels
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def _build_summary(state: PipelineState) -> str:
     """
@@ -243,7 +244,7 @@ def _build_summary(state: PipelineState) -> str:
     be parsed. MM/DD is today's date in UTC.
     """
     project_name = _project_name_from_brd(state)
-    today_mmdd   = datetime.now(timezone.utc).strftime("%m/%d")
+    today_mmdd = datetime.now(timezone.utc).strftime("%m/%d")
     return f"[EM Copilot] {project_name} · {today_mmdd}"
 
 
@@ -261,15 +262,19 @@ def _project_name_from_brd(state: PipelineState) -> str:
       5. Final fallback: "BRD run".
     """
     generic = {
-        "project overview", "overview", "background",
-        "introduction", "executive summary", "full brd",
+        "project overview",
+        "overview",
+        "background",
+        "introduction",
+        "executive summary",
+        "full brd",
     }
 
     if not state.brd_sections:
         return "BRD run"
 
     first = state.brd_sections[0]
-    name  = (first.section_name or "").strip()
+    name = (first.section_name or "").strip()
 
     # 1. Non-generic first heading wins
     if name and name.lower() not in generic:
@@ -315,8 +320,8 @@ def _project_name_from_brd(state: PipelineState) -> str:
 def _build_labels(state: PipelineState) -> list[str]:
     prefix = (settings.jira_label_prefix or "em-copilot").strip() or "em-copilot"
     critic = state.critic_output
-    badge  = critic.badge.value if critic else "unknown"
-    arch   = state.arch_output
+    badge = critic.badge.value if critic else "unknown"
+    arch = state.arch_output
 
     labels = [
         prefix,
@@ -347,176 +352,221 @@ def _slugify(text: str) -> str:
 # ADF description builder
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _build_adf_description(state: PipelineState) -> dict[str, Any]:
     """
     Build the Atlassian Document Format (ADF) description body.
     Renders natively in Jira Cloud's new editor — including the Mermaid
     code block, which Jira renders as a diagram with no plugin.
     """
-    ts     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     blocks: list[dict[str, Any]] = []
 
     # ── Header ───────────────────────────────────────────────────────────────
     blocks.append(_heading(2, "EM Copilot Pipeline Run"))
-    blocks.append(_paragraph(
-        _text(f"Run ID: ", bold=True), _text(state.run_id),
-        _text("    "),
-        _text("Exported: ", bold=True), _text(ts),
-        _text("    "),
-        _text("Revisions: ", bold=True), _text(str(state.revision_count)),
-    ))
+    blocks.append(
+        _paragraph(
+            _text("Run ID: ", bold=True),
+            _text(state.run_id),
+            _text("    "),
+            _text("Exported: ", bold=True),
+            _text(ts),
+            _text("    "),
+            _text("Revisions: ", bold=True),
+            _text(str(state.revision_count)),
+        )
+    )
 
     # ── Critic scores ────────────────────────────────────────────────────────
     critic = state.critic_output
     if critic:
         blocks.append(_heading(3, "Critic scores"))
-        blocks.append(_paragraph(
-            _text("Badge: ", bold=True),
-            _text(critic.badge.value.upper()),
-            _text("    "),
-            _text("Overall: ", bold=True),
-            _text(f"{critic.overall_score:.2f} / 5.0"),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Badge: ", bold=True),
+                _text(critic.badge.value.upper()),
+                _text("    "),
+                _text("Overall: ", bold=True),
+                _text(f"{critic.overall_score:.2f} / 5.0"),
+            )
+        )
         score_items = [
-            ("Groundedness",   critic.groundedness),
-            ("Completeness",   critic.completeness),
-            ("Consistency",    critic.consistency),
-            ("Actionability",  critic.actionability),
+            ("Groundedness", critic.groundedness),
+            ("Completeness", critic.completeness),
+            ("Consistency", critic.consistency),
+            ("Actionability", critic.actionability),
         ]
-        blocks.append(_bullet_list([
-            f"{name}: {dim.score:.2f}  (threshold {dim.threshold:.2f}, "
-            f"{'PASS' if dim.passed else 'FAIL'})"
-            for name, dim in score_items
-        ]))
+        blocks.append(
+            _bullet_list(
+                [
+                    f"{name}: {dim.score:.2f}  (threshold {dim.threshold:.2f}, {'PASS' if dim.passed else 'FAIL'})"
+                    for name, dim in score_items
+                ]
+            )
+        )
 
     # ── Architecture (with Mermaid code block) ───────────────────────────────
     arch = state.arch_output
     if arch:
         blocks.append(_heading(3, "Architecture"))
-        blocks.append(_paragraph(
-            _text("Pattern: ", bold=True), _text(arch.pattern),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Pattern: ", bold=True),
+                _text(arch.pattern),
+            )
+        )
         if arch.pattern_justification:
             blocks.append(_paragraph(_text(arch.pattern_justification)))
-        blocks.append(_paragraph(
-            _text("Deployment: ", bold=True),
-            _text(arch.deployment_model or "n/a"),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Deployment: ", bold=True),
+                _text(arch.deployment_model or "n/a"),
+            )
+        )
         if arch.diagram_mermaid:
             # Jira ADF codeBlock with language=mermaid does NOT render as a diagram —
             # it shows as syntax-highlighted code. Workaround: link to a Kroki-rendered
             # SVG that opens in a new tab. The raw source still lives below for
             # copy-paste into Confluence / GitHub README / etc. (which DO render it).
             kroki_url = _kroki_view_url(arch.diagram_mermaid, fmt="svg")
-            blocks.append(_paragraph(
-                _text("Diagram: ", italic=True),
-                _text("view rendered architecture (SVG)", link=kroki_url),
-                _text("  ·  raw Mermaid source below for copy-paste:", italic=True),
-            ))
+            blocks.append(
+                _paragraph(
+                    _text("Diagram: ", italic=True),
+                    _text("view rendered architecture (SVG)", link=kroki_url),
+                    _text("  ·  raw Mermaid source below for copy-paste:", italic=True),
+                )
+            )
             blocks.append(_code_block(arch.diagram_mermaid, language="mermaid"))
         if arch.components:
             blocks.append(_paragraph(_text("Components:", bold=True)))
-            blocks.append(_bullet_list([
-                f"{c.name} ({c.technology}) — {c.responsibility}"
-                for c in arch.components
-            ]))
+            blocks.append(_bullet_list([f"{c.name} ({c.technology}) — {c.responsibility}" for c in arch.components]))
 
     # ── Tech stack ───────────────────────────────────────────────────────────
     stack = state.stack_output
     if stack:
         blocks.append(_heading(3, "Tech Stack Recommendation"))
-        blocks.append(_paragraph(
-            _text("Recommended: ", bold=True),
-            _text(stack.recommended_option or "n/a"),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Recommended: ", bold=True),
+                _text(stack.recommended_option or "n/a"),
+            )
+        )
         if stack.recommendation_rationale:
             blocks.append(_paragraph(_text(stack.recommendation_rationale)))
         if stack.options:
             blocks.append(_paragraph(_text("Options considered:", bold=True)))
-            blocks.append(_bullet_list([
-                f"{opt.name} — scalability {opt.scalability_rating}/5, "
-                f"familiarity {opt.team_familiarity_rating}/5, "
-                f"risk {opt.integration_risk.value}, "
-                f"~${opt.estimated_monthly_cost_usd:.0f}/mo"
-                for opt in stack.options
-            ]))
+            blocks.append(
+                _bullet_list(
+                    [
+                        f"{opt.name} — scalability {opt.scalability_rating}/5, "
+                        f"familiarity {opt.team_familiarity_rating}/5, "
+                        f"risk {opt.integration_risk.value}, "
+                        f"~${opt.estimated_monthly_cost_usd:.0f}/mo"
+                        for opt in stack.options
+                    ]
+                )
+            )
 
     # ── Engineering plan summary ─────────────────────────────────────────────
     plan = state.plan_output
     if plan:
         blocks.append(_heading(3, "Engineering Plan"))
         team_str = ", ".join(f"{r} × {n}" for r, n in (plan.team_composition or {}).items())
-        blocks.append(_paragraph(
-            _text("Total duration: ", bold=True),
-            _text(f"{plan.total_duration_weeks} weeks"),
-            _text("    "),
-            _text("Team: ", bold=True),
-            _text(team_str or "n/a"),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Total duration: ", bold=True),
+                _text(f"{plan.total_duration_weeks} weeks"),
+                _text("    "),
+                _text("Team: ", bold=True),
+                _text(team_str or "n/a"),
+            )
+        )
         if plan.phases:
             blocks.append(_paragraph(_text("Phases:", bold=True)))
-            blocks.append(_bullet_list([
-                f"{p.name} ({p.duration_weeks}w) — {len(p.milestones)} milestone(s)"
-                for p in plan.phases
-            ]))
+            blocks.append(
+                _bullet_list(
+                    [f"{p.name} ({p.duration_weeks}w) — {len(p.milestones)} milestone(s)" for p in plan.phases]
+                )
+            )
         if plan.risks:
             blocks.append(_paragraph(_text(f"Top risks ({len(plan.risks)}):", bold=True)))
-            blocks.append(_bullet_list([
-                f"{r.description} — likelihood={r.likelihood.value}, impact={r.impact.value}"
-                for r in plan.risks[:5]
-            ]))
+            blocks.append(
+                _bullet_list(
+                    [
+                        f"{r.description} — likelihood={r.likelihood.value}, impact={r.impact.value}"
+                        for r in plan.risks[:5]
+                    ]
+                )
+            )
 
     # ── PoC ──────────────────────────────────────────────────────────────────
     poc = state.poc_output
     if poc:
         blocks.append(_heading(3, "Proof of Concept"))
-        blocks.append(_paragraph(
-            _text("Hypothesis: ", bold=True), _text(poc.poc_hypothesis),
-        ))
-        blocks.append(_paragraph(
-            _text("Duration: ", bold=True), _text(f"{poc.duration_weeks} weeks"),
-            _text("    "),
-            _text("Team size: ", bold=True), _text(str(poc.team_size)),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Hypothesis: ", bold=True),
+                _text(poc.poc_hypothesis),
+            )
+        )
+        blocks.append(
+            _paragraph(
+                _text("Duration: ", bold=True),
+                _text(f"{poc.duration_weeks} weeks"),
+                _text("    "),
+                _text("Team size: ", bold=True),
+                _text(str(poc.team_size)),
+            )
+        )
         if poc.risk_if_poc_fails:
-            blocks.append(_paragraph(
-                _text("Risk if PoC fails: ", bold=True),
-                _text(poc.risk_if_poc_fails),
-            ))
+            blocks.append(
+                _paragraph(
+                    _text("Risk if PoC fails: ", bold=True),
+                    _text(poc.risk_if_poc_fails),
+                )
+            )
 
     # ── Schedule ─────────────────────────────────────────────────────────────
     sched = state.schedule_output
     if sched:
         blocks.append(_heading(3, "Schedule"))
-        blocks.append(_paragraph(
-            _text("Total effort: ", bold=True),
-            _text(f"{sched.total_effort_days:.1f} days"),
-            _text("    "),
-            _text("Buffer: ", bold=True),
-            _text(f"{sched.buffer_weeks} weeks"),
-        ))
+        blocks.append(
+            _paragraph(
+                _text("Total effort: ", bold=True),
+                _text(f"{sched.total_effort_days:.1f} days"),
+                _text("    "),
+                _text("Buffer: ", bold=True),
+                _text(f"{sched.buffer_weeks} weeks"),
+            )
+        )
         if sched.critical_path:
-            blocks.append(_paragraph(
-                _text("Critical path: ", bold=True),
-                _text(" → ".join(sched.critical_path)),
-            ))
+            blocks.append(
+                _paragraph(
+                    _text("Critical path: ", bold=True),
+                    _text(" → ".join(sched.critical_path)),
+                )
+            )
 
     # ── Footer ───────────────────────────────────────────────────────────────
     blocks.append(_heading(3, "Source"))
-    blocks.append(_paragraph(
-        _text(f"Generated by EM Copilot — multi-agent BRD-to-engineering-plan pipeline. "
-              f"Run ID {state.run_id} | Pydantic-validated outputs from 5 specialist agents "
-              f"+ Critic revision loop. See knowledge_base/ for grounding sources.",
-              italic=True),
-    ))
+    blocks.append(
+        _paragraph(
+            _text(
+                f"Generated by EM Copilot — multi-agent BRD-to-engineering-plan pipeline. "
+                f"Run ID {state.run_id} | Pydantic-validated outputs from 5 specialist agents "
+                f"+ Critic revision loop. See knowledge_base/ for grounding sources.",
+                italic=True,
+            ),
+        )
+    )
 
     return {"type": "doc", "version": 1, "content": blocks}
 
 
 # ── ADF primitives ───────────────────────────────────────────────────────────
 
-def _text(text: str, *, bold: bool = False, italic: bool = False,
-          link: str | None = None) -> dict[str, Any]:
+
+def _text(text: str, *, bold: bool = False, italic: bool = False, link: str | None = None) -> dict[str, Any]:
     node: dict[str, Any] = {"type": "text", "text": str(text)[:30000]}
     marks: list[dict[str, Any]] = []
     if bold:
@@ -557,10 +607,12 @@ def _bullet_list(items: list[str]) -> dict[str, Any]:
         "content": [
             {
                 "type": "listItem",
-                "content": [{
-                    "type": "paragraph",
-                    "content": [{"type": "text", "text": item}],
-                }],
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [{"type": "text", "text": item}],
+                    }
+                ],
             }
             for item in items
         ],
@@ -573,8 +625,5 @@ def _kroki_view_url(mermaid_src: str, fmt: str = "svg") -> str:
     Encoding: zlib deflate level 9 → urlsafe base64. This is Kroki's documented
     short-URL form — the whole diagram travels in the URL, no upload step.
     """
-    encoded = base64.urlsafe_b64encode(
-        zlib.compress((mermaid_src or "").encode("utf-8"), 9)
-    ).decode("ascii")
+    encoded = base64.urlsafe_b64encode(zlib.compress((mermaid_src or "").encode("utf-8"), 9)).decode("ascii")
     return f"https://kroki.io/mermaid/{fmt}/{encoded}"
-

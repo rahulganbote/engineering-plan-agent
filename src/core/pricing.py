@@ -10,20 +10,20 @@ PRICING_TABLE = {
     },
     "anthropic": {
         # ── Claude 4.5 (current default per env) ──
-        "claude-sonnet-4-5":        {"input": 3.00 / 1e6, "output": 15.00 / 1e6},
-        "claude-haiku-4-5":         {"input": 1.00 / 1e6, "output": 5.00 / 1e6},   # verify against anthropic.com/pricing
+        "claude-sonnet-4-5": {"input": 3.00 / 1e6, "output": 15.00 / 1e6},
+        "claude-haiku-4-5": {"input": 1.00 / 1e6, "output": 5.00 / 1e6},  # verify against anthropic.com/pricing
         # ── Claude 3.5 (older, pin-able by version) ──
-        "claude-3-5-sonnet-latest":   {"input": 3.00 / 1e6, "output": 15.00 / 1e6},
+        "claude-3-5-sonnet-latest": {"input": 3.00 / 1e6, "output": 15.00 / 1e6},
         "claude-3-5-sonnet-20241022": {"input": 3.00 / 1e6, "output": 15.00 / 1e6},
-        "claude-3-5-haiku-latest":    {"input": 0.80 / 1e6, "output": 4.00 / 1e6},  # restore
-        "claude-3-5-haiku-20241022":  {"input": 0.80 / 1e6, "output": 4.00 / 1e6},  # restore
+        "claude-3-5-haiku-latest": {"input": 0.80 / 1e6, "output": 4.00 / 1e6},  # restore
+        "claude-3-5-haiku-20241022": {"input": 0.80 / 1e6, "output": 4.00 / 1e6},  # restore
     },
     "llama": {
         "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {"input": 0.60 / 1e6, "output": 0.60 / 1e6},
     },
     "mistral": {
         "mistralai/Mistral-Large": {"input": 2.00 / 1e6, "output": 6.00 / 1e6},
-    }
+    },
 }
 
 

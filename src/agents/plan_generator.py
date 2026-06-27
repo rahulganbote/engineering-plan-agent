@@ -21,11 +21,16 @@ Contract: EngineeringPlanOutput
 from __future__ import annotations
 
 import json
+
 from src.agents.base_agent import BaseAgent
 from src.core.logger import get_logger
 from src.core.models import (
-    EngineeringPlanOutput, Milestone, Phase,
-    PipelineState, Risk, RiskLevel,
+    EngineeringPlanOutput,
+    Milestone,
+    Phase,
+    PipelineState,
+    Risk,
+    RiskLevel,
 )
 
 log = get_logger(__name__)
@@ -85,12 +90,12 @@ class PlanGeneratorAgent(BaseAgent):
     """
 
     def run(self, state: PipelineState, feedback: str = "") -> EngineeringPlanOutput:
-        start  = self.start_timer()
+        start = self.start_timer()
         log.info(f"[{state.run_id}] PlanGenerator start | revision={state.revision_count}")
 
         # ── RAG retrieval ─────────────────────────────────────────────────────
         brd_text = self._brd_text(state)
-        query    = f"engineering plan phases milestones risks team {brd_text[:300]}"
+        query = f"engineering plan phases milestones risks team {brd_text[:300]}"
         context_str, citation_ids = self.retrieve_context(
             query=query,
             source_types=["brd", "plan_template"],
@@ -98,6 +103,7 @@ class PlanGeneratorAgent(BaseAgent):
         log.info(f"[{state.run_id}] PlanGenerator RAG | chunks={len(citation_ids)}")
 
         from src.agents.base_agent import _current_model_family
+
         _family = (_current_model_family() or "openai").lower()
 
         if _family == "anthropic":
@@ -115,9 +121,12 @@ class PlanGeneratorAgent(BaseAgent):
 
         # ── Log execution ─────────────────────────────────────────────────────
         self.log_run(
-            run_id=state.run_id, agent_name="engineering_plan_generator",
-            citation_ids=citation_ids, critic_score=None,
-            start_time=start, revision_count=state.revision_count,
+            run_id=state.run_id,
+            agent_name="engineering_plan_generator",
+            citation_ids=citation_ids,
+            critic_score=None,
+            start_time=start,
+            revision_count=state.revision_count,
         )
         log.info(
             f"[{state.run_id}] PlanGenerator done | "
@@ -129,9 +138,7 @@ class PlanGeneratorAgent(BaseAgent):
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _brd_text(self, state: PipelineState) -> str:
-        return "\n\n".join(
-            f"## {s.section_name}\n{s.content}" for s in state.brd_sections
-        )
+        return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
 
     def _draft(self, brd_text: str, context_str: str, feedback: str) -> str:
         feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
@@ -146,8 +153,11 @@ class PlanGeneratorAgent(BaseAgent):
         )
 
     def _reflect_and_finalize(
-        self, brd_text: str, draft: str,
-        context_str: str, citation_ids: list[str],
+        self,
+        brd_text: str,
+        draft: str,
+        context_str: str,
+        citation_ids: list[str],
     ) -> str:
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
@@ -164,9 +174,7 @@ class PlanGeneratorAgent(BaseAgent):
             response_format={"type": "json_object"},
         )
 
-    def _generate_direct(
-        self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str]
-    ) -> str:
+    def _generate_direct(self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str]) -> str:
         feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
@@ -210,12 +218,14 @@ Rules:
                     )
                     for m in p.get("milestones", [])
                 ]
-                phases.append(Phase(
-                    name=p.get("name", "Phase"),
-                    duration_weeks=int(p.get("duration_weeks", 2)),
-                    objectives=p.get("objectives", ["Deliver phase"]),
-                    milestones=milestones,
-                ))
+                phases.append(
+                    Phase(
+                        name=p.get("name", "Phase"),
+                        duration_weeks=int(p.get("duration_weeks", 2)),
+                        objectives=p.get("objectives", ["Deliver phase"]),
+                        milestones=milestones,
+                    )
+                )
 
             first_cite = citation_ids[0] if citation_ids else "plan_templates_chunk_0"
             risks = []
@@ -223,16 +233,18 @@ Rules:
                 cite = r.get("citation", first_cite)
                 if cite not in citation_ids:
                     cite = first_cite
-                risks.append(Risk(
-                    description=r.get("description", "Risk identified"),
-                    likelihood=_coerce_risk_level(r.get("likelihood")),
-                    impact=_coerce_risk_level(r.get("impact")),
-                    mitigation=r.get("mitigation", "Monitor and address proactively"),
-                    citation=cite,
-                ))
+                risks.append(
+                    Risk(
+                        description=r.get("description", "Risk identified"),
+                        likelihood=_coerce_risk_level(r.get("likelihood")),
+                        impact=_coerce_risk_level(r.get("impact")),
+                        mitigation=r.get("mitigation", "Monitor and address proactively"),
+                        citation=cite,
+                    )
+                )
 
             # Enforce total_duration_weeks == sum of phases
-            phase_sum   = sum(p.duration_weeks for p in phases)
+            phase_sum = sum(p.duration_weeks for p in phases)
             total_weeks = d.get("total_duration_weeks", phase_sum)
             if int(total_weeks) != phase_sum:
                 log.warning(f"[{run_id}] Fixing total_duration_weeks {total_weeks}→{phase_sum}")
@@ -249,8 +261,7 @@ Rules:
                 team_composition=d.get("team_composition", {"Engineer": 2}),
                 total_duration_weeks=int(total_weeks),
                 reflection_notes=d.get(
-                    "reflection_notes",
-                    "Milestones clarified with owner_role. Risks cited to KB chunks."
+                    "reflection_notes", "Milestones clarified with owner_role. Risks cited to KB chunks."
                 ),
             )
         except Exception as e:
@@ -260,7 +271,8 @@ Rules:
     def _default_risk(self, citation: str) -> Risk:
         return Risk(
             description="Timeline slippage due to scope ambiguity",
-            likelihood=RiskLevel.MEDIUM, impact=RiskLevel.MEDIUM,
+            likelihood=RiskLevel.MEDIUM,
+            impact=RiskLevel.MEDIUM,
             mitigation="Weekly stakeholder alignment to resolve open questions",
             citation=citation,
         )
@@ -274,14 +286,21 @@ Rules:
             confidence_score=0.2,
             assumptions=["Fallback output — agent parse error"],
             flagged_ambiguities=["Agent output could not be parsed"],
-            phases=[Phase(
-                name="Discovery", duration_weeks=2,
-                objectives=["Clarify requirements", "Technical spike"],
-                milestones=[Milestone(
-                    name="Requirements sign-off", week=2,
-                    deliverable="Signed requirements document", owner_role="EM",
-                )],
-            )],
+            phases=[
+                Phase(
+                    name="Discovery",
+                    duration_weeks=2,
+                    objectives=["Clarify requirements", "Technical spike"],
+                    milestones=[
+                        Milestone(
+                            name="Requirements sign-off",
+                            week=2,
+                            deliverable="Signed requirements document",
+                            owner_role="EM",
+                        )
+                    ],
+                )
+            ],
             risks=[self._default_risk(cite)],
             team_composition={"Engineer": 2},
             total_duration_weeks=2,
@@ -295,23 +314,23 @@ Rules:
 # any string to the closest valid RiskLevel rather than raising ValidationError.
 
 _RISK_LEVEL_ALIASES = {
-    "low":      "low",
-    "minimal":  "low",
-    "minor":    "low",
+    "low": "low",
+    "minimal": "low",
+    "minor": "low",
     "negligible": "low",
-    "medium":   "medium",
+    "medium": "medium",
     "moderate": "medium",
-    "mid":      "medium",
-    "normal":   "medium",
-    "high":     "high",
+    "mid": "medium",
+    "normal": "medium",
+    "high": "high",
     "elevated": "high",
-    "severe":   "high",
-    "major":    "high",
+    "severe": "high",
+    "major": "high",
     "critical": "critical",
-    "extreme":  "critical",
+    "extreme": "critical",
     "very high": "critical",
     "veryhigh": "critical",
-    "blocker":  "critical",
+    "blocker": "critical",
 }
 
 
@@ -331,4 +350,5 @@ def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("engineering_plan_generator", PlanGeneratorAgent)
