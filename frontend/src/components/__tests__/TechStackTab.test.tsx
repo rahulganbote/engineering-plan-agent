@@ -1,6 +1,13 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { TechStackTab } from '../TechStackTab';
+
+// Mock WorkspaceContext
+vi.mock('../../context/WorkspaceContext', () => ({
+  useWorkspace: () => ({
+    logs: [],
+  }),
+}));
 
 describe('TechStackTab', () => {
   it('renders empty-state when techStackData is null', () => {

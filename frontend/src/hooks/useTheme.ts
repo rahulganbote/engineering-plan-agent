@@ -1,13 +1,4 @@
-/**
- * useTheme — Light / Dark / System theme picker state.
- *
- * Storage: localStorage('em-copilot-theme')
- * Effect:  toggles the `dark` class on <html> so Tailwind v4 dark variant fires.
- *
- * FOUC handling: an inline <script> in index.html applies the dark class BEFORE
- * React mounts. This hook keeps the React state in sync after that.
- */
-import { useCallback, useEffect, useState } from "react";
+import React, { createContext, useContext, useCallback, useEffect, useState, type ReactNode } from "react";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -33,13 +24,17 @@ function readStoredTheme(): Theme {
   } catch {
     // localStorage blocked (private mode / sandbox) — fall back to light
   }
-  // Light is the public-demo default. Users can opt into Dark or System via the
-  // picker; their choice is persisted. (Defaulting to System would mean Mac users
-  // in dark mode land on dark, which contradicts the design goal of "light first".)
   return "light";
 }
 
-export function useTheme() {
+interface ThemeContextType {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>(readStoredTheme);
 
   const setTheme = useCallback((next: Theme) => {
@@ -66,5 +61,13 @@ export function useTheme() {
     return () => mq.removeEventListener("change", handler);
   }, [theme]);
 
-  return { theme, setTheme };
+  return React.createElement(ThemeContext.Provider, { value: { theme, setTheme } }, children);
+};
+
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
 }
