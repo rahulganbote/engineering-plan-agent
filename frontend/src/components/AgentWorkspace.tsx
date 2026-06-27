@@ -210,7 +210,7 @@ export const AgentWorkspace: React.FC = () => {
                   value={modelFamily}
                   onChange={(e) => setModelFamily(e.target.value)}
                   disabled={!!runId || isStartingPipeline}
-                  className="w-full bg-background border border-border text-muted-foreground rounded px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-background border border-primary/30 text-primary font-semibold rounded px-3 py-2 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {/* Family options — dynamic from /api/providers.
                       `disabled` reflects real backend availability (missing API key,
@@ -263,10 +263,10 @@ export const AgentWorkspace: React.FC = () => {
                   accept=".pdf,.docx,.txt"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <Upload className="mx-auto text-muted-foreground mb-2" size={24} />
-                <p className="text-xs font-semibold text-muted-foreground">Drag and drop file here</p>
+                <Upload className="mx-auto text-primary mb-2" size={24} />
+                <p className="text-xs font-semibold text-primary">Drag and drop file here</p>
                 <p className="text-[10px] text-muted-foreground mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
-                <button className="mt-3 px-3 py-1.5 bg-card text-foreground border border-border rounded hover:bg-secondary text-xs font-medium">
+                <button className="mt-3 px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 hover:border-primary/50 text-xs font-semibold transition-colors">
                   Browse files
                 </button>
               </div>
@@ -381,8 +381,11 @@ export const AgentWorkspace: React.FC = () => {
         {/* Main Header */}
         <header className="h-16 border-b border-border px-8 flex items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">BRD → Engineering Plan</h1>
-            <p className="text-xs text-muted-foreground">EM Copilot · Multi-Agent BRD-to-Engineering Plan System · Demo - AI can make mistakes. Validate outputs.</p>
+            <h1 className="text-2xl font-extrabold tracking-tight">
+              <span className="text-primary">EM Copilot</span>
+              <span className="text-foreground">: BRD → Engineering Plan</span>
+            </h1>
+            <p className="text-xs text-muted-foreground">Multi-Agent BRD-to-Engineering Plan System · Demo — AI can make mistakes. Validate outputs.</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
@@ -661,7 +664,7 @@ export const AgentWorkspace: React.FC = () => {
                             href={approvalResult.sheet_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block px-4 py-2 bg-destructive hover:bg-destructive text-white rounded font-bold text-xs transition duration-150 shadow-sm"
+                            className="inline-block px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded font-bold text-xs transition duration-150 shadow-sm"
                           >
                             Open Google Sheet
                           </a>
@@ -699,7 +702,7 @@ export const AgentWorkspace: React.FC = () => {
                             href={approvalResult.jira_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block px-4 py-2 bg-destructive hover:bg-destructive text-white rounded font-bold text-xs transition duration-150 shadow-sm"
+                            className="inline-block px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded font-bold text-xs transition duration-150 shadow-sm"
                           >
                             Open Jira issue {approvalResult.jira_issue_key}
                           </a>
@@ -722,7 +725,35 @@ export const AgentWorkspace: React.FC = () => {
                             {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
                           </div>
                         </div>
-                      ) : null}
+                      ) : (
+                        /* Fallback when backend didn't include any jira_status
+                           (e.g. Jira credentials not configured on this deploy).
+                           Better than rendering nothing — the EM gets a clear
+                           reason + a direct link to the setup reference. */
+                        <div className="p-4 bg-card border border-border rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-muted-foreground">
+                            Jira push not available
+                          </div>
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
+                            Jira integration is not configured on this deployment.
+                            Configure
+                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_API_TOKEN</code>
+                            (plus
+                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_BASE_URL</code>,
+                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_EMAIL</code>,
+                            <code className="mx-1 px-1 py-0.5 rounded bg-secondary text-foreground font-mono">JIRA_PROJECT_KEY</code>)
+                            to enable automatic Epic creation.
+                          </div>
+                          <a
+                            href="https://github.com/rahulganbote/engineering-plan-agent/blob/main/.env.example#L59-L65"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary/80 hover:underline transition-colors"
+                          >
+                            View setup reference (.env.example) →
+                          </a>
+                        </div>
+                      )}
                     </div>
 
                     {/* Primary CTA — natural "what now?" path after terminal state.
