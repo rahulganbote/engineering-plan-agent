@@ -6,13 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EM Copilot</title>
     <!-- FOUC prevention — apply theme class BEFORE React mounts.
-         Reads localStorage('em-copilot-theme'); falls back to system preference.
-         Synchronous + tiny so it never blocks render. -->
+         Reads localStorage('em-copilot-theme'); falls back to LIGHT (the
+         public-demo default). Users opting into System or Dark have their
+         choice persisted. Synchronous + tiny so it never blocks render. -->
     <script>
       (function () {
         try {
           var stored = localStorage.getItem('em-copilot-theme');
-          var mode = stored || 'system';
+          var mode = stored || 'light';
           var isDark =
             mode === 'dark' ||
             (mode === 'system' &&

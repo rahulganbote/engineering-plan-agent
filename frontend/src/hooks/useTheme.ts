@@ -31,9 +31,12 @@ function readStoredTheme(): Theme {
       return stored;
     }
   } catch {
-    // localStorage blocked (private mode / sandbox) — fall back to system
+    // localStorage blocked (private mode / sandbox) — fall back to light
   }
-  return "system";
+  // Light is the public-demo default. Users can opt into Dark or System via the
+  // picker; their choice is persisted. (Defaulting to System would mean Mac users
+  // in dark mode land on dark, which contradicts the design goal of "light first".)
+  return "light";
 }
 
 export function useTheme() {
