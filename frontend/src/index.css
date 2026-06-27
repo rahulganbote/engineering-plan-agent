@@ -1,18 +1,125 @@
 @import "tailwindcss";
 
-/* Force dark slate base for v1 — see react_migration_plan.md Decisions Log.
-   When v2 adds the theme toggle, this becomes :root { ... } and
-   .dark { ... } variants. */
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Theme tokens — shadcn/ui canonical taxonomy adapted to Tailwind v4 @theme.
+ * Values in OKLCH for perceptual uniformity (matches shadcn v4 conventions).
+ *
+ * Light is the default; the .dark class on <html> swaps in the dark palette.
+ * The theme picker (PR 2) toggles this class; PR 1 adds only the tokens.
+ *
+ * Custom AI-semantic accents (per product design):
+ *   --color-ai-spark  — Electric Purple #8B5CF6 — for AI actions/generation
+ *   --color-success   — Crisp Emerald   #10B981 — for active/completed/passing
+ *   --color-danger    — Sharp Crimson   #EF4444 — for failures/alerts
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+@custom-variant dark (&:is(.dark, .dark *));
+
+@theme {
+  /* Surfaces */
+  --color-background:           oklch(1 0 0);                       /* white */
+  --color-foreground:           oklch(0.145 0 0);                   /* near-black */
+  --color-card:                 oklch(1 0 0);
+  --color-card-foreground:      oklch(0.145 0 0);
+  --color-popover:              oklch(1 0 0);
+  --color-popover-foreground:   oklch(0.145 0 0);
+
+  /* Brand — indigo-600 (#4f46e5) */
+  --color-primary:              oklch(0.585 0.233 277.117);
+  --color-primary-foreground:   oklch(0.985 0 0);
+
+  /* Subdued surfaces + muted text */
+  --color-secondary:            oklch(0.97 0 0);                    /* gray-50 */
+  --color-secondary-foreground: oklch(0.205 0 0);
+  --color-muted:                oklch(0.97 0 0);
+  --color-muted-foreground:     oklch(0.556 0 0);                   /* gray-500 */
+  --color-accent:               oklch(0.97 0 0);
+  --color-accent-foreground:    oklch(0.205 0 0);
+
+  /* Inputs + focus rings */
+  --color-border:               oklch(0.922 0 0);                   /* gray-200 */
+  --color-input:                oklch(0.922 0 0);
+  --color-ring:                 oklch(0.708 0 0);
+
+  /* AI semantic accents (per product design spec) */
+  --color-ai-spark:             oklch(0.65 0.21 295);               /* #8B5CF6 */
+  --color-ai-spark-foreground:  oklch(0.985 0 0);
+  --color-success:              oklch(0.696 0.17 162.48);           /* #10B981 */
+  --color-success-foreground:   oklch(0.985 0 0);
+  --color-warning:              oklch(0.74 0.18 70);                /* amber-500-ish */
+  --color-warning-foreground:   oklch(0.145 0 0);
+  --color-danger:               oklch(0.637 0.237 25.331);          /* #EF4444 */
+  --color-danger-foreground:    oklch(0.985 0 0);
+  --color-destructive:          oklch(0.637 0.237 25.331);          /* alias of --danger for shadcn parity */
+  --color-destructive-foreground: oklch(0.985 0 0);
+
+  /* Critic badge semantics — distinct from --danger so they can evolve independently */
+  --color-badge-green:          oklch(0.696 0.17 162.48);
+  --color-badge-amber:          oklch(0.74 0.18 70);
+  --color-badge-red:            oklch(0.637 0.237 25.331);
+
+  /* Radius scale (shadcn default) */
+  --radius:                     0.5rem;
+}
+
+/* Dark theme overrides — preserves the current slate-950 aesthetic so users
+ * who flip to dark see the original premium feel (instead of generic shadcn). */
+.dark {
+  --color-background:           oklch(0.13 0.025 254.46);           /* slate-950 */
+  --color-foreground:           oklch(0.97 0.01 244);               /* slate-100 */
+  --color-card:                 oklch(0.21 0.02 256);               /* slate-900 */
+  --color-card-foreground:      oklch(0.97 0.01 244);
+  --color-popover:              oklch(0.21 0.02 256);
+  --color-popover-foreground:   oklch(0.97 0.01 244);
+
+  --color-primary:              oklch(0.65 0.22 277);               /* indigo lifted for dark contrast */
+  --color-primary-foreground:   oklch(0.985 0 0);
+
+  --color-secondary:            oklch(0.28 0.018 257);              /* slate-800 */
+  --color-secondary-foreground: oklch(0.97 0.01 244);
+  --color-muted:                oklch(0.28 0.018 257);
+  --color-muted-foreground:     oklch(0.71 0.013 252);              /* slate-400 */
+  --color-accent:               oklch(0.28 0.018 257);
+  --color-accent-foreground:    oklch(0.97 0.01 244);
+
+  --color-border:               oklch(0.28 0.018 257);
+  --color-input:                oklch(0.21 0.02 256);
+  --color-ring:                 oklch(0.71 0.013 252);
+
+  --color-ai-spark:             oklch(0.7 0.19 295);                /* lifted purple */
+  --color-ai-spark-foreground:  oklch(0.985 0 0);
+  --color-success:              oklch(0.72 0.16 162);
+  --color-success-foreground:   oklch(0.985 0 0);
+  --color-warning:              oklch(0.8 0.16 70);
+  --color-warning-foreground:   oklch(0.145 0 0);
+  --color-danger:               oklch(0.704 0.19 22);
+  --color-danger-foreground:    oklch(0.985 0 0);
+  --color-destructive:          oklch(0.704 0.19 22);
+  --color-destructive-foreground: oklch(0.985 0 0);
+
+  --color-badge-green:          oklch(0.72 0.16 162);
+  --color-badge-amber:          oklch(0.8 0.16 70);
+  --color-badge-red:            oklch(0.704 0.19 22);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Base styles — currently still hardcoded to slate-950 (the current dark UI).
+ * PR 2 will replace these with `bg-background text-foreground` once the
+ * component sweep is complete + the theme picker is wired up. Leaving these
+ * hardcoded for PR 1 means: no visual change until the sweep ships.
+ * ──────────────────────────────────────────────────────────────────────────── */
 html, body, #root {
-  background-color: #020617;  /* slate-950 */
-  color: #f1f5f9;             /* slate-100 */
+  background-color: #020617;  /* slate-950 — replace with bg-background in PR 2 */
+  color: #f1f5f9;             /* slate-100 — replace with text-foreground in PR 2 */
   min-height: 100vh;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   scroll-behavior: smooth;
 }
 
-/* Custom premium scrollbars for dark slate design system */
+/* Custom premium scrollbars for dark slate design system.
+ * PR 2 will swap these for token-aware values so light theme gets soft gray
+ * scrollbars instead of the dark blue-gray ones. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
