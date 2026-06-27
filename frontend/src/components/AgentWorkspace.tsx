@@ -18,6 +18,7 @@ import { TechStackTab } from './TechStackTab';
 import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2, Plus } from 'lucide-react';
 import { generateVoiceBrief } from '../lib/voiceBrief';
 import { VoiceWidgetFAB } from './VoiceWidgetFAB';
+import { ThemePicker } from './ThemePicker';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -164,35 +165,35 @@ export const AgentWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       {/* Left Sidebar Control Panel */}
-      <aside className="w-80 bg-slate-900 border-r border-slate-800 flex flex-col justify-between overflow-y-auto shadow-xl">
+      <aside className="w-80 bg-card border-r border-border flex flex-col justify-between overflow-y-auto shadow-xl">
         <div className="p-6 space-y-6">
           {/* User Sign-In/Sign-Out Container */}
           {loading ? (
-            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 text-center text-xs text-slate-500">
+            <div className="bg-background p-4 rounded-lg border border-border text-center text-xs text-muted-foreground">
               Loading session...
             </div>
           ) : isAuthenticated ? (
-            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm space-y-3">
+            <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium">Signed in:</span>
+                <span className="text-xs text-muted-foreground font-medium">Signed in:</span>
                 <button
                   onClick={logout}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1 font-semibold"
+                  className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
                 >
                   Sign out <LogOut size={12} />
                 </button>
               </div>
-              <div className="text-sm font-semibold text-slate-200 truncate">{user?.name || user?.email}</div>
+              <div className="text-sm font-semibold text-foreground truncate">{user?.name || user?.email}</div>
             </div>
           ) : (
-            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 shadow-sm space-y-3 text-center">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Authentication</div>
-              <p className="text-xs text-slate-500">Sign in with Google to run a live demo of EM Copilot. Authentication helps prevent bots so the demo stays free for everyone. We only read your email to mark the run. We don't store anything else.</p>
+            <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
+              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
+              <p className="text-xs text-muted-foreground">Sign in with Google to run a live demo of EM Copilot. Authentication helps prevent bots so the demo stays free for everyone. We only read your email to mark the run. We don't store anything else.</p>
               <button
                 onClick={login}
-                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold text-xs transition duration-155"
+                className="w-full py-2 bg-primary hover:bg-primary text-white rounded font-bold text-xs transition duration-155"
               >
                 Sign in with Google
               </button>
@@ -202,14 +203,14 @@ export const AgentWorkspace: React.FC = () => {
           {/* Model Selection Section */}
           {isAuthenticated && (
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Model Selection</h3>
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Model Selection</h3>
               <div className="relative">
                 <select
                   id="model-family-select"
                   value={modelFamily}
                   onChange={(e) => setModelFamily(e.target.value)}
                   disabled={!!runId || isStartingPipeline}
-                  className="w-full bg-slate-950 border border-slate-800 text-slate-350 rounded px-3 py-2 text-xs font-medium focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-background border border-border text-muted-foreground rounded px-3 py-2 text-xs font-medium focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {/* Family options — dynamic from /api/providers.
                       `disabled` reflects real backend availability (missing API key,
@@ -238,7 +239,7 @@ export const AgentWorkspace: React.FC = () => {
                     );
                   })}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground">
                   <ChevronDown size={14} />
                 </div>
               </div>
@@ -248,13 +249,13 @@ export const AgentWorkspace: React.FC = () => {
           {/* Upload BRD Section */}
           {isAuthenticated && (
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Upload BRD</h3>
-              <p className="text-xs text-slate-500">Drop a PDF, DOCX, or TXT BRD</p>
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Upload BRD</h3>
+              <p className="text-xs text-muted-foreground">Drop a PDF, DOCX, or TXT BRD</p>
 
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleFileDrop}
-                className="border-2 border-dashed border-slate-800 rounded-lg p-6 bg-slate-950 hover:bg-slate-900/60 hover:border-indigo-500/50 transition cursor-pointer text-center relative"
+                className="border-2 border-dashed border-border rounded-lg p-6 bg-background hover:bg-card/60 hover:border-primary/50 transition cursor-pointer text-center relative"
               >
                 <input
                   type="file"
@@ -262,21 +263,21 @@ export const AgentWorkspace: React.FC = () => {
                   accept=".pdf,.docx,.txt"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <Upload className="mx-auto text-slate-600 mb-2" size={24} />
-                <p className="text-xs font-semibold text-slate-400">Drag and drop file here</p>
-                <p className="text-[10px] text-slate-600 mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
-                <button className="mt-3 px-3 py-1.5 bg-slate-900 text-slate-300 border border-slate-800 rounded hover:bg-slate-800 text-xs font-medium">
+                <Upload className="mx-auto text-muted-foreground mb-2" size={24} />
+                <p className="text-xs font-semibold text-muted-foreground">Drag and drop file here</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
+                <button className="mt-3 px-3 py-1.5 bg-card text-foreground border border-border rounded hover:bg-secondary text-xs font-medium">
                   Browse files
                 </button>
               </div>
 
               {selectedFile && (
-                <div className="flex items-center justify-between p-2 bg-slate-950 rounded border border-slate-800 text-xs">
-                  <span className="truncate max-w-[180px] font-medium text-slate-300">{selectedFile.name}</span>
-                  <span className="text-slate-500 text-[10px] ml-2">{(selectedFile.size / 1024).toFixed(1)}KB</span>
+                <div className="flex items-center justify-between p-2 bg-background rounded border border-border text-xs">
+                  <span className="truncate max-w-[180px] font-medium text-foreground">{selectedFile.name}</span>
+                  <span className="text-muted-foreground text-[10px] ml-2">{(selectedFile.size / 1024).toFixed(1)}KB</span>
                   <button
                     onClick={() => setSelectedFile(null)}
-                    className="text-slate-500 hover:text-red-400 ml-2"
+                    className="text-muted-foreground hover:text-danger ml-2"
                     aria-label="Remove selected file"
                   >
                     <X size={14} />
@@ -292,15 +293,15 @@ export const AgentWorkspace: React.FC = () => {
               onClick={triggerPipeline}
               disabled={!selectedFile || !!runId || isStartingPipeline}
               className={`w-full py-2.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2 ${runId || isStartingPipeline
-                  ? 'bg-slate-850 text-slate-500 border border-slate-800 cursor-not-allowed'
+                  ? 'bg-card text-muted-foreground border border-border cursor-not-allowed'
                   : selectedFile
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md cursor-pointer'
-                    : 'bg-slate-850 text-slate-600 border border-slate-800 cursor-not-allowed'
+                    ? 'bg-primary hover:bg-primary text-white shadow-md cursor-pointer'
+                    : 'bg-card text-muted-foreground border border-border cursor-not-allowed'
                 }`}
             >
               {isStartingPipeline ? (
                 <>
-                  <Loader2 className="animate-spin text-indigo-400" size={16} />
+                  <Loader2 className="animate-spin text-primary" size={16} />
                   <span>Starting Pipeline...</span>
                 </>
               ) : (
@@ -311,10 +312,10 @@ export const AgentWorkspace: React.FC = () => {
 
           {/* Current Run Panel */}
           {runId && (
-            <div className="border-t border-slate-800 pt-4 space-y-2">
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Run</h4>
+            <div className="border-t border-border pt-4 space-y-2">
+              <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Run</h4>
               <div className="flex items-center gap-1.5">
-                <div className="flex-1 bg-slate-950 p-2 rounded font-mono text-[10px] text-slate-300 border border-slate-850 break-all select-all">
+                <div className="flex-1 bg-background p-2 rounded font-mono text-[10px] text-foreground border border-border break-all select-all">
                   {runId}
                 </div>
                 <button
@@ -323,18 +324,18 @@ export const AgentWorkspace: React.FC = () => {
                     setRunIdCopied(true);
                     setTimeout(() => setRunIdCopied(false), 2000);
                   }}
-                  className="p-1.5 bg-slate-950 border border-slate-850 rounded hover:bg-slate-800 hover:text-white transition text-slate-450 shrink-0"
+                  className="p-1.5 bg-background border border-border rounded hover:bg-secondary hover:text-white transition text-muted-foreground shrink-0"
                   title="Copy Run ID"
                 >
                   {runIdCopied ? (
-                    <Check size={12} className="text-emerald-400 animate-scale-in" />
+                    <Check size={12} className="text-success animate-scale-in" />
                   ) : (
                     <Copy size={12} />
                   )}
                 </button>
               </div>
-              <div className="text-xs text-slate-400">
-                Status: <span className="font-semibold text-green-400">{pipelineStatus || "Starting..."}</span>
+              <div className="text-xs text-muted-foreground">
+                Status: <span className="font-semibold text-success">{pipelineStatus || "Starting..."}</span>
               </div>
               <button
                 onClick={() => {
@@ -342,7 +343,7 @@ export const AgentWorkspace: React.FC = () => {
                   clearRun();
                   setRunId(null);
                 }}
-                className="w-full py-1.5 border border-rose-800 bg-rose-950/20 hover:bg-rose-900/40 rounded text-xs font-semibold text-rose-300 hover:text-rose-200 transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
+                className="w-full py-1.5 border border-destructive bg-destructive/10 hover:bg-destructive/40 rounded text-xs font-semibold text-destructive hover:text-destructive transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
               >
                 Clear Plan & Reset
               </button>
@@ -351,10 +352,10 @@ export const AgentWorkspace: React.FC = () => {
         </div>
 
         {/* Collapsible Advanced Settings Accordion */}
-        <div className="border-t border-slate-800 bg-slate-900/40">
+        <div className="border-t border-border bg-card/40">
           <button
             onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-            className="w-full px-6 py-4 flex items-center justify-between text-xs font-bold text-slate-400 hover:bg-slate-850/40 transition uppercase tracking-wider"
+            className="w-full px-6 py-4 flex items-center justify-between text-xs font-bold text-muted-foreground hover:bg-card/40 transition uppercase tracking-wider"
           >
             <span>⚙️ Advanced settings</span>
             {isAdvancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -362,12 +363,12 @@ export const AgentWorkspace: React.FC = () => {
           {isAdvancedOpen && (
             <div className="px-6 pb-6 pt-2 space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">API Base URL</label>
+                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">API Base URL</label>
                 <input
                   type="text"
                   value={apiBaseUrl}
                   onChange={(e) => setApiBaseUrl(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-200 font-mono"
+                  className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none text-foreground font-mono"
                 />
               </div>
             </div>
@@ -376,12 +377,12 @@ export const AgentWorkspace: React.FC = () => {
       </aside>
 
       {/* Main Workstation Panel */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+      <main className="flex-1 flex flex-col overflow-hidden bg-background">
         {/* Main Header */}
-        <header className="h-16 border-b border-slate-800 px-8 flex items-center justify-between bg-slate-900 shrink-0 shadow-sm relative">
+        <header className="h-16 border-b border-border px-8 flex items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-100 bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">BRD → Engineering Plan</h1>
-            <p className="text-xs text-slate-500">EM Copilot · Multi-Agent BRD-to-Engineering Plan System · Demo - AI can make mistakes. Validate outputs.</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">BRD → Engineering Plan</h1>
+            <p className="text-xs text-muted-foreground">EM Copilot · Multi-Agent BRD-to-Engineering Plan System · Demo - AI can make mistakes. Validate outputs.</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
@@ -391,11 +392,14 @@ export const AgentWorkspace: React.FC = () => {
               apiBaseUrl={apiBaseUrl}
             />
           )}
-          <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${Object.keys(providers).length > 0 ? 'bg-green-500 animate-pulse' : 'bg-slate-650'}`} />
-            <span className="text-xs font-semibold text-slate-400">
-              {Object.keys(providers).length > 0 ? "API connected" : "API Offline"}
-            </span>
+          <div className="flex items-center gap-3">
+            <ThemePicker />
+            <div className="flex items-center gap-2">
+              <span className={`h-2.5 w-2.5 rounded-full ${Object.keys(providers).length > 0 ? 'bg-success animate-pulse' : 'bg-muted-foreground'}`} />
+              <span className="text-xs font-semibold text-muted-foreground">
+                {Object.keys(providers).length > 0 ? "API connected" : "API Offline"}
+              </span>
+            </div>
           </div>
         </header>
         {/* Scrollable Workstation Body */}
@@ -414,12 +418,12 @@ export const AgentWorkspace: React.FC = () => {
             <>
               {/* Fallback Active Alert Banner */}
               {fallbackActive && (
-                <div className="bg-amber-950/20 border-l-4 border-amber-600 p-4 rounded shadow-sm text-xs text-amber-300 flex items-center justify-between animate-fade-in">
+                <div className="bg-warning/20 border-l-4 border-warning p-4 rounded shadow-sm text-xs text-warning flex items-center justify-between animate-fade-in">
                   <div className="flex items-center gap-3">
                     <span className="text-lg">⚠️</span>
                     <div>
-                      <h4 className="font-bold text-amber-400">Automatic LLM Provider Fallback Triggered</h4>
-                      <p className="text-amber-300/80">
+                      <h4 className="font-bold text-warning">Automatic LLM Provider Fallback Triggered</h4>
+                      <p className="text-warning/80">
                         The primary <strong>{fallbackActive.from.toUpperCase()}</strong> provider limits were reached or key expired. Switched to <strong>{fallbackActive.to.toUpperCase()}</strong> successfully to complete execution.
                       </p>
                     </div>
@@ -429,11 +433,11 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Pipeline Error Alert Banner */}
               {pipelineStatus === "error" && (
-                <div className="bg-red-950/30 border border-red-900/50 p-5 rounded-xl shadow-lg flex flex-col gap-2 animate-fade-in">
-                  <h4 className="text-sm font-bold text-red-400 flex items-center gap-2">
+                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-2 animate-fade-in">
+                  <h4 className="text-sm font-bold text-danger flex items-center gap-2">
                     <span>❌</span> Pipeline Execution Failed
                   </h4>
-                  <p className="text-xs text-red-300/90 leading-relaxed font-semibold">
+                  <p className="text-xs text-danger/90 leading-relaxed font-semibold">
                     {errorMessage || "An unexpected error occurred during execution. Please check the logs."}
                   </p>
                 </div>
@@ -441,16 +445,16 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* HITL Awaiting Alert Banner */}
               {pipelineStatus === "awaiting_hitl" && !approvalResult && (
-                <div className="bg-amber-950/20 border-l-4 border-amber-600 p-4 rounded shadow-sm flex items-center justify-between">
+                <div className="bg-warning/20 border-l-4 border-warning p-4 rounded shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">⏸️</span>
                     <div>
-                      <h4 className="text-sm font-bold text-amber-400">Action Required: Review the Artifacts. Approval needed to push this into Jira.</h4>
+                      <h4 className="text-sm font-bold text-warning">Action Required: Review the Artifacts. Approval needed to push this into Jira.</h4>
                     </div>
                   </div>
                   <a
                     href="#decision-gate"
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded transition shadow-sm shrink-0"
+                    className="px-4 py-2 bg-warning hover:bg-warning text-white font-semibold text-xs rounded transition shadow-sm shrink-0"
                   >
                     👇 Scroll to Decision Gate
                   </a>
@@ -469,47 +473,47 @@ export const AgentWorkspace: React.FC = () => {
 
 
               {/* Performance Metrics Summary */}
-              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-slate-400 bg-slate-900 p-4 rounded-lg border border-slate-800">
+              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border">
                 <div>
-                  <strong>Current Status:</strong> <span className="text-slate-200 capitalize font-medium">{pipelineStatus || "—"}</span>
+                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus || "—"}</span>
                 </div>
                 <div>
-                  <strong>Total Processing Time:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{elapsedSeconds ? `${elapsedSeconds}s` : '—'}</code>
+                  <strong>Total Processing Time:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{elapsedSeconds ? `${elapsedSeconds}s` : '—'}</code>
                 </div>
                 <div>
-                  <strong>Tokens used:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-slate-200">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
+                  <strong>Tokens used:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
                 </div>
                 <div>
-                  <strong>Cost Spent:</strong> <code className="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded font-mono text-emerald-400 font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '—'}</code>
+                  <strong>Cost Spent:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-success font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '—'}</code>
                 </div>
               </div>
 
               {/* Critic Scoring Cards */}
               {criticOutput && (
                 <ErrorBoundary fallback={
-                  <div className="p-6 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-red-400 font-bold text-sm uppercase tracking-wider">
+                  <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-danger font-bold text-sm uppercase tracking-wider">
                       <ShieldAlert size={16} />
                       <span>Critic Component Failure</span>
                     </div>
-                    <p className="text-xs text-red-300/80 leading-relaxed">
+                    <p className="text-xs text-danger/80 leading-relaxed">
                       An error occurred while rendering the Critic scorecards. The rest of the workspace remains active.
                     </p>
                   </div>
                 }>
-                  <div className="space-y-4 border border-slate-800 rounded-xl p-6 bg-slate-900 shadow-lg">
-                    <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
+                  <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-4">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Critic — Quality Assessment</h3>
-                        <div className="text-xs text-slate-500">
-                          Revision {criticOutput.revisionNumber} · Overall <strong className="text-slate-200">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
+                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic — Quality Assessment</h3>
+                        <div className="text-xs text-muted-foreground">
+                          Revision {criticOutput.revisionNumber} · Overall <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
                         </div>
                       </div>
                       <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
-                          ? 'bg-green-950/50 text-green-400 border border-green-800/50'
+                          ? 'bg-green-950/50 text-success border border-green-800/50'
                           : criticOutput.badge === 'amber'
-                            ? 'bg-amber-950/50 text-amber-400 border border-amber-800/50'
-                            : 'bg-red-950/50 text-red-400 border border-red-800/50'
+                            ? 'bg-warning/50 text-warning border border-warning/50'
+                            : 'bg-danger/50 text-danger border border-danger/50'
                         }`}>
                         {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
                       </span>
@@ -521,10 +525,10 @@ export const AgentWorkspace: React.FC = () => {
                         const data = criticOutput.dimensions[metric];
                         if (!data) return null;
                         return (
-                          <div key={metric} className="p-4 bg-slate-950 rounded-lg border border-slate-800 text-center">
-                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider capitalize">{metric}</div>
-                            <div className="text-2xl font-extrabold text-slate-200 my-1">{data.score.toFixed(2)}</div>
-                            <div className={`text-xs font-semibold ${data.passed ? 'text-green-400' : 'text-red-400'}`}>
+                          <div key={metric} className="p-4 bg-background rounded-lg border border-border text-center">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider capitalize">{metric}</div>
+                            <div className="text-2xl font-extrabold text-foreground my-1">{data.score.toFixed(2)}</div>
+                            <div className={`text-xs font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.passed ? `✓ Passed (≥ ${data.threshold})` : `✗ Failed (≥ ${data.threshold})`}
                             </div>
                           </div>
@@ -538,30 +542,30 @@ export const AgentWorkspace: React.FC = () => {
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <h3 className="text-base font-bold text-slate-100">Artifacts</h3>
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="text-base font-bold text-foreground">Artifacts</h3>
                     <button
                       onClick={handleDownloadPDF}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 rounded text-xs font-bold transition shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary text-foreground border border-border rounded text-xs font-bold transition shadow-sm"
                     >
                       <Download size={14} /> Download PDF
                     </button>
                   </div>
 
                   {/* Disclaimer notice banner */}
-                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-lg text-xs leading-relaxed text-slate-400">
-                    <span className="font-bold text-slate-200 uppercase">⚠️ Disclaimer:</span> This system is an automated engineering planning assistant. AI-generated plans may contain inaccuracies. Please review and validate all outputs before implementation.
+                  <div className="bg-background border border-border p-4 rounded-lg text-xs leading-relaxed text-muted-foreground">
+                    <span className="font-bold text-foreground uppercase">⚠️ Disclaimer:</span> This system is an automated engineering planning assistant. AI-generated plans may contain inaccuracies. Please review and validate all outputs before implementation.
                   </div>
 
                   {/* Tabs list */}
-                  <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 w-fit">
+                  <div className="flex bg-background p-1 rounded-lg border border-border w-fit">
                     {(['plan', 'schedule', 'arch', 'poc', 'stack'] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all ${activeTab === tab
-                            ? 'bg-slate-900 text-slate-100 shadow-sm border border-slate-800'
-                            : 'text-slate-500 hover:text-slate-350'
+                            ? 'bg-card text-foreground shadow-sm border border-border'
+                            : 'text-muted-foreground hover:text-muted-foreground'
                           }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
@@ -570,8 +574,8 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
 
                   {/* Tab Display Area */}
-                  <div className="border border-slate-800 rounded-xl p-6 bg-slate-900 shadow-lg min-h-[250px]">
-                    <ErrorBoundary fallback={<div className="p-4 bg-red-950/20 border border-red-800/40 text-red-400 rounded-lg text-sm">Failed to render artifact.</div>}>
+                  <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
+                    <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
                       {pipelineStatus === 'dispatching' ? (
                         <PlanSkeleton />
                       ) : (
@@ -600,14 +604,14 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Decision Gate Section */}
               {pipelineStatus === "awaiting_hitl" && (
-                <div className="border-t border-slate-800 pt-8">
+                <div className="border-t border-border pt-8">
                   <ErrorBoundary fallback={
-                    <div className="p-6 bg-red-950/20 border border-red-900/40 rounded-xl space-y-3">
-                      <div className="flex items-center gap-2 text-red-400 font-bold text-sm uppercase tracking-wider">
+                    <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
+                      <div className="flex items-center gap-2 text-danger font-bold text-sm uppercase tracking-wider">
                         <ShieldAlert size={16} />
                         <span>Decision Gate Component Failure</span>
                       </div>
-                      <p className="text-xs text-red-300/80 leading-relaxed">
+                      <p className="text-xs text-danger/80 leading-relaxed">
                         An error occurred while loading the Decision Gate. Please try refreshing or restarting the run.
                       </p>
                     </div>
@@ -619,25 +623,25 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Export Status / Final Decision Section */}
               {(pipelineStatus === "exported" || pipelineStatus === "export_failed" || pipelineStatus === "rejected") && (
-                <div className="border-t border-slate-800 pt-8">
-                  <div className="max-w-3xl mx-auto p-6 bg-slate-900 border border-slate-800 rounded-xl space-y-6 shadow-xl animate-fade-in">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                      <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Export Results</h3>
+                <div className="border-t border-border pt-8">
+                  <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Export Results</h3>
                       <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${
                         pipelineStatus === 'exported'
-                          ? 'bg-emerald-950/20 border border-emerald-800/40 text-emerald-400'
+                          ? 'bg-success/20 border border-success/40 text-success'
                           : pipelineStatus === 'rejected'
-                            ? 'bg-red-950/20 border border-red-800/40 text-red-400'
-                            : 'bg-amber-950/20 border border-amber-800/40 text-amber-400'
+                            ? 'bg-danger/20 border border-danger/40 text-danger'
+                            : 'bg-warning/20 border border-warning/40 text-warning'
                       }`}>
                         {pipelineStatus === 'exported' ? '✓ Exported Successfully' : pipelineStatus === 'rejected' ? '✗ Plan Rejected' : '⚠ Export Failed'}
                       </span>
                     </div>
 
                     {pipelineStatus === 'rejected' && (
-                      <div className="p-4 bg-red-950/10 border border-red-900/30 text-red-450 rounded-lg space-y-1">
+                      <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-lg space-y-1">
                         <div className="text-xs font-bold uppercase tracking-wider">Re-evaluation Required</div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                           This plan was rejected by the manager. Review the feedback logs and adjust details before starting a new run.
                         </p>
                       </div>
@@ -646,37 +650,37 @@ export const AgentWorkspace: React.FC = () => {
                     <div className="space-y-4">
                       {/* Google Sheets Status Box */}
                       {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
-                        <div className="p-4 bg-emerald-950/15 border border-emerald-500/30 rounded-lg space-y-3 animate-fade-in">
-                          <div className="text-xs font-bold text-emerald-450">
+                        <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
+                          <div className="text-xs font-bold text-success">
                             Artifacts exported to Google Sheets
                           </div>
-                          <div className="text-[11px] text-slate-400 leading-relaxed">
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
                             {approvalResult?.export_detail || "Wrote Run Summary + Plan + Schedule + Tech Stack tabs to Google Sheets"}
                           </div>
                           <a
                             href={approvalResult.sheet_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold text-xs transition duration-150 shadow-sm"
+                            className="inline-block px-4 py-2 bg-destructive hover:bg-destructive text-white rounded font-bold text-xs transition duration-150 shadow-sm"
                           >
                             Open Google Sheet
                           </a>
                         </div>
                       ) : approvalResult?.export_status === 'local_fallback' ? (
-                        <div className="p-4 bg-amber-950/15 border border-amber-500/30 rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-amber-405">
+                        <div className="p-4 bg-warning/15 border border-warning/30 rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-warning">
                             Artifacts saved to local fallback CSV
                           </div>
-                          <div className="text-[11px] text-slate-400 leading-relaxed">
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
                             {approvalResult?.export_detail || "Google Sheets integration is not configured — local CSV backup exported instead."}
                           </div>
                         </div>
                       ) : approvalResult?.export_status === 'failed' ? (
-                        <div className="p-4 bg-red-950/15 border border-red-500/30 rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-red-450">
+                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-danger">
                             Google Sheets export failed
                           </div>
-                          <div className="text-[11px] text-red-300 leading-relaxed font-mono">
+                          <div className="text-[11px] text-danger leading-relaxed font-mono">
                             {approvalResult?.export_detail || "Failed to push decision. Google Sheets export failed."}
                           </div>
                         </div>
@@ -684,37 +688,37 @@ export const AgentWorkspace: React.FC = () => {
 
                       {/* Jira Status Box */}
                       {approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
-                        <div className="p-4 bg-emerald-950/15 border border-emerald-500/30 rounded-lg space-y-3 animate-fade-in">
-                          <div className="text-xs font-bold text-emerald-450">
+                        <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
+                          <div className="text-xs font-bold text-success">
                             Pushed to Jira: {approvalResult.jira_issue_key}
                           </div>
-                          <div className="text-[11px] text-slate-400 leading-relaxed">
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
                             {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
                           </div>
                           <a
                             href={approvalResult.jira_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold text-xs transition duration-150 shadow-sm"
+                            className="inline-block px-4 py-2 bg-destructive hover:bg-destructive text-white rounded font-bold text-xs transition duration-150 shadow-sm"
                           >
                             Open Jira issue {approvalResult.jira_issue_key}
                           </a>
                         </div>
                       ) : approvalResult?.jira_status === 'skipped' ? (
-                        <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-1 animate-fade-in">
-                          <div className="text-xs font-bold text-slate-450">
+                        <div className="p-4 bg-card border border-border rounded-lg space-y-1 animate-fade-in">
+                          <div className="text-xs font-bold text-muted-foreground">
                             Jira push skipped
                           </div>
-                          <div className="text-[11px] text-slate-500 leading-relaxed">
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
                             {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
                           </div>
                         </div>
                       ) : approvalResult?.jira_status === 'failed' ? (
-                        <div className="p-4 bg-red-950/15 border border-red-500/30 rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-red-450">
+                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg space-y-2 animate-fade-in">
+                          <div className="text-xs font-bold text-danger">
                             Jira push failed
                           </div>
-                          <div className="text-[11px] text-red-350 leading-relaxed font-mono">
+                          <div className="text-[11px] text-danger leading-relaxed font-mono">
                             {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
                           </div>
                         </div>
@@ -725,14 +729,14 @@ export const AgentWorkspace: React.FC = () => {
                         Same effect as the sidebar's destructive "Clear Plan & Reset"
                         but framed as a forward action (indigo, not red) since the
                         user has just finished a run, not aborting one mid-flight. */}
-                    <div className="border-t border-slate-800 pt-5 flex justify-end">
+                    <div className="border-t border-border pt-5 flex justify-end">
                       <button
                         onClick={() => {
                           setSelectedFile(null);
                           clearRun();
                           setRunId(null);
                         }}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-indigo-500/30"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
                       >
                         <Plus size={14} />
                         Start New Plan
@@ -746,7 +750,7 @@ export const AgentWorkspace: React.FC = () => {
               <CriticFindings criticDetail={artifacts?.critic_output} />
 
               {/* Live Log Console */}
-              <div className="border-t border-slate-800 pt-8">
+              <div className="border-t border-border pt-8">
                 <LogConsole logs={logs} />
               </div>
             </>

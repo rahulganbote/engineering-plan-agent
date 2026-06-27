@@ -57,7 +57,7 @@ export const VoiceWidgetFAB: React.FC<VoiceWidgetFABProps> = ({
           onClick={() => setOpen(true)}
           aria-label="Start a voice call with the EM Copilot agent"
           title="Start a voice call"
-          className="flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg hover:shadow-indigo-500/40 hover:scale-105 transition-all duration-200 ring-2 ring-indigo-500/30"
+          className="flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary text-white shadow-lg hover:shadow-primary/40 hover:scale-105 transition-all duration-200 ring-2 ring-primary/30"
         >
           <Mic size={18} />
         </button>
@@ -67,7 +67,7 @@ export const VoiceWidgetFAB: React.FC<VoiceWidgetFABProps> = ({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close voice call widget"
-            className="absolute -top-2 -right-2 z-10 w-6 h-6 rounded-full bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700 flex items-center justify-center shadow-md ring-1 ring-slate-700"
+            className="absolute -top-2 -right-2 z-10 w-6 h-6 rounded-full bg-secondary text-foreground hover:text-foreground hover:bg-secondary flex items-center justify-center shadow-md ring-1 ring-ring"
           >
             <X size={12} />
           </button>

@@ -38,16 +38,16 @@ interface CriticFindingsProps {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  low:      'text-slate-400',
-  medium:   'text-amber-400',
+  low:      'text-muted-foreground',
+  medium:   'text-warning',
   high:     'text-orange-400',
-  critical: 'text-red-400',
+  critical: 'text-danger',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  supported:           'text-emerald-400',
-  partially_supported: 'text-amber-400',
-  unsupported:         'text-red-400',
+  supported:           'text-success',
+  partially_supported: 'text-warning',
+  unsupported:         'text-danger',
 };
 
 export const CriticFindings: React.FC<CriticFindingsProps> = ({ criticDetail }) => {
@@ -68,34 +68,34 @@ export const CriticFindings: React.FC<CriticFindingsProps> = ({ criticDetail }) 
   if (issues.length === 0 && flaggedClaims.length === 0) return null;
 
   return (
-    <div className="border-t border-slate-800 pt-6 mt-6">
+    <div className="border-t border-border pt-6 mt-6">
       <button
         type="button"
         onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-slate-800 bg-slate-900/40 hover:bg-slate-900/60 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-border bg-card/40 hover:bg-card/60 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-semibold text-slate-200">
+          <AlertTriangle className="w-4 h-4 text-warning" />
+          <span className="text-sm font-semibold text-foreground">
             Critic findings · {issues.length} consistency · {flaggedClaims.length} grounding
           </span>
         </div>
         {expanded
-          ? <ChevronUp className="w-4 h-4 text-slate-400" />
-          : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
       </button>
 
       {expanded && (
-        <div className="mt-3 px-4 py-3 rounded-lg border border-slate-800 bg-slate-950/40 space-y-4">
+        <div className="mt-3 px-4 py-3 rounded-lg border border-border bg-background/40 space-y-4">
           {issues.length > 0 && (
             <div>
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">
                 Consistency issues ({issues.length})
               </h4>
               <ul className="space-y-2">
                 {issues.map((issue, i) => {
                   const sev = (issue.severity ?? 'medium').toLowerCase();
-                  const sevColor = SEVERITY_COLORS[sev] ?? 'text-slate-300';
+                  const sevColor = SEVERITY_COLORS[sev] ?? 'text-foreground';
                   return (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <AlertCircle className={`w-4 h-4 mt-0.5 ${sevColor}`} />
@@ -103,11 +103,11 @@ export const CriticFindings: React.FC<CriticFindingsProps> = ({ criticDetail }) 
                         <span className={`text-xs font-semibold uppercase ${sevColor}`}>
                           {sev}
                         </span>
-                        <span className="text-slate-300 ml-2">
+                        <span className="text-foreground ml-2">
                           {issue.conflict_description}
                         </span>
                         {issue.agents_involved?.length ? (
-                          <span className="text-slate-500 text-xs ml-2">
+                          <span className="text-muted-foreground text-xs ml-2">
                             ({issue.agents_involved.join(', ')})
                           </span>
                         ) : null}
@@ -121,24 +121,24 @@ export const CriticFindings: React.FC<CriticFindingsProps> = ({ criticDetail }) 
 
           {flaggedClaims.length > 0 && (
             <div>
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">
                 Hallucination &amp; scope creep ({flaggedClaims.length})
               </h4>
               <ul className="space-y-2">
                 {flaggedClaims.map((f, i) => {
                   const status = (f.status ?? 'unsupported').toLowerCase();
-                  const statusColor = STATUS_COLORS[status] ?? 'text-slate-300';
+                  const statusColor = STATUS_COLORS[status] ?? 'text-foreground';
                   return (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <CheckCircle2 className={`w-4 h-4 mt-0.5 ${statusColor}`} />
                       <div className="flex-1">
-                        <code className="text-xs text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">
+                        <code className="text-xs text-muted-foreground bg-card px-1.5 py-0.5 rounded">
                           {f.agent}
                         </code>
                         <span className={`text-xs italic ml-2 ${statusColor}`}>
                           {status.replace('_', ' ')}
                         </span>
-                        <span className="text-slate-300 ml-2">
+                        <span className="text-foreground ml-2">
                           {f.claim}
                         </span>
                       </div>

@@ -103,7 +103,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'hitl_escalated':
       case 'jira_skipped':
       case 'provider_fallback':
-        return 'text-amber-500 font-bold';
+        return 'text-warning font-bold';
 
       // Red (Critical/Error)
       case 'error':
@@ -111,7 +111,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'breaker_open':
       case 'export_failed':
       case 'pinecone_ingest_failed':
-        return 'text-red-400 font-bold';
+        return 'text-danger font-bold';
 
       // Green (Success)
       case 'pipeline_complete':
@@ -120,10 +120,10 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'jira_pushed':
       case 'idempotent_skip':
       case 'pinecone_ingest':
-        return 'text-emerald-400';
+        return 'text-success';
 
       default:
-        return 'text-slate-300';
+        return 'text-foreground';
     }
   };
 
@@ -140,26 +140,26 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
   };
 
   return (
-    <div className="border border-slate-800 rounded-lg overflow-hidden bg-slate-950 flex flex-col shadow-lg">
+    <div className="border border-border rounded-lg overflow-hidden bg-background flex flex-col shadow-lg">
       {/* Console Header */}
-      <div className="px-5 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center select-none">
-        <div className="flex items-center gap-2 text-slate-300">
+      <div className="px-5 py-3 bg-card border-b border-border flex justify-between items-center select-none">
+        <div className="flex items-center gap-2 text-foreground">
           <Terminal size={16} className="text-cyan-400" />
           <span className="font-bold text-xs uppercase tracking-wider">Live Pipeline Engine Console</span>
-          <span className="px-1.5 py-0.5 bg-slate-800 rounded text-[10px] text-slate-400 font-mono">
+          <span className="px-1.5 py-0.5 bg-secondary rounded text-[10px] text-muted-foreground font-mono">
             {logs.length} events
           </span>
         </div>
         <button
           onClick={handleCopy}
           disabled={logs.length === 0}
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-300 disabled:opacity-55 disabled:cursor-not-allowed rounded text-[11px] font-semibold border border-slate-700 transition"
+          className="flex items-center gap-1.5 px-2.5 py-1 bg-secondary hover:bg-secondary text-foreground disabled:opacity-55 disabled:cursor-not-allowed rounded text-[11px] font-semibold border border-border transition"
           title="Copy formatted logs to clipboard"
         >
           {copied ? (
             <>
-              <Check size={12} className="text-emerald-400 animate-scale-in" />
-              <span className="text-emerald-400">Copied!</span>
+              <Check size={12} className="text-success animate-scale-in" />
+              <span className="text-success">Copied!</span>
             </>
           ) : (
             <>
@@ -173,17 +173,17 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       {/* Terminal logs list */}
       <div
         ref={containerRef}
-        className="p-5 bg-slate-950 text-slate-300 font-mono text-xs max-h-72 min-h-[12rem] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
+        className="p-5 bg-background text-foreground font-mono text-xs max-h-72 min-h-[12rem] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
       >
         {logs.length === 0 ? (
-          <div className="text-slate-600 italic flex items-center gap-2 select-none h-full justify-center py-12">
+          <div className="text-muted-foreground italic flex items-center gap-2 select-none h-full justify-center py-12">
             <span className="animate-pulse">_</span> Awaiting execution triggers to hook into the SSE event stream...
           </div>
         ) : (
           logs.map((log, i) => (
-            <div key={i} className="leading-relaxed hover:bg-slate-900/40 px-1 rounded transition-colors flex items-start gap-3">
+            <div key={i} className="leading-relaxed hover:bg-card/40 px-1 rounded transition-colors flex items-start gap-3">
               {/* Event counter */}
-              <span className="text-slate-700 select-none font-bold shrink-0">
+              <span className="text-muted-foreground select-none font-bold shrink-0">
                 [{(i + 1).toString().padStart(2, '0')}]
               </span>
               

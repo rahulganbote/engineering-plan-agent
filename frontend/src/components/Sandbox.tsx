@@ -11,14 +11,14 @@ export const Sandbox: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'buttons' | 'badges' | 'alerts' | 'cards' | 'skeletons'>('buttons');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      <header className="max-w-6xl mx-auto mb-8 border-b border-slate-800 pb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-background text-foreground p-8 font-sans">
+      <header className="max-w-6xl mx-auto mb-8 border-b border-border pb-6 flex items-center justify-between">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-semibold uppercase tracking-wider mb-2">
             <Sparkles size={12} /> Component Sandbox
           </span>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">Storybook-style Sandbox</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Storybook-style Sandbox</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             Previewing UI elements in isolation under the Dark Slate design system.
           </p>
         </div>
@@ -27,15 +27,15 @@ export const Sandbox: React.FC = () => {
       <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Navigation Sidebar */}
         <aside className="space-y-1">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 mb-2">Components</h3>
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-3 mb-2">Components</h3>
           {(['buttons', 'badges', 'alerts', 'cards', 'skeletons'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold transition ${
                 activeTab === tab 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                  ? 'bg-primary text-white shadow-md' 
+                  : 'text-muted-foreground hover:bg-card hover:text-foreground'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -44,10 +44,10 @@ export const Sandbox: React.FC = () => {
         </aside>
 
         {/* Component Showcase Area */}
-        <section className="md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-xl min-h-[400px]">
+        <section className="md:col-span-3 bg-card border border-border rounded-xl p-8 shadow-xl min-h-[400px]">
           {activeTab === 'buttons' && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold border-b border-slate-800 pb-2 text-slate-200">Buttons</h2>
+              <h2 className="text-lg font-bold border-b border-border pb-2 text-foreground">Buttons</h2>
               <div className="flex flex-wrap gap-4 items-center">
                 <Button variant="default" onClick={() => setClickCount(c => c + 1)}>
                   Default Button ({clickCount})
@@ -58,53 +58,53 @@ export const Sandbox: React.FC = () => {
                 <Button variant="link">Link Button</Button>
                 <Button variant="destructive">Destructive Button</Button>
               </div>
-              <div className="p-4 bg-slate-950 rounded border border-slate-850 text-xs text-slate-400 font-mono space-y-1">
-                <div>Button imports: <code className="text-indigo-400">@/components/ui/button</code></div>
-                <div>Variants demonstrated: <code className="text-slate-300">default, secondary, outline, ghost, link, destructive</code></div>
+              <div className="p-4 bg-background rounded border border-border text-xs text-muted-foreground font-mono space-y-1">
+                <div>Button imports: <code className="text-primary">@/components/ui/button</code></div>
+                <div>Variants demonstrated: <code className="text-foreground">default, secondary, outline, ghost, link, destructive</code></div>
               </div>
             </div>
           )}
 
           {activeTab === 'badges' && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold border-b border-slate-800 pb-2 text-slate-200">Badges</h2>
+              <h2 className="text-lg font-bold border-b border-border pb-2 text-foreground">Badges</h2>
               <div className="flex flex-wrap gap-4">
                 <Badge variant="default">Default Badge</Badge>
                 <Badge variant="secondary">Secondary Badge</Badge>
                 <Badge variant="outline">Outline Badge</Badge>
                 <Badge variant="destructive">Destructive Badge</Badge>
-                <Badge className="bg-green-950/50 text-green-400 border border-green-800/50">🟢 GREEN</Badge>
-                <Badge className="bg-amber-950/50 text-amber-400 border border-amber-800/50">🟡 AMBER</Badge>
-                <Badge className="bg-red-950/50 text-red-400 border border-red-800/50">🔴 RED</Badge>
+                <Badge className="bg-green-950/50 text-success border border-green-800/50">🟢 GREEN</Badge>
+                <Badge className="bg-warning/50 text-warning border border-warning/50">🟡 AMBER</Badge>
+                <Badge className="bg-danger/50 text-danger border border-danger/50">🔴 RED</Badge>
               </div>
-              <div className="p-4 bg-slate-950 rounded border border-slate-850 text-xs text-slate-400 font-mono">
-                Badge imports: <code className="text-indigo-400">@/components/ui/badge</code>
+              <div className="p-4 bg-background rounded border border-border text-xs text-muted-foreground font-mono">
+                Badge imports: <code className="text-primary">@/components/ui/badge</code>
               </div>
             </div>
           )}
 
           {activeTab === 'alerts' && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold border-b border-slate-800 pb-2 text-slate-200">Alerts</h2>
+              <h2 className="text-lg font-bold border-b border-border pb-2 text-foreground">Alerts</h2>
               <div className="space-y-4">
-                <Alert className="bg-slate-950 border border-slate-800">
-                  <Terminal className="h-4 w-4 text-indigo-400" />
-                  <AlertTitle className="text-slate-200">Heads up!</AlertTitle>
-                  <AlertDescription className="text-slate-400">
+                <Alert className="bg-background border border-border">
+                  <Terminal className="h-4 w-4 text-primary" />
+                  <AlertTitle className="text-foreground">Heads up!</AlertTitle>
+                  <AlertDescription className="text-muted-foreground">
                     You can add components to your app using the shadcn CLI.
                   </AlertDescription>
                 </Alert>
 
-                <Alert variant="destructive" className="bg-red-950/10 border-red-900/30 text-red-400">
-                  <AlertCircle className="h-4 w-4 text-red-400" />
+                <Alert variant="destructive" className="bg-danger/10 border-danger/30 text-danger">
+                  <AlertCircle className="h-4 w-4 text-danger" />
                   <AlertTitle>Error</AlertTitle>
                   <AlertDescription>
                     Your session has expired. Please log in again.
                   </AlertDescription>
                 </Alert>
 
-                <Alert className="bg-indigo-950/20 border-indigo-900/30 text-indigo-300">
-                  <Info className="h-4 w-4 text-indigo-400" />
+                <Alert className="bg-primary/10 border-primary/30 text-primary">
+                  <Info className="h-4 w-4 text-primary" />
                   <AlertTitle>Information Banner</AlertTitle>
                   <AlertDescription>
                     This is an informational notice using dark indigo tones.
@@ -116,37 +116,37 @@ export const Sandbox: React.FC = () => {
 
           {activeTab === 'cards' && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold border-b border-slate-800 pb-2 text-slate-200">Cards</h2>
+              <h2 className="text-lg font-bold border-b border-border pb-2 text-foreground">Cards</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="bg-slate-950 border border-slate-850 shadow-sm">
+                <Card className="bg-background border border-border shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-slate-200 text-sm uppercase tracking-wide">Orchestrator Agent</CardTitle>
-                    <CardDescription className="text-slate-500">Responsible for parsing BRD files.</CardDescription>
+                    <CardTitle className="text-foreground text-sm uppercase tracking-wide">Orchestrator Agent</CardTitle>
+                    <CardDescription className="text-muted-foreground">Responsible for parsing BRD files.</CardDescription>
                   </CardHeader>
-                  <CardContent className="text-slate-350 text-xs">
+                  <CardContent className="text-muted-foreground text-xs">
                     This is the standard workspace card format.
                   </CardContent>
-                  <CardFooter className="flex justify-end gap-2 border-t border-slate-900 pt-3">
+                  <CardFooter className="flex justify-end gap-2 border-t border-border pt-3">
                     <Button variant="ghost" size="sm">Details</Button>
                     <Button variant="outline" size="sm">Configure</Button>
                   </CardFooter>
                 </Card>
 
-                <Card className="bg-slate-950 border border-slate-850 shadow-sm">
+                <Card className="bg-background border border-border shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-slate-200 text-sm uppercase tracking-wide flex items-center justify-between">
+                    <CardTitle className="text-foreground text-sm uppercase tracking-wide flex items-center justify-between">
                       <span>Live Status Monitor</span>
-                      <RefreshCw size={14} className="text-indigo-400 animate-spin" />
+                      <RefreshCw size={14} className="text-primary animate-spin" />
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Active Pipeline:</span>
-                      <span className="font-semibold text-green-400">Online</span>
+                      <span className="text-muted-foreground">Active Pipeline:</span>
+                      <span className="font-semibold text-success">Online</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Run ID:</span>
-                      <span className="font-mono text-slate-300">run-4091a</span>
+                      <span className="text-muted-foreground">Run ID:</span>
+                      <span className="font-mono text-foreground">run-4091a</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -156,7 +156,7 @@ export const Sandbox: React.FC = () => {
 
           {activeTab === 'skeletons' && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold border-b border-slate-800 pb-2 text-slate-200">Skeletons</h2>
+              <h2 className="text-lg font-bold border-b border-border pb-2 text-foreground">Skeletons</h2>
               <PlanSkeleton />
             </div>
           )}

@@ -167,22 +167,22 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   };
 
   return (
-    <div className="w-full bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
+    <div className="w-full bg-card border border-border rounded-xl p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider"><span>⚙️</span> Pipeline Execution Timeline</h3>
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider"><span>⚙️</span> Pipeline Execution Timeline</h3>
         <div className="flex items-center gap-2">
           {pipelineStatus !== 'idle' && pipelineStatus !== 'exported' && pipelineStatus !== 'rejected' && pipelineStatus !== 'error' && (
             <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
           )}
-          <span className="text-xs text-slate-400 font-semibold capitalize">
+          <span className="text-xs text-muted-foreground font-semibold capitalize">
             Status: <span className={
-              pipelineStatus === 'error' ? 'text-red-400' :
-                pipelineStatus === 'exported' ? 'text-emerald-400' :
-                  pipelineStatus === 'awaiting_hitl' ? 'text-amber-400' :
-                    'text-indigo-400'
+              pipelineStatus === 'error' ? 'text-danger' :
+                pipelineStatus === 'exported' ? 'text-success' :
+                  pipelineStatus === 'awaiting_hitl' ? 'text-warning' :
+                    'text-primary'
             }>{pipelineStatus}</span>
           </span>
         </div>
@@ -190,7 +190,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 
       <div className="relative flex items-start justify-between w-full">
         {/* Connecting progress line */}
-        <div className="absolute left-0 right-0 top-6 h-0.5 bg-slate-800 -z-0" />
+        <div className="absolute left-0 right-0 top-6 h-0.5 bg-secondary -z-0" />
 
         {steps.map((step, idx) => {
           const StepIcon = step.icon;
@@ -200,17 +200,17 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           // Compute style tokens
           let iconContainerClasses = "w-12 h-12 rounded-full flex items-center justify-center border-2 z-15 transition-all duration-300 ";
           let textLabelClasses = "text-xs font-bold mt-2 transition-colors duration-300 ";
-          const descriptionClasses = "text-[10px] text-slate-500 truncate hidden md:block ";
+          const descriptionClasses = "text-[10px] text-muted-foreground truncate hidden md:block ";
 
           if (isCompleted) {
-            iconContainerClasses += "bg-emerald-950/80 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
-            textLabelClasses += "text-emerald-400";
+            iconContainerClasses += "bg-success/80 border-success text-success shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+            textLabelClasses += "text-success";
           } else if (isActive) {
-            iconContainerClasses += "bg-indigo-950/80 border-indigo-500 text-indigo-400 ring-4 ring-indigo-500/30 animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]";
-            textLabelClasses += "text-indigo-400 font-extrabold";
+            iconContainerClasses += "bg-primary/10 border-primary text-primary ring-4 ring-primary/30 animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]";
+            textLabelClasses += "text-primary font-extrabold";
           } else {
-            iconContainerClasses += "bg-slate-950 border-slate-800 text-slate-600";
-            textLabelClasses += "text-slate-500";
+            iconContainerClasses += "bg-background border-border text-muted-foreground";
+            textLabelClasses += "text-muted-foreground";
           }
 
           return (
@@ -219,8 +219,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               {idx > 0 && (
                 <div
                   className={`absolute left-[-50%] right-[50%] top-6 h-0.5 -z-10 transition-all duration-500 ${steps[idx - 1].isCompleted
-                      ? 'bg-gradient-to-r from-emerald-500 to-indigo-500'
-                      : 'bg-slate-800'
+                      ? 'bg-gradient-to-r from-success to-primary'
+                      : 'bg-secondary'
                     }`}
                 />
               )}
@@ -229,7 +229,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 {isCompleted ? (
                   <Check size={20} className="stroke-[3px] animate-scale-in" />
                 ) : isActive ? (
-                  <Loader2 size={20} className="animate-spin text-indigo-400" />
+                  <Loader2 size={20} className="animate-spin text-primary" />
                 ) : (
                   <StepIcon size={18} />
                 )}
@@ -239,7 +239,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 
               {/* Specialist status stacked in parallel for Step 3 */}
               {step.id === 3 && pipelineStatus !== 'idle' && (
-                <div className="mt-4 flex flex-col gap-1.5 w-full max-w-[140px] bg-slate-950/40 p-2 rounded-lg border border-slate-800/60 shadow-inner z-20 animate-scale-in">
+                <div className="mt-4 flex flex-col gap-1.5 w-full max-w-[140px] bg-background/40 p-2 rounded-lg border border-border/60 shadow-inner z-20 animate-scale-in">
                   {[
                     { key: 'engineering_plan_generator', shortLabel: 'Plan' },
                     { key: 'solution_architect', shortLabel: 'Architect' },
@@ -252,17 +252,17 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                     let statusIcon: React.ReactNode;
 
                     if (status === 'completed') {
-                      specCardClass += "bg-emerald-950/20 border-emerald-800/40 text-emerald-400";
-                      statusIcon = <Check size={8} className="stroke-[3px] text-emerald-400 shrink-0" />;
+                      specCardClass += "bg-success/20 border-success/40 text-success";
+                      statusIcon = <Check size={8} className="stroke-[3px] text-success shrink-0" />;
                     } else if (status === 'running') {
-                      specCardClass += "bg-indigo-950/20 border-indigo-500/40 text-indigo-300 ring-1 ring-indigo-500/10 animate-pulse";
-                      statusIcon = <Loader2 size={8} className="animate-spin text-indigo-400 shrink-0" />;
+                      specCardClass += "bg-primary/10 border-primary/40 text-primary ring-1 ring-primary/10 animate-pulse";
+                      statusIcon = <Loader2 size={8} className="animate-spin text-primary shrink-0" />;
                     } else if (status === 'failed') {
-                      specCardClass += "bg-red-950/20 border-red-900/40 text-red-400";
-                      statusIcon = <X size={8} className="stroke-[3px] text-red-400 shrink-0" />;
+                      specCardClass += "bg-danger/20 border-danger/40 text-danger";
+                      statusIcon = <X size={8} className="stroke-[3px] text-danger shrink-0" />;
                     } else {
-                      specCardClass += "bg-slate-900/40 border-slate-800/40 text-slate-500";
-                      statusIcon = <div className="h-1 w-1 rounded-full bg-slate-700 shrink-0" />;
+                      specCardClass += "bg-card/40 border-border/40 text-muted-foreground";
+                      statusIcon = <div className="h-1 w-1 rounded-full bg-secondary shrink-0" />;
                     }
 
                     return (

@@ -10,16 +10,16 @@ import { cn } from "@/lib/utils"
  */
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm",
-        destructive: "bg-red-600 text-white hover:bg-red-500 shadow-sm",
-        outline: "border border-slate-800 bg-slate-950 hover:bg-slate-900 hover:text-slate-100",
-        secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700",
-        ghost: "hover:bg-slate-900 hover:text-slate-100",
-        link: "text-indigo-400 underline-offset-4 hover:underline",
+        default: "bg-primary text-white hover:bg-primary shadow-sm",
+        destructive: "bg-danger text-white hover:bg-danger shadow-sm",
+        outline: "border border-border bg-background hover:bg-card hover:text-foreground",
+        secondary: "bg-secondary text-foreground hover:bg-secondary",
+        ghost: "hover:bg-card hover:text-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-9 px-4 py-2",

@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>EM Copilot</title>
+    <!-- FOUC prevention — apply theme class BEFORE React mounts.
+         Reads localStorage('em-copilot-theme'); falls back to system preference.
+         Synchronous + tiny so it never blocks render. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('em-copilot-theme');
+          var mode = stored || 'system';
+          var isDark =
+            mode === 'dark' ||
+            (mode === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <!-- ElevenLabs Conversational AI Voice Widget SDK (Versioned & Integrity-Pinned) -->
     <script 
       src="https://unpkg.com/@elevenlabs/convai-widget-embed@0.13.1" 

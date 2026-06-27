@@ -103,39 +103,35 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Base styles — currently still hardcoded to slate-950 (the current dark UI).
- * PR 2 will replace these with `bg-background text-foreground` once the
- * component sweep is complete + the theme picker is wired up. Leaving these
- * hardcoded for PR 1 means: no visual change until the sweep ships.
+ * Base styles — driven by theme tokens. Light by default; .dark on <html>
+ * (set by the FOUC script in index.html + useTheme hook) swaps in dark.
  * ──────────────────────────────────────────────────────────────────────────── */
 html, body, #root {
-  background-color: #020617;  /* slate-950 — replace with bg-background in PR 2 */
-  color: #f1f5f9;             /* slate-100 — replace with text-foreground in PR 2 */
+  background-color: var(--color-background);
+  color: var(--color-foreground);
   min-height: 100vh;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   scroll-behavior: smooth;
 }
 
-/* Custom premium scrollbars for dark slate design system.
- * PR 2 will swap these for token-aware values so light theme gets soft gray
- * scrollbars instead of the dark blue-gray ones. */
+/* Token-aware scrollbars — soft on light, blue-gray on dark. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: var(--color-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: var(--color-border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: var(--color-muted-foreground);
 }
 
 /* ElevenLabs widget — positioning is handled by VoiceWidgetFAB wrapper.
@@ -160,7 +156,7 @@ elevenlabs-convai::part(powered-by) {
 }
 
 /* Fallback: cover the "Powered by ElevenLabs" footer if ::part() didn't work.
- * Sits flush at the bottom of the FAB-expanded widget. Matches slate-950. */
+ * Sits flush at the bottom of the FAB-expanded widget; tracks the active theme. */
 .voice-widget-fab > div::after {
   content: '';
   position: absolute;
@@ -168,7 +164,7 @@ elevenlabs-convai::part(powered-by) {
   left: 0;
   right: 0;
   height: 20px;
-  background: #020617;
+  background: var(--color-card);
   pointer-events: none;
   border-radius: 0 0 12px 12px;
 }

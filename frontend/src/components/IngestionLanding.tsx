@@ -20,9 +20,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       id: 'security',
       label: 'Security Validator',
       desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
-      icon: <ShieldCheck size={20} className="text-emerald-400" />,
-      color: 'border-emerald-500/30 text-emerald-400 bg-emerald-950/20',
-      activeColor: 'ring-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]',
+      icon: <ShieldCheck size={20} className="text-success" />,
+      color: 'border-success/30 text-success bg-success/20',
+      activeColor: 'ring-success/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]',
     },
     {
       id: 'orchestrator',
@@ -36,25 +36,25 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       id: 'specialists',
       label: '5 Specialists (AI Agent)',
       desc: 'Parallel agents: Plan Generator, Schedule Estimator, Solution Architect, PoC Engineer, and Tech Stack Matcher.',
-      icon: <Sparkles size={20} className="text-indigo-400" />,
-      color: 'border-indigo-500/30 text-indigo-400 bg-indigo-950/20',
-      activeColor: 'ring-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]',
+      icon: <Sparkles size={20} className="text-primary" />,
+      color: 'border-primary/30 text-primary bg-primary/10',
+      activeColor: 'ring-primary/50 shadow-[0_0_15px_rgba(99,102,241,0.3)]',
     },
     {
       id: 'critic',
       label: 'Critic Reviewer',
       desc: 'Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if needed.',
-      icon: <GitPullRequest size={20} className="text-amber-400" />,
-      color: 'border-amber-500/30 text-amber-400 bg-amber-950/20',
-      activeColor: 'ring-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',
+      icon: <GitPullRequest size={20} className="text-warning" />,
+      color: 'border-warning/30 text-warning bg-warning/20',
+      activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',
     },
     {
       id: 'manager',
       label: 'Manager (HITL) Gate',
       desc: 'Pauses execution to obtain engineering manager approval before exporting to Google Sheets and Jira.',
-      icon: <Milestone size={20} className="text-rose-400" />,
-      color: 'border-rose-500/30 text-rose-400 bg-rose-950/20',
-      activeColor: 'ring-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.3)]',
+      icon: <Milestone size={20} className="text-destructive" />,
+      color: 'border-destructive/30 text-destructive bg-destructive/10',
+      activeColor: 'ring-destructive/50 shadow-[0_0_15px_rgba(244,63,94,0.3)]',
     },
   ];
 
@@ -64,28 +64,28 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     <div className="space-y-8 max-w-6xl mx-auto py-4">
       {/* Welcome & Subtitle Section */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold tracking-tight text-slate-300">
+        <h2 className="text-base font-semibold tracking-tight text-foreground">
           Transform BRDs into Implementation Plans in Minutes
         </h2>
-        <p className="text-sm text-slate-400 max-w-3xl leading-relaxed">
+        <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
           EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon approval, it pushes the Artifacts into Jira.
         </p>
         {/* Runtime hint — formerly inside the File Ingestion Guide box */}
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" />
-          <span>Anticipate <strong className="text-slate-300">60s &ndash; 180s</strong> total run time per BRD.</span>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+          <span>Anticipate <strong className="text-foreground">60s &ndash; 180s</strong> total run time per BRD.</span>
         </div>
       </div>
 
       {/* System Architecture Diagram — full width, compact above-the-fold layout */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 space-y-4 shadow-md">
+      <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 shadow-md">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-sm font-bold text-slate-200">System Architecture Diagram</h3>
-          <p className="text-[11px] text-slate-500 italic">Hover each step for execution details</p>
+          <h3 className="text-sm font-bold text-foreground">System Architecture Diagram</h3>
+          <p className="text-[11px] text-muted-foreground italic">Hover each step for execution details</p>
         </div>
 
         {/* Interactive Flow Visualizer — compact (tooltip replaces the old 96px detail box) */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center py-2 bg-slate-950/80 rounded-xl px-3 border border-slate-900 relative">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center py-2 bg-background/80 rounded-xl px-3 border border-border relative">
           {/* Spoke layout — left column */}
           <div className="flex flex-col gap-2.5 w-full md:w-5/12 z-10">
             {pipelineNodes.slice(0, 3).map((node) => (
@@ -96,7 +96,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                 onMouseLeave={() => setActiveNode(null)}
               >
                 <div
-                  className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-slate-600'}`}
+                  className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                 >
                   <div className="flex items-center gap-2">
                     {node.icon}
@@ -109,16 +109,16 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   <div
                     role="tooltip"
                     className="absolute z-30 left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 p-3
-                               bg-slate-950 border border-slate-700 rounded-lg shadow-2xl
+                               bg-background border border-border rounded-lg shadow-2xl
                                pointer-events-none animate-in fade-in zoom-in-95 duration-150"
                   >
-                    <div className="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-slate-800">
+                    <div className="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-border">
                       {node.icon}
-                      <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wide">{node.label}</h4>
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{node.label}</h4>
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">{node.desc}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{node.desc}</p>
                     {/* Tooltip arrow */}
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 -mt-1.5 rotate-45 bg-slate-950 border-r border-b border-slate-700" />
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 -mt-1.5 rotate-45 bg-background border-r border-b border-border" />
                   </div>
                 )}
               </div>
@@ -127,11 +127,11 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
 
           {/* Central "State Loop" pill */}
           <div className="flex flex-row md:flex-col items-center justify-center gap-2 shrink-0">
-            <div className="h-5 w-0.5 bg-gradient-to-b from-indigo-500 to-amber-500 hidden md:block animate-pulse" />
-            <span className="text-[11px] font-semibold px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-full text-slate-400 text-center select-none font-mono">
+            <div className="h-5 w-0.5 bg-gradient-to-b from-primary to-warning hidden md:block animate-pulse" />
+            <span className="text-[11px] font-semibold px-2.5 py-1 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono">
               State Loop
             </span>
-            <div className="h-5 w-0.5 bg-gradient-to-b from-amber-500 to-rose-500 hidden md:block animate-pulse" />
+            <div className="h-5 w-0.5 bg-gradient-to-b from-warning to-destructive hidden md:block animate-pulse" />
           </div>
 
           {/* Right column */}
@@ -144,7 +144,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                 onMouseLeave={() => setActiveNode(null)}
               >
                 <div
-                  className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-slate-600'}`}
+                  className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                 >
                   <div className="flex items-center gap-2">
                     {node.icon}
@@ -156,15 +156,15 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   <div
                     role="tooltip"
                     className="absolute z-30 left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 p-3
-                               bg-slate-950 border border-slate-700 rounded-lg shadow-2xl
+                               bg-background border border-border rounded-lg shadow-2xl
                                pointer-events-none animate-in fade-in zoom-in-95 duration-150"
                   >
-                    <div className="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-slate-800">
+                    <div className="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-border">
                       {node.icon}
-                      <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wide">{node.label}</h4>
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">{node.label}</h4>
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">{node.desc}</p>
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 -mt-1.5 rotate-45 bg-slate-950 border-r border-b border-slate-700" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">{node.desc}</p>
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 -mt-1.5 rotate-45 bg-background border-r border-b border-border" />
                   </div>
                 )}
               </div>

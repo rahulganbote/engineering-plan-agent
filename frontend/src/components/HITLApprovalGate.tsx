@@ -38,7 +38,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
   const handleSubmit = async (decision: 'approved' | 'rejected') => {
     if (decision === 'rejected' && !notes.trim()) {
       toast.error("Please add notes explaining the reason for rejection.", {
-        icon: <AlertCircle className="text-red-500" />
+        icon: <AlertCircle className="text-danger" />
       });
       return;
     }
@@ -61,7 +61,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
 
       setHasSubmitted(true);
       toast.success(`Pipeline successfully ${decision}!`, {
-        icon: <ThumbsUp className="text-green-500" />
+        icon: <ThumbsUp className="text-success" />
       });
       if (onDecisionSubmitted) {
         onDecisionSubmitted(data);
@@ -74,15 +74,15 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
   };
 
   return (
-    <div id="decision-gate" className="max-w-3xl mx-auto p-6 bg-slate-900 border border-slate-800 rounded-xl space-y-6 shadow-xl">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Decision Gate</h3>
-        <span className="px-2.5 py-1 rounded bg-amber-950/20 border border-amber-800/40 text-[10px] font-extrabold text-amber-400 uppercase tracking-wider">
+    <div id="decision-gate" className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Decision Gate</h3>
+        <span className="px-2.5 py-1 rounded bg-warning/20 border border-warning/40 text-[10px] font-extrabold text-warning uppercase tracking-wider">
           Awaiting Manager Action
         </span>
       </div>
 
-      <div className="bg-indigo-950/20 border border-indigo-800/30 p-4 rounded text-xs text-indigo-300">
+      <div className="bg-primary/10 border border-primary/30 p-4 rounded text-xs text-primary">
         Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard.
       </div>
 
@@ -90,18 +90,18 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Reviewer</label>
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Reviewer</label>
           <input 
             type="text" 
             value={reviewer} 
             onChange={(e) => setReviewer(e.target.value)}
             disabled={isSubmitting || hasSubmitted}
-            className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-100"
+            className="w-full bg-background border border-border px-3 py-2 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-foreground"
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-            EM Rating (1 = unusable • 5 = excellent): <span className="font-extrabold text-indigo-400">{rating}</span>
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+            EM Rating (1 = unusable • 5 = excellent): <span className="font-extrabold text-primary">{rating}</span>
           </label>
           <input 
             type="range" 
@@ -110,21 +110,21 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
             value={rating} 
             onChange={(e) => setRating(Number(e.target.value))}
             disabled={isSubmitting || hasSubmitted}
-            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 mt-3.5"
+            className="w-full h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary mt-3.5"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-          Notes <span className="text-red-500">*Required if rejecting</span>
+        <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+          Notes <span className="text-danger">*Required if rejecting</span>
         </label>
         <textarea 
           placeholder="Provide context or feedback on output quality..." 
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           disabled={isSubmitting || hasSubmitted}
-          className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none h-20 text-slate-100"
+          className="w-full bg-background border border-border px-3 py-2 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none h-20 text-foreground"
         />
       </div>
 
@@ -134,7 +134,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           <button
             onClick={() => handleSubmit('approved')}
             disabled={isSubmitting || hasSubmitted}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition flex items-center gap-2 text-xs font-bold"
+            className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-white shadow-md transition flex items-center gap-2 text-xs font-bold"
           >
             <Check size={14} />
             Approve & Export
@@ -144,7 +144,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           <button
             onClick={() => handleSubmit('rejected')}
             disabled={isSubmitting || hasSubmitted}
-            className="px-4 py-2 rounded-lg bg-slate-950 hover:bg-red-950/25 text-slate-300 hover:text-red-400 border border-slate-800 hover:border-red-900/30 transition flex items-center gap-2 text-xs font-bold"
+            className="px-4 py-2 rounded-lg bg-background hover:bg-danger/25 text-foreground hover:text-danger border border-border hover:border-danger/30 transition flex items-center gap-2 text-xs font-bold"
           >
             <X size={14} />
             Reject Plan
@@ -153,8 +153,8 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
       </div>
 
       {isSubmitting && (
-        <div className="flex items-center gap-3 text-xs text-slate-400 justify-start pt-4 border-t border-slate-800/60 animate-pulse">
-          <Loader2 className="animate-spin text-indigo-400 shrink-0" size={16} />
+        <div className="flex items-center gap-3 text-xs text-muted-foreground justify-start pt-4 border-t border-border/60 animate-pulse">
+          <Loader2 className="animate-spin text-primary shrink-0" size={16} />
           <span>Recording decision · Pushing to Jira, writing to Google Sheets...</span>
         </div>
       )}

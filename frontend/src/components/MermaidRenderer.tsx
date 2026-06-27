@@ -59,15 +59,15 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagramSvg, di
 
   if (error) {
     return (
-      <div className="p-4 bg-red-950/20 border border-red-900/30 text-red-450 rounded-lg text-xs space-y-2">
-        <div className="flex items-center gap-2 font-bold text-red-400">
+      <div className="p-4 bg-danger/20 border border-danger/30 text-danger rounded-lg text-xs space-y-2">
+        <div className="flex items-center gap-2 font-bold text-danger">
           <AlertCircle size={16} />
           <span>Mermaid client-side render failed</span>
         </div>
-        <p className="text-[11px] text-red-300 font-mono">
+        <p className="text-[11px] text-danger font-mono">
           {error}
         </p>
-        <p className="text-[10px] text-slate-500 italic">
+        <p className="text-[10px] text-muted-foreground italic">
           You can still copy and run the source code below in any Mermaid-aware editor.
         </p>
       </div>
@@ -76,8 +76,8 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagramSvg, di
 
   if (!renderedSvg) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-slate-500 text-xs">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500 mb-3" />
+      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-3" />
         <span>Generating diagram...</span>
       </div>
     );
@@ -118,7 +118,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ diagramSvg, di
       `}</style>
       <div 
         ref={containerRef}
-        className="mermaid-container w-full overflow-x-auto p-4 bg-slate-950 rounded-lg border border-slate-850 flex justify-center [&>svg]:max-w-full [&>svg]:h-auto text-slate-200"
+        className="mermaid-container w-full overflow-x-auto p-4 bg-background rounded-lg border border-border flex justify-center [&>svg]:max-w-full [&>svg]:h-auto text-foreground"
         dangerouslySetInnerHTML={{ __html: renderedSvg }}
       />
     </div>

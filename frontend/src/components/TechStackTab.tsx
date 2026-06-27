@@ -39,13 +39,13 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
   if (!stack || (!stack.options && !stack.recommended_option)) {
     return (
-      <div className="p-6 bg-slate-900 border border-slate-800 rounded-xl text-center space-y-3">
-        <AlertCircle className="mx-auto text-slate-500" size={32} />
-        <h4 className="text-sm font-bold text-slate-300">Tech Stack Matrix Unavailable</h4>
-        <p className="text-xs text-slate-500 max-w-md mx-auto">
+      <div className="p-6 bg-card border border-border rounded-xl text-center space-y-3">
+        <AlertCircle className="mx-auto text-muted-foreground" size={32} />
+        <h4 className="text-sm font-bold text-foreground">Tech Stack Matrix Unavailable</h4>
+        <p className="text-xs text-muted-foreground max-w-md mx-auto">
           The technology stack recommendations structure could not be parsed. Below is the raw data:
         </p>
-        <pre className="p-4 bg-slate-950 rounded text-left font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-60">
+        <pre className="p-4 bg-background rounded text-left font-mono text-[10px] text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-60">
           {typeof techStackData === 'string' ? techStackData : JSON.stringify(techStackData, null, 2)}
         </pre>
       </div>
@@ -70,12 +70,12 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
   const getRatingStars = (rating: number) => {
     return (
-      <div className="flex gap-0.5 text-indigo-400">
+      <div className="flex gap-0.5 text-primary">
         {[1, 2, 3, 4, 5].map((s) => (
           <Star 
             key={s} 
             size={10} 
-            className={s <= rating ? 'fill-indigo-400 stroke-indigo-400' : 'text-slate-800'} 
+            className={s <= rating ? 'fill-primary stroke-primary' : 'text-foreground'} 
           />
         ))}
       </div>
@@ -85,29 +85,29 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
   const getRiskColor = (level: string) => {
     const l = level.toLowerCase();
     if (l === 'high' || l === 'critical' || l === 'red') {
-      return 'text-red-400 bg-red-950/40 border-red-900/30';
+      return 'text-danger bg-danger/40 border-danger/30';
     }
     if (l === 'medium' || l === 'amber') {
-      return 'text-amber-400 bg-amber-950/40 border-amber-900/30';
+      return 'text-warning bg-warning/40 border-warning/30';
     }
-    return 'text-green-400 bg-green-950/40 border-green-900/30';
+    return 'text-success bg-green-950/40 border-green-900/30';
   };
 
   return (
-    <div className="space-y-8 animate-fade-in text-slate-100">
+    <div className="space-y-8 animate-fade-in text-foreground">
       {/* Recommended option and rationale */}
       {rec && (
-        <div className="bg-gradient-to-r from-indigo-950/20 to-slate-900 border border-indigo-900/40 rounded-xl p-5 space-y-3 shadow-md relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-3 -translate-y-3 bg-indigo-500/10 h-24 w-24 rounded-full blur-xl" />
+        <div className="bg-gradient-to-r from-primary/20 to-card border border-primary/40 rounded-xl p-5 space-y-3 shadow-md relative overflow-hidden">
+          <div className="absolute right-0 top-0 translate-x-3 -translate-y-3 bg-primary/10 h-24 w-24 rounded-full blur-xl" />
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-indigo-400" />
-            <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Recommended Architecture Stack</h4>
+            <Sparkles size={16} className="text-primary" />
+            <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Recommended Architecture Stack</h4>
           </div>
-          <span className="text-xl font-black text-slate-100 bg-slate-950 px-3 py-1 rounded-lg border border-slate-850 inline-block">
+          <span className="text-xl font-black text-foreground bg-background px-3 py-1 rounded-lg border border-border inline-block">
             {rec}
           </span>
           {stack.recommendation_rationale && (
-            <p className="text-xs text-slate-350 leading-relaxed border-t border-slate-850/60 pt-3">
+            <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/60 pt-3">
               <strong>Rationale:</strong> {stack.recommendation_rationale}
             </p>
           )}
@@ -116,7 +116,7 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
       {/* Side-by-side Options Comparison */}
       <div className="space-y-4">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800/60 pb-2">Technology Stack Matrix</h3>
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/60 pb-2">Technology Stack Matrix</h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {options.map((opt, idx) => {
             const isRec = opt.name === rec;
@@ -125,29 +125,29 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
                 key={idx} 
                 className={`rounded-xl p-5 flex flex-col justify-between space-y-4 border transition ${
                   isRec 
-                    ? 'bg-slate-900/90 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
-                    : 'bg-slate-900 border-slate-850 hover:border-slate-800'
+                    ? 'bg-card/90 border-primary/50 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
+                    : 'bg-card border-border hover:border-border'
                 }`}
               >
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-850 pb-3">
+                <div className="flex items-center justify-between border-b border-border pb-3">
                   <div className="space-y-0.5">
-                    <h4 className="text-sm font-bold text-slate-200">
+                    <h4 className="text-sm font-bold text-foreground">
                       {opt.name}
                       {opt.citation && (
                         <a 
                           href={`#cite-${opt.citation}`} 
-                          className="text-[9px] text-indigo-400 hover:text-indigo-300 font-black align-super ml-0.5"
+                          className="text-[9px] text-primary hover:text-primary font-black align-super ml-0.5"
                           title={`Citation: ${opt.citation}`}
                         >
                           [{getCitationIndex(opt.citation)}]
                         </a>
                       )}
                     </h4>
-                    <span className="text-[10px] text-slate-500 font-mono block">Option {idx + 1}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono block">Option {idx + 1}</span>
                   </div>
                   {isRec && (
-                    <span className="px-2 py-0.5 bg-indigo-950 text-indigo-400 border border-indigo-800/30 text-[9px] font-extrabold uppercase rounded-full">
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/30 text-[9px] font-extrabold uppercase rounded-full">
                       ★ Recommended
                     </span>
                   )}
@@ -155,13 +155,13 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
                 {/* Layer mapping */}
                 {opt.components && Object.entries(opt.components).length > 0 && (
-                  <div className="space-y-2 bg-slate-950/40 p-3 rounded-lg border border-slate-850">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Stack Layers</span>
+                  <div className="space-y-2 bg-background/40 p-3 rounded-lg border border-border">
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Stack Layers</span>
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       {Object.entries(opt.components).map(([layer, tech]) => (
                         <div key={layer} className="flex flex-col">
-                          <span className="text-slate-500 capitalize">{layer}</span>
-                          <span className="text-slate-300 font-semibold truncate" title={tech}>{tech}</span>
+                          <span className="text-muted-foreground capitalize">{layer}</span>
+                          <span className="text-foreground font-semibold truncate" title={tech}>{tech}</span>
                         </div>
                       ))}
                     </div>
@@ -169,26 +169,26 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
                 )}
 
                 {/* Ratings */}
-                <div className="grid grid-cols-2 gap-4 border-b border-slate-850/60 pb-3 text-[11px]">
+                <div className="grid grid-cols-2 gap-4 border-b border-border/60 pb-3 text-[11px]">
                   <div className="space-y-1">
-                    <span className="text-slate-500 block">Scalability Rating</span>
+                    <span className="text-muted-foreground block">Scalability Rating</span>
                     {getRatingStars(opt.scalability_rating)}
                   </div>
                   <div className="space-y-1">
-                    <span className="text-slate-500 block">Team Familiarity</span>
+                    <span className="text-muted-foreground block">Team Familiarity</span>
                     {getRatingStars(opt.team_familiarity_rating)}
                   </div>
                 </div>
 
                 {/* Cost and Risk info */}
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <div className="flex items-center gap-1 text-slate-300">
-                    <DollarSign size={14} className="text-slate-500" />
+                  <div className="flex items-center gap-1 text-foreground">
+                    <DollarSign size={14} className="text-muted-foreground" />
                     <span>Cost Estimate:</span>
-                    <strong className="text-slate-100 font-mono">${opt.estimated_monthly_cost_usd.toLocaleString()}/mo</strong>
+                    <strong className="text-foreground font-mono">${opt.estimated_monthly_cost_usd.toLocaleString()}/mo</strong>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500">Risk:</span>
+                    <span className="text-muted-foreground">Risk:</span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${getRiskColor(opt.integration_risk)}`}>
                       {opt.integration_risk}
                     </span>
@@ -196,14 +196,14 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
                 </div>
 
                 {/* Pros and Cons */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-850">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border">
                   {/* Pros */}
                   <div className="space-y-1.5">
-                    <span className="text-[9px] font-bold text-green-400 uppercase tracking-wider block">Pros</span>
-                    <ul className="space-y-1 text-[11px] text-slate-350">
+                    <span className="text-[9px] font-bold text-success uppercase tracking-wider block">Pros</span>
+                    <ul className="space-y-1 text-[11px] text-muted-foreground">
                       {opt.pros && opt.pros.map((p, pIdx) => (
                         <li key={pIdx} className="flex gap-1 items-start leading-relaxed">
-                          <span className="text-green-500 select-none">✓</span>
+                          <span className="text-success select-none">✓</span>
                           <span>{p}</span>
                         </li>
                       ))}
@@ -211,11 +211,11 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
                   </div>
                   {/* Cons */}
                   <div className="space-y-1.5">
-                    <span className="text-[9px] font-bold text-red-400 uppercase tracking-wider block">Cons</span>
-                    <ul className="space-y-1 text-[11px] text-slate-355">
+                    <span className="text-[9px] font-bold text-danger uppercase tracking-wider block">Cons</span>
+                    <ul className="space-y-1 text-[11px] text-muted-foreground">
                       {opt.cons && opt.cons.map((c, cIdx) => (
                         <li key={cIdx} className="flex gap-1 items-start leading-relaxed">
-                          <span className="text-red-500 select-none">✗</span>
+                          <span className="text-danger select-none">✗</span>
                           <span>{c}</span>
                         </li>
                       ))}
@@ -230,15 +230,15 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
       {/* Sources & Citations Glossar */}
       {citationsList.length > 0 && (
-        <div className="border border-slate-850 rounded-xl p-5 bg-slate-950 shadow-inner">
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-850 pb-2 mb-3">
+        <div className="border border-border rounded-xl p-5 bg-background shadow-inner">
+          <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border pb-2 mb-3">
             Sources & RAG Citations
           </h4>
-          <ol className="list-decimal pl-5 space-y-2 text-xs text-slate-400">
+          <ol className="list-decimal pl-5 space-y-2 text-xs text-muted-foreground">
             {citationsList.map((citation) => (
               <li key={citation} id={`cite-${citation}`} className="scroll-mt-24">
-                <span className="font-mono text-slate-300 font-bold block">{citation}</span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Retrieved from engineering knowledge store</span>
+                <span className="font-mono text-foreground font-bold block">{citation}</span>
+                <span className="text-[10px] text-muted-foreground block mt-0.5">Retrieved from engineering knowledge store</span>
               </li>
             ))}
           </ol>
