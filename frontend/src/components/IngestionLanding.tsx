@@ -79,11 +79,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
         <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
           EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon approval, it pushes the Artifacts into Jira.
         </p>
-        {/* Runtime hint — formerly inside the File Ingestion Guide box */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-          <span>Anticipate <strong className="text-foreground">60s &ndash; 180s</strong> total run time per BRD.</span>
-        </div>
+        {/* Runtime hint moved next to the Generate Engineering Plan button in
+            the sidebar — that's the action surface where this anticipation
+            actually matters for the user. */}
       </div>
 
       {/* System Architecture Diagram — full width, compact above-the-fold layout */}

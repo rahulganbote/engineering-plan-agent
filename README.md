@@ -161,7 +161,7 @@ Five-method evaluation suite (`eval/run_eval.py`):
 
 ## Multi-Provider Strategy
 
-I built the LLM client on a `LLMProvider` Protocol from day 1 so the pipeline could swap providers without code changes — and so I could measure the trade-offs honestly.
+I had to build fallback in case if a provider is not available or if we face rate limit, latency or cost issues. So I changed the strategy to build multiple provider to compare the latency, cost and output quality.  build the LLM client on a `LLMProvider` Protocol to be able to swap providers without code changes and measure the trade-offs honestly.
 
 | Dimension | OpenAI (`gpt-4o` / `gpt-4o-mini`) | Anthropic (`claude-sonnet-4-5` / `claude-haiku-4-5`) |
 |---|---|---|
@@ -172,8 +172,6 @@ I built the LLM client on a `LLMProvider` Protocol from day 1 so the pipeline co
 | **Critic GREEN-rate (standard BRDs)** | ~70% | ~75% (anecdotal, broader benchmarking pending) |
 | **Per-agent bulkhead timeout** | 90s | 180s |
 | **Best for** | Latency-sensitive demos; high-throughput; tight cost budgets | Complex BRDs needing deeper reasoning; consistency-critical drafts where the 2× cost is justified |
-
-**Sample provenance:** OpenAI sample N=13 across BRDs ranging 236–975 words (mean 587). Anthropic sample N=9 across BRDs ranging 222–975 words (mean 488). All measurements include the full pipeline: 7 agents, Critic revision cycle (capped at 2), per-tool resilience overhead, and any provider-fallback hops. Critic GREEN-rate column remains anecdotal pending a formal calibration run.
 
 ---
 

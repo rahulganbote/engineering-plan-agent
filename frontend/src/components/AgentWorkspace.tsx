@@ -288,27 +288,37 @@ export const AgentWorkspace: React.FC = () => {
             </div>
           )}
 
-          {/* Trigger Button */}
+          {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
-            <button
-              onClick={triggerPipeline}
-              disabled={!selectedFile || !!runId || isStartingPipeline}
-              className={`w-full py-2.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2 ${runId || isStartingPipeline
-                  ? 'bg-card text-muted-foreground border border-border cursor-not-allowed'
-                  : selectedFile
-                    ? 'bg-primary hover:bg-primary text-white shadow-md cursor-pointer'
-                    : 'bg-card text-muted-foreground border border-border cursor-not-allowed'
-                }`}
-            >
-              {isStartingPipeline ? (
-                <>
-                  <Loader2 className="animate-spin text-primary" size={16} />
-                  <span>Starting Pipeline...</span>
-                </>
-              ) : (
-                <span>Generate Engineering Plan</span>
+            <div>
+              <button
+                onClick={triggerPipeline}
+                disabled={!selectedFile || !!runId || isStartingPipeline}
+                className={`w-full py-2.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2 ${runId || isStartingPipeline
+                    ? 'bg-card text-muted-foreground border border-border cursor-not-allowed'
+                    : selectedFile
+                      ? 'bg-primary hover:bg-primary text-white shadow-md cursor-pointer'
+                      : 'bg-card text-muted-foreground border border-border cursor-not-allowed'
+                  }`}
+              >
+                {isStartingPipeline ? (
+                  <>
+                    <Loader2 className="animate-spin text-primary" size={16} />
+                    <span>Starting Pipeline...</span>
+                  </>
+                ) : (
+                  <span>Generate Engineering Plan</span>
+                )}
+              </button>
+              {/* Runtime expectation — sits with the action surface so the user
+                  knows what to expect at the moment they're about to commit. */}
+              {!runId && (
+                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD.</span>
+                </div>
               )}
-            </button>
+            </div>
           )}
 
           {/* Current Run Panel */}
@@ -389,7 +399,7 @@ export const AgentWorkspace: React.FC = () => {
               <span className="text-primary">EM Copilot</span>
               <span className="text-foreground">: BRD → Engineering Plan</span>
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent BRD-to-Engineering Plan System · Demo — AI can make mistakes. Validate outputs.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent BRD-to-Engineering Plan System</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
@@ -796,6 +806,14 @@ export const AgentWorkspace: React.FC = () => {
             </>
           )}
         </div>
+
+        {/* Persistent footer disclaimer — sits outside the scrollable body so
+            it stays visible at all times (matches Claude.ai / ChatGPT pattern).
+            Moved here from the header subtitle, where it was undermining the
+            product's perceived reliability by appearing alongside the title. */}
+        <footer className="px-8 py-2 border-t border-border bg-card text-center text-[10px] text-muted-foreground shrink-0">
+          AI-generated plans are starting points. Review against your domain expertise before adopting.
+        </footer>
       </main>
     </div>
   );
