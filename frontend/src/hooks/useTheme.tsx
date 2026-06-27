@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Theme system — Light / Dark / System picker state, shared app-wide.
  *
