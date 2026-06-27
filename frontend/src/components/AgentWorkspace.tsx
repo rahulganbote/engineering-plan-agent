@@ -379,14 +379,17 @@ export const AgentWorkspace: React.FC = () => {
 
       {/* Main Workstation Panel */}
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
-        {/* Main Header */}
-        <header className="h-16 border-b border-border px-8 flex items-center justify-between bg-card shrink-0 shadow-sm relative">
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight">
+        {/* Main Header — uses min-h instead of fixed h so the title can wrap
+            cleanly at narrow viewports (e.g. devtools open) without overflowing
+            into the IngestionLanding hero below. items-start keeps the controls
+            (Theme picker, API status) pinned to the top-right of the title block. */}
+        <header className="min-h-16 border-b border-border px-8 py-3 gap-4 flex items-start justify-between bg-card shrink-0 shadow-sm relative">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
               <span className="text-primary">EM Copilot</span>
               <span className="text-foreground">: BRD → Engineering Plan</span>
             </h1>
-            <p className="text-xs text-muted-foreground">Multi-Agent BRD-to-Engineering Plan System · Demo — AI can make mistakes. Validate outputs.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent BRD-to-Engineering Plan System · Demo — AI can make mistakes. Validate outputs.</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
