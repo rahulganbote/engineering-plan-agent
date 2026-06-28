@@ -7,7 +7,7 @@ import { toast } from 'sonner';
  */
 export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   let skipToast = false;
-  let cleanHeaders: HeadersInit = {};
+  let cleanHeaders: HeadersInit;
   
   if (options?.headers) {
     if (options.headers instanceof Headers) {

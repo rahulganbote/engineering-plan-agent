@@ -228,7 +228,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         }
         case 'critic_complete': {
           const criticPayload = (data.payload || data) as Record<string, unknown>;
-          const parseDimension = (val: any) => val as CriticDimension;
+          const parseDimension = (val: unknown) => val as CriticDimension;
           setCriticOutput({
             revisionNumber: (criticPayload.revision_number ?? criticPayload.revisionNumber) as number,
             overallScore: (criticPayload.overall_score ?? criticPayload.overallScore) as number,
