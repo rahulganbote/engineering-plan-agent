@@ -33,8 +33,6 @@ from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.sessions import SessionMiddleware
 
-from src.api.limiter import limiter
-
 from src.core.config import settings
 from src.core.logger import get_logger
 

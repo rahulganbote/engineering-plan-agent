@@ -10,6 +10,7 @@ from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+
 def get_user_identifier(request: Request) -> str:
     """
     Ties rate limits to the authenticated user's email if available,
