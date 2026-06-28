@@ -67,7 +67,7 @@ def exchange_code_for_user(code: str, redirect_uri: str) -> tuple[bool, dict | s
 
         allowed = _allowed_emails()
         if allowed and email not in allowed:
-            return False, f"Sorry — {email} is not on the allowed-users list."
+            return False, f"Sorry - {email} is not on the allowed-users list."
 
         return True, {"email": email, "name": info.get("name", "")}
     except Exception as e:

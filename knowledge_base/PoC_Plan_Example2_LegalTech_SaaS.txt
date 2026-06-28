@@ -1,5 +1,5 @@
-# PoC Plan — Example
-# Project: LegalTech SaaS — Tenant Isolation and BYOK PoC v0.1
+# PoC Plan - Example
+# Project: LegalTech SaaS - Tenant Isolation and BYOK PoC v0.1
 # Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 3.0
 # Synced to Agent 5 (PoC Planner) contract v2.0
 
@@ -9,11 +9,11 @@ run_id:              legaltech_2024_poc
 citations:           [PoC_Plan_Example2_LegalTech_SaaS_chunk_0, BRD_Example2_LegalTech_SaaS_chunk_2, org_engineering_standards_chunk_3]
 confidence_score:    0.88
 assumptions:
-  - PoC uses synthetic data only — no real attorney or client data
-  - External pen test firm available with 3-week lead time — must be booked in Week 1
+  - PoC uses synthetic data only - no real attorney or client data
+  - External pen test firm available with 3-week lead time - must be booked in Week 1
   - 3 simulated tenants sufficient to validate isolation pattern
 flagged_ambiguities:
-  - Number of adversarial test scenarios not specified — assumed 500 based on security standard
+  - Number of adversarial test scenarios not specified - assumed 500 based on security standard
 
 ## PoC Hypothesis
 poc_hypothesis: |
@@ -25,12 +25,12 @@ poc_hypothesis: |
 
 ## Scope In
 scope_in:
-  - Per-tenant Kubernetes namespace — 3 simulated tenants
+  - Per-tenant Kubernetes namespace - 3 simulated tenants
   - API Gateway with JWT validation and tenant token extraction
   - Per-tenant S3 bucket with bucket policies enforcing isolation
   - Per-tenant Elasticsearch shard with index-level access control
-  - Automated adversarial test suite — 500 cross-tenant API call scenarios
-  - BYOK simulation — 3 separate KMS keys, one per simulated tenant
+  - Automated adversarial test suite - 500 cross-tenant API call scenarios
+  - BYOK simulation - 3 separate KMS keys, one per simulated tenant
 
 ## Scope Out
 scope_out:
@@ -38,7 +38,7 @@ scope_out:
   - Legal hold functionality
   - Production-grade monitoring or alerting
   - More than 3 simulated tenants
-  - Real attorney or client data — synthetic test data only
+  - Real attorney or client data - synthetic test data only
   - SOC 2 evidence collection
 
 ## Duration
@@ -52,7 +52,7 @@ success_criteria:
 
   - metric: External penetration test result
     target_value: Zero critical or high severity isolation findings in pen test report
-    measurement_method: External security firm adversarial test — full report reviewed by Security Engineer
+    measurement_method: External security firm adversarial test - full report reviewed by Security Engineer
 
   - metric: API Gateway overhead
     target_value: "< 50ms added latency per request for tenant token validation"
@@ -74,4 +74,4 @@ risk_if_poc_fails: |
 go_nogo_criteria:
   go:    "Zero cross-tenant data in all 500 automated tests AND pen test zero critical or high findings AND API Gateway overhead < 50ms"
   no_go: "Any cross-tenant data returned in automated tests OR pen test finds critical or high isolation vulnerability"
-  pivot: "Medium-severity pen test findings only — remediate within 5 days and re-test; BYOK complexity unmanageable — pivot to AWS-managed keys for MVP"
+  pivot: "Medium-severity pen test findings only - remediate within 5 days and re-test; BYOK complexity unmanageable - pivot to AWS-managed keys for MVP"

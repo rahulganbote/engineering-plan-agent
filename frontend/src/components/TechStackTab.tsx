@@ -111,15 +111,15 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
 
   return (
     <div className="space-y-8 animate-fade-in text-foreground">
-      {/* GitHub fallback hint — surfaces when the Tech Stack agent's GitHub
+      {/* GitHub fallback hint - surfaces when the Tech Stack agent's GitHub
           velocity-signal call ran unauthenticated (no GITHUB_TOKEN configured).
           The tool still works in unauthenticated mode, just at the 60 req/hour
-          GitHub rate limit instead of 5,000 — so this is a soft hint. */}
+          GitHub rate limit instead of 5,000 - so this is a soft hint. */}
       {githubUnauthenticated && (
         <IntegrationNotConfigured
           title="GitHub velocity signal ran unauthenticated"
           envVars={["GITHUB_TOKEN"]}
-          description="The Tech Stack agent fetches GitHub repo velocity (stars/week, issue close rate) to inform its recommendations. Without a token, this falls back to GitHub's 60 req/hour anonymous rate limit — fine for demos, too low for repeated runs."
+          description="The Tech Stack agent fetches GitHub repo velocity (stars/week, issue close rate) to inform its recommendations. Without a token, this falls back to GitHub's 60 req/hour anonymous rate limit - fine for demos, too low for repeated runs."
           docsAnchor="#L80-L81"
         />
       )}

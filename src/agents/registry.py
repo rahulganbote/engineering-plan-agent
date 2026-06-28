@@ -1,7 +1,7 @@
 """
 src/agents/registry.py
 ═══════════════════════
-Specialist agent registry — Phase 4.
+Specialist agent registry - Phase 4.
 
 Each specialist module calls register_specialist() at import time.
 pipeline.py uses get_specialist() to dispatch agents without a hardcoded

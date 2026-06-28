@@ -17,7 +17,7 @@ log = get_logger(__name__)
 # ─── Monthly budget tracker (Tavily free tier = 1000 queries/month) ────────────
 # Module-level counter, thread-safe via a single threading.Lock. Resets when the
 # calendar month changes. When the budget is exhausted, tavily_search() returns
-# a degraded ToolResult without hitting the API — avoiding the 429 we'd
+# a degraded ToolResult without hitting the API - avoiding the 429 we'd
 # otherwise see and burning the rate-limit window on the next deploy.
 #
 # Production note: this counter is per-process (the same multi-instance state
@@ -77,7 +77,7 @@ def get_tavily_budget_status() -> dict:
 #   ✗ PII (names, emails, phone numbers)
 #   ✗ Org names, product names, internal codenames
 #
-# This helper enforces that policy at the source — callers MUST pass through
+# This helper enforces that policy at the source - callers MUST pass through
 # `build_tavily_query()` rather than constructing query strings inline.
 
 # Allowlist of architecture / engineering concept keywords that we'll surface
@@ -124,7 +124,7 @@ _SAFE_CONCEPT_KEYWORDS = {
 
 def build_tavily_query(agent_role: str, brd_sections: list, max_keywords: int = 5) -> str:
     """
-    Build a Tavily query from DERIVED metadata only — never from raw BRD content.
+    Build a Tavily query from DERIVED metadata only - never from raw BRD content.
 
     Inputs:
       • agent_role: descriptive role string ("architecture pattern", "tech stack")
@@ -138,7 +138,7 @@ def build_tavily_query(agent_role: str, brd_sections: list, max_keywords: int = 
     """
     # Build a lowercase corpus of just the section names + first 60 chars per section
     # for keyword matching. 60 chars is short enough that a recognizable PII fragment
-    # (full name, email) cannot survive — and the keyword filter drops anything not
+    # (full name, email) cannot survive - and the keyword filter drops anything not
     # in _SAFE_CONCEPT_KEYWORDS.
     section_names = [getattr(s, "section_name", "") for s in (brd_sections or [])]
     section_blobs = [(getattr(s, "content", "") or "")[:60] for s in (brd_sections or [])]
@@ -147,8 +147,8 @@ def build_tavily_query(agent_role: str, brd_sections: list, max_keywords: int = 
     # Extract only the safe keywords that appear in the corpus
     matched = [w for w in _SAFE_CONCEPT_KEYWORDS if w in corpus][:max_keywords]
 
-    # Always include the section names — they're structure labels, not content
-    # (e.g., "Objectives", "Requirements", "Risks") — bounded vocabulary.
+    # Always include the section names - they're structure labels, not content
+    # (e.g., "Objectives", "Requirements", "Risks") - bounded vocabulary.
     structural_terms = [s for s in section_names if s][:3]
 
     parts = [agent_role, "for"] + structural_terms + matched
@@ -193,9 +193,9 @@ def tavily_search(query: str, max_results: int = 3) -> ToolResult:
     and returns a ToolResult. Degrades gracefully on any exception.
 
     Emits SSE observability events:
-      • `tool_call_started`   — at entry, with the bounded query length
-      • `tool_call_succeeded` — on green path, with latency_ms + result count
-      • `tool_call_degraded`  — on any failure mode, with the reason
+      • `tool_call_started`   - at entry, with the bounded query length
+      • `tool_call_succeeded` - on green path, with latency_ms + result count
+      • `tool_call_degraded`  - on any failure mode, with the reason
     """
     run_id = _current_run_id() or "unknown"
     t0 = time.perf_counter()
@@ -209,11 +209,11 @@ def tavily_search(query: str, max_results: int = 3) -> ToolResult:
         log.warning("Tavily API key is not configured. Web search fallback unavailable.")
         _emit_degraded("api_key_missing")
         return ToolResult(
-            content="Web search unavailable — Tavily key missing.", used_fallback=True, sources=[], trust_level="low"
+            content="Web search unavailable - Tavily key missing.", used_fallback=True, sources=[], trust_level="low"
         )
 
     # Budget check BEFORE the network call. If we're at the cap, return degraded
-    # without burning a request — the next month's budget refresh restores us.
+    # without burning a request - the next month's budget refresh restores us.
     allowed, used, budget = _check_and_increment_budget()
     if not allowed:
         log.warning(f"Tavily monthly budget exhausted | used={used} budget={budget} month={_BUDGET_STATE['month']}")
@@ -226,7 +226,7 @@ def tavily_search(query: str, max_results: int = 3) -> ToolResult:
         )
         _emit_degraded("monthly_budget_exhausted")
         return ToolResult(
-            content=(f"Web search unavailable — Tavily monthly budget reached ({used}/{budget}). Resets next month."),
+            content=(f"Web search unavailable - Tavily monthly budget reached ({used}/{budget}). Resets next month."),
             used_fallback=True,
             sources=[],
             trust_level="low",
@@ -287,7 +287,7 @@ def tavily_search(query: str, max_results: int = 3) -> ToolResult:
         log.error(f"Tavily JSON contract validation failed | {ve}")
         _emit_degraded("contract_validation_failed")
         return ToolResult(
-            content="Web search temporary unavailable — contract validation failed.",
+            content="Web search temporary unavailable - contract validation failed.",
             used_fallback=True,
             sources=[],
             trust_level="low",
@@ -296,7 +296,7 @@ def tavily_search(query: str, max_results: int = 3) -> ToolResult:
         log.warning(f"Tavily search failed (graceful degradation) | error={e}")
         _emit_degraded(f"exception:{type(e).__name__}")
         return ToolResult(
-            content="Web search temporary unavailable — using RAG and BRD context.",
+            content="Web search temporary unavailable - using RAG and BRD context.",
             used_fallback=True,
             sources=[],
             trust_level="low",

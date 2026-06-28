@@ -1,4 +1,4 @@
-# EM Copilot — Timeouts, Budgets & TTLs Reference
+# EM Copilot - Timeouts, Budgets & TTLs Reference
 
 > Single source of truth for every timeout, retry budget, circuit-breaker
 > threshold, and cache TTL in the system. If a value changes in code, update
@@ -12,7 +12,7 @@
 
 | Variable | Value | Source | Purpose |
 |---|---|---|---|
-| `settings.pipeline_timeout_sec` | **300 s** (5 min) | `src/core/config.py:84` | Overall pipeline SLA target. **Observational, not enforced** — logger flags runs that exceed it as "⚠️ SLA breach" but no `signal.alarm` cancels the run. |
+| `settings.pipeline_timeout_sec` | **300 s** (5 min) | `src/core/config.py:84` | Overall pipeline SLA target. **Observational, not enforced** - logger flags runs that exceed it as "⚠️ SLA breach" but no `signal.alarm` cancels the run. |
 | `settings.agent_timeout_sec` | **90 s** | `src/core/config.py:85` | Per-agent bulkhead budget (Phase 9). Hard cap enforced by `as_completed(timeout=...)` in the dispatcher. |
 | `_bulkhead_budget` | reads `agent_timeout_sec` | `src/agents/pipeline.py:148` | Actual `as_completed` value at dispatch. |
 
@@ -41,7 +41,7 @@ class-level `RESILIENCE_POLICY` attribute (Phase 5 manifest pattern).
 
 ## 3. Circuit breakers (per-instance, per-service)
 
-Each agent class and each external service owns its own breaker — no shared state.
+Each agent class and each external service owns its own breaker - no shared state.
 
 | Breaker | fail_threshold | reset_sec | Source |
 |---|---|---|---|
@@ -63,13 +63,13 @@ allows one probe; success closes the breaker, failure re-opens.
 | `CACHE_RAG` | **1,800 s** (30 min) | `rag` | `cache.py:66` |
 | `CACHE_EMBEDDING` | **86,400 s** (24 h) | `embed` | `cache.py:67` |
 | `CachePolicy()` field defaults | 3,600 s | `default` | `cache.py:58` |
-| `RedisCache.socket_timeout` | **1.0 s** (connect + read) | — | `cache.py:310` |
-| `RedisCache.healthcheck` | uses `socket_timeout` | — | `cache.py:565` (via `init_default_backend_from_env`) |
+| `RedisCache.socket_timeout` | **1.0 s** (connect + read) | - | `cache.py:310` |
+| `RedisCache.healthcheck` | uses `socket_timeout` | - | `cache.py:565` (via `init_default_backend_from_env`) |
 | `TieredCache` L1 backfill TTL | **3,600 s** (1 h, hardcoded) | inherits L2's namespace | `cache.py:401` |
 
 > `RedisCache.socket_timeout = 1.0 s` is intentionally tight. If Redis L2 is
 > more than 1 second away (network glitch, instance overloaded), the cache
-> degrades to L1 only — Redis was never supposed to be on the critical path.
+> degrades to L1 only - Redis was never supposed to be on the critical path.
 
 ---
 
@@ -85,7 +85,7 @@ allows one probe; success closes the breaker, failure re-opens.
 | `_SLACK_TIMEOUT_SEC` | **10 s** | `slack.py:33` | Slack incoming-webhook alert (only fires on pipeline error). |
 | `google_auth.py` token exchange | **10 s** | `google_auth.py:122` | OAuth `POST /token` to Google. |
 | `google_auth.py` userinfo | **10 s** | `google_auth.py:135` | `GET /userinfo` after token exchange. |
-| `gspread` Sheets write | (library default ~60 s) | `sheets.py` | Not explicitly capped — gspread uses its own internal timeouts. |
+| `gspread` Sheets write | (library default ~60 s) | `sheets.py` | Not explicitly capped - gspread uses its own internal timeouts. |
 
 ---
 
@@ -93,7 +93,7 @@ allows one probe; success closes the breaker, failure re-opens.
 
 | Variable | Value | Source | Purpose |
 |---|---|---|---|
-| Streamlit `components.html(height=)` for Mermaid iframe | 520 px | `streamlit_app.py:680` | Visual sizing only — not a timeout, but the iframe stays open for that height. |
+| Streamlit `components.html(height=)` for Mermaid iframe | 520 px | `streamlit_app.py:680` | Visual sizing only - not a timeout, but the iframe stays open for that height. |
 | FastAPI SSE keep-alive interval | (Starlette default) | `src/api/main.py` | Heartbeat to keep Streamlit's SSE connection open during long runs. |
 
 ---
@@ -126,12 +126,12 @@ On HITL approval:
 ### Notable interactions
 
 1. **OpenAI worst-case (~97 s) exceeds the bulkhead (90 s).** In practice
-   retries rarely fire — if you start seeing repeated `bulkhead_timeout` events
+   retries rarely fire - if you start seeing repeated `bulkhead_timeout` events
    correlated with `retry` events on OPENAI_POLICY, either OpenAI is degraded
    or you should bump `agent_timeout_sec` higher (or cut `max_attempts` to 2).
 
 2. **Kroki + LLM in the Architect specialist.** A worst-case Architect run is
-   `LLM (97s) + Kroki (30s) = 127s` — would trip the bulkhead. In practice the
+   `LLM (97s) + Kroki (30s) = 127s` - would trip the bulkhead. In practice the
    LLM completes in ~15-25 s and Kroki in ~1-2 s, so the typical run is well
    under 30 s.
 
@@ -143,7 +143,7 @@ On HITL approval:
 4. **`pipeline_timeout_sec = 300` is not enforced.** It's only used in the
    logger for `✅ within SLA` vs `⚠️ SLA breach` messages. The actual upper
    bound on a single run is the sum of all bulkheads. Worst case:
-   `5 specialists × 90 s + Critic × 90 s = 540 s` — beyond the SLA target.
+   `5 specialists × 90 s + Critic × 90 s = 540 s` - beyond the SLA target.
    If you want a hard pipeline-level cancel, wrap `run_pipeline()` in your
    own `concurrent.futures` timeout.
 
@@ -157,8 +157,8 @@ On HITL approval:
 | Bulkhead trips frequently with `retry` events | Bump `settings.agent_timeout_sec` from 90 → 120 |
 | Pinecone slow in a new region | Bump `PINECONE_POLICY.timeout_sec` from 10 → 20 |
 | Kroki rendering still failing | Bump `KROKI_TIMEOUT_SEC` from 15 → 30, OR self-host the kroki container as a sidecar |
-| Redis L2 cache constantly degrading to L1 | Bump `RedisCache.socket_timeout` from 1.0 → 2.0 — but if Redis is that slow, fix the network instead |
-| Cache hits never happen for same-BRD reruns | Check `CACHE_LLM.ttl_sec` (default 1 h) — was the rerun > 1 h after the first run? |
+| Redis L2 cache constantly degrading to L1 | Bump `RedisCache.socket_timeout` from 1.0 → 2.0 - but if Redis is that slow, fix the network instead |
+| Cache hits never happen for same-BRD reruns | Check `CACHE_LLM.ttl_sec` (default 1 h) - was the rerun > 1 h after the first run? |
 | Embedding cache too aggressive (stale vectors after model swap) | Drop `CACHE_EMBEDDING.ttl_sec` from 24 h → 1 h, OR change the cache key to include the model version |
 
 ---

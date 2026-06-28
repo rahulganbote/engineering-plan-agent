@@ -1,4 +1,4 @@
-# Business Requirements Document — Template
+# Business Requirements Document - Template
 # Source: EM Copilot Knowledge Base | Type: BRD Template
 # Version: 2.0 | Domain: Generic | Complexity: Simple
 # Merged from: uploaded BRD_Template + existing brd_fintech_payment_portal.txt standard
@@ -9,8 +9,8 @@
 [Current State: Describe the existing system or process and its limitations.]
 
 ## Objectives
-1. [Primary objective — quantified outcome, e.g., "Reduce processing time from X to Y"]
-2. [Secondary objective — measurable business outcome]
+1. [Primary objective - quantified outcome, e.g., "Reduce processing time from X to Y"]
+2. [Secondary objective - measurable business outcome]
 3. [Compliance or regulatory objective if applicable]
 4. [User experience objective]
 5. [Operational objective]
@@ -35,25 +35,25 @@ Out of Scope (Must NOT Do):
   - [Responsibility explicitly excluded]
 
 ## Functional Requirements
-FR-01: [The system shall — specific, testable, atomic requirement]
-FR-02: [The system shall — input format or source]
-FR-03: [The system shall — core processing step]
-FR-04: [The system shall — output format or artifact]
-FR-05: [The system shall — integration with external system]
-FR-06: [The system shall — reporting or visibility requirement]
-FR-07: [The system shall — error handling or failure mode]
-FR-08: [The system shall — security or access control]
-FR-09: [The system shall — notification or delivery]
-FR-10: [The system shall — audit or compliance requirement]
+FR-01: [The system shall - specific, testable, atomic requirement]
+FR-02: [The system shall - input format or source]
+FR-03: [The system shall - core processing step]
+FR-04: [The system shall - output format or artifact]
+FR-05: [The system shall - integration with external system]
+FR-06: [The system shall - reporting or visibility requirement]
+FR-07: [The system shall - error handling or failure mode]
+FR-08: [The system shall - security or access control]
+FR-09: [The system shall - notification or delivery]
+FR-10: [The system shall - audit or compliance requirement]
 
 ## Non-Functional Requirements (NFRs)
-NFR-01 Performance:   [P95 latency / throughput / capacity — specific number]
-NFR-02 Availability:  [Uptime SLA — e.g., 99.9% = 8.7 hours downtime/year]
+NFR-01 Performance:   [P95 latency / throughput / capacity - specific number]
+NFR-02 Availability:  [Uptime SLA - e.g., 99.9% = 8.7 hours downtime/year]
 NFR-03 Scalability:   [Concurrent users / transactions per second at peak]
-NFR-04 Security:      [Compliance standard — PCI-DSS / SOC2 / GDPR / HIPAA]
+NFR-04 Security:      [Compliance standard - PCI-DSS / SOC2 / GDPR / HIPAA]
 NFR-05 Recoverability:[RPO / RTO targets for failure scenarios]
 NFR-06 Maintainability:[How easily can business rules be updated by non-developers]
-NFR-07 Observability: [Traceability requirement — end-to-end tracing within X minutes]
+NFR-07 Observability: [Traceability requirement - end-to-end tracing within X minutes]
 
 ## Constraints
 - Team: [Headcount, roles, no additional hiring Y/N]
@@ -63,9 +63,9 @@ NFR-07 Observability: [Traceability requirement — end-to-end tracing within X 
 - Compliance: [External audit deadlines, certification requirements]
 
 ## Risks
-- RISK-01 (HIGH):   [Description] — Mitigation: [Action]
-- RISK-02 (MEDIUM): [Description] — Mitigation: [Action]
-- RISK-03 (LOW):    [Description] — Mitigation: [Action]
+- RISK-01 (HIGH):   [Description] - Mitigation: [Action]
+- RISK-02 (MEDIUM): [Description] - Mitigation: [Action]
+- RISK-03 (LOW):    [Description] - Mitigation: [Action]
 
 ## Acceptance Criteria
 For each functional requirement, define success and failure:

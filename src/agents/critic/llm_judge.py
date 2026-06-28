@@ -54,7 +54,7 @@ def build_outputs_summary(state: PipelineState) -> str:
 
 def llm_judge_scoring(outputs_summary: str, state: PipelineState) -> dict:
     """
-    LLM-as-Judge scoring — one of the two required eval methods.
+    LLM-as-Judge scoring - one of the two required eval methods.
     Uses gpt-4o-mini for speed and cost efficiency.
     Returns dimension scores plus evidence and suggestions for feedback.
     """
@@ -78,7 +78,7 @@ def llm_judge_scoring(outputs_summary: str, state: PipelineState) -> dict:
     partial_note = ""
     if agents_not_built:
         partial_note = (
-            f"\nIMPORTANT — PARTIAL PIPELINE: Only these agents have run: {agents_built}. "
+            f"\nIMPORTANT - PARTIAL PIPELINE: Only these agents have run: {agents_built}. "
             f"These agents have NOT run yet: {agents_not_built}. "
             f"Score completeness and consistency based ONLY on the agents that have run. "
             f"Do NOT penalise for missing outputs from agents that haven't been built yet."
@@ -151,5 +151,5 @@ Return ONLY valid JSON with this exact structure:
         return json.loads(content)
     except Exception as e:
         log.error(f"Critic LLM judge failed | error={e}")
-        # Return middling scores on failure — don't block pipeline
+        # Return middling scores on failure - don't block pipeline
         return dict.fromkeys(["groundedness", "completeness", "consistency", "actionability"], 2.5)

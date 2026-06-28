@@ -1,10 +1,10 @@
 """
 src/core/rag.py
 ═══════════════
-Pinecone vector store — RAG ingestion and retrieval.
+Pinecone vector store - RAG ingestion and retrieval.
 
 All 5 specialist agents call retrieve() directly with their own queries.
-The Orchestrator does NOT call RAG — it only parses and routes.
+The Orchestrator does NOT call RAG - it only parses and routes.
 
 Design principle:
     Each agent retrieves from the knowledge base using domain-specific queries
@@ -29,50 +29,50 @@ Chunking strategy:
     Org standards      | Paragraph-level       | 200 tokens  | 20 tok
     Tech decision log  | One chunk per entry   | 150 tokens  | 0
 
-Embedding model choice — text-embedding-3-large (1024-dim):
+Embedding model choice - text-embedding-3-large (1024-dim):
     Chosen over text-embedding-3-large because:
     - Precision and recall are more important than capturing subtle semantic relationships in our small, domain-specific KB.
     - Cost: $0.02/million tokens vs $0.13/million (6.5× higher)
     - Quality: Marginally lower recall (~2-3%) but sufficient for our KB size (<500 chunks)
-    - Latency: ~30% faster inference — critical when all 5 agents call RAG simultaneously
+    - Latency: ~30% faster inference - critical when all 5 agents call RAG simultaneously
     - Dimension: 1024 fits Pinecone free-tier index limits without truncation
     # Switch to text-embedding-3-large if KB grows > 5,000 chunks or retrieval quality drops below 0.72 threshold.
 
-Vector DB choice — Pinecone Serverless (cloud) over ChromaDB/FAISS (local):
+Vector DB choice - Pinecone Serverless (cloud) over ChromaDB/FAISS (local):
     Chosen because:
-    - Persistence: ChromaDB is disk-based — survives local dev but lost on GCP Cloud Run container restarts
+    - Persistence: ChromaDB is disk-based - survives local dev but lost on GCP Cloud Run container restarts
     - Availability: Pinecone Starter is always-on (no weekly ping needed unlike Qdrant free tier)
     - Cost: Free tier covers our ~200-chunk KB with zero per-query billing
     - Deployment: Cloud-managed means ingest_kb.py runs once; no re-ingestion on redeploy
-    - Production readiness: Same Pinecone client works in dev, staging, and prod — no switching
+    - Production readiness: Same Pinecone client works in dev, staging, and prod - no switching
     Tradeoff accepted: AWS us-east-1 region lock on free tier (acceptable for demo + MVP).
 
-Retrieval parameters — top_k=4, threshold=0.72:
+Retrieval parameters - top_k=4, threshold=0.72:
     top_k=4 chosen because:
     - Context window budget: 4 chunks × ~300 tokens avg = 1,200 tokens of context per agent call
     - Adding more chunks (top_k=8) pushes total prompt over 4,000 tokens, increasing cost 40%
-    - Empirically: 4 chunks covers the primary pattern + 1-2 supporting examples — sufficient for grounding
+    - Empirically: 4 chunks covers the primary pattern + 1-2 supporting examples - sufficient for grounding
     threshold=0.85 chosen because:
     - Below 0.70: retrieval returns marginally related chunks that mislead the agent
     - Above 0.80: too restrictive for short BRD queries that don't exactly match chunk phrasing
-    - 0.72 validated against 20 test queries — zero false positives, 95% true positive rate
+    - 0.72 validated against 20 test queries - zero false positives, 95% true positive rate
     Metadata filters (source_type, domain) applied when agent knows its retrieval domain:
-    - Plan Generator filters: source_types=["brd", "plan_template"] — ignores arch/tech chunks
-    - Architect filters: source_types=["arch_pattern", "standard"] — focused retrieval
+    - Plan Generator filters: source_types=["brd", "plan_template"] - ignores arch/tech chunks
+    - Architect filters: source_types=["arch_pattern", "standard"] - focused retrieval
     - This prevents a "microservices" BRD chunk from appearing in billing agent results
 
 Pinecone metadata schema per vector:
-    text:        str   — chunk text (stored, returned on retrieval)
-    source_type: str   — brd|arch_pattern|plan_template|timeline|standard|tech_log
-    source_id:   str   — filename stem (e.g. "brd_fintech_payment_portal")
-    domain:      str   — fintech|legaltech|healthcare|platform|generic
-    complexity:  str   — simple|medium|complex
-    tags:        str   — comma-separated searchable tags
-    chunk_index: int   — position within source document (for ordering context)
-    chunk_id:    str   — "{source_id}_chunk_{i}" used as citation ID in agent outputs
-    chunk_hash:  str   — md5[:8] of chunk text for deduplication
-    doc_version: str   — document version string when available (default "1.0")
-    source_type used for metadata filtering — most important retrieval quality lever
+    text:        str   - chunk text (stored, returned on retrieval)
+    source_type: str   - brd|arch_pattern|plan_template|timeline|standard|tech_log
+    source_id:   str   - filename stem (e.g. "brd_fintech_payment_portal")
+    domain:      str   - fintech|legaltech|healthcare|platform|generic
+    complexity:  str   - simple|medium|complex
+    tags:        str   - comma-separated searchable tags
+    chunk_index: int   - position within source document (for ordering context)
+    chunk_id:    str   - "{source_id}_chunk_{i}" used as citation ID in agent outputs
+    chunk_hash:  str   - md5[:8] of chunk text for deduplication
+    doc_version: str   - document version string when available (default "1.0")
+    source_type used for metadata filtering - most important retrieval quality lever
 
 Usage:
     from src.core.rag import retrieve, format_context, ingest_document
@@ -102,7 +102,7 @@ _pinecone_index = None
 # ── Phase 2/3: per-service circuit breakers (module-scoped, single owner) ────
 # RAG and embedding go to different surfaces (Pinecone vs OpenAI) with
 # different failure profiles, so each gets its own breaker. Independent
-# failure domains — Pinecone troubles don't trip the embedding breaker.
+# failure domains - Pinecone troubles don't trip the embedding breaker.
 _RAG_BREAKER = CircuitBreaker(name="rag.query", fail_threshold=4, reset_sec=20.0)
 _EMBED_BREAKER = CircuitBreaker(name="rag.embedding", fail_threshold=5, reset_sec=30.0)
 
@@ -145,7 +145,7 @@ def _get_index():
 
 
 def _embed_key(texts):
-    # Cache by texts only — model + dims are part of the response but stable for the process
+    # Cache by texts only - model + dims are part of the response but stable for the process
     return hash_args(texts, settings.openai_embedding_model, settings.embedding_dimension)
 
 
@@ -185,13 +185,13 @@ def ingest_document(
 ) -> str:
     """
     Chunk a document and upsert all chunks into Pinecone.
-    Safe to call multiple times — Pinecone upsert is idempotent.
+    Safe to call multiple times - Pinecone upsert is idempotent.
     Returns a human-readable status string for the ingestion script.
 
     Args:
         text:        Raw document text
         doc_id:      Unique identifier (typically the filename stem)
-        source_type: Chunking strategy selector — see module docstring
+        source_type: Chunking strategy selector - see module docstring
         domain:      Metadata for retrieval filtering
         complexity:  Metadata for retrieval filtering
         tags:        Searchable tag list stored in Pinecone metadata
@@ -200,7 +200,7 @@ def ingest_document(
     chunks = _chunk_text(text, source_type)
 
     if not chunks:
-        return f"0 chunks — document may be empty: {doc_id}"
+        return f"0 chunks - document may be empty: {doc_id}"
 
     # Batch embed all chunks in a single OpenAI API call
     embeddings = _embed(chunks)
@@ -214,7 +214,7 @@ def ingest_document(
                 "id": chunk_id,
                 "values": vector,
                 "metadata": {
-                    # text stored in metadata — returned on retrieval
+                    # text stored in metadata - returned on retrieval
                     "text": chunk,
                     "source_type": source_type,
                     "source_id": doc_id,
@@ -281,7 +281,7 @@ def _paragraph_split(text: str, max_tokens: int) -> list[str]:
 
 def _row_split(text: str) -> list[str]:
     """
-    Split on single newlines — one row per chunk.
+    Split on single newlines - one row per chunk.
     Best for CSV-style data (project timelines, tech decision log entries).
     Each row is a self-contained data point for retrieval.
     """
@@ -415,7 +415,7 @@ def format_context(chunks: list[RetrievedChunk]) -> tuple[str, list[str]]:
     Citation requirement:
         Every non-trivial claim in a generated artifact must cite at least one
         retrieved chunk. The returned citation_ids are what get stored in
-        AgentOutputBase.citations — enforced at schema level by Pydantic.
+        AgentOutputBase.citations - enforced at schema level by Pydantic.
 
     The prompt injection pattern used in agent prompts must include:
         "For every claim, risk, recommendation, or milestone you include,
@@ -424,20 +424,20 @@ def format_context(chunks: list[RetrievedChunk]) -> tuple[str, list[str]]:
 
     If no chunks are retrieved (empty list), a fallback citation is returned
     to prevent Pydantic validation failure, but the agent prompt is told
-    no context is available — it must flag this as an assumption.
+    no context is available - it must flag this as an assumption.
 
     Returns:
         (context_string, citation_ids)
     """
     if not chunks:
-        log.warning("RAG retrieval returned 0 chunks — agent will operate without grounding")
+        log.warning("RAG retrieval returned 0 chunks - agent will operate without grounding")
         return (
             "NO CONTEXT RETRIEVED: No relevant knowledge base chunks found for this query.\n"
             "You must:\n"
             "  1. Flag all claims as assumptions (not grounded in retrieved knowledge)\n"
             "  2. Use only information from the BRD provided\n"
             "  3. Mark confidence_score as 0.3 or lower\n"
-            "  4. Populate flagged_ambiguities with 'No RAG context retrieved — ungrounded output'",
+            "  4. Populate flagged_ambiguities with 'No RAG context retrieved - ungrounded output'",
             ["kb_no_results_ungrounded"],
         )
 

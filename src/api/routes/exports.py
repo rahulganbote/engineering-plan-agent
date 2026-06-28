@@ -59,7 +59,7 @@ async def get_artifacts(run_id: str, request: Request):
                 content={
                     "run_id": run_id,
                     "pipeline_status": "initializing",
-                    "message": "Pipeline starting up — poll /events for progress",
+                    "message": "Pipeline starting up - poll /events for progress",
                 },
             )
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")

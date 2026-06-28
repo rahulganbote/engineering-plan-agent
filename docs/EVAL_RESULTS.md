@@ -1,4 +1,4 @@
-# EM Copilot — Evaluation Results
+# EM Copilot - Evaluation Results
 
 This document summarizes the evaluation framework and results for **EM Copilot (v1)**. The evaluation compares the initial agent pipeline output (v0) with the output after one cycle of Critic review and targeted revision (v1).
 

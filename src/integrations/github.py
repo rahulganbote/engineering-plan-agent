@@ -77,9 +77,9 @@ def get_github_velocity(owner: str, repo: str) -> ToolResult:
     Uses strict schema validation, timeout, retry, allowlist check, and injection scanning.
 
     Emits SSE observability events:
-      • `tool_call_started`   — at entry, with the owner/repo
-      • `tool_call_succeeded` — on green path, with latency_ms
-      • `tool_call_degraded`  — on any failure mode, with the reason
+      • `tool_call_started`   - at entry, with the owner/repo
+      • `tool_call_succeeded` - on green path, with latency_ms
+      • `tool_call_degraded`  - on any failure mode, with the reason
     """
     run_id = _current_run_id() or "unknown"
     t0 = time.perf_counter()

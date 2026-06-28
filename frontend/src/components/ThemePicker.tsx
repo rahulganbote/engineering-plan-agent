@@ -1,5 +1,5 @@
 /**
- * ThemePicker — Light / Dark / System dropdown for the workspace header.
+ * ThemePicker - Light / Dark / System dropdown for the workspace header.
  *
  * Pattern matches industry standard (Linear, Vercel, Stripe, GitHub, Notion):
  * three options, current selection shown as an icon-only trigger to save

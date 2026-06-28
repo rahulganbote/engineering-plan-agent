@@ -106,7 +106,7 @@ export const PlanTab: React.FC<PlanTabProps> = ({ planData }) => {
         <div className="md:col-span-1 flex flex-col justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Total Duration</span>
-            <span className="text-2xl font-black text-primary">{plan.total_duration_weeks || '—'} weeks</span>
+            <span className="text-2xl font-black text-primary">{plan.total_duration_weeks || '-'} weeks</span>
           </div>
           {plan.confidence_score !== undefined && (
             <div>

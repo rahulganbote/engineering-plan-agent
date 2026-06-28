@@ -4,16 +4,16 @@ src/core/resilience.py
 Distributed-systems primitives for any external service call.
 
 Provides: timeout enforcement, retry with jittered exponential backoff, and
-optional circuit breaker. Composes with `src/core/cache.py` — cache hits skip
+optional circuit breaker. Composes with `src/core/cache.py` - cache hits skip
 the resilience layer entirely.
 
 Design principles
 ─────────────────
-1. Types and tools only — NO global mutable state. The module exports classes,
+1. Types and tools only - NO global mutable state. The module exports classes,
    dataclasses, and a decorator factory. No shared breakers, no global counters.
-2. Per-instance ownership — each caller (agent, integration) constructs its OWN
+2. Per-instance ownership - each caller (agent, integration) constructs its OWN
    CircuitBreaker. One agent's failures cannot poison another agent's calls.
-3. Frozen policies — CallPolicy is an immutable dataclass. Callers may copy and
+3. Frozen policies - CallPolicy is an immutable dataclass. Callers may copy and
    modify, but no one mutates a shared default. This is what keeps the layer
    safe in a distributed/concurrent setting.
 
@@ -58,8 +58,8 @@ class CallPolicy:
 
     timeout_sec: float = 40.0
     max_attempts: int = 3  # 1 initial attempt + (max_attempts-1) retries
-    backoff_min: float = 1.0  # seconds — base for exponential backoff
-    backoff_max: float = 8.0  # seconds — clamp
+    backoff_min: float = 1.0  # seconds - base for exponential backoff
+    backoff_max: float = 8.0  # seconds - clamp
     jitter: bool = True  # ±50% randomization to avoid retry stampedes
     retry_on: tuple = (Exception,)  # retry only on these exception types
     do_not_retry: tuple = ()  # NEVER retry on these (e.g. AuthError)
@@ -113,7 +113,7 @@ class CircuitOpenError(Exception):
 @dataclass
 class CircuitBreaker:
     """
-    Per-instance state. Each owner constructs its own — no shared state.
+    Per-instance state. Each owner constructs its own - no shared state.
 
     Behavior:
       • CLOSED → record_failure() N times → OPEN
@@ -134,7 +134,7 @@ class CircuitBreaker:
             if self._state == BreakerState.OPEN:
                 if time.monotonic() - self._opened_at >= self.reset_sec:
                     self._state = BreakerState.HALF_OPEN
-                    log.info(f"[breaker:{self.name}] half-open — allowing probe")
+                    log.info(f"[breaker:{self.name}] half-open - allowing probe")
                     return False
                 return True
             return False
@@ -187,7 +187,7 @@ def resilient(
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
             if breaker is not None and breaker.is_open():
-                log.info(f"[{call_name}] short-circuited — breaker OPEN")
+                log.info(f"[{call_name}] short-circuited - breaker OPEN")
                 _emit("breaker_short_circuit", call=call_name, breaker=breaker.name)
                 raise CircuitOpenError(f"breaker {breaker.name} is open")
 

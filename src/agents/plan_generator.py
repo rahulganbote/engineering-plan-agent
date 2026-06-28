@@ -1,21 +1,21 @@
 """
 src/agents/plan_generator.py
 ═════════════════════════════
-Engineering Plan Generator Agent — Agent 2.
+Engineering Plan Generator Agent - Agent 2.
 
 Pattern: Reflection (draft → self-critique → final JSON)
 RAG:     source_types=["brd", "plan_template"]
 
 Contract: EngineeringPlanOutput
-    phases[]              — list[Phase] with milestones[{owner_role required}]
-    risks[]               — list[Risk] with citation on EVERY item
-    team_composition      — dict role → headcount
-    total_duration_weeks  — MUST equal sum of phase.duration_weeks
-    reflection_notes      — self-critique output (Reflection pattern)
-    citations[]           — min 1 Pinecone chunk ID (AgentOutputBase)
-    confidence_score      — 0.0–1.0
-    assumptions[]         — conservative choices documented
-    flagged_ambiguities[] — ambiguous/missing BRD elements
+    phases[]              - list[Phase] with milestones[{owner_role required}]
+    risks[]               - list[Risk] with citation on EVERY item
+    team_composition      - dict role → headcount
+    total_duration_weeks  - MUST equal sum of phase.duration_weeks
+    reflection_notes      - self-critique output (Reflection pattern)
+    citations[]           - min 1 Pinecone chunk ID (AgentOutputBase)
+    confidence_score      - 0.0–1.0
+    assumptions[]         - conservative choices documented
+    flagged_ambiguities[] - ambiguous/missing BRD elements
 """
 
 from __future__ import annotations
@@ -37,17 +37,17 @@ log = get_logger(__name__)
 
 SYSTEM_PROMPT = """You are a senior Engineering Manager generating a structured
 engineering plan from a BRD. You follow the Reflection pattern:
-  Step 1 — Draft an initial plan
-  Step 2 — Critique your own draft for gaps
-  Step 3 — Output improved JSON
+  Step 1 - Draft an initial plan
+  Step 2 - Critique your own draft for gaps
+  Step 3 - Output improved JSON
 
 Rules:
 1. Every milestone MUST have owner_role (e.g. "Tech Lead", "EM", "QA Engineer", "DevOps")
-2. Every risk MUST have a citation field — use a chunk ID from the context below
+2. Every risk MUST have a citation field - use a chunk ID from the context below
 3. total_duration_weeks MUST equal the exact sum of all phase.duration_weeks
 4. reflection_notes MUST document what you improved between draft and final
 5. When BRD is ambiguous, choose the CONSERVATIVE interpretation and document it
-6. Output ONLY valid JSON — no markdown fences, no explanation"""
+6. Output ONLY valid JSON - no markdown fences, no explanation"""
 
 SCHEMA = """{
   "phases": [
@@ -59,8 +59,8 @@ SCHEMA = """{
         {
           "name": "string",
           "week": integer,
-          "deliverable": "string — specific and testable",
-          "owner_role": "string — e.g. Tech Lead, EM, QA Engineer"
+          "deliverable": "string - specific and testable",
+          "owner_role": "string - e.g. Tech Lead, EM, QA Engineer"
         }
       ]
     }
@@ -70,13 +70,13 @@ SCHEMA = """{
       "description": "string",
       "likelihood": "low|medium|high",
       "impact": "low|medium|high",
-      "mitigation": "string — specific action",
-      "citation": "string — chunk_id from context"
+      "mitigation": "string - specific action",
+      "citation": "string - chunk_id from context"
     }
   ],
   "team_composition": {"RoleName": integer},
   "total_duration_weeks": integer,
-  "reflection_notes": "string — what you improved from draft to final",
+  "reflection_notes": "string - what you improved from draft to final",
   "confidence_score": float,
   "assumptions": ["string"],
   "flagged_ambiguities": ["string"]
@@ -141,14 +141,14 @@ class PlanGeneratorAgent(BaseAgent):
         return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
 
     def _draft(self, brd_text: str, context_str: str, feedback: str) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         return self._call_llm_with_retry(
             system_prompt="You are a senior Engineering Manager. Draft an engineering plan.",
             user_prompt=(
                 f"{feedback_block}"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 f"BRD:\n{brd_text}\n\n"
-                "Write a draft engineering plan — phases, milestones with owners, risks, team."
+                "Write a draft engineering plan - phases, milestones with owners, risks, team."
             ),
         )
 
@@ -175,7 +175,7 @@ class PlanGeneratorAgent(BaseAgent):
         )
 
     def _generate_direct(self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str]) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt="""You are a senior Engineering Manager generating a structured
@@ -183,11 +183,11 @@ engineering plan from a BRD.
 
 Rules:
 1. Every milestone MUST have owner_role (e.g. "Tech Lead", "EM", "QA Engineer", "DevOps")
-2. Every risk MUST have a citation field — use a chunk ID from the context below
+2. Every risk MUST have a citation field - use a chunk ID from the context below
 3. total_duration_weeks MUST equal the exact sum of all phase.duration_weeks
 4. reflection_notes MUST document how you optimized the plan structure and risks
 5. When BRD is ambiguous, choose the CONSERVATIVE interpretation and document it
-6. Output ONLY valid JSON — no markdown fences, no explanation""",
+6. Output ONLY valid JSON - no markdown fences, no explanation""",
             user_prompt=(
                 f"{feedback_block}"
                 f"AVAILABLE CITATION IDs (use for risk.citation):\n{cites}\n\n"
@@ -284,7 +284,7 @@ Rules:
             run_id=run_id,
             citations=citation_ids or [cite],
             confidence_score=0.2,
-            assumptions=["Fallback output — agent parse error"],
+            assumptions=["Fallback output - agent parse error"],
             flagged_ambiguities=["Agent output could not be parsed"],
             phases=[
                 Phase(
@@ -345,7 +345,7 @@ def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
     if mapped:
         return RiskLevel(mapped)
     # Fallback: if the LLM emitted something we haven't mapped, log + use default
-    log.warning(f"Unknown RiskLevel value {value!r} — coercing to {default!r}")
+    log.warning(f"Unknown RiskLevel value {value!r} - coercing to {default!r}")
     return RiskLevel(default)
 
 

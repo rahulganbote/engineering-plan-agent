@@ -5,7 +5,7 @@
  * that the voice agent can recite or quote from. Designed to fit inside an
  * ElevenLabs dynamic variable (target ~1.5 KB, hard cap ~3 KB).
  *
- * Returns "" when artifacts aren't ready yet — the system prompt should detect
+ * Returns "" when artifacts aren't ready yet - the system prompt should detect
  * empty briefs and tell the EM to wait.
  *
  * Why client-side: the React UI already has the full artifacts in WorkspaceContext

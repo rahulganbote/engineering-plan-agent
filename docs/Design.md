@@ -1,4 +1,4 @@
-# EM Copilot — System Design Reference
+# EM Copilot - System Design Reference
 **Use this file to onboard Claude Code without feeding the whole project.**
 Start every session: "Read Plan.md, Design.md, and State.md. Then [task]."
 
@@ -6,7 +6,7 @@ Start every session: "Read Plan.md, Design.md, and State.md. Then [task]."
 
 ## System Overview
 
-**Product:** EM Copilot — BRD to Engineering Plan Multi-Agent AI System
+**Product:** EM Copilot - BRD to Engineering Plan Multi-Agent AI System
 **Pattern:** Central Orchestrator Hub-and-Spoke (Orchestrator + 5 specialist agents + 1 Critic)
 **Protocol:** All specialist messages, Critic feedback, revisions, and HITL decisions route through the Orchestrator. Specialist agents never call each other. Critic never talks to agents directly.
 
@@ -57,14 +57,14 @@ Layer 5: HITL              → Gate (approve/reject) → if appproved, export & 
 Layer 6: Output Delivery   → Google Sheets · Google Docs · Mermaid · Markdown · Jira
 ```
 
-## Architecture — 7 Layers
+## Architecture - 7 Layers
 
 ```
 Layer 1: BRD Ingestion     → Security Validator → Doc Parser → FastAPI
 Layer 2: RAG               → Pinecone (text-embedding-3-large · top-k=4 · cosine 0.72)
 Layer 3: Multi-Agent       → Orchestrator Hub → 5 Specialist Agents → Orchestrator Aggregator
 Layer 4: Validation        → Orchestrator → Critic → Orchestrator Decision Router
-Layer 5: HITL              → Gate (approve/reject) → if appproved, export Run Summary in Google Sheets & Push the BRD and all 5 artifacts to Jira. If rejected send email with notes + Critic — quality assessment from rejection along with BRD and all 5 artifacts.
+Layer 5: HITL              → Gate (approve/reject) → if appproved, export Run Summary in Google Sheets & Push the BRD and all 5 artifacts to Jira. If rejected send email with notes + Critic - quality assessment from rejection along with BRD and all 5 artifacts.
 Layer 6: Output Delivery   → Google Sheets · Mermaid · Kroki · Jira
 Layer 7: Governance        → LangSmith · LangFuse · JSONL logs · security
 ```
@@ -163,7 +163,7 @@ All agents output Pydantic models inheriting from `AgentOutputBase`:
 class AgentOutputBase(BaseModel):
     agent_name: str
     run_id: str
-    citations: list[str]   # REQUIRED — min 1 RAG chunk ID
+    citations: list[str]   # REQUIRED - min 1 RAG chunk ID
     confidence_score: float
     assumptions: list[str]
     flagged_ambiguities: list[str]
@@ -253,12 +253,12 @@ HITL Gate
 1. File format + size (Python, ~0ms)
 2. Document parse (pypdf/docx, ~50ms)
 3. Content length min 50 words (Python)
-4. Prompt injection — Layer 1: regex patterns (Python, ~1ms)
-5. Prompt injection — Layer 2: LLM semantic scan (gpt-4o-mini, ~800ms)
-6. PII detection + redaction (Python regex — WARNING not BLOCK)
+4. Prompt injection - Layer 1: regex patterns (Python, ~1ms)
+5. Prompt injection - Layer 2: LLM semantic scan (gpt-4o-mini, ~800ms)
+6. PII detection + redaction (Python regex - WARNING not BLOCK)
 7. BRD completeness check (keyword matching)
 
-**BRD Storage Decision:** Option A — RAM only, never persisted. Only SHA256 hash logged.
+**BRD Storage Decision:** Option A - RAM only, never persisted. Only SHA256 hash logged.
 
 ---
 
@@ -333,9 +333,9 @@ Every `ToolResult` carries a `trust_level` field that flows into the Critic's gr
 
 | Source | Trust Level | Why |
 |---|---|---|
-| **RAG / Pinecone** | `high` | Curated organization knowledge base — verified content |
+| **RAG / Pinecone** | `high` | Curated organization knowledge base - verified content |
 | **GitHub API** | `medium` | Verified upstream, but third-party data (repo descriptions, star counts) |
-| **Tavily web search** | `low` | Arbitrary web content — useful for fallback grounding, but not authoritative |
+| **Tavily web search** | `low` | Arbitrary web content - useful for fallback grounding, but not authoritative |
 
 The Critic downweights low-trust citations in its groundedness scoring, so a plan grounded entirely in Tavily results cannot achieve a Green badge without additional RAG citations. This prevents agents from confidently citing random web content as if it were org policy.
 
@@ -345,15 +345,15 @@ The Critic downweights low-trust citations in its groundedness scoring, so a pla
 - **Allowed in queries**: section names ("Objectives", "NFRs"), bounded concept keywords from `_SAFE_CONCEPT_KEYWORDS` (`availability`, `scalability`, `microservices`, `event-driven`, `payments`, etc.).
 - **Forbidden in queries**: raw BRD paragraphs, customer/org names, requirement text, risk descriptions.
 
-Both `SolutionArchitect` and `TechStackRecommender` call `build_tavily_query(role, state.brd_sections)` rather than constructing query strings inline. This makes the privacy boundary syntactically enforceable — a code reviewer can grep for `tavily_search` calls and verify the query argument is the helper's output.
+Both `SolutionArchitect` and `TechStackRecommender` call `build_tavily_query(role, state.brd_sections)` rather than constructing query strings inline. This makes the privacy boundary syntactically enforceable - a code reviewer can grep for `tavily_search` calls and verify the query argument is the helper's output.
 
-### Observability — Per-Tool SSE Events
+### Observability - Per-Tool SSE Events
 Every tool call emits three structured events into the existing event bus, surfaced live in the React UI's pipeline engine console:
-- `tool_call_started` — `{tool, run_id, query_len OR owner/repo}`
-- `tool_call_succeeded` — `{tool, run_id, latency_ms, result_count OR stars}`
-- `tool_call_degraded` — `{tool, run_id, reason, latency_ms}`
+- `tool_call_started` - `{tool, run_id, query_len OR owner/repo}`
+- `tool_call_succeeded` - `{tool, run_id, latency_ms, result_count OR stars}`
+- `tool_call_degraded` - `{tool, run_id, reason, latency_ms}`
 
-Recruiters can see in real time which tools fired, how fast they responded, and whether they degraded — same observability bar as the cache/breaker events from Phases 1–10.
+Recruiters can see in real time which tools fired, how fast they responded, and whether they degraded - same observability bar as the cache/breaker events from Phases 1–10.
 
 ### Input/Output Security Boundary (Injection Guard)
 To prevent prompt injection from propagating into agent generation contexts:
@@ -365,7 +365,7 @@ To prevent prompt injection from propagating into agent generation contexts:
   - Malicious GitHub fields are redacted (e.g. `[Redacted due to security policy]`) or the entire tool response is blocked.
 
 ### GitHub Owner/Repo Allowlist
-The LLM constructs the `owner/repo` arguments passed to `get_github_velocity()`. Without a guardrail, a hallucinated repo would hit any public GitHub repository — security AND accuracy concern.
+The LLM constructs the `owner/repo` arguments passed to `get_github_velocity()`. Without a guardrail, a hallucinated repo would hit any public GitHub repository - security AND accuracy concern.
 
 `GITHUB_ALLOWLIST` in `src/integrations/github.py` is a hard allowlist of approved `(owner, repo)` tuples drawn from the org's `tech_decision_log.txt`. If the LLM passes an unapproved repo, the tool short-circuits BEFORE any network call and returns a `used_fallback=True` ToolResult.
 
@@ -396,7 +396,7 @@ Order matters: `@cached` runs **outside** `@resilient`, so a cache hit avoids th
 
 ### Per-Instance State, Shared Code
 
-The pattern is *shared code, never shared state*. `src/core/resilience.py` exports `CallPolicy` (frozen dataclass), `CircuitBreaker` class, and the `@resilient` factory — that's it. Each agent class and each external service **owns its own breaker instance**, registered in a module-level dict keyed by class name:
+The pattern is *shared code, never shared state*. `src/core/resilience.py` exports `CallPolicy` (frozen dataclass), `CircuitBreaker` class, and the `@resilient` factory - that's it. Each agent class and each external service **owns its own breaker instance**, registered in a module-level dict keyed by class name:
 
 ```python
 _LLM_BREAKERS: dict[str, CircuitBreaker] = {}
@@ -415,8 +415,8 @@ A failing `PlanGeneratorAgent` cannot open the `ScheduleEstimatorAgent` breaker.
 
 | Backend | Purpose | Activation |
 |---|---|---|
-| `InMemoryCache` | L1 — LRU + TTL, per-process | Always |
-| `RedisCache` | L2 — pickle+gzip, shared across replicas | `REDIS_URL` env var set |
+| `InMemoryCache` | L1 - LRU + TTL, per-process | Always |
+| `RedisCache` | L2 - pickle+gzip, shared across replicas | `REDIS_URL` env var set |
 | `TieredCache` | Composes L1 + L2 (read L1 first, back-fill on L2 hit, write-through) | Auto when both present |
 | `SemanticBackend` | Pinecone cosine similarity (`namespace="llm-cache"`, threshold 0.95) | Critic opt-in |
 
@@ -432,7 +432,7 @@ class BaseAgent:
     RESILIENCE_POLICY: CallPolicy  = OPENAI_POLICY
 ```
 
-Subclasses override these to tune TTL, timeout, retry count, or breaker thresholds without touching `_call_llm_with_retry`. The Critic, for example, opts into the `SemanticBackend` by setting its `CACHE_POLICY` accordingly. This is the Phase 5 extensibility win — adding a new agent with custom resilience characteristics is a two-line change.
+Subclasses override these to tune TTL, timeout, retry count, or breaker thresholds without touching `_call_llm_with_retry`. The Critic, for example, opts into the `SemanticBackend` by setting its `CACHE_POLICY` accordingly. This is the Phase 5 extensibility win - adding a new agent with custom resilience characteristics is a two-line change.
 
 ### Specialist Registry (Phase 4)
 
@@ -451,13 +451,13 @@ Subclasses override these to tune TTL, timeout, retry count, or breaker threshol
 - `breaker_open` / `breaker_short_circuit` / `breaker_half_open`
 - `bulkhead_timeout` (agent name, budget)
 
-The bus best-effort attaches the current thread's `run_id` (via thread-local from `base_agent`) so events correlate to a specific run. FastAPI wires the sink at startup and fans events into the SSE stream consumed by the Streamlit UI. The bus never raises — observability cannot break the caller.
+The bus best-effort attaches the current thread's `run_id` (via thread-local from `base_agent`) so events correlate to a specific run. FastAPI wires the sink at startup and fans events into the SSE stream consumed by the Streamlit UI. The bus never raises - observability cannot break the caller.
 
 ### Why Custom Instead of Hystrix-Py / pybreaker / aiocache
 
 | Library | Why not chosen |
 |---|---|
-| `pybreaker` | Only does the breaker — no integrated retry/timeout/cache stack |
+| `pybreaker` | Only does the breaker - no integrated retry/timeout/cache stack |
 | `tenacity` | Retry-only; we previously used it and removed it in Phase 1 |
 | `aiocache` | Async-first; our codebase is sync (ThreadPoolExecutor parallelism) |
 | `cachetools` | LRU only; no TTL, no semantic, no pluggable backend |

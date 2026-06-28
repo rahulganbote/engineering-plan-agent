@@ -1,1 +1,1 @@
-"""src/api — FastAPI gateway for the EM Copilot pipeline."""
+"""src/api - FastAPI gateway for the EM Copilot pipeline."""

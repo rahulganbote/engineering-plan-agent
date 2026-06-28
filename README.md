@@ -10,7 +10,7 @@
 [![Anthropic](https://img.shields.io/badge/Multi--Provider-OpenAI%20%2B%20Anthropic-D97757)](https://www.anthropic.com)
 [![Tavily](https://img.shields.io/badge/Search-Tavily-orange)](https://tavily.com)
 
-> EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon HITL (Human in the Loop) approval, it pushes the Artifacts into Jira. 
+> EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon HITL (Human in the Loop) approval, it pushes the artifacts into Jira. 
 
 🔗 **Live:** [emcopilot.ai](https://emcopilot.ai) 
 🔗 **Loom walkthrough:** *(coming soon)*
@@ -60,18 +60,18 @@
 
 Engineering Managers face a persistent bottleneck in translating complex Business Requirements Documents (BRDs) into structured technical plans, schedules, and architecture diagrams. The manual process is time-consuming and frequently results in:
 
-* **Delivery delays** — days lost drafting sprint scopes, mapping timelines, and aligning teams.
-* **Misalignment** — gaps between business intent (BRD requirements) and engineering implementation.
-* **Inconsistent scoping** — ad-hoc architectures and planning criteria that vary wildly across engineering squads, making cross-team comparison and audit difficult.
+* **Delivery delays** - days lost drafting sprint scopes, mapping timelines, and aligning teams.
+* **Misalignment** - gaps between business intent (BRD requirements) and engineering implementation.
+* **Inconsistent scoping** - ad-hoc architectures and planning criteria that vary wildly across engineering squads, making cross-team comparison and audit difficult.
 
 ### The EM Copilot Solution
 
 EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bundle through a multi-agent workflow. The system delivers across five dimensions:
 
-* **Faster turnaround.** RAG-augmented specialist agents reference past projects and templates, eliminating boilerplate drafting from scratch — measured median per run is ~26s on OpenAI and ~70s on Anthropic.
+* **Faster turnaround.** RAG-augmented specialist agents reference past projects and templates, eliminating boilerplate drafting from scratch - measured median per run is ~26s on OpenAI and ~70s on Anthropic.
 * **Standardized, validated planning.** A Critic Agent checks all five specialist outputs for completeness, consistency, and alignment before they reach the EM, and enforces deterministic quality caps (FM-1/2/3) on top of the LLM-judge score.
 * **Grounded intelligence.** Pinecone RAG ensures architectural decisions and project guidelines are grounded in organization standards and historical project data, with explicit citation tracking per specialist output.
-* **Evaluated outputs.** Outputs are scored across five criteria — Groundedness, Completeness, Consistency, Actionability, and Hallucination resistance — so every artifact carries a clear Green / Amber / Red quality badge tied to verifiable metrics, not vibes.
+* **Evaluated outputs.** Outputs are scored across five criteria - Groundedness, Completeness, Consistency, Actionability, and Hallucination resistance - so every artifact carries a clear Green / Amber / Red quality badge tied to verifiable metrics, not vibes.
 * **EM enablement.** The system generates decision-ready artifacts with source citations and a voice/UI approval gate, allowing the EM to serve as an editor and approver rather than a drafter staring at a blank page.
 
 
@@ -92,7 +92,7 @@ User uploads BRD ──► Security validation (7 checks) ──► Orchestrator
                                             score ≥ threshold? ── no ──► targeted revision (≤2 cycles)
                                                               │ yes
                                                               ▼
-                                          HITL approval — button or voice
+                                          HITL approval - button or voice
                                                               │
                                        Approved ──► Sheets + Jira Epic + Pinecone re-ingest
                                        Rejected ──► Audit row only
@@ -100,7 +100,7 @@ User uploads BRD ──► Security validation (7 checks) ──► Orchestrator
 
 Three architectural patterns matter more than the rest:
 
-- **Hub-and-spoke parallel dispatch.** The Orchestrator fans out to 5 specialists concurrently — ~3× faster than sequential chaining, and each specialist's failure stays isolated to its bulkhead.
+- **Hub-and-spoke parallel dispatch.** The Orchestrator fans out to 5 specialists concurrently - ~3× faster than sequential chaining, and each specialist's failure stays isolated to its bulkhead.
 - **Targeted revision loop.** When the Critic flags issues, only the affected specialists re-run. Cost-aware self-correction; capped at 2 revisions so a bad input never burns 10× the expected cost.
 - **Deterministic quality caps over LLM-judge.** LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating.
 
@@ -121,7 +121,7 @@ The full architecture diagram with security boundaries, observability events, an
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
-| **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol — chosen at runtime via `init_default_backend_from_env()` |
+| **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol - chosen at runtime via `init_default_backend_from_env()` |
 | **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`; surfaced into Streamlit SSE stream |
 
 ---
@@ -139,11 +139,11 @@ The vector database stores organization-specific architectural patterns, plannin
 
 Five-method evaluation suite (`eval/run_eval.py`):
 
-1. **Rule-based** — deterministic structural assertions (milestone count, owner coverage, citation format)
-2. **LLM-as-Judge** — 0–5 scores for Groundedness, Completeness, Consistency, Actionability
-3. **Execution-based** — Pydantic schema pass rate, Kroki render checks, total pipeline time SLA
-4. **Reference-based** — BERTScore F1 against golden output files
-5. **Human HITL** — 1–5 EM rating + free-text notes
+1. **Rule-based** - deterministic structural assertions (milestone count, owner coverage, citation format)
+2. **LLM-as-Judge** - 0–5 scores for Groundedness, Completeness, Consistency, Actionability
+3. **Execution-based** - Pydantic schema pass rate, Kroki render checks, total pipeline time SLA
+4. **Reference-based** - BERTScore F1 against golden output files
+5. **Human HITL** - 1–5 EM rating + free-text notes
 
 **Deterministic quality caps** override optimistic LLM-judge scores:
 
@@ -193,13 +193,13 @@ A condensed log of the larger trade-offs. SDM/TPM hiring managers should spend m
 | **Multi-provider failover** (OpenAI ↔ Anthropic) | Single provider | Production needs provider redundancy; forces clean `LLMProvider` abstraction | Per-family timeouts + two cost tables |
 | **`--max-instances=1`** on Cloud Run | Redis from day 1 | Shipped voice approval in days vs weeks; explicit migration path documented | Linear scaling ceiling until Redis lands |
 | **Async `/approve` + SSE `exports_finalized`** | Sync approve with full payload | ElevenLabs voice tools time out at 20s; sync was 504-ing | UI must listen for SSE event to hydrate URLs |
-| **Three tool patterns** — REST / `@tool` / MCP | One pattern for all | Each tool has different latency/auth/coupling; right pattern per tool keeps blast radius small | 3 patterns to maintain instead of 1 |
+| **Three tool patterns** - REST / `@tool` / MCP | One pattern for all | Each tool has different latency/auth/coupling; right pattern per tool keeps blast radius small | 3 patterns to maintain instead of 1 |
 | **Privacy boundary** on Tavily queries | Send BRD slice directly | Tavily is third-party; raw BRD risks PII leak | Slightly fuzzier search; Critic downweights `trust_level=low` |
 | **Idempotent `/approve` + structured 409** | Plain 400 on retry | Voice agents double-fire; UI races with voice; clients retry on timeout | One more state branch (4 dedicated tests) |
 | **Per-tenant `_run_owner` map** | OAuth check on every endpoint | OAuth alone doesn't cover voice-webhook path; one helper enforces both auth modes | Per-process; migrates with `_runs` to Redis |
-| **Hard $2.00 per-run budget ceiling** | Soft warning in logs | Silent overrun can burn 10× expected; `BudgetBreachedError` halts at earliest catchable point | May abort a legitimate large BRD — accepted as visible error vs silent burn |
+| **Hard $2.00 per-run budget ceiling** | Soft warning in logs | Silent overrun can burn 10× expected; `BudgetBreachedError` halts at earliest catchable point | May abort a legitimate large BRD - accepted as visible error vs silent burn |
 | **Voice-callback bearer auth** (`VOICE_WEBHOOK_SECRET`) | mTLS; signed JWT; IP allowlist | Lowest-friction pattern ElevenLabs supports natively; one rotation point | No zero-downtime rotation today |
-| **Critic deterministic caps** (FM-1/2/3) | Trust LLM-judge scores | LLM judges are systematically optimistic; deterministic overrides catch ~5% false-greens | Some strong runs capped at Amber — better than false-green |
+| **Critic deterministic caps** (FM-1/2/3) | Trust LLM-judge scores | LLM judges are systematically optimistic; deterministic overrides catch ~5% false-greens | Some strong runs capped at Amber - better than false-green |
 | **Defensive `ApprovalRequest` validators** | Reject malformed input with 422 | Voice LLMs emit verb forms, nested params, float ratings; normalize at the model boundary | More pre-validation surface (5 dedicated tests) |
 
 ---
@@ -210,10 +210,10 @@ What I would commit to in a sprint plan if this graduated to a team-owned servic
 
 | SLI | Current (measured) | Proposed SLO | Reasoning |
 |---|---|---|---|
-| Latency p50/p95 — OpenAI | ~26s / ~72s (n=13) | 99% < 120s | Within ElevenLabs voice budget |
-| Latency p50/p95 — Anthropic | ~86s / ~102s (n=9) | 95% < 130s | ~3× wall-clock; ~2.2× output verbosity |
-| Cost / run — OpenAI median | ~$0.08 (n=13) | < $0.15 / 30-day rolling | Tracked via pricing table + Tavily counter |
-| Cost / run — Anthropic median | ~$0.20 (n=9) | < $0.30 / 30-day rolling | ~2.5× OpenAI on observed data |
+| Latency p50/p95 - OpenAI | ~26s / ~72s (n=13) | 99% < 120s | Within ElevenLabs voice budget |
+| Latency p50/p95 - Anthropic | ~86s / ~102s (n=9) | 95% < 130s | ~3× wall-clock; ~2.2× output verbosity |
+| Cost / run - OpenAI median | ~$0.08 (n=13) | < $0.15 / 30-day rolling | Tracked via pricing table + Tavily counter |
+| Cost / run - Anthropic median | ~$0.20 (n=9) | < $0.30 / 30-day rolling | ~2.5× OpenAI on observed data |
 | Critic GREEN-rate | ~70% standard BRDs | 80% standard / 60% niche-tech | Measured against `eval/` golden set |
 | Pipeline error rate | < 2% | < 1% production | Excludes user-driven rejections |
 | `/approve` sync return | < 1s | < 5s p95 | Async refactor; SLO leaves cold-start slack |
@@ -244,7 +244,7 @@ L = Likelihood · I = Impact (Low / Medium / High)
 | Background export crashes mid-flight | L | M | Status → `export_failed`; Clear & Reset path | `/approve/{run_id}/retry-export` with partial replay |
 | Cloud Run cold start | M | L | `--min-instances=0` for cost; 5–10s start | Flip to `min-instances=1` on first complaint |
 
-The two **bold** rows are highest-priority follow-ups — compounding risk if/when the project graduates beyond single-instance demo.
+The two **bold** rows are highest-priority follow-ups - compounding risk if/when the project graduates beyond single-instance demo.
 
 ---
 
@@ -271,7 +271,7 @@ cd frontend && npm run dev
 
 **Recommended for production parity:** `LANGCHAIN_API_KEY` (observability), `VOICE_WEBHOOK_SECRET` (voice auth), `MAX_PIPELINE_RUN_BUDGET_USD` (cost ceiling), `REDIS_URL` (L2 cache), `TAVILY_API_KEY` + `TAVILY_MONTHLY_BUDGET` (web grounding fallback), `MAX_CRITIC_REVISIONS` (maximum self-revision loops for quality criteria, default is `2`; set to `0` to disable and save tokens/time).
 
-Full configuration reference: [.env.example](./.env.example) — every variable is documented with its purpose and default.
+Full configuration reference: [.env.example](./.env.example) - every variable is documented with its purpose and default.
 
 **Tests:**
 
@@ -303,9 +303,9 @@ docs/            Design.md, EVAL_RESULTS.md, screenshots, ADRs
 
 ## License & Author
 
-**MIT License** — feel free to use for learning and inspiration.
+**MIT License** - feel free to use for learning and inspiration.
 
-**Rahul Ganbote** — [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
+**Rahul Ganbote** - [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
 
 ---
 

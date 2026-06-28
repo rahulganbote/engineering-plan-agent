@@ -1,13 +1,13 @@
 """
 src/agents/base_agent.py
 ═════════════════════════
-BaseAgent mixin — shared utilities for all 5 specialist agents.
+BaseAgent mixin - shared utilities for all 5 specialist agents.
 
 Provides:
-    1. Retry logic (tenacity) — FM-1: malformed JSON / LLM timeout mitigation
-    2. Execution timing — SC-3: pipeline time measurement
-    3. log_agent_run() call site — ensures every agent execution is logged
-    4. No-RAG-hits Amber forcing — FM-2: automatic Amber when no RAG context
+    1. Retry logic (tenacity) - FM-1: malformed JSON / LLM timeout mitigation
+    2. Execution timing - SC-3: pipeline time measurement
+    3. log_agent_run() call site - ensures every agent execution is logged
+    4. No-RAG-hits Amber forcing - FM-2: automatic Amber when no RAG context
 
 Usage:
     class PlanGeneratorAgent(BaseAgent):
@@ -30,7 +30,7 @@ from __future__ import annotations
 import threading as _threading2
 import time
 
-# LangSmith auto-traces every wrapped client.chat.completions.create() call —
+# LangSmith auto-traces every wrapped client.chat.completions.create() call -
 # captures prompt, response, model, latency, token usage. No code changes
 # needed elsewhere; the client API is identical.
 from langsmith.wrappers import wrap_openai
@@ -53,7 +53,7 @@ log = get_logger(__name__)
 client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
 
 
-# ── Token & Cost usage tracker — per-run counters, thread-safe ────────────────
+# ── Token & Cost usage tracker - per-run counters, thread-safe ────────────────
 # Each pipeline run has its own input/output token tally and USD cost. Agents running in the
 # ThreadPoolExecutor set a thread-local run_id; LLM callers add to the dict via
 # add_tokens() and add_cost(); pipeline.py reads totals at the end.
@@ -115,7 +115,7 @@ def _current_enable_fallback() -> bool:
 
 
 def reset_token_counter(run_id: str) -> None:
-    """Zero the counters for a run — call at pipeline start."""
+    """Zero the counters for a run - call at pipeline start."""
     with _TOKEN_LOCK:
         _TOKEN_COUNTER[run_id] = {"input": 0, "output": 0}
         _COST_COUNTER[run_id] = 0.0
@@ -178,7 +178,7 @@ def cleanup_token_counter(run_id: str) -> None:
 # ── Phase 1: Per-agent-class circuit breakers ────────────────────────────────
 # Each BaseAgent subclass gets ONE breaker per process. State persists across
 # agent INSTANCES (which are created fresh per pipeline run), but each agent
-# CLASS has its own independent breaker — one class's failures cannot poison
+# CLASS has its own independent breaker - one class's failures cannot poison
 # another's. This is the "per-instance ownership" pattern from resilience.py
 # applied at the class level (since instances are short-lived).
 _LLM_BREAKERS: dict[str, CircuitBreaker] = {}
@@ -210,9 +210,9 @@ class BaseAgent:
         ... do work ...
         self.log_run(state.run_id, "agent_name", citations, critic_score, start, revision)
 
-    Class attributes (Phase 5 — per-agent policy manifest):
-        CACHE_POLICY      — CachePolicy used by _call_llm_with_retry
-        RESILIENCE_POLICY — CallPolicy used by _call_llm_with_retry
+    Class attributes (Phase 5 - per-agent policy manifest):
+        CACHE_POLICY      - CachePolicy used by _call_llm_with_retry
+        RESILIENCE_POLICY - CallPolicy used by _call_llm_with_retry
     Override either on a specialist subclass to change its behaviour.
     """
 
@@ -225,7 +225,7 @@ class BaseAgent:
     def start_timer(self) -> float:
         """
         Record pipeline start time.
-        Returns perf_counter float — pass to log_run() when done.
+        Returns perf_counter float - pass to log_run() when done.
 
         Usage:
             start = self.start_timer()
@@ -255,7 +255,7 @@ class BaseAgent:
             citation_ids: list of chunk IDs for citations[] field
 
         FM-2 no_rag_hits: if no chunks retrieved above threshold,
-            returns NO_RAG_SENTINEL in citation_ids — Critic will
+            returns NO_RAG_SENTINEL in citation_ids - Critic will
             automatically force Amber badge when it detects this.
         """
         chunks = retrieve(query, source_types=source_types, domain=domain)
@@ -301,7 +301,7 @@ class BaseAgent:
         breaker = _get_llm_breaker(type(self).__name__)
 
         # Capture per-agent policies at call time so subclass overrides are
-        # respected — class-level @cached/@resilient decorators can't do this.
+        # respected - class-level @cached/@resilient decorators can't do this.
         cache_policy = self.CACHE_POLICY
         # Family-aware resilience policy. Reading current family at call time
         # (vs class attribute) lets the same agent class work transparently
@@ -359,7 +359,7 @@ class BaseAgent:
             return _cached_call(system_prompt, user_prompt, model, response_format)
         except CircuitOpenError:
             log.error(
-                f"LLM call short-circuited (breaker {breaker.name} OPEN) — "
+                f"LLM call short-circuited (breaker {breaker.name} OPEN) - "
                 f"too many recent failures; routing to error node"
             )
             raise
@@ -390,7 +390,7 @@ class BaseAgent:
         MUST be called after every agent run.
 
         Logged fields (per spec):
-            ✓ input:             brd_hash passed externally — never raw BRD
+            ✓ input:             brd_hash passed externally - never raw BRD
             ✓ rag_chunks:        citation_ids (chunk IDs retrieved)
             ✓ output:            logged via success flag and critic_score
             ✓ critic_score:      float or None

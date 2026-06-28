@@ -123,7 +123,7 @@ class TestPIIDetection:
         assert result.status == ValidationStatus.PASSED
 
     def test_pii_is_warning_not_block(self):
-        """PII detection should warn, not block — pipeline continues."""
+        """PII detection should warn, not block - pipeline continues."""
         text = f"{VALID_BRD}\nStakeholder email: pm@company.com"
         result = validator._detect_and_redact_pii(text)
         assert result.status == ValidationStatus.WARNING  # NOT BLOCKED
@@ -153,7 +153,7 @@ class TestBRDCompleteness:
     Completeness checks. These tests assert behavior when the LLM fallback
     CONFIRMS missing sections (the BLOCKED path). To keep them hermetic and
     avoid hitting real LLM endpoints, an autouse fixture patches the security
-    LLM helper to echo back "every item is still missing" — which is the
+    LLM helper to echo back "every item is still missing" - which is the
     semantic the original network-backed tests relied on.
     """
 
@@ -316,7 +316,7 @@ class TestSecurityProviderRouting:
             # Injection scan path
             if "is_injection" in prompt or "prompt injection" in prompt.lower():
                 return '{"is_injection": false, "confidence": 0.0, "reason": "clean"}'
-            # Completeness path — the validator's example JSON shape lists each
+            # Completeness path - the validator's example JSON shape lists each
             # missing item as a key. Parse those keys from the prompt and mark
             # every one as False (not missing) so the BRD clears the check.
             import json as _json
@@ -325,7 +325,7 @@ class TestSecurityProviderRouting:
             keys = re.findall(r'"([^"]+)":\s*true', prompt)
             return _json.dumps(dict.fromkeys(keys, False)) if keys else "{}"
 
-        # Patch the helper in-place — same import surface used by both call sites
+        # Patch the helper in-place - same import surface used by both call sites
         import src.security.validator as vmod
 
         monkeypatch.setattr(vmod, "_security_llm_call", fake_security_llm_call)
@@ -372,7 +372,7 @@ class TestSecurityFailOpen:
     def test_completeness_fails_open_on_llm_exception(self, monkeypatch):
         """
         When the LLM call raises any exception, the completeness check
-        returns PASSED with a "could not verify" technical detail — NOT a
+        returns PASSED with a "could not verify" technical detail - NOT a
         BLOCKED "missing sections" result based on the regex layer.
         """
         import src.security.validator as vmod

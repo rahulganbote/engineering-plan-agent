@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     """
     All application settings loaded from environment variables.
 
-    Fields are grouped by integration. Required fields have no default —
+    Fields are grouped by integration. Required fields have no default -
     the app will fail at startup with a clear error if they are missing.
     Optional fields have sensible defaults for local development.
     """
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     rag_top_k: int = 4
     rag_similarity_threshold: float = 0.45
 
-    # ── LangSmith (observability — primary for demo day) ──────────────────────
+    # ── LangSmith (observability - primary for demo day) ──────────────────────
     langchain_tracing_v2: str = "true"  # enables auto-instrumentation
     langchain_api_key: str = ""  # optional in dev, required for tracing
     langchain_project: str = "em-copilot-brd-agent"
@@ -103,9 +103,9 @@ class Settings(BaseSettings):
     max_critic_revisions: int = 2
     max_agent_retries: int = 2
     pipeline_timeout_sec: int = 300  # 5 min hard limit
-    agent_timeout_sec: int = 90  # Per-agent bulkhead — Phase 9
+    agent_timeout_sec: int = 90  # Per-agent bulkhead - Phase 9
     anthropic_agent_timeout_sec: int = (
-        180  # Anthropic is 3-5× slower than OpenAI; per-family override    # Per-agent bulkhead — Phase 9
+        180  # Anthropic is 3-5× slower than OpenAI; per-family override    # Per-agent bulkhead - Phase 9
     )
     enable_provider_fallback: bool = True
 

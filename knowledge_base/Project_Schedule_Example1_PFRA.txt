@@ -1,4 +1,4 @@
-# Project Schedule — Example
+# Project Schedule - Example
 # Project: Product Finance Reporting Agent (PFRA)
 # Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
 # Synced to Agent 3 (Schedule Estimator) contract v2.0
@@ -15,14 +15,14 @@ run_id:              pfra_2024_sched
 citations:           [project_timelines_chunk_3, project_timelines_chunk_7, Project_Schedule_Example1_PFRA_chunk_0]
 confidence_score:    0.78
 assumptions:
-  - Based on P010 (Recommendation Engine, ML complexity, 22 actual weeks) — AI/LLM adds ~20%
+  - Based on P010 (Recommendation Engine, ML complexity, 22 actual weeks) - AI/LLM adds ~20%
   - Buffer of 1 week added for prompt engineering iteration per P010 variance pattern
-  - 2-week sprint cadence assumed — BRD did not specify
+  - 2-week sprint cadence assumed - BRD did not specify
 comparable_projects:
-  - project_timelines_chunk_3   # P010 Recommendation Engine — AI complexity, 18 est / 22 actual
-  - project_timelines_chunk_7   # P002 Customer Data Platform — data complexity, 24 est / 28 actual
+  - project_timelines_chunk_3   # P010 Recommendation Engine - AI complexity, 18 est / 22 actual
+  - project_timelines_chunk_7   # P002 Customer Data Platform - data complexity, 24 est / 28 actual
 flagged_ambiguities:
-  - Sprint cadence not specified in BRD — assumed 2-week sprints
+  - Sprint cadence not specified in BRD - assumed 2-week sprints
 buffer_weeks: 1
 total_effort_days: 270.0
 critical_path:
@@ -33,7 +33,7 @@ critical_path:
 
 ## Sprints
 
-### Sprint 1 — Weeks 1-2: Discovery and Architecture
+### Sprint 1 - Weeks 1-2: Discovery and Architecture
 sprint: 1
 week_range: W1-W2
 effort_days: 40.0
@@ -44,38 +44,38 @@ deliverables:
   - Agent decision tree and prompt framework v1.0 documented
   - System Architecture Document approved
 
-### Sprint 2 — Weeks 3-5: Data Pipeline
+### Sprint 2 - Weeks 3-5: Data Pipeline
 sprint: 2
 week_range: W3-W5
 effort_days: 75.0
 team_members: [AI Engineer x2, Data Engineer]
 deliverables:
-  - ETL pipeline — all 5 data sources ingesting with schema validation
+  - ETL pipeline - all 5 data sources ingesting with schema validation
   - Vector DB populated with 50 sample external PDFs for RAG
   - Data normalization layer handling format variability
 
-### Sprint 3 — Weeks 6-7: Synthesis and Formatting
+### Sprint 3 - Weeks 6-7: Synthesis and Formatting
 sprint: 3
 week_range: W6-W7
 effort_days: 65.0
 team_members: [AI Engineer x2, QA]
 deliverables:
-  - Cross-correlation synthesis module — LLM narrative with citations
-  - Formatting module — PDF and Markdown rendering
-  - End-to-end pipeline run on synthetic data — zero errors
+  - Cross-correlation synthesis module - LLM narrative with citations
+  - Formatting module - PDF and Markdown rendering
+  - End-to-end pipeline run on synthetic data - zero errors
 
-### Sprint 4 — Weeks 8-10: Validation and Testing
+### Sprint 4 - Weeks 8-10: Validation and Testing
 sprint: 4
 week_range: W8-W10
 effort_days: 60.0
 team_members: [AI Engineer x2, QA, Domain Expert]
 deliverables:
-  - Unit test suite — code coverage >= 80%
-  - Pilot 1 accuracy test — 4 of 5 scenarios rated accurate
-  - Model refinement — prompt iteration and edge case handling
+  - Unit test suite - code coverage >= 80%
+  - Pilot 1 accuracy test - 4 of 5 scenarios rated accurate
+  - Model refinement - prompt iteration and edge case handling
   - 3 consecutive pipeline runs complete in < 15 minutes
 
-### Sprint 5 — Week 11: Deployment and Handoff
+### Sprint 5 - Week 11: Deployment and Handoff
 sprint: 5
 week_range: W11
 effort_days: 30.0
@@ -88,10 +88,10 @@ deliverables:
 
 ## Comparable Projects Reference (for Agent 3 calibration)
 # These are the project_timelines.csv rows used to calibrate estimates
-# P010: AI/LLM complexity consistently underestimated — add 20% buffer
-# P002: Data quality issues cause delays — validate source schemas in Week 1
-# P001: Third-party API integration delays — build integration spike into Sprint 1
+# P010: AI/LLM complexity consistently underestimated - add 20% buffer
+# P002: Data quality issues cause delays - validate source schemas in Week 1
+# P001: Third-party API integration delays - build integration spike into Sprint 1
 comparable_project_lessons:
   - P010 (18 est / 22 actual, 22% variance): AI prompt engineering adds 30-40 hrs beyond initial estimate
-  - P002 (24 est / 28 actual, 17% variance): Data quality issues common — allocate 20% of ETL sprint to cleanup
-  - P001 (16 est / 19 actual, 19% variance): Third-party API rate limits delay integration — mock first
+  - P002 (24 est / 28 actual, 17% variance): Data quality issues common - allocate 20% of ETL sprint to cleanup
+  - P001 (16 est / 19 actual, 19% variance): Third-party API rate limits delay integration - mock first

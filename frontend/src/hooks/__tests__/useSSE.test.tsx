@@ -1,10 +1,10 @@
 /**
- * Tests for useSSE hook — the SSE event parser that drives the entire UI.
+ * Tests for useSSE hook - the SSE event parser that drives the entire UI.
  *
  * Strategy: mock EventSource, fire each event type one at a time, assert the
  * hook's state updated correctly. Covers the cases that hurt us most:
  *   - pipeline_complete must populate elapsedSeconds + tokens from payload
- *     (page-refresh recovery — the ticker can't fire fast enough)
+ *     (page-refresh recovery - the ticker can't fire fast enough)
  *   - agent_complete and agent_failed both mark the chip as "done"
  *   - artifacts fetch falls back to /artifacts/{runId} on status change
  */

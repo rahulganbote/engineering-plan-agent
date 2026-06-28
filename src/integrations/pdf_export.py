@@ -10,18 +10,18 @@ Public surface:
         button (via that endpoint).
 
 Sections in the rendered PDF:
-    1. Header  — run ID, badge, exported timestamp
-    2. Critic  — overall score, 4 dimension scores with PASS/FAIL
-    3. Plan    — phases, milestones table, risks table
-    4. Schedule — sprints table, critical path
-    5. Architecture — pattern, justification, components table, NFR mappings,
+    1. Header  - run ID, badge, exported timestamp
+    2. Critic  - overall score, 4 dimension scores with PASS/FAIL
+    3. Plan    - phases, milestones table, risks table
+    4. Schedule - sprints table, critical path
+    5. Architecture - pattern, justification, components table, NFR mappings,
                        Mermaid source (as fixed-width code block for copy-paste)
-    6. PoC      — hypothesis, scope_in/out, success criteria
-    7. Tech Stack — options table with trade-offs
+    6. PoC      - hypothesis, scope_in/out, success criteria
+    7. Tech Stack - options table with trade-offs
 
 Design choices:
     - Letter page size, narrow margins (36 pt) so wide tables fit
-    - System fonts only (no font registration) — Helvetica family
+    - System fonts only (no font registration) - Helvetica family
     - Long-text fields are paragraph-wrapped so 2-page-wide rows wrap properly
     - The Mermaid diagram is rendered as a TEXT code block, not an embedded
       SVG/PNG, to avoid runtime dependence on Kroki at PDF-generation time.
@@ -133,7 +133,7 @@ def build_artifacts_pdf(state: PipelineState) -> bytes:
         leftMargin=36,
         topMargin=42,
         bottomMargin=36,
-        title=f"EM Copilot — {state.run_id}",
+        title=f"EM Copilot - {state.run_id}",
         author="EM Copilot",
     )
     styles = _styles()
@@ -161,7 +161,7 @@ def _add_header(story, styles, state: PipelineState) -> None:
     badge = state.critic_output.badge.value.upper() if state.critic_output else "N/A"
     overall = state.critic_output.overall_score if state.critic_output else 0.0
 
-    story.append(Paragraph("EM Copilot — Engineering Artifacts", styles["Title"]))
+    story.append(Paragraph("EM Copilot - Engineering Artifacts", styles["Title"]))
     story.append(
         Paragraph(
             "<font color='#6B7280'>Multi-agent BRD-to-engineering-plan pipeline</font>",
@@ -204,7 +204,7 @@ def _add_critic(story, styles, state: PipelineState) -> None:
     critic = state.critic_output
     if not critic:
         return
-    story.append(Paragraph("1. Critic — Quality Assessment", styles["H2"]))
+    story.append(Paragraph("1. Critic - Quality Assessment", styles["H2"]))
 
     dims = [
         ("Groundedness", critic.groundedness),
@@ -245,7 +245,7 @@ def _add_critic(story, styles, state: PipelineState) -> None:
             agents = ", ".join(issue.agents_involved or [])
             story.append(
                 Paragraph(
-                    f"• <i>{issue.severity.value}</i> — {issue.conflict_description} ({agents})",
+                    f"• <i>{issue.severity.value}</i> - {issue.conflict_description} ({agents})",
                     styles["Small"],
                 )
             )
@@ -260,7 +260,7 @@ def _add_critic(story, styles, state: PipelineState) -> None:
         for h in critic.hallucination_flags[:6]:
             story.append(
                 Paragraph(
-                    f"• <i>{h.status}</i> — {h.agent}: {h.claim[:160]}",
+                    f"• <i>{h.status}</i> - {h.agent}: {h.claim[:160]}",
                     styles["Small"],
                 )
             )
@@ -421,7 +421,7 @@ def _add_architecture(story, styles, state: PipelineState) -> None:
     if arch.diagram_mermaid:
         story.append(
             Paragraph(
-                "<b>Architecture diagram (Mermaid source — copy into Confluence/GitHub for live render):</b>",
+                "<b>Architecture diagram (Mermaid source - copy into Confluence/GitHub for live render):</b>",
                 styles["Small"],
             )
         )

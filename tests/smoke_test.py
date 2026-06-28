@@ -1,7 +1,7 @@
 """
 tests/smoke_test.py
 ════════════════════
-Fast smoke tests — NO API calls, NO Pinecone, runs in < 5 seconds.
+Fast smoke tests - NO API calls, NO Pinecone, runs in < 5 seconds.
 Run this after every file change to catch import and schema errors immediately.
 
 Usage:
@@ -107,7 +107,7 @@ def _():
     from src.core.config import settings
 
     assert settings.openai_embedding_model == "text-embedding-3-large", (
-        f"Got {settings.openai_embedding_model} — check config.py"
+        f"Got {settings.openai_embedding_model} - check config.py"
     )
 
 
@@ -115,7 +115,7 @@ def _():
 def _():
     from src.core.config import settings
 
-    assert settings.embedding_dimension == 1024, f"Got {settings.embedding_dimension} — must match your Pinecone index"
+    assert settings.embedding_dimension == 1024, f"Got {settings.embedding_dimension} - must match your Pinecone index"
 
 
 @test("Config: RAG similarity threshold is 0.45", group="config")
@@ -225,7 +225,7 @@ def _():
     try:
         EngineeringPlanOutput(
             run_id="test01",
-            citations=[],  # ← EMPTY — should fail
+            citations=[],  # ← EMPTY - should fail
             confidence_score=0.8,
             assumptions=[],
             flagged_ambiguities=[],
@@ -297,7 +297,7 @@ def _():
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# GROUP: agents  (no API calls — just instantiation and structure checks)
+# GROUP: agents  (no API calls - just instantiation and structure checks)
 # ════════════════════════════════════════════════════════════════════════════════
 
 
@@ -503,7 +503,7 @@ def _scope_creep_state(brd_text: str, **outputs):
 
 @test("Critic: scope creep flag includes novel terms in claim message", group="agents")
 def _():
-    """Win #1 — the claim string must list the actual ungrounded words so EM
+    """Win #1 - the claim string must list the actual ungrounded words so EM
     can review them, not just say 'something looks off'."""
     from src.agents.critic import CriticAgent
     from src.agents.plan_generator import PlanGeneratorAgent
@@ -529,7 +529,7 @@ def _():
 
 @test("Critic: scope creep detection covers architecture component names", group="agents")
 def _():
-    """Win #2a — components with no BRD grounding should be flagged."""
+    """Win #2a - components with no BRD grounding should be flagged."""
     from src.agents.architect import SolutionArchitectAgent
     from src.agents.critic import CriticAgent
 
@@ -560,7 +560,7 @@ def _():
 
 @test("Critic: scope creep detection covers tech stack recommendations", group="agents")
 def _():
-    """Win #2b — a recommended stack whose vocabulary has no BRD overlap
+    """Win #2b - a recommended stack whose vocabulary has no BRD overlap
     should be flagged."""
     from src.agents.critic import CriticAgent
     from src.agents.tech_stack import TechStackAgent
@@ -611,7 +611,7 @@ def _():
 
 @test("Critic: scope creep detection covers PoC scope_in items", group="agents")
 def _():
-    """Win #2c — PoC scope items that introduce out-of-BRD work should be
+    """Win #2c - PoC scope items that introduce out-of-BRD work should be
     flagged the same way plan objectives are."""
     from src.agents.critic import CriticAgent
     from src.agents.poc_planner import PoCPlannerAgent
@@ -633,7 +633,7 @@ def _():
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# GROUP: pipeline  (graph structure only — no API calls)
+# GROUP: pipeline  (graph structure only - no API calls)
 # ════════════════════════════════════════════════════════════════════════════════
 
 
@@ -778,7 +778,7 @@ RISK-01 (LOW): API rate limits. Mitigation: exponential backoff.
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# GROUP: day3  (real Day 3 coverage — must fail if spokes are missing)
+# GROUP: day3  (real Day 3 coverage - must fail if spokes are missing)
 # ════════════════════════════════════════════════════════════════════════════════
 
 
@@ -833,7 +833,7 @@ def _():
 
 
 class _FakeL2:
-    """In-memory stand-in for RedisCache — no network required."""
+    """In-memory stand-in for RedisCache - no network required."""
 
     def __init__(self):
         self.store: dict = {}
@@ -992,7 +992,7 @@ def _():
         except ConnectionError:
             pass
 
-    # Now the breaker should be OPEN — next call short-circuits
+    # Now the breaker should be OPEN - next call short-circuits
     try:
         call()
         assert False, "should have raised CircuitOpenError"
@@ -1077,7 +1077,7 @@ def _():
     # Force-expire by overwriting with ttl_sec=0
     c.set("k0", "v0", ttl_sec=0, namespace="test")
     # ttl_sec=0 should expire immediately on next get
-    # (Behavior depends on impl; if it persists, that's also acceptable —
+    # (Behavior depends on impl; if it persists, that's also acceptable -
     #  the contract is "non-negative TTL". Skip assertion if unclear.)
 
 
@@ -1194,7 +1194,7 @@ def _():
 
 @test("TieredCache: L2 failure does NOT break L1 write (graceful degradation)", group="cache")
 def _():
-    """L2 failure must NOT break the L1 write — graceful degradation."""
+    """L2 failure must NOT break the L1 write - graceful degradation."""
     from src.core.cache import InMemoryCache, TieredCache
 
     class BrokenL2:
@@ -1374,7 +1374,7 @@ def _():
 
     with patch.object(settings, "tavily_api_key", ""):
         res = tavily_search("test")
-        assert "Web search unavailable — Tavily key missing." in res.content
+        assert "Web search unavailable - Tavily key missing." in res.content
 
 
 @test("github tool imports and resolves", group="integrations")
@@ -1407,12 +1407,12 @@ def _():
 @test("Bulkhead: slow specialist does not block the pipeline (live cancel)", group="bulkhead")
 def _():
     """
-    Phase 9 — end-to-end bulkhead behavior using mocked specialists.
+    Phase 9 - end-to-end bulkhead behavior using mocked specialists.
 
     Setup:
       - AGENT_TIMEOUT_SEC overridden to 1s
       - 4 specialists registered as fast stubs (return immediately, output=None)
-      - 1 specialist registered as a slow stub (sleeps 3s — exceeds budget)
+      - 1 specialist registered as a slow stub (sleeps 3s - exceeds budget)
 
     Expected:
       - node_dispatch_specialists returns in <2s (bulkhead cancelled the slow one)
@@ -1430,7 +1430,7 @@ def _():
         # In sandbox CI langgraph is absent. The static source-grep test above
         # already verifies the bulkhead pattern is present in the source.
         # On the user's local Mac (langgraph installed) this test executes fully.
-        print(f"      (skip — langgraph not importable in this env: {exc})")
+        print(f"      (skip - langgraph not importable in this env: {exc})")
         return
 
     from src.agents.registry import SPECIALISTS
@@ -1453,7 +1453,7 @@ def _():
 
     class FastShim:
         def run(self, ps, feedback=None):
-            return None  # Optional[...] field stays None — Critic FM-3 will catch
+            return None  # Optional[...] field stays None - Critic FM-3 will catch
 
     class SlowShim:
         def run(self, ps, feedback=None):
@@ -1535,7 +1535,7 @@ def _():
 
 @test("Event bus NEVER raises on broken sink (caller invariant)", group="events")
 def _():
-    """Observability MUST NOT break the caller — even if the sink throws."""
+    """Observability MUST NOT break the caller - even if the sink throws."""
     from src.core.events import emit, set_event_sink
 
     def broken(_):

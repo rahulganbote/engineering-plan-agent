@@ -1,7 +1,7 @@
 """
 src/agents/orchestrator.py
 ══════════════════════════
-Orchestrator Agent — the hub of the hub-and-spoke architecture.
+Orchestrator Agent - the hub of the hub-and-spoke architecture.
 
 Role:
     The Orchestrator is the entry point of the LangGraph pipeline.
@@ -16,14 +16,14 @@ What it does NOT do:
     ✗ Does NOT score or validate outputs
 
 Why no LLM here:
-    BRD parsing is deterministic — regex and string matching are faster,
+    BRD parsing is deterministic - regex and string matching are faster,
     cheaper, and more reliable than asking an LLM to identify sections.
     The Orchestrator's job is plumbing, not reasoning.
 
 Pattern justification (hub-and-spoke):
     After routing, the LangGraph coordinator_agent.py uses the Send API
     to dispatch all 5 specialist agents simultaneously. This is genuine
-    parallelism — not a sequential chain. The Orchestrator is the hub
+    parallelism - not a sequential chain. The Orchestrator is the hub
     that enables this fan-out.
 
 Section parsing accepts every common BRD heading shape:
@@ -73,7 +73,7 @@ _HEADING_PATTERNS: list[re.Pattern[str]] = [
         r"^[ \t]{0,3}(?:[A-Z][\w\-/&]*[ \t]?){1,7}:[ \t]*$",
         re.MULTILINE,
     ),
-    # 5. Title Case standalone line (last resort) — short line of Title Case
+    # 5. Title Case standalone line (last resort) - short line of Title Case
     #    words with no terminating punctuation: "Objectives", "Constraints"
     re.compile(
         r"^[ \t]{0,3}(?:[A-Z][\w\-/&]*[ \t]?){1,6}$",
@@ -142,7 +142,7 @@ class OrchestratorAgent:
         """
         log.info(f"[{run_id}] Orchestrator starting | words={len(brd_text.split())}")
 
-        # Hash the BRD for audit trail — never store raw text in state
+        # Hash the BRD for audit trail - never store raw text in state
         brd_hash = hashlib.sha256(brd_text.encode("utf-8", errors="ignore")).hexdigest()
 
         # Parse sections
@@ -154,7 +154,7 @@ class OrchestratorAgent:
         validation_passed = True
         missing = []
 
-        # Build routing plan — each agent gets the section names it needs
+        # Build routing plan - each agent gets the section names it needs
         routing_plan = {
             agent: [s.section_name for s in sections if any(kw in s.section_name.lower() for kw in keywords)]
             for agent, keywords in self.ROUTING_MAP.items()

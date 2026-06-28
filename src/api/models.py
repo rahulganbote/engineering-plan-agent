@@ -22,18 +22,18 @@ class ApprovalRequest(BaseModel):
     Three pre-validators normalize voice-agent quirks so the endpoint never
     422s on inputs the LLM-driven ElevenLabs agent typically emits:
 
-      1. `_unwrap_params`     — accepts either flat `{decision, …}` or nested
+      1. `_unwrap_params`     - accepts either flat `{decision, …}` or nested
                                 `{params: {decision, …}}` (some webhook configs)
-      2. `_normalize_decision` — maps verb forms ("approve" → "approved",
+      2. `_normalize_decision` - maps verb forms ("approve" → "approved",
                                 "reject" → "rejected") to enum values
-      3. `_coerce_rating_to_int` — accepts float em_rating (e.g. `5.0`, `4.5`)
+      3. `_coerce_rating_to_int` - accepts float em_rating (e.g. `5.0`, `4.5`)
                                 and rounds to the nearest int
     """
 
     decision: str  # "approved" | "rejected" (normalized by validator)
     reviewer: str = "Engineering Manager"
     notes: str = ""
-    em_rating: int = 0  # 1-5 — EM rating for Method 5 eval tracking
+    em_rating: int = 0  # 1-5 - EM rating for Method 5 eval tracking
     email: str = ""
 
     @model_validator(mode="before")
@@ -90,7 +90,7 @@ class ApprovalResponse(BaseModel):
     export_status: str | None = None  # "ok" | "local_fallback" | "failed"
     export_mode: str | None = None  # "sheets" | "local"
     export_detail: str | None = None  # human-friendly summary
-    # ── Jira push (additive — never blocks approval) ─────────────────────────
+    # ── Jira push (additive - never blocks approval) ─────────────────────────
     jira_url: str | None = None  # browse URL on success
     jira_status: str | None = None  # "jira" | "skipped" | "failed"
     jira_detail: str | None = None

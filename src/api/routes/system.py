@@ -21,7 +21,7 @@ async def health_check():
 @router.get("/api/config")
 async def public_config():
     """
-    Public runtime config — exposed to frontend at boot. NO secrets.
+    Public runtime config - exposed to frontend at boot. NO secrets.
     Exposes ElevenLabs voice-assisted review agent ID if configured.
     """
     return {

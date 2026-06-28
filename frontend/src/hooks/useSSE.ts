@@ -248,7 +248,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           break;
         }
         case 'exports_finalized': {
-          // Terminal event from the /approve background task — carries the
+          // Terminal event from the /approve background task - carries the
           // fully-resolved ApprovalResponse payload (sheet_url, jira_url,
           // export_status, etc.) so the UI can hydrate after the async exports
           // complete. Without this handler, the button-click flow would never
@@ -296,7 +296,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           //   3. Backend emits hitl_decision + (later) exports_finalized
           //
           // If we closed SSE here, those post-decision events would arrive at a
-          // dead connection — the UI would never see sheet_url / jira_url and
+          // dead connection - the UI would never see sheet_url / jira_url and
           // the HITL gate would never transition to "approved" state.
           //
           // SSE stays open until exports_finalized fires (true end of lifecycle)

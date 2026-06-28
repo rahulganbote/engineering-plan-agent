@@ -4,7 +4,7 @@
   <rect width="1280" height="860" fill="#f0f4f8"/>
 
   <!-- ═══ TITLE ═══ -->
-  <text x="640" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="#1a1a2e">EM Copilot — BRD to Engineering Plan</text>
+  <text x="640" y="38" text-anchor="middle" font-size="22" font-weight="800" fill="#1a1a2e">EM Copilot - BRD to Engineering Plan</text>
   <text x="640" y="62" text-anchor="middle" font-size="13" fill="#4a5568">BRD ingestion → Security → Multi-Agent generation → Validation → HITL → Output delivery</text>
 
   <!-- ═══════════════════════════════════════════════════════════
@@ -78,7 +78,7 @@
   <text x="470" y="185" text-anchor="middle" font-size="10" fill="#e9d8fd">State · routing · error handling</text>
   <text x="470" y="200" text-anchor="middle" font-size="10" fill="#e9d8fd">Metadata · max loop enforcement</text>
 
-  <!-- SPOKE 1 — Engineering Plan Generator -->
+  <!-- SPOKE 1 - Engineering Plan Generator -->
   <rect x="224" y="258" width="198" height="68" rx="8" fill="#f0fff4" stroke="#38a169" stroke-width="2"/>
   <circle cx="254" cy="292" r="18" fill="#38a169"/>
   <text x="254" y="297" text-anchor="middle" font-size="15" fill="white">📋</text>
@@ -86,7 +86,7 @@
   <text x="330" y="296" text-anchor="middle" font-size="9" fill="#4a5568">Phases · milestones · risks</text>
   <text x="330" y="311" text-anchor="middle" font-size="9" fill="#4a5568">Reflection pattern · RAG</text>
 
-  <!-- SPOKE 2 — Schedule Estimator -->
+  <!-- SPOKE 2 - Schedule Estimator -->
   <rect x="224" y="340" width="198" height="68" rx="8" fill="#f0fff4" stroke="#38a169" stroke-width="2"/>
   <circle cx="254" cy="374" r="18" fill="#38a169"/>
   <text x="254" y="379" text-anchor="middle" font-size="15" fill="white">📅</text>
@@ -94,7 +94,7 @@
   <text x="330" y="378" text-anchor="middle" font-size="9" fill="#4a5568">Sprints · effort · velocity</text>
   <text x="330" y="393" text-anchor="middle" font-size="9" fill="#4a5568">RAG: project timelines</text>
 
-  <!-- SPOKE 3 — Solution Architect -->
+  <!-- SPOKE 3 - Solution Architect -->
   <rect x="224" y="422" width="198" height="68" rx="8" fill="#ebf8ff" stroke="#3182ce" stroke-width="2"/>
   <circle cx="254" cy="456" r="18" fill="#3182ce"/>
   <text x="254" y="461" text-anchor="middle" font-size="15" fill="white">🏗️</text>
@@ -102,7 +102,7 @@
   <text x="330" y="460" text-anchor="middle" font-size="9" fill="#4a5568">Patterns · NFRs · data flow</text>
   <text x="330" y="475" text-anchor="middle" font-size="9" fill="#4a5568">RAG: arch patterns</text>
 
-  <!-- SPOKE 4 — PoC Planner -->
+  <!-- SPOKE 4 - PoC Planner -->
   <rect x="224" y="504" width="198" height="68" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
   <circle cx="254" cy="538" r="18" fill="#d97706"/>
   <text x="254" y="543" text-anchor="middle" font-size="15" fill="white">🔬</text>
@@ -110,7 +110,7 @@
   <text x="330" y="542" text-anchor="middle" font-size="9" fill="#4a5568">Hypothesis · success criteria</text>
   <text x="330" y="557" text-anchor="middle" font-size="9" fill="#4a5568">RAG: past BRDs</text>
 
-  <!-- SPOKE 5 — Tech Stack Recommender -->
+  <!-- SPOKE 5 - Tech Stack Recommender -->
   <rect x="224" y="586" width="198" height="68" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
   <circle cx="254" cy="620" r="18" fill="#d97706"/>
   <text x="254" y="625" text-anchor="middle" font-size="15" fill="white">⚙️</text>

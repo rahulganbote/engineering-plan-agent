@@ -50,7 +50,7 @@ export const AgentWorkspace: React.FC = () => {
   const [isStartingPipeline, setIsStartingPipeline] = useState(false);
   const [modelFamily, setModelFamily] = useState('openai');
 
-  // Provider availability map — populated at mount from /api/providers so the
+  // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
   // Shape: { openai: {available: true}, anthropic: {available: true, reason?: string}, ... }
   // The "Coming soon" entries (llama, mistral) are always present but disabled.
@@ -94,10 +94,12 @@ export const AgentWorkspace: React.FC = () => {
     elevenlabsAgentId,
   } = useWorkspace();
 
+  const [startupError, setStartupError] = useState<string | null>(null);
+
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
   // which is good for context. But the EM might be scrolling through artifacts
-  // when the swap happens — a toast adds an attention-grabbing notification
+  // when the swap happens - a toast adds an attention-grabbing notification
   // for the moment of the swap so they see it immediately.
   // Auto-dismisses after 6s; the banner stays as durable context.
   useEffect(() => {
@@ -105,7 +107,7 @@ export const AgentWorkspace: React.FC = () => {
     const fromName = fallbackActive.from.charAt(0).toUpperCase() + fallbackActive.from.slice(1);
     const toName   = fallbackActive.to.charAt(0).toUpperCase()   + fallbackActive.to.slice(1);
     toast.warning(
-      `${fromName} quota exceeded — using ${toName} for this run.`,
+      `${fromName} quota exceeded - using ${toName} for this run.`,
       {
         duration: 6000,
         description: 'Cost is computed against the active provider. See the banner above for full details.',
@@ -132,18 +134,21 @@ export const AgentWorkspace: React.FC = () => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setSelectedFile(e.dataTransfer.files[0]);
+      setStartupError(null);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+      setStartupError(null);
     }
   };
 
   const triggerPipeline = async () => {
     if (!selectedFile) return;
     setIsStartingPipeline(true);
+    setStartupError(null);
     const form = new FormData();
     form.append("file", selectedFile);
     form.append("model_family", modelFamily);
@@ -151,10 +156,18 @@ export const AgentWorkspace: React.FC = () => {
       const data = await apiFetch<{ run_id: string }>(`${apiBaseUrl}/run-pipeline`, {
         method: "POST",
         body: form,
+        headers: {
+          'X-Skip-Toast': 'true'
+        }
       });
       setRunId(data.run_id);
     } catch (e: unknown) {
       console.error("Failed to start pipeline:", e);
+      if (e instanceof Error) {
+        setStartupError(e.message);
+      } else {
+        setStartupError("An unexpected error occurred while starting the pipeline.");
+      }
     } finally {
       setIsStartingPipeline(false);
     }
@@ -213,7 +226,7 @@ export const AgentWorkspace: React.FC = () => {
                   disabled={!!runId || isStartingPipeline}
                   className="w-full bg-background border border-primary/30 text-primary font-semibold rounded px-3 py-2 text-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {/* Family options — dynamic from /api/providers.
+                  {/* Family options - dynamic from /api/providers.
                       `disabled` reflects real backend availability (missing API key,
                       "coming soon" for unimplemented providers). Hover-title surfaces
                       the reason so the user knows WHY an option is greyed out. */}
@@ -224,7 +237,7 @@ export const AgentWorkspace: React.FC = () => {
                     { key: 'mistral',   label: 'Mistral' },
                   ].map(({ key, label }) => {
                     // Default to "available" if we haven't received the providers
-                    // payload yet — keeps the dropdown usable on first paint.
+                    // payload yet - keeps the dropdown usable on first paint.
                     const p = providers[key];
                     const isAvailable = p?.available ?? (key === 'openai');
                     const reason = p?.reason;
@@ -235,7 +248,7 @@ export const AgentWorkspace: React.FC = () => {
                         disabled={!isAvailable}
                         title={reason || undefined}
                       >
-                        {label}{!isAvailable && reason ? ` — ${reason}` : ''}
+                        {label}{!isAvailable && reason ? ` - ${reason}` : ''}
                       </option>
                     );
                   })}
@@ -310,7 +323,7 @@ export const AgentWorkspace: React.FC = () => {
                   <span>Generate Engineering Plan</span>
                 )}
               </button>
-              {/* Runtime expectation — sits with the action surface so the user
+              {/* Runtime expectation - sits with the action surface so the user
                   knows what to expect at the moment they're about to commit. */}
               {!runId && (
                 <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -353,6 +366,7 @@ export const AgentWorkspace: React.FC = () => {
                   setSelectedFile(null);
                   clearRun();
                   setRunId(null);
+                  setStartupError(null);
                 }}
                 className="w-full py-1.5 border border-destructive bg-destructive/10 hover:bg-destructive/40 rounded text-xs font-semibold text-destructive hover:text-destructive transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
               >
@@ -389,7 +403,7 @@ export const AgentWorkspace: React.FC = () => {
 
       {/* Main Workstation Panel */}
       <main className="flex-1 flex flex-col overflow-hidden bg-background">
-        {/* Main Header — uses min-h instead of fixed h so the title can wrap
+        {/* Main Header - uses min-h instead of fixed h so the title can wrap
             cleanly at narrow viewports (e.g. devtools open) without overflowing
             into the IngestionLanding hero below. items-start keeps the controls
             (Theme picker, API status) pinned to the top-right of the title block. */}
@@ -422,15 +436,28 @@ export const AgentWorkspace: React.FC = () => {
         {/* Scrollable Workstation Body */}
         <div className="flex-1 overflow-y-auto p-8 space-y-8">
           {!runId ? (
-            <IngestionLanding
-              selectedFile={selectedFile}
-              onFileSelect={setSelectedFile}
-              onRemoveFile={() => setSelectedFile(null)}
-              onTrigger={triggerPipeline}
-              isLoading={pipelineStatus === 'initializing'}
-              isAuthenticated={isAuthenticated}
-              onLogin={login}
-            />
+            <div className="space-y-6">
+              {startupError && (
+                <div className="max-w-3xl bg-danger/10 border border-danger/30 p-5 rounded-xl flex gap-3 animate-fade-in shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+                  <span className="text-xl shrink-0">📋</span>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-danger uppercase tracking-wider">BRD Quality Gate Validation Failure</h4>
+                    <p className="text-xs text-foreground/95 font-semibold leading-relaxed whitespace-pre-wrap">
+                      {startupError.replace(/^API Failure:\s*/i, '')}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <IngestionLanding
+                selectedFile={selectedFile}
+                onFileSelect={setSelectedFile}
+                onRemoveFile={() => setSelectedFile(null)}
+                onTrigger={triggerPipeline}
+                isLoading={pipelineStatus === 'initializing'}
+                isAuthenticated={isAuthenticated}
+                onLogin={login}
+              />
+            </div>
           ) : (
             <>
               {/* Fallback Active Alert Banner */}
@@ -492,16 +519,16 @@ export const AgentWorkspace: React.FC = () => {
               {/* Performance Metrics Summary */}
               <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border">
                 <div>
-                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "—")}</span>
+                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "-")}</span>
                 </div>
                 <div>
-                  <strong>Total Processing Time:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{elapsedSeconds ? `${elapsedSeconds}s` : '—'}</code>
+                  <strong>Total Processing Time:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Tokens used:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '—'}</code>
+                  <strong>Tokens used:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Cost Spent:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-success font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '—'}</code>
+                  <strong>Cost Spent:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-success font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
                 </div>
               </div>
 
@@ -521,7 +548,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
                     <div className="flex items-center justify-between border-b border-border/60 pb-4">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic — Quality Assessment</h3>
+                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
                         <div className="text-xs text-muted-foreground">
                           Revision {criticOutput.revisionNumber} · Overall <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
                         </div>
@@ -691,7 +718,7 @@ export const AgentWorkspace: React.FC = () => {
                             Artifacts saved to local fallback CSV
                           </div>
                           <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            {approvalResult?.export_detail || "Google Sheets integration is not configured — local CSV backup exported instead."}
+                            {approvalResult?.export_detail || "Google Sheets integration is not configured - local CSV backup exported instead."}
                           </div>
                         </div>
                       ) : approvalResult?.export_status === 'failed' ? (
@@ -755,7 +782,7 @@ export const AgentWorkspace: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Primary CTA — natural "what now?" path after terminal state.
+                    {/* Primary CTA - natural "what now?" path after terminal state.
                         Same effect as the sidebar's destructive "Clear Plan & Reset"
                         but framed as a forward action (indigo, not red) since the
                         user has just finished a run, not aborting one mid-flight. */}
@@ -776,11 +803,11 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* Tavily fallback hint — surfaces when the pipeline tried Tavily web
+              {/* Tavily fallback hint - surfaces when the pipeline tried Tavily web
                   grounding but the API key isn't configured on this deployment.
                   The backend emits tool_call_degraded events into the SSE stream;
                   useSSE pushes them into `logs`. We scan for a Tavily api_key_missing
-                  reason — if found, render the hint above Critic findings. */}
+                  reason - if found, render the hint above Critic findings. */}
               {(() => {
                 const tavilyMissing = logs.some(
                   (l) =>
@@ -800,7 +827,7 @@ export const AgentWorkspace: React.FC = () => {
                 ) : null;
               })()}
 
-              {/* Critic findings — consistency issues + hallucination flags */}
+              {/* Critic findings - consistency issues + hallucination flags */}
               <CriticFindings criticDetail={artifacts?.critic_output} />
 
               {/* Live Log Console */}
@@ -811,7 +838,7 @@ export const AgentWorkspace: React.FC = () => {
           )}
         </div>
 
-        {/* Persistent footer disclaimer — sits outside the scrollable body so
+        {/* Persistent footer disclaimer - sits outside the scrollable body so
             it stays visible at all times (matches Claude.ai / ChatGPT pattern).
             Moved here from the header subtitle, where it was undermining the
             product's perceived reliability by appearing alongside the title. */}

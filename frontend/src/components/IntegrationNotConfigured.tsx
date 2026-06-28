@@ -1,5 +1,5 @@
 /**
- * IntegrationNotConfigured — shared fallback hint for optional integrations
+ * IntegrationNotConfigured - shared fallback hint for optional integrations
  * (Jira, Tavily, ElevenLabs Voice, GitHub) that aren't set up on a deployment.
  *
  * Same visual pattern across all four surfaces so users learn the convention:
@@ -14,7 +14,7 @@ const REPO_DOCS_BASE =
   "https://github.com/rahulganbote/engineering-plan-agent/blob/main/.env.example";
 
 interface IntegrationNotConfiguredProps {
-  /** Short title shown in bold — e.g. "Jira push not available". */
+  /** Short title shown in bold - e.g. "Jira push not available". */
   title: string;
   /** Required env vars shown as inline <code> chips. */
   envVars: string[];

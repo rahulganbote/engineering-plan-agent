@@ -30,7 +30,7 @@ def test_tavily_empty_settings():
     with patch.object(settings, "tavily_api_key", ""):
         res = tavily_search("test query")
         assert isinstance(res, ToolResult)
-        assert "Web search unavailable — Tavily key missing." in res.content
+        assert "Web search unavailable - Tavily key missing." in res.content
         assert res.used_fallback is True
         assert res.sources == []
         assert res.trust_level == "low"
@@ -73,7 +73,7 @@ def test_tavily_search_validation_failure(mock_post):
     with patch.object(settings, "tavily_api_key", "mock_key"):
         res = tavily_search("test query")
         assert isinstance(res, ToolResult)
-        assert "Web search temporary unavailable — contract validation failed." in res.content
+        assert "Web search temporary unavailable - contract validation failed." in res.content
         assert res.used_fallback is True
         assert res.sources == []
         assert res.trust_level == "low"
@@ -90,7 +90,7 @@ def test_tavily_search_timeout_retry(mock_post, mock_sleep):
         assert isinstance(res, ToolResult)
         # Should run 3 attempts (2 retries) before raising and returning fallback
         assert mock_post.call_count == 3
-        assert "Web search temporary unavailable — using RAG and BRD context." in res.content
+        assert "Web search temporary unavailable - using RAG and BRD context." in res.content
         assert res.used_fallback is True
         assert res.trust_level == "low"
 
@@ -355,7 +355,7 @@ def test_github_velocity_redacts_injected_description(mock_emit, mock_get):
 def test_github_velocity_blocks_entire_output_on_parameter_injection(mock_emit, mock_get):
     """Verify GitHub velocity blocks the entire response if injection propagates to the final output.
 
-    Patches `src.integrations.github.emit` (not `src.core.events.emit`) — see
+    Patches `src.integrations.github.emit` (not `src.core.events.emit`) - see
     module-top import comment above. Uses `assert_any_call` since emit also
     fires for `tool_call_started` and `tool_call_degraded` on this code path.
     """

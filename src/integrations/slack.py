@@ -3,7 +3,7 @@ src/integrations/slack.py
 ═════════════════════════
 Sends a Slack alert when a pipeline run ends in error.
 
-One-way notifications via a Slack **Incoming Webhook** — no bot token, no OAuth
+One-way notifications via a Slack **Incoming Webhook** - no bot token, no OAuth
 scopes, no Slack SDK dependency (just `requests`, already in requirements).
 
 Setup (one-time)
@@ -13,7 +13,7 @@ Setup (one-time)
     2. Add the URL to secrets/.env:
        SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000/B00000/XXXXXXXX
 
-If SLACK_WEBHOOK_URL is unset the alert is skipped gracefully — a missing or
+If SLACK_WEBHOOK_URL is unset the alert is skipped gracefully - a missing or
 broken Slack webhook must never affect the pipeline.
 """
 
@@ -69,9 +69,9 @@ def _error_alert_payload(state: PipelineState) -> dict[str, Any]:
 
     return {
         # `text` is the notification fallback shown in the Slack sidebar / push.
-        "text": f":rotating_light: EM Copilot pipeline failed — run {run_id}",
+        "text": f":rotating_light: EM Copilot pipeline failed - run {run_id}",
         "blocks": [
-            {"type": "header", "text": {"type": "plain_text", "text": "EM Copilot — Pipeline Failed"}},
+            {"type": "header", "text": {"type": "plain_text", "text": "EM Copilot - Pipeline Failed"}},
             {
                 "type": "section",
                 "fields": [
@@ -85,7 +85,7 @@ def _error_alert_payload(state: PipelineState) -> dict[str, Any]:
             {
                 "type": "context",
                 "elements": [
-                    {"type": "mrkdwn", "text": "Run halted before the HITL gate — no artifacts were exported."}
+                    {"type": "mrkdwn", "text": "Run halted before the HITL gate - no artifacts were exported."}
                 ],
             },
         ],
@@ -97,20 +97,20 @@ def send_pipeline_error_alert(state: PipelineState) -> dict[str, Any]:
     Post a failure alert to Slack when a pipeline run ends in error.
 
     Returns {"status": "sent" | "skipped" | "failed", "detail": str}.
-    Never raises — the caller treats Slack as strictly best-effort.
+    Never raises - the caller treats Slack as strictly best-effort.
     """
     run_id = getattr(state, "run_id", "unknown")
 
     ok, why_not = _slack_status()
     if not ok:
-        log.info(f"[{run_id}] Slack alert skipped — {why_not}")
+        log.info(f"[{run_id}] Slack alert skipped - {why_not}")
         return {"status": "skipped", "detail": why_not}
 
     sent, detail = _post_to_slack(_error_alert_payload(state))
     if sent:
         log.info(f"[{run_id}] Slack failure alert delivered")
         return {"status": "sent", "detail": "Slack alert delivered"}
-    log.warning(f"[{run_id}] Slack alert failed — {detail}")
+    log.warning(f"[{run_id}] Slack alert failed - {detail}")
     return {"status": "failed", "detail": detail}
 
 

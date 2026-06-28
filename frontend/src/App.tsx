@@ -5,7 +5,7 @@ import { Toaster } from 'sonner';
 import { ThemeProvider, useTheme } from './hooks/useTheme';
 
 /**
- * ThemedToaster — Sonner toaster that follows the active theme picked in the
+ * ThemedToaster - Sonner toaster that follows the active theme picked in the
  * header. Without this wrapper, Toaster is locked to whatever theme prop you
  * hardcode, which desyncs from the rest of the UI when the user changes
  * Light / Dark / System.

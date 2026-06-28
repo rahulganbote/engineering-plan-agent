@@ -4,8 +4,8 @@ src/core/logger.py
 Structured logging for the EM Copilot pipeline.
 
 Two outputs:
-    1. Console  — human-readable during development
-    2. JSONL file — machine-readable for LangFuse + LangSmith ingestion
+    1. Console  - human-readable during development
+    2. JSONL file - machine-readable for LangFuse + LangSmith ingestion
 
 Security rule: Raw BRD content is NEVER logged.
     Only sha256 hashes, chunk IDs, and metadata are written to logs.
@@ -38,7 +38,7 @@ JSONL_LOG = LOG_DIR / "pipeline.jsonl"
 # Remove default handler
 logger.remove()
 
-# Console — INFO and above, human-readable
+# Console - INFO and above, human-readable
 logger.add(
     sink=lambda msg: print(msg, end=""),
     level="INFO",
@@ -46,7 +46,7 @@ logger.add(
     colorize=True,
 )
 
-# Rotating file — DEBUG and above, plain text
+# Rotating file - DEBUG and above, plain text
 logger.add(
     sink=LOG_DIR / "pipeline_{time:YYYY-MM-DD}.log",
     rotation="1 day",
@@ -86,12 +86,12 @@ def log_agent_run(
     Write a structured JSONL log entry for a single agent execution.
 
     Fields logged:
-        - agent_name, run_id, revision_count   — for tracing
-        - rag_chunk_ids, rag_chunk_count        — for RAG audit
-        - critic_score                          — for improvement tracking
-        - execution_time_ms                     — for performance monitoring
-        - guardrail_triggers                    — for security audit
-        - success, error                        — for failure analysis
+        - agent_name, run_id, revision_count   - for tracing
+        - rag_chunk_ids, rag_chunk_count        - for RAG audit
+        - critic_score                          - for improvement tracking
+        - execution_time_ms                     - for performance monitoring
+        - guardrail_triggers                    - for security audit
+        - success, error                        - for failure analysis
 
     Security: brd_raw_hash is passed externally if needed.
               Raw BRD text is never passed here or logged.
@@ -155,7 +155,7 @@ SUCCESS_CRITERIA: dict[str, dict] = {
         "description": "100% of agent outputs pass Pydantic validation on eval dataset",
         "metric": "schema_pass_rate == 100% across all 5 agents on all test BRDs",
         "threshold": 100.0,
-        "measured_by": "run_eval.py execution-based method — required fields per agent",
+        "measured_by": "run_eval.py execution-based method - required fields per agent",
     },
     "SC-5_citation_coverage": {
         "description": ">= 75% of claims have at least one RAG citation (groundedness)",
@@ -169,7 +169,7 @@ FAILURE_MODES: dict[str, dict] = {
     "malformed_json": {
         "description": "Agent returns malformed JSON or fails Pydantic validation",
         "mitigation": "Retry agent call x2 with tenacity (1s, 2s, 4s backoff), then Amber badge + EM flag",
-        "implemented": "BaseAgent._call_llm_with_retry() — tenacity @retry decorator",
+        "implemented": "BaseAgent._call_llm_with_retry() - tenacity @retry decorator",
     },
     "no_rag_hits": {
         "description": "Pinecone retrieval returns 0 chunks above similarity threshold",
@@ -183,13 +183,13 @@ FAILURE_MODES: dict[str, dict] = {
     },
     "sheets_write_fail": {
         "description": "Google Sheets gspread write action fails (network, auth, quota)",
-        "mitigation": "Log error with run_id, continue pipeline, notify EM via webhook — do not block delivery",
+        "mitigation": "Log error with run_id, continue pipeline, notify EM via webhook - do not block delivery",
         "implemented": "sheets.py try/except logs failure, returns None gracefully",
     },
     "llm_timeout": {
         "description": "OpenAI API call exceeds timeout or hits rate limit",
         "mitigation": "Exponential backoff 1s/2s/4s via tenacity, then raise to Orchestrator error node",
-        "implemented": "BaseAgent._call_llm_with_retry() — tenacity with wait_exponential",
+        "implemented": "BaseAgent._call_llm_with_retry() - tenacity with wait_exponential",
     },
     "injection_blocked": {
         "description": "Security validator blocks BRD containing prompt injection",
@@ -204,7 +204,7 @@ FAILURE_MODES: dict[str, dict] = {
     "agent_error": {
         "description": "Any specialist agent raises unexpected exception",
         "mitigation": "Route to error node, log error_type (no stack trace), skip agent, continue pipeline",
-        "implemented": "pipeline.py make_error_node() — AgentExecutionResult(success=False)",
+        "implemented": "pipeline.py make_error_node() - AgentExecutionResult(success=False)",
     },
     "pipeline_timeout": {
         "description": "Full pipeline exceeds 5-minute wall-clock limit",
@@ -233,11 +233,11 @@ def log_pipeline_summary(
         - Per-run performance vs 5-minute SLA
 
     Success criteria evaluation (logged here for monitoring):
-        SC-1: completeness — from critic_score dimension
-        SC-2: actionability — from critic_score dimension
-        SC-3: pipeline time — total_wall_clock_ms vs 300000ms limit
-        SC-4: schema compliance — from agent_logs (all passed validation)
-        SC-5: citation coverage — from critic_score groundedness
+        SC-1: completeness - from critic_score dimension
+        SC-2: actionability - from critic_score dimension
+        SC-3: pipeline time - total_wall_clock_ms vs 300000ms limit
+        SC-4: schema compliance - from agent_logs (all passed validation)
+        SC-5: citation coverage - from critic_score groundedness
     """
     sc_results = {
         "SC-3_pipeline_under_5min": total_wall_clock_ms < 300_000,

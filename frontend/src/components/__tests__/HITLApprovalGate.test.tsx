@@ -17,7 +17,7 @@ vi.mock('../../context/AuthContext', () => ({
   }),
 }));
 
-// Mock sonner — toast triggers shouldn't blow up tests
+// Mock sonner - toast triggers shouldn't blow up tests
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),

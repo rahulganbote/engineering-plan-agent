@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
 
 /**
- * Critic findings — surfaces the cross-agent consistency checks and
+ * Critic findings - surfaces the cross-agent consistency checks and
  * hallucination flags produced by the Critic agent.
  *
  * Mirrors the Streamlit "Critic findings · N consistency · M hallucination"
@@ -57,7 +57,7 @@ export const CriticFindings: React.FC<CriticFindingsProps> = ({ criticDetail }) 
   const issues = data.consistency_issues ?? [];
   const allFlags = data.hallucination_flags ?? [];
 
-  // Surface only flags the Critic could NOT verify — "supported" claims are
+  // Surface only flags the Critic could NOT verify - "supported" claims are
   // verifications, not findings. This makes the count label match the user's
   // intuition: "5 hallucinations" should mean 5 real problems, not 5 checks
   // that all passed.

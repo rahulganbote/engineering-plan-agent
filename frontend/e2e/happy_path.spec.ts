@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test'
  *   3. The auth gate either shows "Sign in" OR (with mock auth) shows the workspace
  *   4. Smoke the API base health
  *
- * This is intentionally LIGHT — it doesn't run a real BRD through OpenAI because
+ * This is intentionally LIGHT - it doesn't run a real BRD through OpenAI because
  * that would cost money on every CI run + need real OpenAI credentials. The full
  * pipeline E2E should run as a manual nightly job, not on every PR.
  *
@@ -15,7 +15,7 @@ import { test, expect } from '@playwright/test'
  * *.spec.ts), or extend this test with Playwright's `test.describe` blocks.
  */
 
-test.describe('EM Copilot — happy path', () => {
+test.describe('EM Copilot - happy path', () => {
   test('app shell loads and renders the BRD → Engineering Plan title', async ({ page }) => {
     await page.goto('/');
 
@@ -29,7 +29,7 @@ test.describe('EM Copilot — happy path', () => {
     await page.goto('/');
 
     // Either the sign-in CTA OR a signed-in user chip should be present.
-    // Both paths are valid app shells — this test asserts "one of them rendered."
+    // Both paths are valid app shells - this test asserts "one of them rendered."
     const signInVisible = await page.getByText(/sign in/i).isVisible().catch(() => false);
     const signedInVisible = await page.getByText(/signed in/i).isVisible().catch(() => false);
     expect(signInVisible || signedInVisible).toBe(true);

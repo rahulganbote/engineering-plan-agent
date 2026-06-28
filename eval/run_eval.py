@@ -1,31 +1,31 @@
 """
 eval/run_eval.py
 ════════════════
-Automated evaluation runner — all 5 methods for quality verification.
+Automated evaluation runner - all 5 methods for quality verification.
 
-METHOD 1 — Rule-based (structural + schema + BRD coverage):
+METHOD 1 - Rule-based (structural + schema + BRD coverage):
     Deterministic assertions against expected_output_*.json.
     Checks: badge, phase count, risk count, duration, citations,
             owner_role on ALL milestones, BRD section coverage %,
             Pydantic schema parse rate, risk citations required.
 
-METHOD 2 — LLM-as-Judge (actionability, specificity, grounding, EM-readiness):
+METHOD 2 - LLM-as-Judge (actionability, specificity, grounding, EM-readiness):
     GPT-4o-mini scores 4 dimensions with strengthened EM-readiness prompt.
     Anchored to critic_calibration_set.json.
     Includes: specificity check, sources diversity, EM-readiness criteria.
 
-METHOD 3 — Execution-based (schema parse rates, E2E completion, tool-call success):
+METHOD 3 - Execution-based (schema parse rates, E2E completion, tool-call success):
     Tracks: Pydantic validation pass rate per agent,
             Kroki SVG generation success/fail,
             GitHub API tool-call success/fail,
             Pipeline completion rate.
 
-METHOD 4 — Reference-based (BERTScore vs golden outputs):
+METHOD 4 - Reference-based (BERTScore vs golden outputs):
     BERTScore F1 on narrative fields (reflection_notes, pattern_justification,
     poc_hypothesis, recommendation_rationale) vs golden expected text.
     Requires: pip install bert-score
 
-METHOD 5 — Human HITL ratings:
+METHOD 5 - Human HITL ratings:
     EM numeric rating (1-5) captured at ApprovalRequest gate.
     Stored in PipelineState.hitl_em_ratings.
     Displayed in results alongside critic scores.
@@ -70,7 +70,7 @@ BRD_REQUIRED_SECTIONS = ["objective", "requirement", "constraint", "risk", "nfr"
 PIPELINE_TESTS = [
     {
         "test_id":       "EVAL-001",
-        "name":          "Simple BRD — Employee Directory App",
+        "name":          "Simple BRD - Employee Directory App",
         "brd_file":      EVAL_DIR / "test_brd_simple.txt",
         "expected_file": EVAL_DIR / "expected_output_simple.json",
         "complexity":    "simple",
@@ -78,7 +78,7 @@ PIPELINE_TESTS = [
     },
     {
         "test_id":       "EVAL-002",
-        "name":          "Medium BRD — Customer Analytics Platform",
+        "name":          "Medium BRD - Customer Analytics Platform",
         "brd_file":      EVAL_DIR / "test_brd_medium.txt",
         "expected_file": EVAL_DIR / "expected_output_medium.json",
         "complexity":    "medium",
@@ -87,7 +87,7 @@ PIPELINE_TESTS = [
     },
     {
         "test_id":       "EVAL-003",
-        "name":          "Complex BRD — Real-Time Risk Compliance Platform",
+        "name":          "Complex BRD - Real-Time Risk Compliance Platform",
         "brd_file":      EVAL_DIR / "test_brd_complex.txt",
         "expected_file": EVAL_DIR / "expected_output_complex.json",
         "complexity":    "complex",
@@ -99,7 +99,7 @@ PIPELINE_TESTS = [
 EDGE_CASE_TESTS = [
     {
         "test_id":    "EDGE-001",
-        "name":       "Missing NFRs — Knowledge Base Search Tool",
+        "name":       "Missing NFRs - Knowledge Base Search Tool",
         "brd_file":   EVAL_DIR / "test_brd_missing_nfrs.txt",
         "complexity": "simple",
         "expect_badge": "amber",
@@ -110,7 +110,7 @@ EDGE_CASE_TESTS = [
     },
     {
         "test_id":    "EDGE-002",
-        "name":       "Contradictions — Inventory Management System",
+        "name":       "Contradictions - Inventory Management System",
         "brd_file":   EVAL_DIR / "test_brd_contradictions.txt",
         "complexity": "medium",
         "expect_badge": "amber",
@@ -121,12 +121,12 @@ EDGE_CASE_TESTS = [
     },
     {
         "test_id":    "EDGE-003",
-        "name":       "Ambiguity — Vague Customer Engagement BRD",
+        "name":       "Ambiguity - Vague Customer Engagement BRD",
         "brd_file":   EVAL_DIR / "test_brd_ambiguous.txt",
         "complexity": "medium",
         "expect_badge": "amber",
         "expected_behaviors": {
-            # Guardrail: org standard 8.1 — all agents must flag ambiguities
+            # Guardrail: org standard 8.1 - all agents must flag ambiguities
             "all_agents_flagged_ambiguities_non_empty": True,
             "flagged_ambiguities_min_count": 3,   # per agent
             "assumptions_min_count":          2,  # conservative choices documented
@@ -156,7 +156,7 @@ GUARDRAIL_TESTS = [
     },
     {
         "test_id":   "GUARD-004",
-        "name":      "Scope Creep — Minimal BRD (agents must not invent features)",
+        "name":      "Scope Creep - Minimal BRD (agents must not invent features)",
         "brd_file":  EVAL_DIR / "test_brd_scope_creep.txt",
         "expect_blocked": False,
         "expect_status":  "PASSED",
@@ -168,17 +168,17 @@ GUARDRAIL_TESTS = [
             "role-based access control", "rbac",
         ],
         "max_phases":         3,  # simple 4-week project = max 3 phases
-        "max_duration_weeks": 6,  # BRD says 4 weeks — allow 2-week buffer
+        "max_duration_weeks": 6,  # BRD says 4 weeks - allow 2-week buffer
     },
 ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Trust-boundary helper — strip dev-only markers before any validator sees them
+# Trust-boundary helper - strip dev-only markers before any validator sees them
 # ══════════════════════════════════════════════════════════════════════════════
 # Eval BRDs (e.g. test_brd_niche_tech.txt) may contain inline annotations like
 # "EVAL NOTE: ..." used by the test harness for traceability. These are NOT
-# user input — they are author-controlled dev metadata.
+# user input - they are author-controlled dev metadata.
 #
 # Trust boundary policy: strip these markers HERE in the harness, before the
 # text ever reaches the SecurityValidator. We must NOT teach the validator's
@@ -192,7 +192,7 @@ _EVAL_MARKER_PREFIXES = ("EVAL NOTE:", "# EVAL NOTE:", "// EVAL NOTE:")
 def strip_eval_metadata(text: str) -> str:
     """
     Remove any line starting with an EVAL NOTE marker from a BRD text.
-    Called ONLY from the eval harness — never from production code paths.
+    Called ONLY from the eval harness - never from production code paths.
     """
     return "\n".join(
         line for line in text.splitlines()
@@ -201,14 +201,14 @@ def strip_eval_metadata(text: str) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# METHOD 1 — Rule-based
+# METHOD 1 - Rule-based
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict) -> dict:
     """
     Method 1: Deterministic structural checks.
     Covers: structural checks, schema compliance, BRD section coverage.
-    No LLM calls — fast, free, fully repeatable.
+    No LLM calls - fast, free, fully repeatable.
     """
     checks = []
     plan   = agent_output.get("plan_output", {}) or {}
@@ -258,7 +258,7 @@ def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict)
     ]:
         if output:
             real_cites = [c for c in output.get("citations", []) if "no_results" not in c]
-            _add(checks, f"Citations — {agent_key}", len(real_cites) >= exp_cites,
+            _add(checks, f"Citations - {agent_key}", len(real_cites) >= exp_cites,
                  len(real_cites), f">= {exp_cites} real citations")
 
     # ── Schema compliance: reflection_notes (Agent 2) ─────────────────────
@@ -363,7 +363,7 @@ def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict)
         ]:
             if output:
                 ambigs = output.get("flagged_ambiguities", [])
-                _add(checks, f"flagged_ambiguities non-empty — {agent_key}",
+                _add(checks, f"flagged_ambiguities non-empty - {agent_key}",
                      len(ambigs) >= min_count,
                      f"{len(ambigs)} items", f">= {min_count} items (org standard 8.1)")
 
@@ -375,7 +375,7 @@ def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict)
         ]:
             if output:
                 assumptions = output.get("assumptions", [])
-                _add(checks, f"assumptions documented — {agent_key}",
+                _add(checks, f"assumptions documented - {agent_key}",
                      len(assumptions) >= min_assumptions,
                      f"{len(assumptions)} items", f">= {min_assumptions} (org standard 8.1)")
 
@@ -385,7 +385,7 @@ def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict)
         for agent_key, output in [("plan", plan), ("architect", arch)]:
             if output:
                 conf = output.get("confidence_score", 1.0)
-                _add(checks, f"confidence_score reflects uncertainty — {agent_key}",
+                _add(checks, f"confidence_score reflects uncertainty - {agent_key}",
                      conf <= max_conf, conf, f"<= {max_conf} for ambiguous BRD")
 
     passed  = sum(1 for c in checks if c["passed"])
@@ -401,7 +401,7 @@ def run_rule_based_checks(agent_output: dict, expected: dict, test_config: dict)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# METHOD 2 — LLM-as-Judge (strengthened with EM-readiness + specificity)
+# METHOD 2 - LLM-as-Judge (strengthened with EM-readiness + specificity)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_llm_judge(agent_output: dict, brd_text: str, calibration: dict) -> dict:
@@ -427,7 +427,7 @@ BRD EXCERPT (first 1200 chars):
 ARTIFACTS SUMMARY:
 {artifacts}
 
-SCORING DIMENSIONS — use these precise criteria:
+SCORING DIMENSIONS - use these precise criteria:
 
 1. groundedness (0-5): % of non-trivial claims with RAG chunk_id citation
    5.0 = 100% cited | 3.75 = 75% (passing threshold) | 2.0 = hallucinated data
@@ -443,14 +443,14 @@ SCORING DIMENSIONS — use these precise criteria:
          PoC duration fits Phase 1, tech familiarity reflected in schedule buffer
    2.0 = timeline contradicts BRD constraint, tech stack contradicts team size
 
-4. actionability (0-5): EM-READINESS — can the EM assign work tomorrow with zero rework?
-   SPECIFICITY CHECK — penalize: generic phrases, missing owner_roles, no week numbers
+4. actionability (0-5): EM-READINESS - can the EM assign work tomorrow with zero rework?
+   SPECIFICITY CHECK - penalize: generic phrases, missing owner_roles, no week numbers
    5.0 = every milestone: specific deliverable + owner_role + week number
           risk: specific mitigation with named action + owner
           PoC: specific go/no-go with numeric criteria
           tech stack: specific rationale referencing org decision log
    4.0 = minor gaps (1-2 milestones missing owner or week number)
-   2.0 = generic boilerplate — 'build the system', 'resolve the issue', no owners
+   2.0 = generic boilerplate - 'build the system', 'resolve the issue', no owners
 
 Respond ONLY with valid JSON:
 {{
@@ -462,7 +462,7 @@ Respond ONLY with valid JSON:
   "consistency": 0.0,
   "consistency_evidence": "specific alignment or contradiction found",
   "actionability": 0.0,
-  "actionability_evidence": "specific EM-readiness finding — are owner roles and week numbers present?"
+  "actionability_evidence": "specific EM-readiness finding - are owner roles and week numbers present?"
 }}"""
 
     try:
@@ -499,7 +499,7 @@ Respond ONLY with valid JSON:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# METHOD 3 — Execution-based (schema parse rates, tool-call success)
+# METHOD 3 - Execution-based (schema parse rates, tool-call success)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_execution_checks(agent_output: dict, pipeline_state=None) -> dict:
@@ -524,7 +524,7 @@ def run_execution_checks(agent_output: dict, pipeline_state=None) -> dict:
             missing = [f for f in required_fields if f not in output or output[f] is None]
             passed  = len(missing) == 0
             schema_passed += int(passed)
-            _add(checks, f"Schema parse — {model_name}",
+            _add(checks, f"Schema parse - {model_name}",
                  passed,
                  f"missing: {missing}" if missing else "all fields present",
                  "all required fields present")
@@ -544,18 +544,18 @@ def run_execution_checks(agent_output: dict, pipeline_state=None) -> dict:
     # ── Tool-call success: Kroki SVG ──────────────────────────────────────
     arch    = agent_output.get("arch_output", {}) or {}
     has_svg = bool(arch.get("diagram_svg", "").strip())
-    _add(checks, "Tool-call — Kroki SVG generated",
+    _add(checks, "Tool-call - Kroki SVG generated",
          has_svg, "SVG present" if has_svg else "EMPTY", "non-empty SVG string")
 
     # ── Tool-call success: Mermaid diagram syntax present ─────────────────
     has_mermaid = bool(arch.get("mermaid_diagram", "").strip())
-    _add(checks, "Tool-call — Mermaid diagram syntax",
+    _add(checks, "Tool-call - Mermaid diagram syntax",
          has_mermaid, "present" if has_mermaid else "EMPTY", "non-empty mermaid syntax")
 
     # ── Tool-call success: GitHub velocity note ───────────────────────────
     stack   = agent_output.get("stack_output", {}) or {}
     has_ghv = bool(stack.get("github_velocity_note", "").strip())
-    _add(checks, "Tool-call — GitHub velocity note",
+    _add(checks, "Tool-call - GitHub velocity note",
          has_ghv, "present" if has_ghv else "EMPTY", "non-empty github_velocity_note")
 
     # ── Duration constraint: PoC <= 4 weeks ───────────────────────────────
@@ -583,7 +583,7 @@ def run_execution_checks(agent_output: dict, pipeline_state=None) -> dict:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# METHOD 4 — Reference-based (BERTScore)
+# METHOD 4 - Reference-based (BERTScore)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_reference_based(agent_output: dict, expected: dict) -> dict:
@@ -627,14 +627,14 @@ def run_reference_based(agent_output: dict, expected: dict) -> dict:
         ref_text = str(exp_section.get(exp_path[-1], "") or "")
 
         if not actual_text or not ref_text:
-            _add(checks, f"BERTScore — {label}", False, "empty text", "non-empty actual and reference")
+            _add(checks, f"BERTScore - {label}", False, "empty text", "non-empty actual and reference")
             continue
 
         # Try BERTScore, fallback to token overlap
         score = _compute_similarity(actual_text, ref_text)
         passed = score >= 0.60   # F1 >= 0.60 is reasonable for paraphrasing
         scores.append(score)
-        _add(checks, f"Similarity — {label}", passed,
+        _add(checks, f"Similarity - {label}", passed,
              f"score={score:.2f}", ">= 0.60")
 
     avg_score = sum(scores) / len(scores) if scores else 0
@@ -670,7 +670,7 @@ def _compute_similarity(candidate: str, reference: str) -> float:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# METHOD 5 — Human HITL (read stored em_ratings)
+# METHOD 5 - Human HITL (read stored em_ratings)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def extract_human_ratings(pipeline_state_dict: dict) -> dict:
@@ -686,7 +686,7 @@ def extract_human_ratings(pipeline_state_dict: dict) -> dict:
             "ratings": [],
             "avg_em_rating": None,
             "pass": None,
-            "note": "No EM ratings recorded — EM did not submit a numeric rating at HITL gate",
+            "note": "No EM ratings recorded - EM did not submit a numeric rating at HITL gate",
         }
 
     avg = sum(r.get("em_rating", 0) for r in ratings) / len(ratings)
@@ -738,7 +738,7 @@ def run_guardrail_test(test_config: dict, agent_output: dict = None) -> dict:
                  result.brd_text_clean is None,
                  "blocked" if result.brd_text_clean is None else "forwarded", "blocked")
 
-    # Scope creep test (GUARD-004) — requires pipeline to have run
+    # Scope creep test (GUARD-004) - requires pipeline to have run
     if forbidden_terms := test_config.get("forbidden_scope_terms"):
         if agent_output:
             all_output_text = json.dumps(agent_output).lower()
@@ -826,7 +826,7 @@ def _write_results(results: dict, timestamp: str):
 def run_operationalization_check(results: dict) -> dict:
     """
     Dataset-level success criteria measurement.
-    Evaluates all 5 SC across the full test dataset — not just per-run.
+    Evaluates all 5 SC across the full test dataset - not just per-run.
 
     SC-1: completeness  ≥ 5.0 on ALL test BRDs
     SC-2: actionability ≥ 4.0 AVERAGE across test dataset
@@ -868,7 +868,7 @@ def run_operationalization_check(results: dict) -> dict:
         "pass":       avg_action >= 4.0,
     }
 
-    # SC-3: E2E pipeline time < 300s — read from execution logs
+    # SC-3: E2E pipeline time < 300s - read from execution logs
     wall_clock_times = []
     for t in tests:
         ex = t.get("execution_based", {})
@@ -877,7 +877,7 @@ def run_operationalization_check(results: dict) -> dict:
                 pass  # would read from actual pipeline timing
     sc_results["SC-3_pipeline_time"] = {
         "threshold_ms": 300_000,
-        "note":         "Measured by log_pipeline_summary() in pipeline.py — check logs/pipeline.jsonl",
+        "note":         "Measured by log_pipeline_summary() in pipeline.py - check logs/pipeline.jsonl",
         "pass":         None,   # None = requires actual pipeline run to measure
     }
 
@@ -917,7 +917,7 @@ def run_operationalization_check(results: dict) -> dict:
 def _print_operationalization_report(ops: dict) -> None:
     """Print dataset-level success criteria summary table."""
     print(f"\n  {'─'*56}")
-    print(f"  OPERATIONALIZATION — Dataset-level Success Criteria")
+    print(f"  OPERATIONALIZATION - Dataset-level Success Criteria")
     print(f"  {'─'*56}")
     labels = {
         "SC-1_completeness":   "SC-1 Completeness  ≥ 5.0 all BRDs",
@@ -963,7 +963,7 @@ def main():
         calibration = json.loads(calib_file.read_text())
 
     print(f"\n{'═'*60}")
-    print(f"  EM Copilot Eval Runner — {timestamp}")
+    print(f"  EM Copilot Eval Runner - {timestamp}")
     print(f"  Methods: {args.method} | Guardrails: {args.guardrails}")
     print(f"{'═'*60}\n")
 
@@ -973,11 +973,11 @@ def main():
         print("─" * 40)
         for test in GUARDRAIL_TESTS:
             if not Path(test["brd_file"]).exists():
-                print(f"  ⚠️  SKIP — file not found: {test['brd_file']}")
+                print(f"  ⚠️  SKIP - file not found: {test['brd_file']}")
                 continue
             result = run_guardrail_test(test)
             icon   = "✅" if result["pass"] else "❌"
-            print(f"  {icon} {test['test_id']}: {test['name']} — {result['score_pct']}%")
+            print(f"  {icon} {test['test_id']}: {test['name']} - {result['score_pct']}%")
             for c in result["checks"]:
                 print(f"    {'✓' if c['passed'] else '✗'} {c['check']}: {c['actual']}")
             results["tests"].append({"test_id": test["test_id"], **result})
@@ -995,7 +995,7 @@ def main():
     print("PIPELINE TESTS")
     for test in tests:
         if not Path(test["brd_file"]).exists():
-            print(f"  ⚠️  SKIP {test['test_id']} — {test['brd_file']}")
+            print(f"  ⚠️  SKIP {test['test_id']} - {test['brd_file']}")
             continue
 
         brd_text    = strip_eval_metadata(
@@ -1019,15 +1019,15 @@ def main():
                 "stack_output":    state.stack_output.model_dump() if state.stack_output else {},
                 "critic":          state.critic_output.model_dump() if state.critic_output else {},
             }
-            # Method 5 — Human HITL
+            # Method 5 - Human HITL
             human = extract_human_ratings(state.model_dump())
             test_result["human_hitl"] = human
             if human.get("avg_em_rating"):
                 print(f"    👤 EM rating: {human['avg_em_rating']}/5")
         except ImportError:
-            print("    ⚠️  Pipeline not built — schema/reference tests only")
+            print("    ⚠️  Pipeline not built - schema/reference tests only")
 
-        # Method 1 — Rule-based
+        # Method 1 - Rule-based
         if args.method in ("rule", "all") and "expected_file" in test:
             exp_path = test.get("expected_file")
             if exp_path and Path(exp_path).exists():
@@ -1041,7 +1041,7 @@ def main():
                 test_result["rule_based"] = rb
                 results["methods_run"].append("rule_based")
 
-        # Method 2 — LLM-as-Judge
+        # Method 2 - LLM-as-Judge
         if args.method in ("llm", "all") and agent_output:
             llm = run_llm_judge(agent_output, brd_text, calibration)
             if "error" not in llm:
@@ -1054,7 +1054,7 @@ def main():
             test_result["llm_judge"] = llm
             results["methods_run"].append("llm_judge")
 
-        # Method 3 — Execution-based
+        # Method 3 - Execution-based
         if args.method in ("execution", "all"):
             ex = run_execution_checks(agent_output)
             icon = "✅" if ex["pass"] else "❌"
@@ -1064,7 +1064,7 @@ def main():
             test_result["execution_based"] = ex
             results["methods_run"].append("execution_based")
 
-        # Method 4 — Reference-based
+        # Method 4 - Reference-based
         if args.method in ("reference", "all") and "expected_file" in test:
             exp_path = test.get("expected_file")
             if exp_path and Path(exp_path).exists() and agent_output:

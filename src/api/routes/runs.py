@@ -95,7 +95,7 @@ async def trigger_pipeline(
 
 @router.get("/status/{run_id}")
 async def stream_status(run_id: str, request: Request):
-    """Server-Sent Events stream — UI connects here for live updates."""
+    """Server-Sent Events stream - UI connects here for live updates."""
     verify_run_ownership(run_id, request)
 
     async def event_generator() -> AsyncGenerator[str, None]:

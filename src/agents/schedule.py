@@ -1,20 +1,20 @@
 """
 src/agents/schedule.py
 ═══════════════════════
-Schedule Estimator Agent — Agent 3.
+Schedule Estimator Agent - Agent 3.
 
 RAG: source_types=["timeline", "plan_template"]
 
 Contract: ScheduleOutput
-    sprints[]             — list[SprintRow] with effort_days
-    total_effort_days     — MUST equal sum of sprint.effort_days
-    critical_path[]       — ordered blocking deliverables
-    buffer_weeks          — added beyond phase sum (min 1 for medium/complex)
-    comparable_projects[] — chunk IDs of calibration projects (REQUIRED)
-    citations[]           — min 1 Pinecone chunk ID
-    confidence_score      — 0.0–1.0
-    assumptions[]         — calibration decisions documented
-    flagged_ambiguities[] — missing timeline data
+    sprints[]             - list[SprintRow] with effort_days
+    total_effort_days     - MUST equal sum of sprint.effort_days
+    critical_path[]       - ordered blocking deliverables
+    buffer_weeks          - added beyond phase sum (min 1 for medium/complex)
+    comparable_projects[] - chunk IDs of calibration projects (REQUIRED)
+    citations[]           - min 1 Pinecone chunk ID
+    confidence_score      - 0.0–1.0
+    assumptions[]         - calibration decisions documented
+    flagged_ambiguities[] - missing timeline data
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ Rules:
 2. comparable_projects[] MUST contain at least 1 chunk ID from the context
 3. Sprint week_ranges must NOT overlap (W1-W2, W3-W5, W6-W8 etc.)
 4. buffer_weeks: 0 for simple (<4 weeks), 1 for medium, 2+ for complex/AI
-5. critical_path: list in dependency order — what blocks what
+5. critical_path: list in dependency order - what blocks what
 6. AI/LLM workloads: add 15-20% buffer for prompt engineering iteration
-7. Output ONLY valid JSON — no markdown, no explanation"""
+7. Output ONLY valid JSON - no markdown, no explanation"""
 
 SCHEMA = """{
   "sprints": [
@@ -81,7 +81,7 @@ class ScheduleEstimatorAgent(BaseAgent):
         if plan_output is None and state.revision_count > 0:
             plan_output = state.plan_output
 
-        # ── RAG retrieval — timeline source type ──────────────────────────────
+        # ── RAG retrieval - timeline source type ──────────────────────────────
         query = self._build_query(state, plan_output)
         context_str, citation_ids = self.retrieve_context(
             query=query,
@@ -126,7 +126,7 @@ class ScheduleEstimatorAgent(BaseAgent):
 
     def _plan_summary(self, plan_output) -> str:
         if not plan_output:
-            return "No plan available — estimate directly from BRD."
+            return "No plan available - estimate directly from BRD."
         lines = [
             f"Total: {plan_output.total_duration_weeks} weeks",
             f"Team: {plan_output.team_composition}",
@@ -232,7 +232,7 @@ class ScheduleEstimatorAgent(BaseAgent):
             run_id=run_id,
             citations=citation_ids or ["project_timelines_chunk_0"],
             confidence_score=0.2,
-            assumptions=["Fallback schedule — agent parse error"],
+            assumptions=["Fallback schedule - agent parse error"],
             flagged_ambiguities=["Schedule estimate unavailable"],
             sprints=sprints,
             total_effort_days=sum(s.effort_days for s in sprints),

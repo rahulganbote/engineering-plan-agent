@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 /**
- * Theme system — Light / Dark / System picker state, shared app-wide.
+ * Theme system - Light / Dark / System picker state, shared app-wide.
  *
  * Why a Context (not just a hook):
  *   Every `useState` inside a hook is INSTANCE-LOCAL. If two components
@@ -52,7 +52,7 @@ function readStoredTheme(): Theme {
       return stored;
     }
   } catch {
-    // localStorage blocked (private mode / sandbox) — fall back to light
+    // localStorage blocked (private mode / sandbox) - fall back to light
   }
   // Light is the public-demo default. Users can opt into Dark or System via
   // the picker; their choice is persisted. (Defaulting to System would mean
@@ -68,7 +68,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {
-      // ignore — theme still applies for this session
+      // ignore - theme still applies for this session
     }
     applyThemeClass(next);
   }, []);

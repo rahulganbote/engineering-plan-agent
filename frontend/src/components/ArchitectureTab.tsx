@@ -78,11 +78,11 @@ export const ArchitectureTab: React.FC<ArchitectureTabProps> = ({ architectureDa
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-background border border-border p-6 rounded-xl shadow-inner">
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Architectural Pattern</span>
-          <span className="text-lg font-black text-primary">{arch.pattern || '—'}</span>
+          <span className="text-lg font-black text-primary">{arch.pattern || '-'}</span>
         </div>
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Deployment Target</span>
-          <span className="text-lg font-black text-primary">{arch.deployment_model || '—'}</span>
+          <span className="text-lg font-black text-primary">{arch.deployment_model || '-'}</span>
         </div>
         {arch.pattern_justification && (
           <div className="md:col-span-2 border-t border-border pt-4 mt-2">

@@ -1,17 +1,17 @@
 """
 src/integrations/sheets.py
 ═══════════════════════════
-Artifact export — writes approved engineering artifacts to Google Sheets,
+Artifact export - writes approved engineering artifacts to Google Sheets,
 with an automatic local-CSV fallback when Google credentials are missing.
 
 Called by the pipeline ONLY after the EM approves via HITL gate (POST /approve).
 
 Export modes:
-    1. "sheets"  — service-account JSON + sheet ID are configured AND the
+    1. "sheets"  - service-account JSON + sheet ID are configured AND the
                    Google API call succeeds. Writes 4 tabs to the sheet
                    ("Run Summary", "Engineering Plan", "Schedule", "Tech Stack").
                    Returns the Google Sheets URL.
-    2. "local"   — fallback when credentials are missing or the Google API
+    2. "local"   - fallback when credentials are missing or the Google API
                    call raises. Writes the same 4 datasets as CSV files into
                    logs/exports/<run_id>/ and returns a file:// URL.
                    Lets the demo run end-to-end with zero external setup.
@@ -45,7 +45,7 @@ SCOPES = [
 ]
 
 # Where local CSV bundles are written when Sheets credentials are unavailable.
-# Relative to whatever cwd uvicorn was launched from — matches src/core/logger.py.
+# Relative to whatever cwd uvicorn was launched from - matches src/core/logger.py.
 LOCAL_EXPORT_ROOT = Path("logs/exports")
 
 
@@ -67,7 +67,7 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
           "fallback_reason": str | None,   # populated only when falling back
         }
 
-    Never raises — failures during the Google Sheets path fall through to
+    Never raises - failures during the Google Sheets path fall through to
     the local CSV path so the pipeline never gets stuck post-approval.
     """
     run_id = state.run_id
@@ -86,10 +86,10 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
             }
         except Exception as e:
             reason = f"Sheets API error: {type(e).__name__}: {str(e)[:160]}"
-            log.warning(f"[{run_id}] Sheets export failed — falling back to local | {reason}")
+            log.warning(f"[{run_id}] Sheets export failed - falling back to local | {reason}")
             return _write_local_export(state, fallback_reason=reason, email=email)
 
-    log.info(f"[{run_id}] Sheets credentials unavailable ({why_not}) — writing local CSV bundle")
+    log.info(f"[{run_id}] Sheets credentials unavailable ({why_not}) - writing local CSV bundle")
     return _write_local_export(state, fallback_reason=why_not, email=email)
 
 
@@ -99,7 +99,7 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
 
 
 def _credentials_status() -> tuple[bool, str]:
-    """Return (ok, reason) — reason is the why-not string when ok is False."""
+    """Return (ok, reason) - reason is the why-not string when ok is False."""
     sheet_id = (settings.google_sheet_id or "").strip()
     creds_path_str = (settings.google_service_account_json or "").strip()
 
@@ -126,7 +126,7 @@ def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
     Creates tabs if they don't exist. Appends rows on subsequent runs.
     Returns the Sheet URL.
     """
-    # Imports are local — gspread / google-auth are only required for this path
+    # Imports are local - gspread / google-auth are only required for this path
     import gspread
     from google.oauth2.service_account import Credentials
 
@@ -249,7 +249,7 @@ def _write_local_export(state: PipelineState, fallback_reason: str = "", email: 
     # README
     readme_path = export_dir / "README.txt"
     readme_path.write_text(
-        f"EM Copilot — local artifact bundle\n"
+        f"EM Copilot - local artifact bundle\n"
         f"Run ID   : {run_id}\n"
         f"Exported : {ts}\n"
         f"Files    : {len(written)}\n"

@@ -137,7 +137,7 @@ def detect_unciteed_tool_usage(state: PipelineState) -> list[HallucinationFlag]:
                     agent="solution_architect",  # primary Tavily caller; tech_stack also
                     claim=(
                         "Tavily web search was invoked but no tavily_web_grounding "
-                        "or web URL citation appears in any specialist output — "
+                        "or web URL citation appears in any specialist output - "
                         "web-grounded facts may be cited without attribution."
                     ),
                     status="partially_supported",
@@ -153,7 +153,7 @@ def detect_unciteed_tool_usage(state: PipelineState) -> list[HallucinationFlag]:
                     agent="tech_stack_recommender",
                     claim=(
                         "GitHub velocity tool was invoked but no github_api: "
-                        "citation appears in tech stack output — velocity / "
+                        "citation appears in tech stack output - velocity / "
                         "issue close-rate numbers may be reported without source."
                     ),
                     status="partially_supported",

@@ -29,7 +29,7 @@ async def hitl_approve(
     fastapi_request: Request,
 ):
     """
-    Human-in-the-loop decision gate — fast path.
+    Human-in-the-loop decision gate - fast path.
 
     Records the EM's decision synchronously in <1s and schedules the heavyweight
     export work (Google Sheets, Jira via MCP, Pinecone re-indexing) as a
@@ -56,7 +56,7 @@ async def hitl_approve(
     POST_DECISION_STATES = ("exporting", "exported", "rejected", "export_failed")
     if state.pipeline_status in POST_DECISION_STATES and state.hitl_decision is not None:
         if state.hitl_decision == incoming_decision:
-            # Same decision retry — return existing export payload so the caller
+            # Same decision retry - return existing export payload so the caller
             # gets a consistent response shape regardless of whether they were first.
             existing = _run_export.get(run_id, {})
             return ApprovalResponse(
@@ -65,7 +65,7 @@ async def hitl_approve(
                 decision=state.hitl_decision.value,
                 sheet_url=existing.get("sheet_url"),
                 jira_url=existing.get("jira_url"),
-                message=(f"Already {state.hitl_decision.value} (idempotent retry — no-op)."),
+                message=(f"Already {state.hitl_decision.value} (idempotent retry - no-op)."),
             )
         # Different decision attempted after terminal state → conflict.
         raise HTTPException(
@@ -113,7 +113,7 @@ async def hitl_approve(
                 run_id,
                 {
                     "type": "hitl_escalated",
-                    "message": "Two rejections — flagging for audit review",
+                    "message": "Two rejections - flagging for audit review",
                 },
             )
 
@@ -166,7 +166,7 @@ async def hitl_approve(
         decision=decision.value,
         message=(
             f"Decision recorded: {decision.value}. "
-            "Exports running in the background — watch for the exports_finalized event."
+            "Exports running in the background - watch for the exports_finalized event."
         ),
         sheet_url=None,
         export_status="pending",

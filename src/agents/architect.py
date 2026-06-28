@@ -1,7 +1,7 @@
 """
 src/agents/architect.py
 ════════════════════════
-Solution Architect Agent — specialist spoke.
+Solution Architect Agent - specialist spoke.
 
 RAG: source_types=["arch_pattern", "standard"]
 Contract: ArchitectureOutput
@@ -12,7 +12,7 @@ to the Orchestrator Aggregator. It does not call other specialist agents.
 
 Diagram generation:
     The agent asks the LLM to emit a Mermaid `graph LR/TD` block that visualizes
-    the component data flow. The Mermaid source is the canonical artifact —
+    the component data flow. The Mermaid source is the canonical artifact -
     it round-trips to Jira (native code block), Confluence, GitHub README, and
     any other surface that speaks Mermaid. For the React UI, we also
     render the Mermaid to SVG via kroki.io and cache it on diagram_svg so the
@@ -44,7 +44,7 @@ log = get_logger(__name__)
 
 # ── Kroki rendering config ───────────────────────────────────────────────────
 KROKI_URL = "https://kroki.io/mermaid/svg"
-KROKI_TIMEOUT_SEC = 15  # Per-attempt budget. 8s was too tight — kroki.io
+KROKI_TIMEOUT_SEC = 15  # Per-attempt budget. 8s was too tight - kroki.io
 # occasionally serves a 10-12s response. 15 × 2 retries
 # = 30s worst case, still well under the 90s bulkhead.
 KROKI_MAX_RETRIES = 2
@@ -58,17 +58,17 @@ Rules:
 3. Include ordered data_flow steps.
 4. Include nfr_mappings with citation values from AVAILABLE CITATION IDs.
 5. Flag missing NFRs or ambiguous integration constraints.
-6. Produce diagram_mermaid — a valid Mermaid `graph LR` (preferred) or `graph TD`
+6. Produce diagram_mermaid - a valid Mermaid `graph LR` (preferred) or `graph TD`
    block that visualizes the major components and their primary data flow.
    - Use ONLY ASCII node ids (e.g. Client, ApiGateway, OrderSvc, Db, Queue).
    - Put human-readable labels in square brackets, e.g. ApiGateway[API Gateway].
    - Use arrows like A --> B or A -- "REST" --> B for labeled edges.
-   - Keep it under 14 nodes — a high-level overview an EM can scan in 10 seconds.
+   - Keep it under 14 nodes - a high-level overview an EM can scan in 10 seconds.
    - Do NOT wrap the diagram in markdown fences (no ```mermaid). Just the raw
      `graph LR\\n  …` text inside the JSON string field.
    - Avoid characters that break Mermaid: parentheses inside labels, smart
      quotes, or unescaped colons. Prefer hyphens.
-7. Output ONLY valid JSON — no markdown fences around the JSON, no explanation."""
+7. Output ONLY valid JSON - no markdown fences around the JSON, no explanation."""
 
 SCHEMA = """{
   "pattern": "string",
@@ -164,7 +164,7 @@ class SolutionArchitectAgent(BaseAgent):
         citation_ids: list[str],
         feedback: str,
     ) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
@@ -310,7 +310,7 @@ class SolutionArchitectAgent(BaseAgent):
     def _render_kroki(cls, mermaid_src: str, run_id: str) -> str | None:
         """
         POST raw Mermaid source to kroki.io and return SVG text.
-        Returns None on any error — caller treats that as "use mermaid.js fallback".
+        Returns None on any error - caller treats that as "use mermaid.js fallback".
         """
         if not mermaid_src or not mermaid_src.strip():
             return None
@@ -330,7 +330,7 @@ class SolutionArchitectAgent(BaseAgent):
             except requests.RequestException as e:
                 last_err = f"{type(e).__name__}: {str(e)[:120]}"
             log.warning(f"[{run_id}] Kroki attempt {attempt}/{KROKI_MAX_RETRIES} failed | {last_err}")
-        log.warning(f"[{run_id}] Kroki render skipped — UI will fall back to mermaid.js | {last_err}")
+        log.warning(f"[{run_id}] Kroki render skipped - UI will fall back to mermaid.js | {last_err}")
         return None
 
     # ── Defaults / fallbacks ─────────────────────────────────────────────────
@@ -375,7 +375,7 @@ class SolutionArchitectAgent(BaseAgent):
             run_id=run_id,
             citations=citation_ids or [cite],
             confidence_score=0.2,
-            assumptions=["Fallback architecture — agent parse error"],
+            assumptions=["Fallback architecture - agent parse error"],
             flagged_ambiguities=["Architecture output could not be parsed"],
             pattern="Modular monolith with clear service boundaries",
             pattern_justification=(

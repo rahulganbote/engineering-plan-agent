@@ -11,10 +11,10 @@
 ## Output Contract Header
 agent_name:          engineering_plan_generator
 citations:           [plan_templates_chunk_N, Engineering_Plan_Template_chunk_N]
-confidence_score:    [0.0-1.0 — set below 0.5 if BRD is ambiguous]
+confidence_score:    [0.0-1.0 - set below 0.5 if BRD is ambiguous]
 assumptions:         [List every assumption made where BRD was silent]
 flagged_ambiguities: [List every unclear or missing BRD element]
-total_duration_weeks: [Sum of all phase duration_weeks — must match exactly]
+total_duration_weeks: [Sum of all phase duration_weeks - must match exactly]
 
 ## Phase 1: Discovery and Architecture
 duration_weeks: 2
@@ -124,11 +124,11 @@ team_composition:
 total_duration_weeks: 13
 
 ## Reflection Notes
-# REQUIRED — Agent 2 must populate this field documenting self-critique of first draft
+# REQUIRED - Agent 2 must populate this field documenting self-critique of first draft
 # Must not be empty. Reflects Reflection pattern: draft, self-critique, final output.
 reflection_notes: |
   First draft did not address NFR-02 (availability) in Phase 3 milestones.
   Revised to add explicit availability SLA validation milestone in Week 11.
-  Also identified that risks had no citation fields — added citations to all 3 risks
+  Also identified that risks had no citation fields - added citations to all 3 risks
   per contract requirement. Adjusted total_duration_weeks from 12 to 13 to match
   corrected phase sum after extending Phase 4 from 1 to 2 weeks.

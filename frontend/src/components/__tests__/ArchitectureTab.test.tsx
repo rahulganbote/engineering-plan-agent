@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ArchitectureTab } from '../ArchitectureTab';
 
-// MermaidRenderer imports mermaid which is heavy — mock it
+// MermaidRenderer imports mermaid which is heavy - mock it
 vi.mock('../MermaidRenderer', () => ({
   MermaidRenderer: ({ diagramMermaid }: { diagramMermaid?: string | null }) =>
     <div data-testid="mermaid-mock">{diagramMermaid || 'no diagram'}</div>,

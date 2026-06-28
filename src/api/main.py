@@ -1,7 +1,7 @@
 """
 src/api/main.py
 ═══════════════
-FastAPI gateway — exposes the LangGraph pipeline to the React UI
+FastAPI gateway - exposes the LangGraph pipeline to the React UI
 and other external channels.
 """
 
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
         def _bridge(event: dict) -> None:
             rid = event.pop("run_id", None)
             if not rid:
-                return  # event outside any run — drop
+                return  # event outside any run - drop
             _push_event(rid, event)
 
         set_event_sink(_bridge)
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="EM Copilot — BRD to Engineering Plan API",
+    title="EM Copilot - BRD to Engineering Plan API",
     description=(
         "7-agent LangGraph system that transforms BRDs into engineering artifacts. "
         "Hub-and-spoke architecture with Pinecone RAG, Critic revision loop, and HITL gate."

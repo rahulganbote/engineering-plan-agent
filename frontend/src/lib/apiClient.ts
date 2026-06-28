@@ -6,8 +6,34 @@ import { toast } from 'sonner';
  * registers Sonner toast alert messages, and formats JSON results.
  */
 export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+  let skipToast = false;
+  let cleanHeaders: HeadersInit = {};
+  
+  if (options?.headers) {
+    if (options.headers instanceof Headers) {
+      skipToast = options.headers.get('X-Skip-Toast') === 'true' || options.headers.get('x-skip-toast') === 'true';
+      const tempHeaders = new Headers(options.headers);
+      tempHeaders.delete('X-Skip-Toast');
+      tempHeaders.delete('x-skip-toast');
+      cleanHeaders = tempHeaders;
+    } else if (Array.isArray(options.headers)) {
+      skipToast = options.headers.some(([k, v]) => k.toLowerCase() === 'x-skip-toast' && v === 'true');
+      cleanHeaders = options.headers.filter(([k]) => k.toLowerCase() !== 'x-skip-toast');
+    } else {
+      const record = options.headers as Record<string, string>;
+      skipToast = record['X-Skip-Toast'] === 'true' || record['x-skip-toast'] === 'true';
+      const temp = { ...record };
+      delete temp['X-Skip-Toast'];
+      delete temp['x-skip-toast'];
+      cleanHeaders = temp;
+    }
+  } else {
+    cleanHeaders = options?.headers || {};
+  }
+
   const mergedOptions: RequestInit = {
     ...options,
+    headers: cleanHeaders,
     credentials: options?.credentials || 'include',
   };
 
@@ -40,7 +66,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
               (detail as Record<string, unknown>).message,
               (detail as Record<string, unknown>).next_step,
             ].filter(Boolean) as string[];
-            errorMsg = parts.length > 0 ? parts.join(' — ') : JSON.stringify(detail);
+            errorMsg = parts.length > 0 ? parts.join(' - ') : JSON.stringify(detail);
           } else {
             errorMsg = detail || errorData.message || JSON.stringify(errorData);
           }
@@ -56,7 +82,7 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
         // Amber warning toast (not red error) + 8s duration so the user can
         // read the next_step (e.g. contact info in the rate-limit message).
         toast.warning(errorMsg, { duration: 8000 });
-      } else {
+      } else if (!skipToast) {
         toast.error(`API Failure: ${errorMsg}`);
       }
       throw new Error(errorMsg);

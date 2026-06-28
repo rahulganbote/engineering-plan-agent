@@ -1,7 +1,7 @@
 """
 src/agents/tech_stack.py
 ════════════════════════
-Tech Stack Recommender Agent — specialist spoke.
+Tech Stack Recommender Agent - specialist spoke.
 
 RAG: source_types=["tech_log", "standard"]
 Contract: TechStackOutput
@@ -26,7 +26,7 @@ Rules:
 3. Each option must include components, scalability_rating, team_familiarity_rating,
    integration_risk, estimated_monthly_cost_usd, pros, cons, and citation.
 4. recommendation_rationale must reference team familiarity, cost, and risk.
-5. Output ONLY valid JSON — no markdown fences, no explanation."""
+5. Output ONLY valid JSON - no markdown fences, no explanation."""
 
 SCHEMA = """{
   "options": [
@@ -129,14 +129,14 @@ class TechStackAgent(BaseAgent):
         feedback: str,
         github_signal: str,
     ) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
                 f"{feedback_block}"
                 f"AVAILABLE CITATION IDs:\n{cites}\n\n"
-                f"GITHUB API SIGNAL:\n{github_signal or 'Unavailable — use org standards and BRD constraints.'}\n\n"
+                f"GITHUB API SIGNAL:\n{github_signal or 'Unavailable - use org standards and BRD constraints.'}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 f"BRD:\n{brd_text}\n\n"
                 f"Output ONLY JSON:\n{SCHEMA}"
@@ -247,7 +247,7 @@ class TechStackAgent(BaseAgent):
             run_id=run_id,
             citations=citation_ids or [cite],
             confidence_score=0.2,
-            assumptions=["Fallback tech stack — agent parse error"],
+            assumptions=["Fallback tech stack - agent parse error"],
             flagged_ambiguities=["Tech stack output could not be parsed"],
             options=options,
             recommended_option=options[0].name,
@@ -295,7 +295,7 @@ def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
     if mapped:
         return RiskLevel(mapped)
     # Fallback: if the LLM emitted something we haven't mapped, log + use default
-    log.warning(f"Unknown RiskLevel value {value!r} — coercing to {default!r}")
+    log.warning(f"Unknown RiskLevel value {value!r} - coercing to {default!r}")
     return RiskLevel(default)
 
 

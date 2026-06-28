@@ -11,10 +11,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  // Move Vite's pre-bundling cache OUT of node_modules/.vite/ — OneDrive holds
+  // Move Vite's pre-bundling cache OUT of node_modules/.vite/ - OneDrive holds
   // a sync-lock on files inside synced folders and Vite's unlink-then-rewrite
   // pattern fails with EPERM. ~/.cache/em-copilot-vite is outside OneDrive,
-  // so Vite has uncontested write access. (No effect on CI or Cloud Build —
+  // so Vite has uncontested write access. (No effect on CI or Cloud Build -
   // they each get a fresh container with no .cache to worry about.)
   cacheDir: process.env.HOME ? `${process.env.HOME}/.cache/em-copilot-vite` : 'node_modules/.vite',
 

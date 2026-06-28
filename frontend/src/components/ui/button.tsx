@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /**
- * Button — copied from shadcn/ui (MIT) — kept in-repo so we own and can edit it.
+ * Button - copied from shadcn/ui (MIT) - kept in-repo so we own and can edit it.
  * If the shadcn CLI ever works in your network, `npx shadcn@latest add button`
  * will safely overwrite this file with the same content.
  */

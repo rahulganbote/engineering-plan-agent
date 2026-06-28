@@ -1,6 +1,6 @@
 # ────────────────────────────────────────────────────────────────────────────
-# EM Copilot — BRD to Engineering Plan Agent
-# requirements.txt — pinned production dependencies
+# EM Copilot - BRD to Engineering Plan Agent
+# requirements.txt - pinned production dependencies
 # Compatibility python==3.11
 # Install: pip install -r requirements.txt
 # ────────────────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ elevenlabs==1.9.0           # ElevenLabs Conversational AI voice agent
 requests==2.32.3            # HTTP client for GitHub API tool call
 
 # ── Data / Validation ─────────────────────────────────────────────────────────
-pydantic>=2.11.0,<3.0.0     # Agent output contracts — >=2.11 required by the mcp SDK
+pydantic>=2.11.0,<3.0.0     # Agent output contracts - >=2.11 required by the mcp SDK
 pydantic-settings==2.6.1    # Settings management from .env
 pandas==2.2.3               # Eval results dataframes
 reportlab==4.2.5            # PDF artifact export
@@ -60,13 +60,13 @@ httpx==0.28.1               # >=0.28 required by mcp-atlassian
 
 # ── Model Context Protocol (Jira Epic creation via MCP server) ──
 mcp>=1.1.0                  # MCP client SDK (ClientSession, stdio_client)
-mcp-atlassian>=0.11.0       # MCP server for Jira/Confluence — run as stdio subprocess
+mcp-atlassian>=0.11.0       # MCP server for Jira/Confluence - run as stdio subprocess
 
 # ── Optional: Redis backend for cache L2 (Phase 8) ──────────
 redis>=5.0,<6.0   # activates when REDIS_URL env var is set
 
 # ── Optional: Eval framework (only needed for eval/run_eval.py) ─────────────
-# These are HEAVY (~2 GB) — keep out of production Docker images.
+# These are HEAVY (~2 GB) - keep out of production Docker images.
 # eval/run_eval.py has try/except ImportError that falls back to Jaccard
 # overlap when bert-score is absent, so the system works without it.
 #

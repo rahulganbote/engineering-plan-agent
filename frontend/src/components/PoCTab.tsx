@@ -68,11 +68,11 @@ export const PoCTab: React.FC<PoCTabProps> = ({ pocData }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-background border border-border p-6 rounded-xl shadow-inner">
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">PoC Duration</span>
-          <span className="text-xl font-black text-primary">{poc.duration_weeks || '—'} weeks</span>
+          <span className="text-xl font-black text-primary">{poc.duration_weeks || '-'} weeks</span>
         </div>
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Target Team Size</span>
-          <span className="text-xl font-black text-primary">{poc.team_size || '—'} resources</span>
+          <span className="text-xl font-black text-primary">{poc.team_size || '-'} resources</span>
         </div>
       </div>
 

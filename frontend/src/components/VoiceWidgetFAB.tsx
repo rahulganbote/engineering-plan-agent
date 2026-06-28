@@ -1,5 +1,5 @@
 /**
- * VoiceWidgetFAB — collapse-by-default wrapper for the ElevenLabs Conversational AI widget.
+ * VoiceWidgetFAB - collapse-by-default wrapper for the ElevenLabs Conversational AI widget.
  *
  * Why this exists: the bare `<elevenlabs-convai>` widget renders an always-visible
  * pill button + "Powered by ElevenLabs" footer that competes with the workspace UI.
@@ -31,7 +31,7 @@ export const VoiceWidgetFAB: React.FC<VoiceWidgetFABProps> = ({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Click-outside to collapse — only while expanded
+  // Click-outside to collapse - only while expanded
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {

@@ -35,7 +35,7 @@ COPY --chown=appuser:appuser . .
 # Copy compiled frontend assets from Stage 1 into /app/frontend/dist
 COPY --chown=appuser:appuser --from=frontend-builder /build/dist /app/frontend/dist
 
-# Runtime directories — must be writable by appuser
+# Runtime directories - must be writable by appuser
 RUN mkdir -p logs logs/exports secrets \
     && chown -R appuser:appuser /app
 
@@ -47,7 +47,7 @@ ENV HOME=/home/appuser
 
 EXPOSE 7860
 
-# Container healthcheck — FastAPI's health endpoint
+# Container healthcheck - FastAPI's health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
     CMD curl -sf "http://localhost:${PORT}/health" || exit 1
 

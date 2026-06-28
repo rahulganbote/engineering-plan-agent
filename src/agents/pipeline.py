@@ -1,7 +1,7 @@
 """
 src/agents/pipeline.py
 ═══════════════════════
-LangGraph StateGraph — central Orchestrator hub-and-spoke pipeline.
+LangGraph StateGraph - central Orchestrator hub-and-spoke pipeline.
 
 Design:
     orchestrator_hub
@@ -25,7 +25,7 @@ from typing import Literal
 
 from langgraph.graph import END, StateGraph
 
-import src.agents  # noqa: F401 — side-effect: registers all specialists
+import src.agents  # noqa: F401 - side-effect: registers all specialists
 from src.agents.base_agent import (
     _current_model_family,
     get_cost,
@@ -78,7 +78,7 @@ def _feedback_for(ps: PipelineState, agent_name: str) -> str:
 
 
 def _safe_emit(event_type: str, **fields) -> None:
-    """Best-effort event emit. Never raises — observability cannot break the pipeline."""
+    """Best-effort event emit. Never raises - observability cannot break the pipeline."""
     try:
         from src.core.events import emit
 
@@ -171,7 +171,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     _set_status(ps, "dispatching")
     max_workers = min(len(targets), len(ALL_SPECIALIST_AGENTS)) or 1
 
-    # ── Phase 9 — Bulkhead: per-agent timeout at the executor ───────────────
+    # ── Phase 9 - Bulkhead: per-agent timeout at the executor ───────────────
     # One stuck specialist cannot block the whole pipeline. Any future that
     # doesn't return within settings.agent_timeout_sec is cancelled; its agent
     # output stays None, which the Critic's FM-3 cap catches downstream.
@@ -191,7 +191,7 @@ def node_dispatch_specialists(state: dict) -> dict:
 
     # Explicit executor lifecycle (NOT `with`) so we can return immediately on
     # bulkhead trip. A `with` block would call shutdown(wait=True) on __exit__,
-    # which joins all running threads — defeating the point of the bulkhead.
+    # which joins all running threads - defeating the point of the bulkhead.
     executor = ThreadPoolExecutor(max_workers=max_workers)
     bulkhead_tripped = False
     try:
@@ -218,7 +218,7 @@ def node_dispatch_specialists(state: dict) -> dict:
                 if not fut.done():
                     fut.cancel()
                     log.warning(
-                        f"[{ps.run_id}] {agent_name} bulkhead timeout after {_bulkhead_budget}s — proceeding without it"
+                        f"[{ps.run_id}] {agent_name} bulkhead timeout after {_bulkhead_budget}s - proceeding without it"
                     )
                     ps.errors.append(f"{agent_name}: bulkhead timeout ({_bulkhead_budget}s)")
                     try:

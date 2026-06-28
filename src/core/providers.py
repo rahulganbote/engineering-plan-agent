@@ -183,12 +183,12 @@ def complete_with_fallback(
     UI handling (frontend responsibility):
       The "provider_fallback" event is consumed by the React frontend's useSSE
       hook, which surfaces:
-        (a) a Sonner toast ("X quota exceeded — using Y for this run")
+        (a) a Sonner toast ("X quota exceeded - using Y for this run")
         (b) a persistent inline banner above the artifacts
 
     Cost attribution:
       The (input_tokens, output_tokens) returned reflect the FALLBACK provider's
-      counts. base_agent.add_cost() uses the fallback family's pricing too — so
+      counts. base_agent.add_cost() uses the fallback family's pricing too - so
       the per-run cost is accurate for whichever provider actually executed.
 
     Returns:
@@ -258,8 +258,8 @@ def complete_with_fallback(
             # call would re-try the original failing family and hit the same error.
             #
             # We update BOTH:
-            #   • _CURRENT_RUN (thread-local) — for calls on this same thread
-            #   • _RUN_FAMILY[rid] (module-level dict) — for cross-thread visibility
+            #   • _CURRENT_RUN (thread-local) - for calls on this same thread
+            #   • _RUN_FAMILY[rid] (module-level dict) - for cross-thread visibility
             #     since LangGraph dispatches specialists via ThreadPoolExecutor
             #
             # Wrapped in try/except because observability MUST NOT cascade failures:

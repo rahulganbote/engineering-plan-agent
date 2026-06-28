@@ -67,7 +67,7 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Total Effort</span>
           <span className="text-2xl font-black text-primary">
-            {sched.total_effort_days !== undefined ? `${sched.total_effort_days.toFixed(1)} days` : '—'}
+            {sched.total_effort_days !== undefined ? `${sched.total_effort_days.toFixed(1)} days` : '-'}
           </span>
         </div>
         <div>

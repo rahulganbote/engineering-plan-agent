@@ -18,7 +18,7 @@ internal engineers initially.
 - Index 4,200 Git repositories (140 GB total, mostly Python, TypeScript, Go).
 - Sub-200ms search latency at the 95th percentile.
 - Support semantic similarity ranking using Toolbox or similar local embedding
-  servers (NOT a hosted embedding API — data sovereignty).
+  servers (NOT a hosted embedding API - data sovereignty).
 - Provide a REST endpoint that other internal services can hit.
 - Allow filtering by repo, language, file extension, and last-modified date.
 
@@ -33,7 +33,7 @@ internal engineers initially.
 ## Non-Functional Requirements
 - Availability: 99.5% during business hours; downtime acceptable overnight.
 - Throughput: 50 search QPS sustained, bursts to 200 QPS during all-hands.
-- Security: code is the company's most sensitive asset — all snippets must
+- Security: code is the company's most sensitive asset - all snippets must
   stay inside the VPC.
 - Compliance: SOC 2 Type II (we're already certified at the org level).
 

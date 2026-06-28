@@ -1,13 +1,13 @@
 """
 src/integrations/jira.py
 ═════════════════════════
-Jira Cloud push — creates an issue summarizing the approved pipeline run.
+Jira Cloud push - creates an issue summarizing the approved pipeline run.
 
 Mirror of src/integrations/sheets.py: one public entry point that returns a
 shape-stable dict, gracefully skips when credentials are missing, never raises.
 
 Called from src/api/main.py POST /approve, AFTER the Google Sheets export.
-Jira push failure (network, auth, schema) does NOT block approval — the
+Jira push failure (network, auth, schema) does NOT block approval - the
 pipeline_status stays "exported" because Sheets is the system of record.
 
 What it creates:
@@ -18,7 +18,7 @@ What it creates:
             • Run metadata (id, badge, scores)
             • Critic dimensions
             • Architecture pattern + Mermaid diagram code block (renders natively
-              in Jira Cloud — no plugin, no attachment)
+              in Jira Cloud - no plugin, no attachment)
             • Tech stack recommendation
             • Engineering plan summary
             • PoC hypothesis + risk
@@ -73,7 +73,7 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
     run_id = state.run_id
     ok, why_not = _credentials_status()
     if not ok:
-        log.info(f"[{run_id}] Jira push skipped — {why_not}")
+        log.info(f"[{run_id}] Jira push skipped - {why_not}")
         return {
             "url": None,
             "mode": "skipped",
@@ -82,12 +82,12 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
             "fallback_reason": why_not,
         }
 
-    # Phase 7: idempotency — search for existing issue with this run's label
+    # Phase 7: idempotency - search for existing issue with this run's label
     idempotency_label = f"em-copilot-run-{state.run_id}"
     existing_key = _search_existing_issue(state.run_id, idempotency_label)
     if existing_key:
         url = f"{settings.jira_base_url.rstrip('/')}/browse/{existing_key}"
-        log.info(f"[{run_id}] Jira REST — idempotent skip, issue already exists: {existing_key}")
+        log.info(f"[{run_id}] Jira REST - idempotent skip, issue already exists: {existing_key}")
         try:
             from src.core.events import emit as _evt
 
@@ -97,7 +97,7 @@ def push_artifacts_to_jira(state: PipelineState) -> dict[str, Any]:
         return {
             "url": url,
             "mode": "jira",
-            "detail": f"Idempotent skip — issue {existing_key} already exists (label={idempotency_label})",
+            "detail": f"Idempotent skip - issue {existing_key} already exists (label={idempotency_label})",
             "issue_key": existing_key,
             "fallback_reason": None,
         }
@@ -215,7 +215,7 @@ def _create_issue(state: PipelineState) -> dict[str, Any]:
             log.warning(f"[{state.run_id}] Jira POST attempt {attempt} network error | {e}")
             continue
         except RuntimeError as e:
-            # Don't retry on 4xx — those are deterministic
+            # Don't retry on 4xx - those are deterministic
             if r is not None and 400 <= r.status_code < 500:
                 raise
             last_err = e
@@ -254,7 +254,7 @@ def _project_name_from_brd(state: PipelineState) -> str:
       1. The first BRD section heading, if it's not a generic placeholder
          like "Project Overview" / "Background" / "Introduction".
       2. An explicit "Project:" / "Project Name:" line in any of the first
-         three sections — common in template-driven BRDs.
+         three sections - common in template-driven BRDs.
       3. The leading proper-noun phrase of the first section's content:
          e.g. "FoodHub is a food-aggregator platform…" → "FoodHub".
          Catches the very common "<Name> is/provides/enables…" opening.
@@ -356,7 +356,7 @@ def _slugify(text: str) -> str:
 def _build_adf_description(state: PipelineState) -> dict[str, Any]:
     """
     Build the Atlassian Document Format (ADF) description body.
-    Renders natively in Jira Cloud's new editor — including the Mermaid
+    Renders natively in Jira Cloud's new editor - including the Mermaid
     code block, which Jira renders as a diagram with no plugin.
     """
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -424,7 +424,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             )
         )
         if arch.diagram_mermaid:
-            # Jira ADF codeBlock with language=mermaid does NOT render as a diagram —
+            # Jira ADF codeBlock with language=mermaid does NOT render as a diagram -
             # it shows as syntax-highlighted code. Workaround: link to a Kroki-rendered
             # SVG that opens in a new tab. The raw source still lives below for
             # copy-paste into Confluence / GitHub README / etc. (which DO render it).
@@ -439,7 +439,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             blocks.append(_code_block(arch.diagram_mermaid, language="mermaid"))
         if arch.components:
             blocks.append(_paragraph(_text("Components:", bold=True)))
-            blocks.append(_bullet_list([f"{c.name} ({c.technology}) — {c.responsibility}" for c in arch.components]))
+            blocks.append(_bullet_list([f"{c.name} ({c.technology}) - {c.responsibility}" for c in arch.components]))
 
     # ── Tech stack ───────────────────────────────────────────────────────────
     stack = state.stack_output
@@ -458,7 +458,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             blocks.append(
                 _bullet_list(
                     [
-                        f"{opt.name} — scalability {opt.scalability_rating}/5, "
+                        f"{opt.name} - scalability {opt.scalability_rating}/5, "
                         f"familiarity {opt.team_familiarity_rating}/5, "
                         f"risk {opt.integration_risk.value}, "
                         f"~${opt.estimated_monthly_cost_usd:.0f}/mo"
@@ -485,7 +485,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             blocks.append(_paragraph(_text("Phases:", bold=True)))
             blocks.append(
                 _bullet_list(
-                    [f"{p.name} ({p.duration_weeks}w) — {len(p.milestones)} milestone(s)" for p in plan.phases]
+                    [f"{p.name} ({p.duration_weeks}w) - {len(p.milestones)} milestone(s)" for p in plan.phases]
                 )
             )
         if plan.risks:
@@ -493,7 +493,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             blocks.append(
                 _bullet_list(
                     [
-                        f"{r.description} — likelihood={r.likelihood.value}, impact={r.impact.value}"
+                        f"{r.description} - likelihood={r.likelihood.value}, impact={r.impact.value}"
                         for r in plan.risks[:5]
                     ]
                 )
@@ -552,7 +552,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
     blocks.append(
         _paragraph(
             _text(
-                f"Generated by EM Copilot — multi-agent BRD-to-engineering-plan pipeline. "
+                f"Generated by EM Copilot - multi-agent BRD-to-engineering-plan pipeline. "
                 f"Run ID {state.run_id} | Pydantic-validated outputs from 5 specialist agents "
                 f"+ Critic revision loop. See knowledge_base/ for grounding sources.",
                 italic=True,
@@ -593,7 +593,7 @@ def _heading(level: int, text: str) -> dict[str, Any]:
 
 
 def _code_block(code: str, *, language: str = "text") -> dict[str, Any]:
-    # Jira ADF codeBlock — `language: "mermaid"` renders as a diagram natively.
+    # Jira ADF codeBlock - `language: "mermaid"` renders as a diagram natively.
     return {
         "type": "codeBlock",
         "attrs": {"language": language},
@@ -623,7 +623,7 @@ def _kroki_view_url(mermaid_src: str, fmt: str = "svg") -> str:
     """
     Build a kroki.io GET URL that renders mermaid_src as fmt (svg | png | pdf).
     Encoding: zlib deflate level 9 → urlsafe base64. This is Kroki's documented
-    short-URL form — the whole diagram travels in the URL, no upload step.
+    short-URL form - the whole diagram travels in the URL, no upload step.
     """
     encoded = base64.urlsafe_b64encode(zlib.compress((mermaid_src or "").encode("utf-8"), 9)).decode("ascii")
     return f"https://kroki.io/mermaid/{fmt}/{encoded}"

@@ -2,28 +2,28 @@
 src/core/cache.py
 ═════════════════════════════════════════════════════════════════════════════
 Pluggable cache abstraction for any external service call. Composes with
-`src/core/resilience.py` — a cache HIT skips the resilience layer entirely
+`src/core/resilience.py` - a cache HIT skips the resilience layer entirely
 (zero retry/timeout/breaker cost).
 
 Modes
 ─────
-    "off"      — no-op (use to disable per call site without removing the decorator)
-    "exact"    — SHA-256 of the call args; hit only on byte-identical inputs
-    "semantic" — embed + nearest-neighbour search (reserved for Phase 6;
+    "off"      - no-op (use to disable per call site without removing the decorator)
+    "exact"    - SHA-256 of the call args; hit only on byte-identical inputs
+    "semantic" - embed + nearest-neighbour search (reserved for Phase 6;
                  falls back to "exact" until Phase 6 ships the Pinecone-backed
                  SemanticBackend)
 
 Backends
 ────────
-    InMemoryCache  — default, thread-safe LRU + TTL, zero infra
-    RedisCache     — reserved for Phase 8; activates automatically when REDIS_URL
+    InMemoryCache  - default, thread-safe LRU + TTL, zero infra
+    RedisCache     - reserved for Phase 8; activates automatically when REDIS_URL
                      is set (Protocol is defined; implementation TBD)
 
 Design
 ──────
 Per-caller policies, no shared mutation. The module exposes ONE process-default
 backend (lazy InMemoryCache), but each `@cached(...)` site may pass its own
-backend instance — that's the extensibility hook for Redis or a custom store.
+backend instance - that's the extensibility hook for Redis or a custom store.
 
 Usage
 ─────
@@ -102,7 +102,7 @@ class InMemoryCache:
 
     Behaviour:
       • Bounded by max_entries (FIFO eviction by insertion order; reinsertion
-        on access moves the entry to the end — LRU semantics).
+        on access moves the entry to the end - LRU semantics).
       • Each entry carries its own absolute expiry; lazy expiry on get().
     """
 
@@ -240,7 +240,7 @@ def cached(
     """
     Wrap a callable with caching. Cache hits skip the wrapped function entirely.
 
-    Composes BEFORE @resilient — a hit pays zero retry / timeout / breaker cost.
+    Composes BEFORE @resilient - a hit pays zero retry / timeout / breaker cost.
     """
 
     def decorator(fn: Callable) -> Callable:
@@ -284,7 +284,7 @@ def cached(
                     except Exception as e:
                         log.warning(f"[cache:{policy.namespace}] semantic_set failed: {e}")
                     return result
-                # No usable string arg found — fall through to exact cache
+                # No usable string arg found - fall through to exact cache
 
             # ── Exact mode (and semantic fallback) ──────────────────────────
             hit = be.get(key, policy.namespace)
@@ -293,7 +293,7 @@ def cached(
                 _emit("cache_hit", namespace=policy.namespace, call=call_name, mode=policy.mode, key=key[:8])
                 return hit
 
-            # ── Miss — call the wrapped function ────────────────────────────
+            # ── Miss - call the wrapped function ────────────────────────────
             log.debug(f"[cache:{policy.namespace}] MISS {call_name} key={key[:8]}…")
             _emit("cache_miss", namespace=policy.namespace, call=call_name, key=key[:8])
             result = fn(*args, **kwargs)
@@ -312,7 +312,7 @@ def cached(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Phase 8 — Production-grade backends (Redis + Tiered)
+# Phase 8 - Production-grade backends (Redis + Tiered)
 # ═══════════════════════════════════════════════════════════════════════════
 
 import gzip as _gzip
@@ -325,13 +325,13 @@ class RedisCache:
     Redis-backed L2 cache. Activates when REDIS_URL env var is set.
 
     Serialisation: pickle + gzip (LLM responses are large strings, RAG results
-    are Pydantic objects — pickle round-trips them faithfully, gzip cuts wire
+    are Pydantic objects - pickle round-trips them faithfully, gzip cuts wire
     size ~70%). For multi-tenant shared Redis you'd swap to JSON; here both
     ends are trusted code so pickle is safe and convenient.
 
     Failure handling: any RedisError or connection problem is logged and the
     operation returns None / silently skips. The TieredCache wrapper then
-    degrades to L1-only — the system keeps working.
+    degrades to L1-only - the system keeps working.
     """
 
     def __init__(self, url: str, key_prefix: str = "em-copilot", socket_timeout: float = 1.0):
@@ -418,8 +418,8 @@ class RedisCache:
 class TieredCache:
     """
     Two-tier read-through / write-through cache.
-        L1 (InMemoryCache)  — in-process, sub-millisecond, per-replica
-        L2 (RedisCache)     — shared across replicas, ~1–10 ms
+        L1 (InMemoryCache)  - in-process, sub-millisecond, per-replica
+        L2 (RedisCache)     - shared across replicas, ~1–10 ms
 
     GET:
         1. L1 hit  → return immediately.
@@ -427,7 +427,7 @@ class TieredCache:
         3. L2 miss → return None (caller computes + sets).
 
     SET: write to BOTH layers (write-through). L2 failure is logged but doesn't
-    block the write to L1 — local cache always works even if Redis is down.
+    block the write to L1 - local cache always works even if Redis is down.
     """
 
     def __init__(self, l1: CacheBackend, l2: CacheBackend):
@@ -440,7 +440,7 @@ class TieredCache:
             return v
         v = self._l2.get(key, namespace)
         if v is not None:
-            # Backfill L1 with a default TTL — keeps the hot path local
+            # Backfill L1 with a default TTL - keeps the hot path local
             try:
                 self._l1.set(key, v, 3600, namespace)
             except Exception:
@@ -482,7 +482,7 @@ class TieredCache:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Phase 6 — Semantic cache via Pinecone
+# Phase 6 - Semantic cache via Pinecone
 # ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -519,13 +519,13 @@ class SemanticBackend:
         log.warning(
             f"[cache:semantic] SemanticBackend initialised | "
             f"namespace={namespace} threshold={threshold} | "
-            "NOTE: will write vectors to Pinecone — check free-tier quota."
+            "NOTE: will write vectors to Pinecone - check free-tier quota."
         )
 
     # ── CacheBackend Protocol stubs (unused; semantic path takes priority) ───
 
     def get(self, key: str, namespace: str) -> Any | None:
-        """Stub — @cached routes semantic-mode calls to semantic_get instead."""
+        """Stub - @cached routes semantic-mode calls to semantic_get instead."""
         return None
 
     def set(
@@ -537,7 +537,7 @@ class SemanticBackend:
         *,
         ttl: int | None = None,
     ) -> None:
-        """Stub — @cached routes semantic-mode calls to semantic_set instead."""
+        """Stub - @cached routes semantic-mode calls to semantic_set instead."""
         pass
 
     def clear(self, namespace: str = "") -> None:

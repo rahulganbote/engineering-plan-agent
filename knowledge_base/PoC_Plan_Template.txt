@@ -6,7 +6,7 @@
 #   agent_name, citations[], confidence_score, assumptions[], flagged_ambiguities[],
 #   poc_hypothesis (specific + falsifiable, not 'validate the approach'),
 #   scope_in[] (min 1), scope_out[] (min 2, prevents scope creep),
-#   duration_weeks (max 4 — anything longer is an MVP not a PoC),
+#   duration_weeks (max 4 - anything longer is an MVP not a PoC),
 #   success_criteria[{metric, target_value, measurement_method}] (min 2),
 #   team_size (max 4), risk_if_poc_fails, go_nogo_criteria{go, no_go, pivot}
 
@@ -18,7 +18,7 @@ assumptions:         [List every assumption made]
 flagged_ambiguities: [List ambiguous BRD elements that affect PoC scope]
 
 ## PoC Hypothesis
-# REQUIRED — Must be specific and falsifiable
+# REQUIRED - Must be specific and falsifiable
 # Banned phrases: 'validate the approach', 'test the concept', 'see if it works'
 # Must: name the technology, name the measurable outcome, name the BRD risk it addresses
 poc_hypothesis: |
@@ -30,17 +30,17 @@ poc_hypothesis: |
   (LLM narrative quality sufficient for executive decision-making)."
 
 ## Scope In
-# What WILL be built — minimal viable test only
+# What WILL be built - minimal viable test only
 scope_in:
-  - [Single predefined test question or use case — not open-ended]
-  - [Minimal data pipeline — hardcoded sample data acceptable]
+  - [Single predefined test question or use case - not open-ended]
+  - [Minimal data pipeline - hardcoded sample data acceptable]
   - [Core integration under test only]
   - [Simplest output format sufficient to evaluate hypothesis]
 
 ## Scope Out
-# min 2 items required — explicitly prevents scope creep
+# min 2 items required - explicitly prevents scope creep
 scope_out:
-  - Full ETL pipeline — use hardcoded sample data
+  - Full ETL pipeline - use hardcoded sample data
   - User interface or dashboards
   - Authentication or access control layer
   - Production infrastructure or deployment automation
@@ -48,20 +48,20 @@ scope_out:
   - [Any feature that doesn't directly test the hypothesis]
 
 ## Duration
-duration_weeks: [1-4]   # MAXIMUM 4 weeks — contract enforces this
+duration_weeks: [1-4]   # MAXIMUM 4 weeks - contract enforces this
 
 ## Success Criteria
-# min 2 criteria required — each must have: metric, target_value, measurement_method
+# min 2 criteria required - each must have: metric, target_value, measurement_method
 success_criteria:
   - metric: [What is being measured]
-    target_value: [Specific numeric or boolean target — e.g. '>= 80%', '< 15 minutes']
-    measurement_method: [How to measure — e.g. 'Automated test over 10 consecutive runs']
+    target_value: [Specific numeric or boolean target - e.g. '>= 80%', '< 15 minutes']
+    measurement_method: [How to measure - e.g. 'Automated test over 10 consecutive runs']
 
   - metric: [Second criterion]
     target_value: [Specific target]
     measurement_method: [Specific measurement method]
 
-  - metric: [Optional third criterion — latency, accuracy, or stakeholder approval]
+  - metric: [Optional third criterion - latency, accuracy, or stakeholder approval]
     target_value: [Target]
     measurement_method: [Method]
 
@@ -69,7 +69,7 @@ success_criteria:
 team_size: [1-4]   # More than 4 suggests PoC scope is too large
 
 ## Risk If PoC Fails
-# REQUIRED — forces consequence thinking, produces better-scoped PoCs
+# REQUIRED - forces consequence thinking, produces better-scoped PoCs
 risk_if_poc_fails: |
   If [hypothesis] is disproved, [specific consequence for the project].
   Fallback: [alternative approach if PoC fails].
@@ -78,6 +78,6 @@ risk_if_poc_fails: |
 ## Go / No-Go Decision Criteria
 # All three cases must be specified before PoC begins
 go_nogo_criteria:
-  go:    "[All criteria that constitute success — specific, not 'good enough']"
+  go:    "[All criteria that constitute success - specific, not 'good enough']"
   no_go: "[Any criterion whose failure means the approach is not viable]"
-  pivot: "[Partial success scenario — what changes to scope or approach to try next]"
+  pivot: "[Partial success scenario - what changes to scope or approach to try next]"

@@ -104,7 +104,7 @@ class CriticAgent:
         force_amber = len(no_rag_agents) > 0
         if force_amber:
             log.warning(
-                f"[{state.run_id}] no_rag_hits failure mode — forcing Amber badge | agents_without_rag={no_rag_agents}"
+                f"[{state.run_id}] no_rag_hits failure mode - forcing Amber badge | agents_without_rag={no_rag_agents}"
             )
             overall = min(overall, 3.9)  # cap at Amber threshold
 
@@ -125,7 +125,7 @@ class CriticAgent:
 
         if low_confidence_agents:
             log.warning(
-                f"[{state.run_id}] low confidence — forcing Amber badge | "
+                f"[{state.run_id}] low confidence - forcing Amber badge | "
                 f"agents={[(a, round(c, 2)) for a, c in low_confidence_agents]}"
             )
             overall = min(overall, 3.9)  # cap at Amber threshold
@@ -134,7 +134,7 @@ class CriticAgent:
                     ConsistencyIssue(
                         agents_involved=[agent_name],
                         conflict_description=(
-                            f"{agent_name} self-reported confidence_score={conf:.2f} ≤ 0.30 — "
+                            f"{agent_name} self-reported confidence_score={conf:.2f} ≤ 0.30 - "
                             "likely fallback / placeholder output. "
                             "Inspect agent output and logs for parse or build errors before approving."
                         ),

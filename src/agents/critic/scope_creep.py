@@ -17,7 +17,7 @@ def detect_scope_creep(state: PipelineState) -> list[HallucinationFlag]:
     Scope creep detection.
     Cross-checks specialist outputs against the BRD's anchor vocabulary.
     Anything with too many novel (non-BRD, non-stopword) terms is flagged
-    as potential scope creep — work the EM did not ask for.
+    as potential scope creep - work the EM did not ask for.
     """
     flags = []
     brd_text = " ".join(s.content for s in state.brd_sections).lower()
@@ -155,6 +155,6 @@ def check_ambiguity_handling(state: PipelineState) -> list[str]:
         if not brd_has_nfrs and not ambiguities:
             feedback.append(
                 f"AMBIGUITY [{agent_name}]: BRD has no NFRs but flagged_ambiguities[] "
-                f"is empty. Must flag: 'No NFRs — used system defaults'."
+                f"is empty. Must flag: 'No NFRs - used system defaults'."
             )
     return feedback

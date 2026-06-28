@@ -3,7 +3,7 @@
 Pipeline-level graceful degradation integration test.
 
 Proves that when ALL three external tool surfaces fail simultaneously, the
-multi-agent pipeline still completes — agents fall back, the Critic flags the
+multi-agent pipeline still completes - agents fall back, the Critic flags the
 missing signals, and the badge degrades to AMBER (not RED, because the
 deterministic checks for completeness/consistency still pass on the locally
 generated artifacts).
@@ -14,7 +14,7 @@ Failure modes injected:
   • Jira via MCP  → subprocess failure (raises during dispatch)
 
 This is the integration test for the "tools degrade gracefully, system stays
-up" claim — single test, high signal. Companion to the per-tool unit tests in
+up" claim - single test, high signal. Companion to the per-tool unit tests in
 test_tools.py.
 """
 
@@ -39,7 +39,7 @@ def all_tools_failing():
         patch("src.integrations.github.requests.get") as github_mock,
     ):
         # Tavily: simulate a network timeout (the resilient decorator will retry
-        # then surface — the tavily_search wrapper catches it and returns the
+        # then surface - the tavily_search wrapper catches it and returns the
         # graceful fallback ToolResult).
         tavily_mock.side_effect = requests.exceptions.Timeout("simulated tavily timeout")
 
@@ -78,7 +78,7 @@ def test_github_degrades_to_fallback_for_allowlisted_repo_under_failure(all_tool
     With GitHub returning 500, get_github_velocity() must:
       • NOT raise
       • Return a ToolResult with used_fallback=True
-      • Set trust_level='medium' (the tool itself is trusted — it's the upstream that broke)
+      • Set trust_level='medium' (the tool itself is trusted - it's the upstream that broke)
     """
     GITHUB_ALLOWLIST.add(("fastapi", "fastapi"))  # ensure repo passes the allowlist gate
     try:
@@ -108,7 +108,7 @@ def test_unapproved_github_repo_short_circuits_without_network_call(all_tools_fa
     # CRITICAL: no GitHub HTTP call should have happened for this rejected request
     # (the github_mock from the fixture would have been called if the allowlist failed)
     # We can't directly assert call_count because OTHER tests in the same fixture
-    # might have used it — instead we assert the content marker that proves the
+    # might have used it - instead we assert the content marker that proves the
     # allowlist (not the network) produced the fallback.
 
 

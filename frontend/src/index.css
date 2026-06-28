@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Theme tokens — shadcn/ui canonical taxonomy adapted to Tailwind v4 @theme.
+ * Theme tokens - shadcn/ui canonical taxonomy adapted to Tailwind v4 @theme.
  * Values in OKLCH for perceptual uniformity (matches shadcn v4 conventions).
  *
  * Light is the default; the .dark class on <html> swaps in the dark palette.
  * The theme picker (PR 2) toggles this class; PR 1 adds only the tokens.
  *
  * Custom AI-semantic accents (per product design):
- *   --color-ai-spark  — Electric Purple #8B5CF6 — for AI actions/generation
- *   --color-success   — Crisp Emerald   #10B981 — for active/completed/passing
- *   --color-danger    — Sharp Crimson   #EF4444 — for failures/alerts
+ *   --color-ai-spark  - Electric Purple #8B5CF6 - for AI actions/generation
+ *   --color-success   - Crisp Emerald   #10B981 - for active/completed/passing
+ *   --color-danger    - Sharp Crimson   #EF4444 - for failures/alerts
  * ──────────────────────────────────────────────────────────────────────────── */
 
 @custom-variant dark (&:is(.dark, .dark *));
@@ -24,7 +24,7 @@
   --color-popover:              oklch(1 0 0);
   --color-popover-foreground:   oklch(0.145 0 0);
 
-  /* Brand — indigo-600 (#4f46e5) */
+  /* Brand - indigo-600 (#4f46e5) */
   --color-primary:              oklch(0.585 0.233 277.117);
   --color-primary-foreground:   oklch(0.985 0 0);
 
@@ -53,7 +53,7 @@
   --color-destructive:          oklch(0.637 0.237 25.331);          /* alias of --danger for shadcn parity */
   --color-destructive-foreground: oklch(0.985 0 0);
 
-  /* Critic badge semantics — distinct from --danger so they can evolve independently */
+  /* Critic badge semantics - distinct from --danger so they can evolve independently */
   --color-badge-green:          oklch(0.696 0.17 162.48);
   --color-badge-amber:          oklch(0.74 0.18 70);
   --color-badge-red:            oklch(0.637 0.237 25.331);
@@ -62,7 +62,7 @@
   --radius:                     0.5rem;
 }
 
-/* Dark theme overrides — preserves the current slate-950 aesthetic so users
+/* Dark theme overrides - preserves the current slate-950 aesthetic so users
  * who flip to dark see the original premium feel (instead of generic shadcn). */
 .dark {
   --color-background:           oklch(0.13 0.025 254.46);           /* slate-950 */
@@ -103,7 +103,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Base styles — driven by theme tokens. Light by default; .dark on <html>
+ * Base styles - driven by theme tokens. Light by default; .dark on <html>
  * (set by the FOUC script in index.html + useTheme hook) swaps in dark.
  * ──────────────────────────────────────────────────────────────────────────── */
 html, body, #root {
@@ -115,7 +115,7 @@ html, body, #root {
   scroll-behavior: smooth;
 }
 
-/* Token-aware scrollbars — soft on light, blue-gray on dark. */
+/* Token-aware scrollbars - soft on light, blue-gray on dark. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -134,7 +134,7 @@ html, body, #root {
   background: var(--color-muted-foreground);
 }
 
-/* ElevenLabs widget — positioning is handled by VoiceWidgetFAB wrapper.
+/* ElevenLabs widget - positioning is handled by VoiceWidgetFAB wrapper.
  * Here we only:
  *   1) reset the widget's default fixed-bottom-right inside the FAB container
  *      so it renders relative to its parent

@@ -1,7 +1,7 @@
 """
 src/integrations/export_registry.py
 ═════════════════════════════════════
-Export-handler registry — Phase 7.
+Export-handler registry - Phase 7.
 
 Each integration module calls register_export() at module level.
 The /approve endpoint iterates EXPORTS filtered by decision to collect results,

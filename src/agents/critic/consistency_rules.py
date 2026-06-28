@@ -81,7 +81,7 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
                     conflict_description=(
                         f"Architecture has {component_count} components but team is only "
                         f"{team_size} engineers ({component_count / team_size:.1f} per person). "
-                        "Architecture likely over-engineered for team capacity — consolidate components "
+                        "Architecture likely over-engineered for team capacity - consolidate components "
                         "or expand team."
                     ),
                     severity=RiskLevel.HIGH,
@@ -130,7 +130,7 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
                             f"Schedule effort ({actual_effort} days) {direction} "
                             f"plan implied effort ({implied_effort} days for "
                             f"{state.plan_output.total_duration_weeks}w × {team_size} engineers). "
-                            f"Discrepancy is {ratio * 100:.0f}% — agents disagree on workload."
+                            f"Discrepancy is {ratio * 100:.0f}% - agents disagree on workload."
                         ),
                         severity=RiskLevel.MEDIUM,
                     )
@@ -149,7 +149,7 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
                     conflict_description=(
                         f"Pattern '{state.arch_output.pattern}' chosen but only "
                         f"{component_count} components. Microservices add operational "
-                        "complexity that isn't justified below ~4 services — consider "
+                        "complexity that isn't justified below ~4 services - consider "
                         "modular monolith."
                     ),
                     severity=RiskLevel.MEDIUM,
@@ -162,7 +162,7 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
                     conflict_description=(
                         f"Pattern '{state.arch_output.pattern}' chosen but "
                         f"{component_count} components. Monolith pattern struggles with "
-                        "this many internal modules — consider modular decomposition."
+                        "this many internal modules - consider modular decomposition."
                     ),
                     severity=RiskLevel.MEDIUM,
                 )

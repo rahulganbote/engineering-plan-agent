@@ -1,5 +1,5 @@
-# Solution Architecture Design Document — Example
-# Project: LegalTech SaaS Platform — Practice Management and e-Discovery
+# Solution Architecture Design Document - Example
+# Project: LegalTech SaaS Platform - Practice Management and e-Discovery
 # Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 3.0
 # Synced to Agent 4 (Solution Architect) contract v2.0
 
@@ -9,10 +9,10 @@ run_id:              legaltech_2024_arch
 citations:           [arch_patterns_chunk_0, arch_patterns_chunk_4, Solution_Architect_Example2_LegalTech_SaaS_chunk_0, org_engineering_standards_chunk_3]
 confidence_score:    0.87
 assumptions:
-  - AWS cloud deployment — existing enterprise contract confirmed
-  - Pinecone not applicable for this workload — per-tenant Elasticsearch provides search isolation
+  - AWS cloud deployment - existing enterprise contract confirmed
+  - Pinecone not applicable for this workload - per-tenant Elasticsearch provides search isolation
 flagged_ambiguities:
-  - BRD does not specify whether Ethical Wall double-approval must be synchronous — assumed sequential
+  - BRD does not specify whether Ethical Wall double-approval must be synchronous - assumed sequential
 
 ## Pattern Selection
 pattern: Domain-driven microservices with event-sourced immutable audit ledger
@@ -21,13 +21,13 @@ pattern_justification: |
   divergent scaling, compliance, and data residency requirements. Matter management
   is low-volume transactional. OCR and indexing are bursty and compute-heavy.
   Billing is event-driven. ACL must be always-on at 99.99% (NFR-03).
-  A modular monolith cannot satisfy these divergent NFRs simultaneously — OCR scale
+  A modular monolith cannot satisfy these divergent NFRs simultaneously - OCR scale
   events would impact Matter and Billing availability. Domain-driven decomposition
-  enforces strict ownership — no service reads another service's database.
+  enforces strict ownership - no service reads another service's database.
   Event sourcing on the audit ledger provides court-admissible, mathematically
   verifiable chain-of-custody (NFR-07). Shared-nothing per-tenant enforces zero
   cross-tenant leakage (NFR-02). Saga pattern considered for distributed transactions
-  but rejected — legal hold is the only cross-service transaction and it uses the
+  but rejected - legal hold is the only cross-service transaction and it uses the
   immutable ledger as coordinator, not a saga. Source: arch_patterns_chunk_0.
 
 ## Components
@@ -68,9 +68,9 @@ components:
     interfaces: [REST API, CSV/LEDES file export]
 
   - name: Immutable Audit Ledger
-    responsibility: Append-only event store, SHA-256 hash chain, legal hold flag — no delete API
-    technology: PostgreSQL with write-only IAM role — no DELETE permission granted at any level
-    interfaces: [Write-only REST API — no GET except for authorized audit read]
+    responsibility: Append-only event store, SHA-256 hash chain, legal hold flag - no delete API
+    technology: PostgreSQL with write-only IAM role - no DELETE permission granted at any level
+    interfaces: [Write-only REST API - no GET except for authorized audit read]
 
   - name: Legal Hold Service
     responsibility: Immutable hold flag, overrides retention schedules on flagged documents
@@ -82,19 +82,19 @@ data_flow:
   - "1. Attorney uploads PDF via client app → API Gateway validates JWT, resolves tenant ID"
   - "2. API Gateway checks ACL Service → returns 403 Forbidden with zero data if Ethical Wall blocks attorney"
   - "3. Document Intake Service: generates SHA-256 hash within 500ms, writes encrypted file to tenant S3 bucket (BYOK), emits audit event to Audit Ledger, publishes to Kafka OCR topic"
-  - "4. Audit Ledger: appends event {user_id, tenant_id, doc_hash, action: UPLOAD, timestamp} — immutable"
+  - "4. Audit Ledger: appends event {user_id, tenant_id, doc_hash, action: UPLOAD, timestamp} - immutable"
   - "5. OCR Worker (async): consumes Kafka message, reads from S3, calls Textract, writes extracted text chunks to tenant OpenSearch index"
   - "6. Attorney submits Boolean search: 'privileged AND contract NOT draft' → API Gateway resolves tenant, ACL confirms permission → Search Service queries tenant-isolated OpenSearch shard"
   - "7. Failure path: If any source fails → Orchestrator logs failure with timestamp, returns error to API Gateway, does NOT proceed to partial processing"
 
 ## NFR Mappings
 nfr_mappings:
-  - nfr: "NFR-02: Zero cross-tenant data access — single tenant bug must not expose any other tenant data"
+  - nfr: "NFR-02: Zero cross-tenant data access - single tenant bug must not expose any other tenant data"
     architecture_decision: Per-tenant Kubernetes namespace + per-tenant S3 bucket policy + per-tenant OpenSearch index + circuit breaker halts routing on token mismatch. Three independent isolation layers.
     citation: org_engineering_standards_chunk_3
 
   - nfr: "NFR-03: Document storage and ACL microservices maintain 99.99% uptime"
-    architecture_decision: Multi-AZ EKS deployment. ACL and Document services on dedicated node groups — no shared dependency with compute-heavy OCR workers. Auto-scaling independent per service.
+    architecture_decision: Multi-AZ EKS deployment. ACL and Document services on dedicated node groups - no shared dependency with compute-heavy OCR workers. Auto-scaling independent per service.
     citation: arch_patterns_chunk_0
 
   - nfr: "NFR-04: Search returns results for indexed documents in < 2 seconds"
@@ -118,13 +118,13 @@ mermaid_diagram: |
     subgraph Clients [Law Firm and Corporate Client Layer]
       A[Attorney or Paralegal] --> B
     end
-    subgraph Gateway [API Gateway — Tenant Isolation Boundary]
+    subgraph Gateway [API Gateway - Tenant Isolation Boundary]
       B(Kong API Gateway: JWT Auth + Tenant Routing)
       B --> ACL{ACL Service: Is this user allowed?}
-      ACL -->|Denied| E403[403 Forbidden — zero data in response]
+      ACL -->|Denied| E403[403 Forbidden - zero data in response]
       ACL -->|Permitted| Router
     end
-    subgraph Services [Domain Microservices — Shared Nothing per Tenant]
+    subgraph Services [Domain Microservices - Shared Nothing per Tenant]
       Router --> MM[Matter Management]
       Router --> DI[Document Intake]
       Router --> SE[e-Discovery Search]

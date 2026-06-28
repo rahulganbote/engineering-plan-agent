@@ -179,7 +179,7 @@ def test_approve_after_reject_returns_conflict(client):
 
 
 def test_approve_accepts_nested_params_payload(mock_run):
-    """ElevenLabs may post {"params": {...}} instead of flat fields — should unwrap."""
+    """ElevenLabs may post {"params": {...}} instead of flat fields - should unwrap."""
     with patch("src.api.main._run_export_handlers_background") as mock_export:
         client = TestClient(app)
         response = client.post(
@@ -198,7 +198,7 @@ def test_approve_accepts_nested_params_payload(mock_run):
 
 
 def test_approve_normalizes_verb_decision(mock_run):
-    """Voice agent emits 'approve' (verb) — validator maps to 'approved'."""
+    """Voice agent emits 'approve' (verb) - validator maps to 'approved'."""
     with patch("src.api.main._run_export_handlers_background") as mock_export:
         client = TestClient(app)
         response = client.post(
@@ -210,7 +210,7 @@ def test_approve_normalizes_verb_decision(mock_run):
 
 
 def test_reject_normalizes_verb_decision(mock_run):
-    """Voice agent emits 'reject' (verb) — validator maps to 'rejected'."""
+    """Voice agent emits 'reject' (verb) - validator maps to 'rejected'."""
     with patch("src.api.main._run_export_handlers_background") as mock_export:
         client = TestClient(app)
         response = client.post(

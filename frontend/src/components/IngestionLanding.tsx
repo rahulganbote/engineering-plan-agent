@@ -16,9 +16,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
 
   // Node details for interactive flowchart.
   //
-  // Color semantics — traffic-light progression mirroring the data flow:
+  // Color semantics - traffic-light progression mirroring the data flow:
   //   🔴 Error/Failures (API errors, BudgetBreachedError, timeouts, etc)
-  //   💜 Orchestrator + Specialists (AI agents doing the work — share token)
+  //   💜 Orchestrator + Specialists (AI agents doing the work - share token)
   //   🟡 Security Validator (quaility check + blocks unsafe input)+ Critic Reviewer (judges + may loop back for revision) 
   //   🟢 Manager (HITL) Gate (approves and ships)
   //
@@ -77,23 +77,23 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
           Transform BRDs into Implementation Plans in Minutes
         </h2>
         <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
-          EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon approval, it pushes the Artifacts into Jira.
+          EM Copilot is a multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package presented to you for review. Upon approval, it pushes the artifacts into Jira.
         </p>
         {/* Runtime hint moved next to the Generate Engineering Plan button in
-            the sidebar — that's the action surface where this anticipation
+            the sidebar - that's the action surface where this anticipation
             actually matters for the user. */}
       </div>
 
-      {/* System Architecture Diagram — full width, compact above-the-fold layout */}
+      {/* System Architecture Diagram - full width, compact above-the-fold layout */}
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 shadow-md">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-sm font-bold text-foreground">System Architecture</h3>
           <p className="text-[11px] text-muted-foreground italic">Hover each step for execution details</p>
         </div>
 
-        {/* Interactive Flow Visualizer — compact (tooltip replaces the old 96px detail box) */}
+        {/* Interactive Flow Visualizer - compact (tooltip replaces the old 96px detail box) */}
         <div className="flex flex-col md:flex-row gap-4 items-center justify-center py-2 bg-background/80 rounded-xl px-3 border border-border relative">
-          {/* Spoke layout — left column */}
+          {/* Spoke layout - left column */}
           <div className="flex flex-col gap-2.5 w-full md:w-5/12 z-10">
             {pipelineNodes.slice(0, 3).map((node) => (
               <div
@@ -111,7 +111,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   </div>
                 </div>
 
-                {/* Hover tooltip — anchored above the card, fades in */}
+                {/* Hover tooltip - anchored above the card, fades in */}
                 {activeNode === node.id && (
                   <div
                     role="tooltip"

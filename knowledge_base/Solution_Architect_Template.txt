@@ -1,4 +1,4 @@
-# Solution Architecture Design Document — Template
+# Solution Architecture Design Document - Template
 # Source: EM Copilot Knowledge Base | Type: arch_pattern | Version: 3.0
 # Synced to Agent 4 (Solution Architect) contract v2.0
 #
@@ -18,12 +18,12 @@ assumptions:         [List every assumption made where BRD was silent]
 flagged_ambiguities: [List every NFR or constraint that was ambiguous]
 
 ## Pattern Selection
-pattern: [Named pattern — must match a pattern documented in arch_patterns.txt]
+pattern: [Named pattern - must match a pattern documented in arch_patterns.txt]
 pattern_justification: |
   [Why this pattern given team size, NFRs, and constraints.
    Must mention at minimum: team size, primary NFR it satisfies, constraint it respects,
    and at least one alternative pattern explicitly rejected with reason.]
-  Example: "Modular monolith chosen. Team size 3 engineers — microservices not justified
+  Example: "Modular monolith chosen. Team size 3 engineers - microservices not justified
   (DL-2021-007: microservices require 4+ teams). NFR-01 < 2s latency satisfied by
   in-process calls eliminating network overhead. Event-driven rejected: no async fan-out
   needed at this scale. Source: arch_patterns_chunk_1."
@@ -32,23 +32,23 @@ pattern_justification: |
 # min 2 components required
 # Each must have: name, responsibility (one sentence), technology (specific), interfaces[]
 components:
-  - name: [Component name — e.g. API Gateway]
+  - name: [Component name - e.g. API Gateway]
     responsibility: [Single responsibility, one sentence]
-    technology: [Specific — e.g. Kong, AWS API Gateway — not 'some gateway']
-    interfaces: [REST API, gRPC, Kafka topic — how it communicates]
+    technology: [Specific - e.g. Kong, AWS API Gateway - not 'some gateway']
+    interfaces: [REST API, gRPC, Kafka topic - how it communicates]
 
   - name: [Core Processing Component]
-    responsibility: [What it does — single responsibility]
+    responsibility: [What it does - single responsibility]
     technology: [Specific stack]
     interfaces: [Communication mechanism]
 
   - name: [Data Store]
     responsibility: [What data it holds and why]
-    technology: [PostgreSQL 15, Pinecone Serverless — specific version]
-    interfaces: [JDBC, SDK — how services connect]
+    technology: [PostgreSQL 15, Pinecone Serverless - specific version]
+    interfaces: [JDBC, SDK - how services connect]
 
 ## Data Flow
-# Ordered steps — min 2. Show: input source → processing → output destination
+# Ordered steps - min 2. Show: input source → processing → output destination
 data_flow:
   - "1. [Entry point]: [Who triggers] → [what happens]"
   - "2. [Processing step]: [Component] receives [payload] → [action taken]"
@@ -57,7 +57,7 @@ data_flow:
   - "5. Failure path: If [step N] fails → [specific error handling action]"
 
 ## NFR Mappings
-# Every NFR from the BRD must appear here — enforced by Critic completeness check
+# Every NFR from the BRD must appear here - enforced by Critic completeness check
 # Each NFRMapping MUST include a citation field
 nfr_mappings:
   - nfr: "NFR-01: [Copy exact NFR text from BRD]"
@@ -65,7 +65,7 @@ nfr_mappings:
     citation: [arch_patterns_chunk_N or org_engineering_standards_chunk_N]
 
   - nfr: "NFR-02: [Copy exact NFR text from BRD]"
-    architecture_decision: "[Specific decision — multi-AZ, cache layer, circuit breaker, etc.]"
+    architecture_decision: "[Specific decision - multi-AZ, cache layer, circuit breaker, etc.]"
     citation: [relevant chunk ID]
 
   - nfr: "NFR-03: [Security or compliance NFR]"
@@ -76,7 +76,7 @@ nfr_mappings:
 deployment_model: "[Cloud (AWS EKS) | Serverless (AWS Lambda) | Hybrid | On-premise]"
 
 ## Architecture Diagram (Mermaid)
-# mermaid_diagram field — rendered by Kroki.io tool call → produces diagram_svg
+# mermaid_diagram field - rendered by Kroki.io tool call → produces diagram_svg
 mermaid_diagram: |
   graph TD
     subgraph Input [Input Layer]
@@ -92,7 +92,7 @@ mermaid_diagram: |
     end
 
 ## Diagram SVG
-# diagram_svg: populated by Kroki.io API tool call — empty if Kroki unavailable
+# diagram_svg: populated by Kroki.io API tool call - empty if Kroki unavailable
 diagram_svg: ""
 
 ## Architecture Decision Checklist

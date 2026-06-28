@@ -11,7 +11,7 @@ per-run event stream (visible in the React UI raw event log).
 Design
 ──────
 • A single optional sink callback. Default = no-op.
-• Emitters NEVER raise — observability must not break the call site.
+• Emitters NEVER raise - observability must not break the call site.
 • Best-effort attaches the current thread's run_id so events correlate to a run.
 • If the sink isn't installed (e.g. local script outside FastAPI), events are
   silently dropped. Same code runs everywhere.

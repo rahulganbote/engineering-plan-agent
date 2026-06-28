@@ -45,16 +45,16 @@
     "duration_weeks": 2,
     "success_criteria": [
       {"metric": "Query latency", "target": "< 5 seconds P95", "method": "Load test 50 users"},
-      {"metric": "RLS correctness", "target": "100% — no cross-tenant data", "method": "Automated test matrix"}
+      {"metric": "RLS correctness", "target": "100% - no cross-tenant data", "method": "Automated test matrix"}
     ]
   },
 
   "tech_stack": {
-    "recommended": "Option A — Snowflake + dbt + Metabase",
+    "recommended": "Option A - Snowflake + dbt + Metabase",
     "options": [
-      {"name": "Option A — Snowflake + dbt + Metabase", "monthly_cost_usd": 8500, "team_familiarity": 4, "integration_risk": "low"},
-      {"name": "Option B — Snowflake + dbt + Looker", "monthly_cost_usd": 18000, "team_familiarity": 2, "integration_risk": "medium"},
-      {"name": "Option C — BigQuery + dbt + Looker Studio", "monthly_cost_usd": 4200, "team_familiarity": 1, "integration_risk": "high"}
+      {"name": "Option A - Snowflake + dbt + Metabase", "monthly_cost_usd": 8500, "team_familiarity": 4, "integration_risk": "low"},
+      {"name": "Option B - Snowflake + dbt + Looker", "monthly_cost_usd": 18000, "team_familiarity": 2, "integration_risk": "medium"},
+      {"name": "Option C - BigQuery + dbt + Looker Studio", "monthly_cost_usd": 4200, "team_familiarity": 1, "integration_risk": "high"}
     ]
   },
 

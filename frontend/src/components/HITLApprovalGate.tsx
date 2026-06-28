@@ -87,7 +87,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
         Upon approval, the artifacts will be exported to Jira and this request is logged in EM Dashboard.
       </div>
 
-      {/* Voice approval fallback hint — shown when ElevenLabs is not configured on
+      {/* Voice approval fallback hint - shown when ElevenLabs is not configured on
           this deployment. Without this, EMs wouldn't know that voice approval is
           an intended feature; they'd just see no voice button and assume the
           system only supports click-approval. */}

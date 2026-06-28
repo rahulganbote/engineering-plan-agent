@@ -1,5 +1,5 @@
 # ────────────────────────────────────────────────────────────────────────────
-# docker-compose.yml — Local development services
+# docker-compose.yml - Local development services
 # ────────────────────────────────────────────────────────────────────────────
 #
 # Spin up the optional L2 cache backend with:
@@ -15,7 +15,7 @@
 # To wipe the cache entirely:
 #     docker compose down -v
 #
-# This file is for LOCAL DEV ONLY — production caching uses GCP Memorystore
+# This file is for LOCAL DEV ONLY - production caching uses GCP Memorystore
 # or another managed Redis. The FastAPI app + frontend run via `uvicorn` /
 # `npm run dev` directly on the host, not inside compose.
 # ────────────────────────────────────────────────────────────────────────────

@@ -48,7 +48,7 @@ def _run_pipeline_task(
 
         log.error(f"[{run_id}] Pipeline task failed | error={e}")
         _push_event(run_id, {"type": "error", "message": err_msg})
-        # Pipeline raised before producing a state — synthesize a minimal error
+        # Pipeline raised before producing a state - synthesize a minimal error
         # state so the failed run is still recorded and visible to the EM.
         if state is None:
             try:
@@ -64,7 +64,7 @@ def _run_pipeline_task(
             _runs[run_id] = state
 
     # A failed run never reaches the HITL gate / POST /approve, so log a Run
-    # Summary row here too — the EM sees errored runs on the Sheets dashboard.
+    # Summary row here too - the EM sees errored runs on the Sheets dashboard.
     if state is not None and state.pipeline_status == "error":
         try:
             from src.integrations.sheets import write_artifacts_to_sheet
@@ -87,7 +87,7 @@ async def _run_export_handlers_background(
     email: str,
 ) -> None:
     """
-    Background worker for /approve — runs Sheets, Jira (via MCP), and Pinecone
+    Background worker for /approve - runs Sheets, Jira (via MCP), and Pinecone
     re-indexing. Emits SSE events at each step so the UI can update progressively
     instead of waiting for a synchronous response that ElevenLabs would time out
     on after 20s.
@@ -97,7 +97,7 @@ async def _run_export_handlers_background(
       • marks _run_export[run_id]["finalized"] = True (so the UI poll path exits)
       • emits a terminal `exports_finalized` event with the failure reason
 
-    No return value — observability is via SSE events and the /artifacts endpoint.
+    No return value - observability is via SSE events and the /artifacts endpoint.
     """
     state = _runs.get(run_id)
     if not state:
