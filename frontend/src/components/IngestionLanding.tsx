@@ -87,7 +87,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       {/* System Architecture Diagram — full width, compact above-the-fold layout */}
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 shadow-md">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-sm font-bold text-foreground">System Architecture Diagram</h3>
+          <h3 className="text-sm font-bold text-foreground">System Architecture</h3>
           <p className="text-[11px] text-muted-foreground italic">Hover each step for execution details</p>
         </div>
 

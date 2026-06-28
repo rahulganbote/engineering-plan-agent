@@ -89,6 +89,10 @@ interface ArtifactsResponse {
     overall_score: number;
     badge?: string;
     dimensions?: Record<string, CriticDimension>;
+    groundedness?: CriticDimension;
+    completeness?: CriticDimension;
+    consistency?: CriticDimension;
+    actionability?: CriticDimension;
   };
   export?: {
     sheet_url?: string | null;
@@ -224,11 +228,17 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         }
         case 'critic_complete': {
           const criticPayload = (data.payload || data) as Record<string, unknown>;
+          const parseDimension = (val: any) => val as CriticDimension;
           setCriticOutput({
             revisionNumber: (criticPayload.revision_number ?? criticPayload.revisionNumber) as number,
             overallScore: (criticPayload.overall_score ?? criticPayload.overallScore) as number,
             badge: ((criticPayload.badge as string)?.toLowerCase() || criticPayload.badge) as 'green' | 'amber' | 'red',
-            dimensions: (criticPayload.dimensions || {}) as Record<string, CriticDimension>,
+            dimensions: (criticPayload.dimensions || {
+              groundedness: parseDimension(criticPayload.groundedness),
+              completeness: parseDimension(criticPayload.completeness),
+              consistency: parseDimension(criticPayload.consistency),
+              actionability: parseDimension(criticPayload.actionability),
+            }) as Record<string, CriticDimension>,
           });
           break;
         }
@@ -388,7 +398,12 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           revisionNumber: data.critic_output.revision_number,
           overallScore: data.critic_output.overall_score,
           badge: data.critic_output.badge?.toLowerCase() as 'green' | 'amber' | 'red',
-          dimensions: data.critic_output.dimensions || {},
+          dimensions: data.critic_output.dimensions || {
+            groundedness: data.critic_output.groundedness!,
+            completeness: data.critic_output.completeness!,
+            consistency: data.critic_output.consistency!,
+            actionability: data.critic_output.actionability!,
+          },
         });
       }
 

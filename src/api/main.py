@@ -101,7 +101,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
                 "code": "rate_limited",
                 "message": "Pipeline runs are capped to protect against runaway cost.",
                 "next_step": (
-                    "Wait a few hours and try again, or reach out at support@emcopilot.ai for an extended demo."
+                    "Wait a few hours and try again, or reach out at contact@emcopilot.ai for an extended demo."
                 ),
             },
         },

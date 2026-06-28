@@ -399,7 +399,7 @@ export const AgentWorkspace: React.FC = () => {
               <span className="text-primary">EM Copilot</span>
               <span className="text-foreground">: BRD → Engineering Plan</span>
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent BRD-to-Engineering Plan System</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent AI Software Engineering Planning System</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
             <VoiceWidgetFAB
@@ -536,18 +536,20 @@ export const AgentWorkspace: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Metrics block */}
-                    <div className="grid grid-cols-4 gap-4 pt-2">
+                    {/* Metrics row */}
+                    <div className="flex flex-wrap md:flex-nowrap gap-x-4 gap-y-2 items-center justify-between text-xs text-muted-foreground pt-2">
                       {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
                         const data = criticOutput.dimensions[metric];
                         if (!data) return null;
                         return (
-                          <div key={metric} className="p-4 bg-background rounded-lg border border-border text-center">
-                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider capitalize">{metric}</div>
-                            <div className="text-2xl font-extrabold text-foreground my-1">{data.score.toFixed(2)}</div>
-                            <div className={`text-xs font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
-                              {data.passed ? `✓ Passed (≥ ${data.threshold})` : `✗ Failed (≥ ${data.threshold})`}
-                            </div>
+                          <div key={metric} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <strong className="capitalize">{metric}:</strong>
+                            <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-foreground font-semibold text-[11px]">
+                              {data.score.toFixed(2)}
+                            </code>
+                            <span className={`text-[11px] font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
+                              {data.passed ? `✓ (≥${data.threshold})` : `✗ (≥${data.threshold})`}
+                            </span>
                           </div>
                         );
                       })}
@@ -814,7 +816,7 @@ export const AgentWorkspace: React.FC = () => {
             Moved here from the header subtitle, where it was undermining the
             product's perceived reliability by appearing alongside the title. */}
         <footer className="px-8 py-2 border-t border-border bg-card text-center text-[10px] text-muted-foreground shrink-0">
-          Disclaimer: Demo Purposes only. AI generated plans are starting points. Professional review and validation required before implementation.
+          Disclaimer: AI generated plans are starting points. Professional review and validation required before implementation.
         </footer>
       </main>
     </div>
