@@ -41,14 +41,15 @@
 4. [Tech Stack Justification](#tech-stack-justification)
 5. [Vector DB & RAG Integration](#vector-db--rag-integration)
 6. [Evaluation Framework](#evaluation-framework)
-7. [Screenshots of Demo](#screenshots-of-demo)
-8. [Multi-Provider Strategy](#multi-provider-strategy)
-9. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
-10. [Operational Metrics & SLOs](#operational-metrics--slos)
-11. [Known Limitations & Risk Register](#known-limitations--risk-register)
-12. [Quick Start](#quick-start)
-13. [Project Layout (Brief)](#project-layout-brief)
-14. [License & Author](#license--author)
+7. [Rate Limiter and Security](#rate-limiter-and-security)
+8. [Screenshots of Demo](#screenshots-of-demo)
+9. [Multi-Provider Strategy](#multi-provider-strategy)
+10. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
+11. [Operational Metrics & SLOs](#operational-metrics--slos)
+12. [Known Limitations & Risk Register](#known-limitations--risk-register)
+13. [Quick Start](#quick-start)
+14. [Project Layout (Brief)](#project-layout-brief)
+15. [License & Author](#license--author)
 
 
 ---
@@ -151,6 +152,11 @@ Five-method evaluation suite (`eval/run_eval.py`):
 - **FM-3 Sentinel Fallback Cap:** caps overall at 3.9 (Amber) if any specialist times out and falls back
 
 **Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95, AMBER → GREEN). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
+
+---
+
+## Rate Limiter and Security
+The API enforces rate limits to prevent runaway LLM costs and protect against abuse. Powered by `slowapi`, the `/run-pipeline` endpoint applies dual limits per user (`x/day` and `y/week`). Limits are keyed by the authenticated user's email and return a standard `429 Too Many Requests` response with a configurable `Retry-After` header (defaulting to 3600 seconds). Additionally, a hard budget cap of `$2.00` per run (`MAX_PIPELINE_RUN_BUDGET_USD`) is enforced to immediately abort any run exceeding this financial threshold. These parameters can be customized in production via environment variables.
 
 ---
 
