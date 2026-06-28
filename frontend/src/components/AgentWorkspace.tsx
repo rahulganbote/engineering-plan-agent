@@ -571,7 +571,7 @@ export const AgentWorkspace: React.FC = () => {
 
                   {/* Disclaimer notice banner */}
                   <div className="bg-background border border-border p-4 rounded-lg text-xs leading-relaxed text-muted-foreground">
-                    <span className="font-bold text-foreground uppercase">⚠️ Disclaimer:</span> This system is an automated engineering planning assistant. AI-generated plans may contain inaccuracies. Please review and validate all outputs before implementation.
+                    <span className="font-bold text-foreground uppercase">⚠️ Disclaimer:</span> It is a engineering planning assistant AI tool. Mandatory professional review and validation required before implementation.
                   </div>
 
                   {/* Tabs list */}
@@ -704,50 +704,52 @@ export const AgentWorkspace: React.FC = () => {
                       ) : null}
 
                       {/* Jira Status Box */}
-                      {approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
-                        <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
-                          <div className="text-xs font-bold text-success">
-                            Pushed to Jira: {approvalResult.jira_issue_key}
+                      {pipelineStatus !== "rejected" && (
+                        approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
+                          <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
+                            <div className="text-xs font-bold text-success">
+                              Pushed to Jira: {approvalResult.jira_issue_key}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground leading-relaxed">
+                              {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
+                            </div>
+                            <a
+                              href={approvalResult.jira_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded font-bold text-xs transition duration-150 shadow-sm"
+                            >
+                              Open Jira issue {approvalResult.jira_issue_key}
+                            </a>
                           </div>
-                          <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
+                        ) : approvalResult?.jira_status === 'skipped' ? (
+                          <div className="p-4 bg-card border border-border rounded-lg space-y-1 animate-fade-in">
+                            <div className="text-xs font-bold text-muted-foreground">
+                              Jira push skipped
+                            </div>
+                            <div className="text-[11px] text-muted-foreground leading-relaxed">
+                              {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
+                            </div>
                           </div>
-                          <a
-                            href={approvalResult.jira_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded font-bold text-xs transition duration-150 shadow-sm"
-                          >
-                            Open Jira issue {approvalResult.jira_issue_key}
-                          </a>
-                        </div>
-                      ) : approvalResult?.jira_status === 'skipped' ? (
-                        <div className="p-4 bg-card border border-border rounded-lg space-y-1 animate-fade-in">
-                          <div className="text-xs font-bold text-muted-foreground">
-                            Jira push skipped
+                        ) : approvalResult?.jira_status === 'failed' ? (
+                          <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg space-y-2 animate-fade-in">
+                            <div className="text-xs font-bold text-danger">
+                              Jira push failed
+                            </div>
+                            <div className="text-[11px] text-danger leading-relaxed font-mono">
+                              {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
+                            </div>
                           </div>
-                          <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
-                          </div>
-                        </div>
-                      ) : approvalResult?.jira_status === 'failed' ? (
-                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-danger">
-                            Jira push failed
-                          </div>
-                          <div className="text-[11px] text-danger leading-relaxed font-mono">
-                            {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
-                          </div>
-                        </div>
-                      ) : (
-                        /* Fallback when backend didn't include any jira_status
-                           (e.g. Jira credentials not configured on this deploy). */
-                        <IntegrationNotConfigured
-                          title="Jira push not available"
-                          envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
-                          description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
-                          docsAnchor="#L59-L65"
-                        />
+                        ) : (
+                          /* Fallback when backend didn't include any jira_status
+                             (e.g. Jira credentials not configured on this deploy). */
+                          <IntegrationNotConfigured
+                            title="Jira push not available"
+                            envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
+                            description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
+                            docsAnchor="#L59-L65"
+                          />
+                        )
                       )}
                     </div>
 

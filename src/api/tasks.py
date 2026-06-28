@@ -110,6 +110,7 @@ async def _run_export_handlers_background(
     export_detail: str | None = None
     jira_url: str | None = None
     jira_status: str | None = None
+    jira_mode: str | None = None
     jira_detail: str | None = None
     jira_issue_key: str | None = None
 
@@ -255,6 +256,12 @@ async def _run_export_handlers_background(
         # Mark finalized to release any waiting polling client
         if run_id in _run_export:
             _run_export[run_id]["finalized"] = True
+            _run_export[run_id]["jira"] = {
+                "url": jira_url,
+                "mode": jira_mode or "skipped",
+                "issue_key": jira_issue_key,
+                "detail": jira_detail or "Not pushed",
+            }
         else:
             _run_export[run_id] = {
                 "sheet_url": sheet_url,
@@ -262,6 +269,12 @@ async def _run_export_handlers_background(
                 "detail": export_detail,
                 "status": export_status or "failed",
                 "finalized": True,
+                "jira": {
+                    "url": jira_url,
+                    "mode": jira_mode or "skipped",
+                    "issue_key": jira_issue_key,
+                    "detail": jira_detail or "Not pushed",
+                },
             }
 
         # Terminal SSE event carrying approval results
