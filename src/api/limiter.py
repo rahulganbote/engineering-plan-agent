@@ -18,4 +18,5 @@ def get_user_identifier(request: Request) -> str:
     """
     return request.session.get("auth_email") or get_remote_address(request)
 
+
 limiter = Limiter(key_func=get_user_identifier)
