@@ -181,8 +181,8 @@ export const AgentWorkspace: React.FC = () => {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       {/* Left Sidebar Control Panel */}
-      <aside className="w-80 bg-card border-r border-border flex flex-col justify-between overflow-y-auto shadow-xl">
-        <div className="p-6 space-y-6">
+      <aside className="w-80 bg-card border-r border-border flex flex-col justify-between overflow-hidden shadow-xl">
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
           {/* User Sign-In/Sign-Out Container */}
           {loading ? (
             <div className="bg-background p-4 rounded-lg border border-border text-center text-xs text-muted-foreground">
@@ -304,25 +304,35 @@ export const AgentWorkspace: React.FC = () => {
           {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
             <div>
-              <button
-                onClick={triggerPipeline}
-                disabled={!selectedFile || !!runId || isStartingPipeline}
-                className={`w-full py-2.5 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2 ${runId || isStartingPipeline
-                    ? 'bg-card text-muted-foreground border border-border cursor-not-allowed'
-                    : selectedFile
-                      ? 'bg-primary hover:bg-primary text-white shadow-md cursor-pointer'
-                      : 'bg-card text-muted-foreground border border-border cursor-not-allowed'
+              <div className="relative group/btn w-full">
+                <button
+                  onClick={triggerPipeline}
+                  disabled={!selectedFile || !!runId || isStartingPipeline}
+                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${
+                    runId || isStartingPipeline
+                      ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                      : selectedFile
+                        ? 'bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
+                        : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                   }`}
-              >
-                {isStartingPipeline ? (
-                  <>
-                    <Loader2 className="animate-spin text-primary" size={16} />
-                    <span>Starting Pipeline...</span>
-                  </>
-                ) : (
-                  <span>Generate Engineering Plan</span>
+                >
+                  {isStartingPipeline ? (
+                    <>
+                      <Loader2 className="animate-spin text-primary" size={16} />
+                      <span>Starting Pipeline...</span>
+                    </>
+                  ) : (
+                    <span>Generate Engineering Plan</span>
+                  )}
+                </button>
+
+                {!selectedFile && !runId && !isStartingPipeline && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-popover border border-border text-popover-foreground text-[11px] rounded-md shadow-md pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-150 z-20 text-center font-medium w-[220px]">
+                    Please upload or drag a BRD file first
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 -mt-1 rotate-45 bg-popover border-r border-b border-border" />
+                  </div>
                 )}
-              </button>
+              </div>
               {/* Runtime expectation - sits with the action surface so the user
                   knows what to expect at the moment they're about to commit. */}
               {!runId && (
@@ -842,7 +852,7 @@ export const AgentWorkspace: React.FC = () => {
             it stays visible at all times (matches Claude.ai / ChatGPT pattern).
             Moved here from the header subtitle, where it was undermining the
             product's perceived reliability by appearing alongside the title. */}
-        <footer className="px-8 py-2 border-t border-border bg-card text-center text-[10px] text-muted-foreground shrink-0">
+        <footer className="px-8 py-2 border-t border-border bg-card text-center text-[10px] text-foreground/65 shrink-0">
           Disclaimer: AI generated plans are starting points. Professional review and validation required before implementation.
         </footer>
       </main>

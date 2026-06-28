@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Cpu, GitPullRequest, Milestone, Sparkles } from 'lucide-react';
+import { ShieldCheck, Cpu, GitPullRequest, Milestone, Sparkles, Info } from 'lucide-react';
 
 interface IngestionLandingProps {
   selectedFile: File | null;
@@ -88,11 +88,10 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 shadow-md">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-sm font-bold text-foreground">System Architecture</h3>
-          <p className="text-[11px] text-muted-foreground italic">Hover each step for execution details</p>
         </div>
 
         {/* Interactive Flow Visualizer - compact (tooltip replaces the old 96px detail box) */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center py-2 bg-background/80 rounded-xl px-3 border border-border relative">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center pt-2 pb-6 md:pb-5 bg-background/80 rounded-xl px-3 border border-border relative">
           {/* Spoke layout - left column */}
           <div className="flex flex-col gap-2.5 w-full md:w-5/12 z-10">
             {pipelineNodes.slice(0, 3).map((node) => (
@@ -101,13 +100,17 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                 className="relative group"
                 onMouseEnter={() => setActiveNode(node.id)}
                 onMouseLeave={() => setActiveNode(null)}
+                onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
               >
                 <div
                   className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                 >
-                  <div className="flex items-center gap-2">
-                    {node.icon}
-                    <span className="text-xs font-bold">{node.label}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {node.icon}
+                      <span className="text-xs font-bold">{node.label}</span>
+                    </div>
+                    <Info size={12} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
                   </div>
                 </div>
 
@@ -132,13 +135,40 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
             ))}
           </div>
 
-          {/* Central "State Loop" pill */}
-          <div className="flex flex-row md:flex-col items-center justify-center gap-2 shrink-0">
-            <div className="h-5 w-0.5 bg-gradient-to-b from-primary to-warning hidden md:block animate-pulse" />
-            <span className="text-[11px] font-semibold px-2.5 py-1 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono">
-              State Loop
-            </span>
-            <div className="h-5 w-0.5 bg-gradient-to-b from-warning to-destructive hidden md:block animate-pulse" />
+          {/* Central "State Loop" loop visualizer */}
+          <div className="flex flex-col md:flex-row items-center justify-center gap-2 shrink-0 my-2 md:my-0">
+            {/* Left to Center connection */}
+            <div className="flex flex-col md:flex-row items-center gap-1">
+              <div className="h-4 w-0.5 md:h-0.5 md:w-8 bg-gradient-to-b md:bg-gradient-to-r from-ai-spark to-primary" />
+              <span className="text-[10px] text-primary select-none transform rotate-90 md:rotate-0">▶</span>
+            </div>
+
+            {/* Circular Loop Graphic container */}
+            <div className="relative flex items-center justify-center w-28 h-20 shrink-0 select-none">
+              {/* Loop arrows (SVG) */}
+              <svg className="absolute inset-0 w-full h-full text-warning/45 dark:text-warning/35 animate-[spin_6s_linear_infinite]" viewBox="0 0 100 100" fill="none">
+                {/* Loop path */}
+                <path
+                  d="M 50,15 A 35,35 0 1,1 49.9,15"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeDasharray="5, 3"
+                />
+                {/* Arrow heads pointing clockwise */}
+                <path d="M 50,15 L 44,9 L 44,21 Z" fill="currentColor" />
+                <path d="M 50,85 L 56,91 L 56,79 Z" fill="currentColor" />
+              </svg>
+              
+              <span className="text-[11px] font-bold px-3 py-1.5 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10">
+                State Loop
+              </span>
+            </div>
+
+            {/* Center to Right connection */}
+            <div className="flex flex-col md:flex-row items-center gap-1">
+              <div className="h-4 w-0.5 md:h-0.5 md:w-8 bg-gradient-to-b md:bg-gradient-to-r from-warning to-success" />
+              <span className="text-[10px] text-success select-none transform rotate-90 md:rotate-0">▶</span>
+            </div>
           </div>
 
           {/* Right column */}
@@ -149,13 +179,17 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                 className="relative group"
                 onMouseEnter={() => setActiveNode(node.id)}
                 onMouseLeave={() => setActiveNode(null)}
+                onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
               >
                 <div
                   className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                 >
-                  <div className="flex items-center gap-2">
-                    {node.icon}
-                    <span className="text-xs font-bold">{node.label}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {node.icon}
+                      <span className="text-xs font-bold">{node.label}</span>
+                    </div>
+                    <Info size={12} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
                   </div>
                 </div>
 
@@ -177,6 +211,11 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
               </div>
             ))}
           </div>
+
+          {/* Helper text placed absolutely inside the diagram box */}
+          <span className="text-[10px] text-muted-foreground/60 italic select-none absolute bottom-1.5 right-3">
+            Hover each step for execution details
+          </span>
         </div>
       </div>
     </div>
