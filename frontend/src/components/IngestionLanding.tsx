@@ -17,9 +17,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
   // Node details for interactive flowchart.
   //
   // Color semantics — traffic-light progression mirroring the data flow:
-  //   🔴 Security Validator (blocks unsafe input)
+  //   🔴 Error/Failures (API errors, BudgetBreachedError, timeouts, etc)
   //   💜 Orchestrator + Specialists (AI agents doing the work — share token)
-  //   🟡 Critic Reviewer (judges + may loop back for revision)
+  //   🟡 Security Validator (quaility check + blocks unsafe input)+ Critic Reviewer (judges + may loop back for revision) 
   //   🟢 Manager (HITL) Gate (approves and ships)
   //
   // The two AI-agent nodes intentionally share --color-ai-spark (Electric
@@ -29,9 +29,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       id: 'security',
       label: 'Security Validator',
       desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
-      icon: <ShieldCheck size={20} className="text-danger" />,
-      color: 'border-danger/30 text-danger bg-danger/10',
-      activeColor: 'ring-danger/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
+      icon: <ShieldCheck size={20} className="text-warning" />,
+      color: 'border-warning/30 text-warning bg-warning/10',
+      activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
     },
     {
       id: 'orchestrator',
