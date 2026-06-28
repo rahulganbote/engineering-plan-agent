@@ -24,10 +24,16 @@ if _settings.langchain_api_key:
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+# SlowAPI imports for rate limiting
+from slowapi.errors import RateLimitExceeded
 from starlette.middleware.sessions import SessionMiddleware
+
+from src.api.limiter import limiter
 
 from src.core.config import settings
 from src.core.logger import get_logger
@@ -82,11 +88,40 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """
+    Structured 429 with Retry-After header. Mirrors the /approve 409 contract
+    so the React frontend's apiClient.ts surfaces detail.next_step in the toast.
+    """
+    return JSONResponse(
+        status_code=429,
+        headers={"Retry-After": str(settings.rate_limit_retry_after_sec)},
+        content={
+            "detail": {
+                "code": "rate_limited",
+                "message": "Pipeline runs are capped to protect against runaway cost.",
+                "next_step": (
+                    "Wait a few hours and try again, or reach out at support@emcopilot.ai for an extended demo."
+                ),
+            },
+        },
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://emcopilot.ai",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 app.add_middleware(

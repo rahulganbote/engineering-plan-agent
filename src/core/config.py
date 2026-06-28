@@ -112,6 +112,18 @@ class Settings(BaseSettings):
     # ── Security ──────────────────────────────────────────────────────────────
     max_brd_file_size_mb: int = 5
     injection_llm_confidence_threshold: float = 0.85
+
+    # ── Rate limits (slowapi syntax: "N/period") ──────────────────────────────
+    # Override via env in production. Examples: "10/day", "100/hour", "5/minute".
+    # The /run-pipeline endpoint applies BOTH limits (per-day AND per-week).
+    # /approve gets a separate, looser limit (single-shot per run typical).
+    # Keyed by authenticated user email (falls back to IP for unauth requests).
+    rate_limit_run_pipeline_per_day: str = "5/day"
+    rate_limit_run_pipeline_per_week: str = "10/week"
+    rate_limit_approve_per_hour: str = "10/hour"
+    # Retry-After header value (seconds) returned with every 429.
+    # Conservative default: 1 hour. Operators can tune via env.
+    rate_limit_retry_after_sec: int = 3600
     voice_webhook_secret: str = ""  # Token used by ElevenLabs webhook to authenticate voice approvals
     max_pipeline_run_budget_usd: float = 2.00  # Hard budget limit per pipeline run (dollars)
 

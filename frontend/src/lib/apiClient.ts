@@ -16,16 +16,30 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
 
     if (!response.ok) {
       let errorMsg = `HTTP Error ${response.status}`;
+      // Structured-detail codes that represent intentional throttle / soft
+      // block (NOT a system failure). When matched, the toast uses warning
+      // styling + longer duration + no "API Failure:" prefix, since calling
+      // a deliberate rate-limit a "failure" misleads the user about whose
+      // side has the problem.
+      const THROTTLE_CODES = new Set(['rate_limited', 'decision_immutable']);
+      let throttleCode: string | undefined;
+
       try {
         const errorData = await response.json();
         if (errorData && typeof errorData === 'object') {
           const detail = errorData.detail;
           // FastAPI HTTPException allows `detail` to be either a string
           // (legacy / most endpoints) or a structured object
-          // (e.g., /approve 409: {code, message, next_step}). Handle both
-          // so structured payloads surface their actionable hint in the toast.
+          // (e.g., /approve 409 + /run-pipeline 429: {code, message, next_step}).
           if (detail && typeof detail === 'object') {
-            const parts = [detail.message, detail.next_step].filter(Boolean);
+            const code = (detail as Record<string, unknown>).code;
+            if (typeof code === 'string' && THROTTLE_CODES.has(code)) {
+              throttleCode = code;
+            }
+            const parts = [
+              (detail as Record<string, unknown>).message,
+              (detail as Record<string, unknown>).next_step,
+            ].filter(Boolean) as string[];
             errorMsg = parts.length > 0 ? parts.join(' — ') : JSON.stringify(detail);
           } else {
             errorMsg = detail || errorData.message || JSON.stringify(errorData);
@@ -38,7 +52,13 @@ export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T
         }
       }
 
-      toast.error(`API Failure: ${errorMsg}`);
+      if (throttleCode) {
+        // Amber warning toast (not red error) + 8s duration so the user can
+        // read the next_step (e.g. contact info in the rate-limit message).
+        toast.warning(errorMsg, { duration: 8000 });
+      } else {
+        toast.error(`API Failure: ${errorMsg}`);
+      }
       throw new Error(errorMsg);
     }
 

@@ -9,8 +9,10 @@ from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from src.api.dependencies import verify_run_ownership
+from src.api.limiter import limiter
 from src.api.models import ApprovalRequest, ApprovalResponse
 from src.api.state import _push_event, _run_export, _runs
+from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.models import HITLDecision
 
@@ -18,6 +20,7 @@ log = get_logger(__name__)
 router = APIRouter(tags=["approval"])
 
 
+@limiter.limit(settings.rate_limit_approve_per_hour)
 @router.post("/approve/{run_id}", response_model=ApprovalResponse)
 async def hitl_approve(
     run_id: str,

@@ -15,6 +15,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Reque
 from fastapi.responses import StreamingResponse
 
 from src.api.dependencies import get_current_user_email, verify_run_ownership
+from src.api.limiter import limiter
 from src.api.models import PipelineRunResponse
 from src.api.state import _push_event, _run_events, _run_export, _run_owner, _runs
 from src.api.tasks import _run_pipeline_task
@@ -26,6 +27,8 @@ log = get_logger(__name__)
 router = APIRouter(tags=["runs"])
 
 
+@limiter.limit(settings.rate_limit_run_pipeline_per_day)
+@limiter.limit(settings.rate_limit_run_pipeline_per_week)
 @router.post("/run-pipeline", response_model=PipelineRunResponse)
 async def trigger_pipeline(
     request: Request,

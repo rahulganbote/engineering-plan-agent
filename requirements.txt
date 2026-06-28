@@ -74,3 +74,4 @@ redis>=5.0,<6.0   # activates when REDIS_URL env var is set
 #   pip install bert-score
 #
 # bert-score==0.3.13   # BERTScore F1 (Method 4 in eval framework)
+slowapi==0.1.9
