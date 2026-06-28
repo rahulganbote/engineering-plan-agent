@@ -213,10 +213,21 @@ async def _run_export_handlers_background(
 
             if brd_text.strip():
                 try:
-                    from src.core.rag import ingest_document_text
+                    import os
+                    from src.core.rag import ingest_document
 
                     _push_event(run_id, {"type": "pinecone_ingest", "status": "started"})
-                    chunks_added = ingest_document_text(brd_text, document_name=brd_name)
+                    doc_id = os.path.splitext(brd_name)[0]
+                    ingest_result = ingest_document(
+                        text=brd_text,
+                        doc_id=doc_id,
+                        source_type="brd",
+                    )
+                    try:
+                        chunks_added = int(ingest_result.split(" ")[0])
+                    except Exception:
+                        chunks_added = ingest_result
+
                     _push_event(
                         run_id,
                         {

@@ -390,3 +390,31 @@ def test_voice_agent_secret_rotation(mock_run):
                     },
                 )
                 assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_export_handlers_background_pinecone_ingestion():
+    from unittest.mock import MagicMock, patch
+    from src.api.tasks import _run_export_handlers_background
+    from src.api.main import _runs
+
+    run_id = "test-export-pinecone"
+    state = PipelineState(run_id=run_id, brd_raw_hash="brd_hash_val", brd_name="test_brd.txt")
+    _runs[run_id] = state
+
+    mock_cache = MagicMock()
+    mock_cache.get.return_value = {"text": "Some dummy BRD content"}
+
+    with patch("src.core.cache.get_default_backend", return_value=mock_cache), \
+         patch("src.integrations.sheets.write_artifacts_to_sheet", return_value={"mode": "local", "detail": "dummy", "url": None}), \
+         patch("src.integrations.jira_mcp.push_epic_to_jira", return_value={"mode": "skipped", "detail": "dummy"}), \
+         patch("src.integrations.pdf_export._pdf_export_handler", return_value={"mode": "pdf", "detail": "dummy"}), \
+         patch("src.core.rag.ingest_document", return_value="5 chunks ingested from test_brd") as mock_ingest:
+
+        await _run_export_handlers_background(run_id, HITLDecision.APPROVED, "test@example.com")
+
+        mock_ingest.assert_called_once_with(
+            text="Some dummy BRD content",
+            doc_id="test_brd",
+            source_type="brd",
+        )
