@@ -28,7 +28,7 @@ def _seed_run(status: str, decision: HITLDecision | None = None) -> str:
     run_id = f"test-seeded-{status}-{decision.value if decision else 'none'}"
     state = PipelineState(run_id=run_id, brd_raw_hash="seeded_hash", brd_name="seeded_test.txt")
     state.pipeline_status = status
-    state.hitl_decision = decision
+    state.hitl_decision = decision or HITLDecision.PENDING
     _runs[run_id] = state
     _run_owner[run_id] = "local-dev@example.com"
     return run_id
