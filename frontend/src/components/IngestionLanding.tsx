@@ -31,7 +31,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
       icon: <ShieldCheck size={20} className="text-warning" />,
       color: 'border-warning/30 text-warning bg-warning/10',
-      activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
+      activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',
     },
     {
       id: 'orchestrator',
@@ -54,7 +54,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       label: 'Critic Reviewer',
       desc: 'Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if needed.',
       icon: <GitPullRequest size={20} className="text-warning" />,
-      color: 'border-warning/30 text-warning bg-warning/20',
+      color: 'border-warning/30 text-warning bg-warning/10',
       activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',
     },
     {

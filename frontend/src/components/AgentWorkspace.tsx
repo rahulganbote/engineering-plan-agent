@@ -814,7 +814,7 @@ export const AgentWorkspace: React.FC = () => {
             Moved here from the header subtitle, where it was undermining the
             product's perceived reliability by appearing alongside the title. */}
         <footer className="px-8 py-2 border-t border-border bg-card text-center text-[10px] text-muted-foreground shrink-0">
-          AI-generated plans are starting points. Review against your domain expertise before adopting.
+          Disclaimer: Demo Purposes only. AI generated plans are starting points. Professional review and validation required before implementation.
         </footer>
       </main>
     </div>
