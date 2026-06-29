@@ -717,7 +717,7 @@ export const AgentWorkspace: React.FC = () => {
                             Artifacts exported to Google Sheets
                           </div>
                           <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            {approvalResult?.export_detail || "Wrote Run Summary + Plan + Schedule + Tech Stack tabs to Google Sheets"}
+                            {approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes."}
                           </div>
                           <a
                             href={approvalResult.sheet_url}

@@ -81,7 +81,7 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
             return {
                 "url": url,
                 "mode": "sheets",
-                "detail": "Wrote Run Summary + Plan + Schedule + Tech Stack tabs to Google Sheets",
+                "detail": "Wrote Pipeline Run Summary to Google Sheets for audit purposes.",
                 "files": [],
                 "fallback_reason": None,
             }
