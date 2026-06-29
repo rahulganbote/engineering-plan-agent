@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../lib/apiClient';
+import { cleanLlmErrorMessage } from '../lib/utils';
 
 export interface LogEvent {
   type: string;
@@ -308,7 +309,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         }
         case 'error': {
           setPipelineStatus('error');
-          setErrorMessage(data.message || 'An unexpected error occurred.');
+          setErrorMessage(cleanLlmErrorMessage(data.message || 'An unexpected error occurred.'));
           clearInterval(tick);
           clearInterval(pollInterval);
           es.close();
@@ -391,7 +392,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       }
       if (data.pipeline_status === 'error') {
         setPipelineStatus('error');
-        setErrorMessage(data.errors?.[0] || 'An unexpected error occurred.');
+        setErrorMessage(cleanLlmErrorMessage(data.errors?.[0] || 'An unexpected error occurred.'));
       }
 
       if (data.critic_output) {

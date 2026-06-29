@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Terminal, Copy, Check } from 'lucide-react';
 import { type LogEvent } from '../hooks/useSSE';
+import { cleanLlmErrorMessage } from '../lib/utils';
 
 interface LogConsoleProps {
   logs: LogEvent[];
@@ -67,7 +68,8 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
         const fromFam = log.from_family || (log.payload as Record<string, string>)?.from_family || 'unknown';
         const toFam = log.to_family || (log.payload as Record<string, string>)?.to_family || 'unknown';
         const reason = log.reason || (log.payload as Record<string, string>)?.reason || '';
-        return `[LLM Engine] Fallback Triggered: ${fromFam.toUpperCase()} API limits reached or key expired. Switched to ${toFam.toUpperCase()} successfully.${reason ? ` Reason: ${reason}` : ''}`;
+        const cleanReason = cleanLlmErrorMessage(reason);
+        return `[LLM Engine] Fallback Triggered: ${fromFam.toUpperCase()} API limits reached or key expired. Switched to ${toFam.toUpperCase()} successfully.${cleanReason ? ` Reason: ${cleanReason}` : ''}`;
       }
       case 'token_update': {
         const payload = (log.payload || log) as LogEvent;
