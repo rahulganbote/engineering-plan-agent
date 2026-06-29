@@ -157,9 +157,9 @@ def _embed(texts: list[str]) -> list[list[float]]:
     Batching all chunks in one API call is more cost-efficient than
     embedding individually (reduces API round trips).
     """
+    import openai
     from langsmith.wrappers import wrap_openai
     from openai import OpenAI
-    import openai
 
     try:
         client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
