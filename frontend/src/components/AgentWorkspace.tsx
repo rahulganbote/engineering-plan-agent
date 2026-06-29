@@ -105,7 +105,7 @@ export const AgentWorkspace: React.FC = () => {
   useEffect(() => {
     if (!fallbackActive) return;
     const fromName = fallbackActive.from.charAt(0).toUpperCase() + fallbackActive.from.slice(1);
-    const toName   = fallbackActive.to.charAt(0).toUpperCase()   + fallbackActive.to.slice(1);
+    const toName = fallbackActive.to.charAt(0).toUpperCase() + fallbackActive.to.slice(1);
     toast.warning(
       `${fromName} quota exceeded - using ${toName} for this run.`,
       {
@@ -179,9 +179,9 @@ export const AgentWorkspace: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div className="flex flex-col md:flex-row min-h-[100dvh] md:h-[100dvh] bg-background text-foreground md:overflow-hidden font-sans">
       {/* Left Sidebar Control Panel */}
-      <aside className="w-80 bg-card border-r border-border flex flex-col justify-between overflow-hidden shadow-xl">
+      <aside className="w-full md:w-80 bg-card border-b md:border-b-0 md:border-r border-border flex flex-col justify-between overflow-hidden shadow-xl shrink-0">
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
           {/* User Sign-In/Sign-Out Container */}
           {loading ? (
@@ -231,10 +231,10 @@ export const AgentWorkspace: React.FC = () => {
                       "coming soon" for unimplemented providers). Hover-title surfaces
                       the reason so the user knows WHY an option is greyed out. */}
                   {[
-                    { key: 'openai',    label: 'OpenAI (Default: gpt-4o)' },
+                    { key: 'openai', label: 'OpenAI (Default: gpt-4o)' },
                     { key: 'anthropic', label: 'Anthropic (Default: Claude 4.5 Sonnet)' },
-                    { key: 'llama',     label: 'Llama' },
-                    { key: 'mistral',   label: 'Mistral' },
+                    { key: 'llama', label: 'Llama' },
+                    { key: 'mistral', label: 'Mistral' },
                   ].map(({ key, label }) => {
                     // Default to "available" if we haven't received the providers
                     // payload yet - keeps the dropdown usable on first paint.
@@ -308,13 +308,12 @@ export const AgentWorkspace: React.FC = () => {
                 <button
                   onClick={triggerPipeline}
                   disabled={!selectedFile || !!runId || isStartingPipeline}
-                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${
-                    runId || isStartingPipeline
+                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
                       ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                       : selectedFile
                         ? 'bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
                         : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                  }`}
+                    }`}
                 >
                   {isStartingPipeline ? (
                     <>
@@ -412,12 +411,12 @@ export const AgentWorkspace: React.FC = () => {
       </aside>
 
       {/* Main Workstation Panel */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-background">
+      <main className="flex-1 flex flex-col md:overflow-hidden bg-background">
         {/* Main Header - uses min-h instead of fixed h so the title can wrap
             cleanly at narrow viewports (e.g. devtools open) without overflowing
             into the IngestionLanding hero below. items-start keeps the controls
             (Theme picker, API status) pinned to the top-right of the title block. */}
-        <header className="min-h-16 border-b border-border px-8 py-3 gap-4 flex items-start justify-between bg-card shrink-0 shadow-sm relative">
+        <header className="min-h-16 border-b border-border px-4 md:px-8 py-3 gap-4 flex flex-col sm:flex-row sm:items-start justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
               <span className="text-primary">EM Copilot</span>
@@ -433,7 +432,7 @@ export const AgentWorkspace: React.FC = () => {
               apiBaseUrl={apiBaseUrl}
             />
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
             <ThemePicker />
             <div className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${Object.keys(providers).length > 0 ? 'bg-success animate-pulse' : 'bg-muted-foreground'}`} />
@@ -444,7 +443,7 @@ export const AgentWorkspace: React.FC = () => {
           </div>
         </header>
         {/* Scrollable Workstation Body */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
           {!runId ? (
             <div className="space-y-6">
               {startupError && (
@@ -564,10 +563,10 @@ export const AgentWorkspace: React.FC = () => {
                         </div>
                       </div>
                       <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
-                          ? 'bg-green-950/50 text-success border border-green-800/50'
-                          : criticOutput.badge === 'amber'
-                            ? 'bg-warning/50 text-warning border border-warning/50'
-                            : 'bg-danger/50 text-danger border border-danger/50'
+                        ? 'bg-green-950/50 text-success border border-green-800/50'
+                        : criticOutput.badge === 'amber'
+                          ? 'bg-warning/50 text-warning border border-warning/50'
+                          : 'bg-danger/50 text-danger border border-danger/50'
                         }`}>
                         {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
                       </span>
@@ -614,14 +613,14 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
 
                   {/* Tabs list */}
-                  <div className="flex bg-background p-1 rounded-lg border border-border w-fit">
+                  <div className="flex bg-background p-1 rounded-lg border border-border w-full md:w-fit overflow-x-auto scrollbar-none whitespace-nowrap">
                     {(['plan', 'schedule', 'arch', 'poc', 'stack'] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all ${activeTab === tab
-                            ? 'bg-card text-foreground shadow-sm border border-border'
-                            : 'text-muted-foreground hover:text-muted-foreground'
+                          ? 'bg-card text-foreground shadow-sm border border-border'
+                          : 'text-muted-foreground hover:text-muted-foreground'
                           }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
@@ -683,13 +682,12 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Export Results</h3>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${
-                        pipelineStatus === 'exported'
+                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === 'exported'
                           ? 'bg-success/20 border border-success/40 text-success'
                           : pipelineStatus === 'rejected'
                             ? 'bg-danger/20 border border-danger/40 text-danger'
                             : 'bg-warning/20 border border-warning/40 text-warning'
-                      }`}>
+                        }`}>
                         {pipelineStatus === 'exported' ? '✓ Exported Successfully' : pipelineStatus === 'rejected' ? '✗ Plan Rejected' : '⚠ Export Failed'}
                       </span>
                     </div>
