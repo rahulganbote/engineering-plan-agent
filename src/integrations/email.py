@@ -86,34 +86,34 @@ def send_feedback_email(feedback: dict) -> dict:
     body = f"""
 EM Copilot Feedback Received
 
-Sender: {feedback.get('sender', 'Anonymous')}
-Area: {feedback.get('area', 'N/A')}
-Category: {feedback.get('category', 'N/A')}
-Workspace: {feedback.get('workspace', 'N/A')}
-Run ID: {feedback.get('run_id') or 'N/A'}
+Sender: {feedback.get("sender", "Anonymous")}
+Area: {feedback.get("area", "N/A")}
+Category: {feedback.get("category", "N/A")}
+Workspace: {feedback.get("workspace", "N/A")}
+Run ID: {feedback.get("run_id") or "N/A"}
 
 Description:
-{feedback.get('description', '')}
+{feedback.get("description", "")}
 
 Diagnostic Logs:
-{feedback.get('diagnostic_logs', {})}
+{feedback.get("diagnostic_logs", {})}
 """
 
     if not settings.smtp_host:
         import time
         from pathlib import Path
-        
+
         email_dir = Path("logs/emails")
         email_dir.mkdir(parents=True, exist_ok=True)
         timestamp = int(time.time())
         email_file = email_dir / f"feedback_{timestamp}.txt"
-        
+
         try:
             with open(email_file, "w", encoding="utf-8") as f:
                 f.write(f"Subject: {subject}\n")
                 f.write(f"To: {to_email}\n")
                 f.write("From: em-copilot@localhost\n")
-                f.write("="*80 + "\n")
+                f.write("=" * 80 + "\n")
                 f.write(body)
             log.info(f"SMTP configuration missing. Saved mock email to {email_file}")
             return {"status": "saved_mock", "detail": f"Saved mock email to {email_file}"}

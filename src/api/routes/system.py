@@ -66,18 +66,18 @@ async def submit_feedback(payload: FeedbackRequest, background_tasks: Background
     import json
     import time
     from pathlib import Path
-    
+
     feedback_data = payload.model_dump()
     feedback_data["timestamp_epoch"] = time.time()
-    
+
     feedback_dir = Path("logs")
     feedback_dir.mkdir(exist_ok=True)
     feedback_file = feedback_dir / "feedback.jsonl"
-    
+
     with open(feedback_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(feedback_data) + "\n")
-        
+
     # Send copy via email copy background worker
     background_tasks.add_task(send_feedback_email, feedback_data)
-        
+
     return {"status": "ok", "message": "Feedback submitted successfully"}
