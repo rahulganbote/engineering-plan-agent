@@ -73,7 +73,7 @@ export const Sandbox: React.FC = () => {
                 <Badge variant="secondary">Secondary Badge</Badge>
                 <Badge variant="outline">Outline Badge</Badge>
                 <Badge variant="destructive">Destructive Badge</Badge>
-                <Badge className="bg-green-950/50 text-success border border-green-800/50">🟢 GREEN</Badge>
+                <Badge className="bg-success/20 text-success border border-success/40">🟢 GREEN</Badge>
                 <Badge className="bg-warning/50 text-warning border border-warning/50">🟡 AMBER</Badge>
                 <Badge className="bg-danger/50 text-danger border border-danger/50">🔴 RED</Badge>
               </div>

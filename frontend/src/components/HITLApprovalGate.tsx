@@ -147,7 +147,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           <button
             onClick={() => handleSubmit('rejected')}
             disabled={isSubmitting || hasSubmitted}
-            className="px-4 py-2 rounded-lg bg-background hover:bg-danger/25 text-foreground hover:text-danger border border-border hover:border-danger/30 transition flex items-center gap-2 text-xs font-bold"
+            className="px-4 py-2 rounded-lg bg-danger/10 hover:bg-danger/20 text-danger border border-danger/30 transition flex items-center gap-2 text-xs font-bold"
           >
             <X size={14} />
             Reject Plan

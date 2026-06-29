@@ -106,7 +106,7 @@ export const TechStackTab: React.FC<TechStackTabProps> = ({ techStackData }) => 
     if (l === 'medium' || l === 'amber') {
       return 'text-warning bg-warning/40 border-warning/30';
     }
-    return 'text-success bg-green-950/40 border-green-900/30';
+    return 'text-success bg-success/20 border-success/30';
   };
 
   return (

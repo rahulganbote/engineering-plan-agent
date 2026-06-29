@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import csv
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 from typing import Any
 
@@ -144,7 +145,7 @@ def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
     # ── Tab: Run Summary ─────────────────────────────────────────────────────
     summary_ws = _get_or_create_worksheet(sh, "Run Summary", rows=100, cols=20)
     _ensure_min_cols(summary_ws, len(_summary_headers()))
-    summary_ws.update("A1", [_summary_headers()])
+    summary_ws.update(values=[_summary_headers()], range_name="A1")
     # Write to Run Summary - always appends a new row
     _upsert_summary_row(summary_ws, state, ts, email)
 
@@ -152,31 +153,35 @@ def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
     if state.plan_output:
         plan_ws = _get_or_create_worksheet(sh, "Engineering Plan", rows=500, cols=8)
         _ensure_headers_gs(plan_ws, _plan_headers())
-        for row in _plan_rows(state):
-            plan_ws.append_row(row)
+        plan_rows = list(_plan_rows(state))
+        if plan_rows:
+            plan_ws.insert_rows(plan_rows, row=2)
 
     # ── Tab: Schedule ─────────────────────────────────────────────────────────
     if state.schedule_output:
         sched_ws = _get_or_create_worksheet(sh, "Schedule", rows=500, cols=7)
         _ensure_headers_gs(sched_ws, _schedule_headers())
-        for row in _schedule_rows(state):
-            sched_ws.append_row(row)
+        sched_rows = list(_schedule_rows(state))
+        if sched_rows:
+            sched_ws.insert_rows(sched_rows, row=2)
 
     # ── Tab: Tech Stack ───────────────────────────────────────────────────────
     if state.stack_output:
         stack_ws = _get_or_create_worksheet(sh, "Tech Stack", rows=100, cols=10)
         _ensure_headers_gs(stack_ws, _tech_stack_headers())
-        for row in _tech_stack_rows(state):
-            stack_ws.append_row(row)
+        stack_rows = list(_tech_stack_rows(state))
+        if stack_rows:
+            stack_ws.insert_rows(stack_rows, row=2)
 
     return f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}"
 
 
 def _upsert_summary_row(ws, state, ts: str, email: str = "") -> None:
     """
-    Write the Run Summary row. Always appends a new row to support multiple log entries per run_id.
+    Write the Run Summary row at the top (row 2, right below the header)
+    so that the latest run is always at the top of the worksheet.
     """
-    ws.append_row(_summary_row(state, ts, email))
+    ws.insert_row(_summary_row(state, ts, email), index=2)
 
 
 def _ensure_min_cols(ws, min_cols: int) -> None:
@@ -319,6 +324,7 @@ def _summary_headers() -> list[str]:
         "plan_duration_weeks",
         "plan_confidence",
         "pipeline_status",
+        "environment",
     ]
 
 
@@ -331,6 +337,7 @@ def _summary_row(state: PipelineState, ts: str, email: str = "") -> list[Any]:
     if not notes and state.pipeline_status == "error" and state.errors:
         notes = "; ".join(state.errors)[:500]
     em_rating = state.hitl_em_ratings[-1].get("em_rating", "") if state.hitl_em_ratings else ""
+    env_name = "GCP" if os.getenv("K_SERVICE") else "local"
     return [
         state.run_id,
         email,
@@ -350,6 +357,7 @@ def _summary_row(state: PipelineState, ts: str, email: str = "") -> list[Any]:
         plan.total_duration_weeks if plan else 0,
         plan.confidence_score if plan else 0.0,
         state.pipeline_status,
+        env_name,
     ]
 
 

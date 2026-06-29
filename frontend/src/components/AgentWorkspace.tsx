@@ -563,7 +563,7 @@ export const AgentWorkspace: React.FC = () => {
                         </div>
                       </div>
                       <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
-                        ? 'bg-green-950/50 text-success border border-green-800/50'
+                        ? 'bg-success/20 text-success border border-success/40'
                         : criticOutput.badge === 'amber'
                           ? 'bg-warning/50 text-warning border border-warning/50'
                           : 'bg-danger/50 text-danger border border-danger/50'
