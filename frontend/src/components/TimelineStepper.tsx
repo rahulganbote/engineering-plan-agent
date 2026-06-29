@@ -183,7 +183,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 pipelineStatus === 'exported' ? 'text-success' :
                   pipelineStatus === 'awaiting_hitl' ? 'text-warning' :
                     'text-primary'
-            }>{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus.replace(/_/g, ' ')}</span>
+            }>{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : pipelineStatus.replace(/_/g, ' ')}</span>
           </span>
         </div>
       </div>

@@ -368,7 +368,7 @@ export const AgentWorkspace: React.FC = () => {
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
-                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
+                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
                 onClick={() => {
@@ -528,7 +528,7 @@ export const AgentWorkspace: React.FC = () => {
               {/* Performance Metrics Summary */}
               <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border">
                 <div>
-                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "-")}</span>
+                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "-")}</span>
                 </div>
                 <div>
                   <strong>Total Processing Time:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>

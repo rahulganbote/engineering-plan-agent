@@ -1,5 +1,5 @@
 # src/core/providers.py
-from typing import Protocol
+from typing import Protocol, cast
 
 import anthropic
 import openai
@@ -117,8 +117,8 @@ class AnthropicProvider:
 
 
 _PROVIDERS: dict[str, LLMProvider] = {
-    "openai": OpenAIProvider(),
-    "anthropic": AnthropicProvider(),
+    "openai": cast(LLMProvider, OpenAIProvider()),
+    "anthropic": cast(LLMProvider, AnthropicProvider()),
 }
 
 
