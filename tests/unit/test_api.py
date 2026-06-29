@@ -406,12 +406,16 @@ async def test_export_handlers_background_pinecone_ingestion():
     mock_cache = MagicMock()
     mock_cache.get.return_value = {"text": "Some dummy BRD content"}
 
-    with patch("src.core.cache.get_default_backend", return_value=mock_cache), \
-         patch("src.integrations.sheets.write_artifacts_to_sheet", return_value={"mode": "local", "detail": "dummy", "url": None}), \
-         patch("src.integrations.jira_mcp.push_epic_to_jira", return_value={"mode": "skipped", "detail": "dummy"}), \
-         patch("src.integrations.pdf_export._pdf_export_handler", return_value={"mode": "pdf", "detail": "dummy"}), \
-         patch("src.core.rag.ingest_document", return_value="5 chunks ingested from test_brd") as mock_ingest:
-
+    with (
+        patch("src.core.cache.get_default_backend", return_value=mock_cache),
+        patch(
+            "src.integrations.sheets.write_artifacts_to_sheet",
+            return_value={"mode": "local", "detail": "dummy", "url": None},
+        ),
+        patch("src.integrations.jira_mcp.push_epic_to_jira", return_value={"mode": "skipped", "detail": "dummy"}),
+        patch("src.integrations.pdf_export._pdf_export_handler", return_value={"mode": "pdf", "detail": "dummy"}),
+        patch("src.core.rag.ingest_document", return_value="5 chunks ingested from test_brd") as mock_ingest,
+    ):
         await _run_export_handlers_background(run_id, HITLDecision.APPROVED, "test@example.com")
 
         mock_ingest.assert_called_once_with(

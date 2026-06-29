@@ -753,7 +753,7 @@ Respond ONLY with valid JSON:
                     "  • Constraints section - Must be present (min 5 words) and contain no placeholders."
                 ),
                 technical_detail=f"INCOMPLETE_BRD missing={llm_missing}",
-                missing_sections=llm_missing
+                missing_sections=llm_missing,
             )
 
         return ValidationResult(
