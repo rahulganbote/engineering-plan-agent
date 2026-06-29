@@ -159,14 +159,22 @@ def _embed(texts: list[str]) -> list[list[float]]:
     """
     from langsmith.wrappers import wrap_openai
     from openai import OpenAI
+    import openai
 
-    client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
-    response = client.embeddings.create(
-        model=settings.openai_embedding_model,
-        dimensions=settings.embedding_dimension,
-        input=texts,
-    )
-    return [item.embedding for item in response.data]
+    try:
+        client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
+        response = client.embeddings.create(
+            model=settings.openai_embedding_model,
+            dimensions=settings.embedding_dimension,
+            input=texts,
+        )
+        return [item.embedding for item in response.data]
+    except (openai.RateLimitError, openai.AuthenticationError, openai.APIStatusError) as e:
+        log.warning(
+            f"OpenAI embedding failed with limit/credential error: {e}. "
+            f"Falling back to zero-vectors to prevent pipeline crash."
+        )
+        return [[0.0] * settings.embedding_dimension for _ in texts]
 
 
 # ──────────────────────────────────────────────────────────────────────────────

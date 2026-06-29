@@ -54,9 +54,9 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'cache_miss':
         return `[Resilience Cache] Cache miss for key: ${log.key || 'unknown'}. Re-processing...`;
       case 'breaker_open':
-        return `[Circuit Breaker] Tripped! Circuit "${log.circuit || 'unknown'}" is now OPEN.`;
+        return `[Circuit Breaker] Tripped! Circuit "${log.breaker || log.circuit || 'unknown'}" is now OPEN.`;
       case 'breaker_short_circuit':
-        return `[Circuit Breaker] Short-circuit fast fail: Execution rejected by open circuit "${log.circuit || 'unknown'}".`;
+        return `[Circuit Breaker] Short-circuit fast fail: Execution rejected by open circuit "${log.breaker || log.circuit || 'unknown'}".`;
       case 'retry':
         return `[Resilience Retry] Attempt #${log.attempt || 1} after error: ${log.error || 'timeout'}`;
       case 'bulkhead_timeout':

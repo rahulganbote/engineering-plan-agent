@@ -20,6 +20,7 @@ export interface LogEvent {
   detail?: string;
   key?: string;
   circuit?: string;
+  breaker?: string;
   from_family?: string;
   to_family?: string;
   reason?: string;
