@@ -114,3 +114,14 @@ class ArtifactSummary(BaseModel):
 
 class LogDownloadRequest(BaseModel):
     email: str
+
+
+class FeedbackRequest(BaseModel):
+    area: str
+    category: str
+    description: str
+    include_transcript: bool
+    workspace: str
+    diagnostic_logs: dict
+    sender: str
+    run_id: str | None = None

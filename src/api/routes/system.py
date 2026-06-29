@@ -6,8 +6,9 @@ System status, configuration, and diagnostics endpoints.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
-
+from fastapi import APIRouter, BackgroundTasks
+from src.api.models import FeedbackRequest
+from src.integrations.email import send_feedback_email
 from src.core.config import settings
 
 router = APIRouter(tags=["system"])
@@ -54,3 +55,28 @@ async def list_providers():
             "reason": "Coming soon",
         },
     }
+
+
+@router.post("/api/feedback")
+async def submit_feedback(payload: FeedbackRequest, background_tasks: BackgroundTasks):
+    """
+    Append user feedback to a local logs/feedback.jsonl file and send an email copy.
+    """
+    import json
+    import time
+    from pathlib import Path
+    
+    feedback_data = payload.model_dump()
+    feedback_data["timestamp_epoch"] = time.time()
+    
+    feedback_dir = Path("logs")
+    feedback_dir.mkdir(exist_ok=True)
+    feedback_file = feedback_dir / "feedback.jsonl"
+    
+    with open(feedback_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(feedback_data) + "\n")
+        
+    # Send copy via email copy background worker
+    background_tasks.add_task(send_feedback_email, feedback_data)
+        
+    return {"status": "ok", "message": "Feedback submitted successfully"}

@@ -423,3 +423,53 @@ async def test_export_handlers_background_pinecone_ingestion():
             doc_id="test_brd",
             source_type="brd",
         )
+
+
+def test_submit_feedback(client):
+    import json
+    from pathlib import Path
+    from unittest.mock import patch
+    
+    # Ensure any preexisting test feedback file is cleared
+    feedback_file = Path("logs/feedback.jsonl")
+    if feedback_file.exists():
+        try:
+            feedback_file.unlink()
+        except OSError:
+            pass
+        
+    payload = {
+        "area": "User Interface",
+        "category": "Bug",
+        "description": "Button hover is not visible",
+        "include_transcript": True,
+        "workspace": "EM-Copilot Development",
+        "diagnostic_logs": {"os": "darwin", "version": "1.0.0"},
+        "sender": "test-user@emcopilot.ai",
+        "run_id": "test-run-123"
+    }
+    
+    with patch("src.api.routes.system.send_feedback_email") as mock_email:
+        response = client.post("/api/feedback", json=payload)
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok", "message": "Feedback submitted successfully"}
+        
+        # Verify file on disk
+        assert feedback_file.exists()
+        with open(feedback_file, "r") as f:
+            lines = f.readlines()
+            assert len(lines) == 1
+            data = json.loads(lines[0])
+            assert data["area"] == "User Interface"
+            assert data["category"] == "Bug"
+            assert data["sender"] == "test-user@emcopilot.ai"
+            assert "timestamp_epoch" in data
+            
+        mock_email.assert_called_once()
+        
+    # Clean up test output
+    if feedback_file.exists():
+        try:
+            feedback_file.unlink()
+        except OSError:
+            pass

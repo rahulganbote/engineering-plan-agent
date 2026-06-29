@@ -20,6 +20,7 @@ import { generateVoiceBrief } from '../lib/voiceBrief';
 import { VoiceWidgetFAB } from './VoiceWidgetFAB';
 import { ThemePicker } from './ThemePicker';
 import { IntegrationNotConfigured } from './IntegrationNotConfigured';
+import FeedbackModal from './FeedbackModal';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -49,6 +50,7 @@ export const AgentWorkspace: React.FC = () => {
   const [runIdCopied, setRunIdCopied] = useState(false);
   const [isStartingPipeline, setIsStartingPipeline] = useState(false);
   const [modelFamily, setModelFamily] = useState('openai');
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
@@ -433,6 +435,12 @@ export const AgentWorkspace: React.FC = () => {
             />
           )}
           <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+            <button
+              onClick={() => setIsFeedbackOpen(true)}
+              className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg"
+            >
+              💬 Feedback
+            </button>
             <ThemePicker />
             <div className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${Object.keys(providers).length > 0 ? 'bg-success animate-pulse' : 'bg-muted-foreground'}`} />
@@ -854,6 +862,13 @@ export const AgentWorkspace: React.FC = () => {
           Disclaimer: AI generated plans are starting points. Professional review and validation required before implementation.
         </footer>
       </main>
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        runId={runId}
+        apiBaseUrl={apiBaseUrl}
+      />
     </div>
   );
 };
