@@ -439,7 +439,7 @@ export const AgentWorkspace: React.FC = () => {
               onClick={() => setIsFeedbackOpen(true)}
               className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg"
             >
-              💬 Feedback
+              📝 Feedback
             </button>
             <ThemePicker />
             <div className="flex items-center gap-2">

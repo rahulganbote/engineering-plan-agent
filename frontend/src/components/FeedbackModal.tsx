@@ -212,7 +212,7 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
               </div>
 
               {/* Category Pills */}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {['bug', 'performance', 'feature_request'].map((cat) => (
                   <button
                     key={cat}
