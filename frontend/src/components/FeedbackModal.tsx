@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Check, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,18 +25,8 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
   const [showLogsDetails, setShowLogsDetails] = useState(false);
   const [validationError, setValidationError] = useState('');
 
-  // Diagnostic logs payload
-  const [diagnosticInfo, setDiagnosticInfo] = useState({
-    os: 'Unknown OS',
-    browser: 'Unknown Browser',
-    userAgent: '',
-    language: '',
-    screenResolution: '',
-    version: '1.1.0',
-    timestamp: ''
-  });
-
-  useEffect(() => {
+  // Diagnostic logs payload (lazy state initialization)
+  const [diagnosticInfo] = useState(() => {
     if (typeof window !== 'undefined') {
       const ua = navigator.userAgent;
       let os = 'Unknown OS';
@@ -50,19 +40,28 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
       if (ua.indexOf('Chrome') !== -1) browser = 'Chrome';
       else if (ua.indexOf('Safari') !== -1) browser = 'Safari';
       else if (ua.indexOf('Firefox') !== -1) browser = 'Firefox';
-      else if (ua.indexOf('MSIE') !== -1 || !!(document as any).documentMode) browser = 'IE';
+      else if (ua.indexOf('MSIE') !== -1 || ('documentMode' in document)) browser = 'IE';
 
-      setDiagnosticInfo({
+      return {
         os,
         browser,
         userAgent: ua,
         language: navigator.language || '',
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         version: '1.1.0',
-        timestamp: new Date().toISOString()
-      });
+        timestamp: ''
+      };
     }
-  }, [isOpen]);
+    return {
+      os: 'Unknown OS',
+      browser: 'Unknown Browser',
+      userAgent: '',
+      language: '',
+      screenResolution: '',
+      version: '1.1.0',
+      timestamp: ''
+    };
+  });
 
   if (!isOpen) return null;
 
@@ -90,7 +89,10 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
       description,
       include_transcript: includeTranscript,
       workspace: 'EM-Copilot Development',
-      diagnostic_logs: diagnosticInfo,
+      diagnostic_logs: {
+        ...diagnosticInfo,
+        timestamp: new Date().toISOString()
+      },
       sender,
       run_id: runId || null
     };
@@ -316,7 +318,7 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
                       <div><strong>Browser:</strong> {diagnosticInfo.browser}</div>
                       <div><strong>Resolution:</strong> {diagnosticInfo.screenResolution}</div>
                       <div><strong>Language:</strong> {diagnosticInfo.language}</div>
-                      <div><strong>Timestamp:</strong> {diagnosticInfo.timestamp}</div>
+                      <div><strong>Timestamp:</strong> {diagnosticInfo.timestamp || new Date().toISOString()}</div>
                       <div><strong>Run ID:</strong> {runId || 'None'}</div>
                       <div className="truncate"><strong>User Agent:</strong> {diagnosticInfo.userAgent}</div>
                     </div>

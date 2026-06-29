@@ -7,9 +7,10 @@ System status, configuration, and diagnostics endpoints.
 from __future__ import annotations
 
 from fastapi import APIRouter, BackgroundTasks
+
 from src.api.models import FeedbackRequest
-from src.integrations.email import send_feedback_email
 from src.core.config import settings
+from src.integrations.email import send_feedback_email
 
 router = APIRouter(tags=["system"])
 
