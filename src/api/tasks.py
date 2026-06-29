@@ -214,6 +214,7 @@ async def _run_export_handlers_background(
             if brd_text.strip():
                 try:
                     import os
+
                     from src.core.rag import ingest_document
 
                     _push_event(run_id, {"type": "pinecone_ingest", "status": "started"})

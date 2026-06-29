@@ -395,8 +395,9 @@ def test_voice_agent_secret_rotation(mock_run):
 @pytest.mark.asyncio
 async def test_export_handlers_background_pinecone_ingestion():
     from unittest.mock import MagicMock, patch
-    from src.api.tasks import _run_export_handlers_background
+
     from src.api.main import _runs
+    from src.api.tasks import _run_export_handlers_background
 
     run_id = "test-export-pinecone"
     state = PipelineState(run_id=run_id, brd_raw_hash="brd_hash_val", brd_name="test_brd.txt")
