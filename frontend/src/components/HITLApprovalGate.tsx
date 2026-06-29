@@ -157,7 +157,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           <button
             onClick={() => handleSubmit('approved')}
             disabled={isSubmitting || hasSubmitted}
-            className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-white shadow-md transition flex items-center gap-2 text-xs font-bold"
+            className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-primary/30 transition flex items-center gap-2 text-xs font-bold"
           >
             <Check size={14} />
             Approve & Export

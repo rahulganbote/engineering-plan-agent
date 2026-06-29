@@ -207,7 +207,7 @@ export const AgentWorkspace: React.FC = () => {
               <p className="text-xs text-muted-foreground">Sign in with Google to run a live demo of EM Copilot. Authentication helps prevent bots so the demo stays free for everyone. We only read your email to mark the run. We don't store anything else.</p>
               <button
                 onClick={login}
-                className="w-full py-2 bg-primary hover:bg-primary text-white rounded font-bold text-xs transition duration-155"
+                className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded font-bold text-xs transition duration-155"
               >
                 Sign in with Google
               </button>
@@ -801,7 +801,7 @@ export const AgentWorkspace: React.FC = () => {
                           clearRun();
                           setRunId(null);
                         }}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
                       >
                         <Plus size={14} />
                         Start New Plan
