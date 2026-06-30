@@ -387,29 +387,31 @@ export const AgentWorkspace: React.FC = () => {
           )}
         </div>
 
-        {/* Collapsible Advanced Settings Accordion */}
-        <div className="border-t border-border bg-card/40">
-          <button
-            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-            className="w-full px-6 py-4 flex items-center justify-between text-xs font-bold text-muted-foreground hover:bg-card/40 transition uppercase tracking-wider"
-          >
-            <span>⚙️ Advanced settings</span>
-            {isAdvancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {isAdvancedOpen && (
-            <div className="px-6 pb-6 pt-2 space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">API Base URL</label>
-                <input
-                  type="text"
-                  value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrl(e.target.value)}
-                  className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none text-foreground font-mono"
-                />
+        {/* Collapsible Advanced Settings Accordion (Only visible on localhost for developers) */}
+        {typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+          <div className="border-t border-border bg-card/40">
+            <button
+              onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+              className="w-full px-6 py-4 flex items-center justify-between text-xs font-bold text-muted-foreground hover:bg-card/40 transition uppercase tracking-wider"
+            >
+              <span>⚙️ Advanced settings</span>
+              {isAdvancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {isAdvancedOpen && (
+              <div className="px-6 pb-6 pt-2 space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-1">API Base URL</label>
+                  <input
+                    type="text"
+                    value={apiBaseUrl}
+                    onChange={(e) => setApiBaseUrl(e.target.value)}
+                    className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none text-foreground font-mono"
+                  />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* Main Workstation Panel */}

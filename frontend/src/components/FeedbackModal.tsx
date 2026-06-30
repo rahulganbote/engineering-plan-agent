@@ -169,7 +169,7 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
             
             {/* Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight">Give feedback about EM Copilot</h2>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight">Your feedback is valuable!</h2>
             </div>
 
             {/* Scrollable Body */}
@@ -189,7 +189,7 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
 
               {/* Area Select */}
               <div className="space-y-1.5">
-                <label className="block font-bold text-muted-foreground text-xs uppercase tracking-wider">What's this about?</label>
+                <label className="block font-bold text-muted-foreground text-xs tracking-wider">What's this about?</label>
                 <div className="relative">
                   <select
                     value={area}
@@ -197,12 +197,10 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
                     className="w-full bg-background border border-border hover:border-muted-foreground/40 rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-primary focus:border-primary appearance-none cursor-pointer font-medium"
                   >
                     <option value="" disabled>Choose an area...</option>
-                    <option value="Ingestion / Upload">Ingestion / Upload</option>
+                    <option value="BRD/Upload">BRD/Upload</option>
                     <option value="Plan Generation">Plan Generation</option>
-                    <option value="Schedule / Estimates">Schedule / Estimates</option>
-                    <option value="Tech Stack recommendations">Tech Stack recommendations</option>
-                    <option value="System Design / Architecture">System Design / Architecture</option>
-                    <option value="User Interface / Visuals">User Interface / Visuals</option>
+                    <option value="UI/UX">UI/UX</option>
+                    <option value="Privacy/Security">Privacy/Security</option>
                     <option value="Other">Other</option>
                   </select>
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
@@ -265,8 +263,8 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
               )}
 
               {/* Transcript Checkbox */}
-              <div className="flex items-center gap-3 bg-secondary/10 border border-border/20 rounded-lg p-3 text-xs">
-                <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-muted-foreground select-none">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={includeTranscript}
@@ -275,17 +273,6 @@ export default function FeedbackModal({ isOpen, onClose, runId, apiBaseUrl }: Fe
                   />
                   <span>Include <span className="underline decoration-dotted underline-offset-2">task transcript</span></span>
                 </label>
-                <div className="flex-1 relative max-w-[200px]">
-                  <select
-                    disabled
-                    className="w-full bg-background/50 border border-border/60 text-muted-foreground rounded px-2.5 py-1 outline-none text-[11px] appearance-none font-medium"
-                  >
-                    <option>EM-Copilot Development</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground/60">
-                    <ChevronDown size={10} />
-                  </div>
-                </div>
               </div>
 
               {/* Diagnostics Box */}

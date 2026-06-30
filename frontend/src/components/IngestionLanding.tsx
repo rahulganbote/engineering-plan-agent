@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Cpu, GitPullRequest, Milestone, Sparkles, Info, Wrench, BookOpen } from 'lucide-react';
+import { ShieldCheck, Cpu, GitPullRequest, Milestone, Sparkles, Info, Wrench, BookOpen, Bot, CheckSquare, Bell } from 'lucide-react';
 
 interface IngestionLandingProps {
   selectedFile: File | null;
@@ -19,6 +19,14 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     x2: number; y2: number;
     mx1: number; my1: number;
     mx2: number;
+    colLeft: number;
+    colRight: number;
+    specMidY: number;
+    ragMidY: number;
+    bottomSpaceY: number;
+    secX: number; secY1: number; secY2: number;
+    orchX: number; orchY1: number; orchY2: number;
+    ragTopY: number;
   } | null>(null);
 
   useEffect(() => {
@@ -27,12 +35,18 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       const specialistsEl = document.getElementById('node-specialists');
       const managerEl = document.getElementById('node-manager');
       const toolsEl = document.getElementById('node-tools');
+      const ragEl = document.getElementById('node-rag');
+      const securityEl = document.getElementById('node-security');
+      const orchestratorEl = document.getElementById('node-orchestrator');
 
-      if (container && specialistsEl && managerEl && toolsEl) {
+      if (container && specialistsEl && managerEl && toolsEl && ragEl && securityEl && orchestratorEl) {
         const containerRect = container.getBoundingClientRect();
         const specRect = specialistsEl.getBoundingClientRect();
         const mgrRect = managerEl.getBoundingClientRect();
         const toolsRect = toolsEl.getBoundingClientRect();
+        const ragRect = ragEl.getBoundingClientRect();
+        const secRect = securityEl.getBoundingClientRect();
+        const orchRect = orchestratorEl.getBoundingClientRect();
 
         // Specialists connection: starts bottom-center of specialists
         const x1 = (specRect.left + specRect.right) / 2 - containerRect.left;
@@ -47,7 +61,33 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
         const mx2 = toolsRect.left + toolsRect.width * 0.75 - containerRect.left;
         const y2 = toolsRect.top - containerRect.top;
 
-        setCoords({ x1, y1, x2, y2, mx1, my1, mx2 });
+        // Specialists -> RAG U-bend (left side of the left column).
+        // Same X for both cards since they share the column.
+        const colLeft = specRect.left - containerRect.left;
+        const colRight = specRect.right - containerRect.left;
+        const specMidY = (specRect.top + specRect.bottom) / 2 - containerRect.top;
+        const ragMidY = (ragRect.top + ragRect.bottom) / 2 - containerRect.top;
+        const bottomSpaceY = (ragRect.bottom + toolsRect.top) / 2 - containerRect.top;
+
+        // Security -> Orchestrator vertical line
+        const secX = (secRect.left + secRect.right) / 2 - containerRect.left;
+        const secY1 = secRect.bottom - containerRect.top;
+        const secY2 = orchRect.top - containerRect.top;
+
+        // Orchestrator -> Specialists vertical line
+        const orchX = (orchRect.left + orchRect.right) / 2 - containerRect.left;
+        const orchY1 = orchRect.bottom - containerRect.top;
+        const orchY2 = specRect.top - containerRect.top;
+
+        // Specialists -> RAG top center vertical line
+        const ragTopY = ragRect.top - containerRect.top;
+
+        setCoords({
+          x1, y1, x2, y2, mx1, my1, mx2, colLeft, colRight, specMidY, ragMidY, bottomSpaceY,
+          secX, secY1, secY2,
+          orchX, orchY1, orchY2,
+          ragTopY
+        });
       }
     };
 
@@ -77,16 +117,18 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       const specialistsEl = document.getElementById('node-specialists');
       const managerEl = document.getElementById('node-manager');
       const toolsEl = document.getElementById('node-tools');
+      const ragEl = document.getElementById('node-rag');
 
       if (specialistsEl) observer.observe(specialistsEl);
       if (managerEl) observer.observe(managerEl);
       if (toolsEl) observer.observe(toolsEl);
+      if (ragEl) observer.observe(ragEl);
 
       updateCoords();
     };
 
     checkAndObserve();
-    
+
     // Multiple timeouts as fail-safe for hot reloading / font loads
     const t1 = setTimeout(checkAndObserve, 100);
     const t2 = setTimeout(checkAndObserve, 400);
@@ -106,21 +148,24 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
   // Node details for interactive flowchart.
   //
   // Color semantics - traffic-light progression mirroring the data flow:
-  //   🔴 Error/Failures (API errors, BudgetBreachedError, timeouts, etc)
-  //   💜 Orchestrator + Specialists (AI agents doing the work - share token)
-  //   🟡 Security Validator (quaility check + blocks unsafe input)+ Critic Reviewer (judges + may loop back for revision) 
+  //   🔴 Security Validator (blocks unsafe/malformed input — defensive gate)
+  //   💜 Orchestrator + Specialists + RAG (AI agents + their knowledge source)
+  //   🟡 Critic Reviewer (judges + may loop back for revision)
   //   🟢 Manager (HITL) Gate (approves and ships)
   //
-  // The two AI-agent nodes intentionally share --color-ai-spark (Electric
-  // Purple) to visually group them as one agent family: hub + spokes.
+  // The three AI-tier nodes intentionally share --color-ai-spark (Electric
+  // Purple) to visually group Orchestrator (hub) + Specialists (spokes) + RAG
+  // (the knowledge surface the spokes query). Security uses --danger because
+  // it's a defensive gate, not a quality check — keeps it visually distinct
+  // from Critic so reviewers can tell "block-on-entry" from "review-on-exit".
   const pipelineNodes = [
     {
       id: 'security',
       label: 'Security Validator',
       desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
-      icon: <ShieldCheck size={20} className="text-warning" />,
-      color: 'border-warning/30 text-warning bg-warning/10',
-      activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',
+      icon: <ShieldCheck size={20} className="text-danger" />,
+      color: 'border-danger/30 text-danger bg-danger/10',
+      activeColor: 'ring-danger/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
     },
     {
       id: 'orchestrator',
@@ -173,13 +218,13 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
   ];
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto py-4">
+    <div className="space-y-3 max-w-6xl mx-auto py-2">
       {/* Welcome & Subtitle Section */}
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         <h2 className="text-base font-semibold tracking-tight text-foreground">
           Transform BRDs into Implementation Plans in Minutes
         </h2>
-        <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
+        <p className="text-xs text-muted-foreground max-w-3xl">
           EM Copilot is a multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package presented to you for review. Upon approval, it pushes the artifacts into Jira.
         </p>
         {/* Runtime hint moved next to the Generate Engineering Plan button in
@@ -188,29 +233,37 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       </div>
 
       {/* System Architecture Diagram - full width, compact above-the-fold layout */}
-      <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 shadow-md">
+      <div className="rounded-xl border border-border bg-card/60 p-3.5 space-y-2 shadow-md">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-sm font-bold text-foreground">System Architecture</h3>
         </div>
 
         {/* Interactive Flow Visualizer - compact (tooltip replaces the old 96px detail box) */}
-        <div ref={containerRef} className="flex flex-col gap-4 bg-background/80 rounded-xl px-4 py-5 border border-border relative">
-          
+        <div ref={containerRef} className="flex flex-col gap-3 bg-background/80 rounded-xl px-3.5 py-3 border border-border relative">
+
           {/* Top section: Columns and Center loop */}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-            {/* Spoke layout - left column */}
-            <div className="flex flex-col gap-2.5 w-full md:w-5/12 z-10">
-              {pipelineNodes.slice(0, 3).map((node) => (
+            {/* Spoke layout - left column.
+                Includes RAG so it sits visually adjacent to Specialists (its
+                actual consumer). Order: Security → Orchestrator → Specialists → RAG. */}
+            <div className="flex flex-col gap-3 w-full md:w-5/12 z-10">
+              {pipelineNodes.slice(0, 4).map((node) => (
                 <div
                   key={node.id}
-                  id={node.id === 'specialists' ? 'node-specialists' : undefined}
+                  id={
+                    node.id === 'specialists' ? 'node-specialists'
+                      : node.id === 'rag' ? 'node-rag'
+                        : node.id === 'security' ? 'node-security'
+                          : node.id === 'orchestrator' ? 'node-orchestrator'
+                            : undefined
+                  }
                   className="relative group"
                   onMouseEnter={() => setActiveNode(node.id)}
                   onMouseLeave={() => setActiveNode(null)}
                   onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
                 >
                   <div
-                    className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
+                    className={`p-2 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -251,22 +304,22 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
               </div>
 
               {/* Circular Loop Graphic container */}
-              <div className="relative flex items-center justify-center w-28 h-20 shrink-0 select-none">
+              <div className="relative flex items-center justify-center w-32 h-24 shrink-0 select-none">
                 {/* Loop arrows (SVG) */}
-                <svg className="absolute inset-0 w-full h-full text-warning/45 dark:text-warning/35 animate-[spin_6s_linear_infinite]" viewBox="0 0 100 100" fill="none">
+                <svg className="absolute inset-0 w-full h-full text-warning/45 dark:text-warning/35 animate-[spin_5s_linear_infinite]" viewBox="0 0 100 100" fill="none">
                   {/* Loop path */}
                   <path
-                    d="M 50,15 A 35,35 0 1,1 49.9,15"
+                    d="M 50,10 A 40,40 0 1,1 49.9,10"
                     stroke="currentColor"
                     strokeWidth="2.5"
                     strokeDasharray="5, 3"
                   />
                   {/* Arrow heads pointing clockwise */}
-                  <path d="M 50,15 L 44,9 L 44,21 Z" fill="currentColor" />
-                  <path d="M 50,85 L 56,91 L 56,79 Z" fill="currentColor" />
+                  <path d="M 50,10 L 44,4 L 44,16 Z" fill="currentColor" />
+                  <path d="M 50,90 L 56,96 L 56,84 Z" fill="currentColor" />
                 </svg>
-                
-                <span className="text-[11px] font-bold px-3 py-1.5 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10">
+
+                <span className="text-xs font-bold px-4 py-2 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10">
                   State Loop
                 </span>
               </div>
@@ -278,9 +331,11 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
               </div>
             </div>
 
-            {/* Right column */}
-            <div className="flex flex-col gap-2.5 w-full md:w-5/12 z-10">
-              {pipelineNodes.filter(n => ['critic', 'manager', 'rag'].includes(n.id)).map((node) => (
+            {/* Right column — review + approval lane.
+                RAG moved to left column adjacent to Specialists since that's
+                where it's actually queried (not by Critic/Manager). */}
+            <div className="flex flex-col gap-3 w-full md:w-5/12 z-10">
+              {pipelineNodes.filter(n => ['critic', 'manager'].includes(n.id)).map((node) => (
                 <div
                   key={node.id}
                   id={node.id === 'manager' ? 'node-manager' : undefined}
@@ -290,7 +345,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
                 >
                   <div
-                    className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
+                    className={`p-2 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -320,38 +375,69 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
               ))}
             </div>
           </div>
-
           {/* Dynamic SVG paths overlay drawing the physical connection lines */}
           {coords && (() => {
-            const midY = (coords.y1 + coords.y2) / 2;
             const mMidY = (coords.my1 + coords.y2) / 2;
             return (
-              <svg className="absolute inset-0 w-full h-full pointer-events-none hidden md:block z-20" xmlns="http://www.w3.org/2000/svg">
+              <svg className="absolute inset-0 w-full h-full pointer-events-none hidden md:block z-0" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <marker id="green-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10B981" />
                   </marker>
+                  <marker id="purple-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8B5CF6" />
+                  </marker>
+                  <marker id="red-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444" />
+                  </marker>
                 </defs>
-                
-                {/* Specialists -> Tools: goes down, then horizontally, then down into Tools */}
+
+                {/* Security -> Orchestrator vertical line */}
                 <path
-                  d={`M ${coords.x1},${coords.y1} L ${coords.x1},${midY} L ${coords.x2},${midY} L ${coords.x2},${coords.y2 - 2}`}
+                  d={`M ${coords.secX},${coords.secY1} L ${coords.secX},${coords.secY2 - 2}`}
                   fill="none"
-                  stroke="#10B981"
+                  stroke="#EF4444"
+                  strokeWidth="2"
+                  markerEnd="url(#red-arrow)"
+                />
+
+                {/* Orchestrator -> Specialists vertical line */}
+                <path
+                  d={`M ${coords.orchX},${coords.orchY1} L ${coords.orchX},${coords.orchY2 - 2}`}
+                  fill="none"
+                  stroke="#8B5CF6"
+                  strokeWidth="2"
+                  markerEnd="url(#purple-arrow)"
+                />
+
+                {/* Specialists -> RAG: straight vertical line between stacked cards */}
+                <path
+                  d={`M ${coords.x1},${coords.y1} L ${coords.x1},${coords.ragTopY - 2}`}
+                  fill="none"
+                  stroke="#8B5CF6"
+                  strokeWidth="2"
+                  markerEnd="url(#purple-arrow)"
+                />
+
+                {/* Specialists -> Tools: goes right, then straight down into Tools */}
+                <path
+                  d={`M ${coords.colRight},${coords.specMidY} L ${coords.colRight + 30},${coords.specMidY} L ${coords.colRight + 30},${coords.y2 - 2}`}
+                  fill="none"
+                  stroke="#8B5CF6"
                   strokeWidth="2"
                   strokeDasharray="4, 3"
-                  markerEnd="url(#green-arrow)"
+                  markerEnd="url(#purple-arrow)"
                 />
                 <text
-                  x={(coords.x1 + coords.x2) / 2}
-                  y={midY - 4}
-                  fill="#10B981"
-                  className="text-[9px] font-extrabold tracking-wider uppercase"
-                  textAnchor="middle"
+                  x={coords.colRight + 36}
+                  y={coords.bottomSpaceY - 17}
+                  fill="#8B5CF6"
+                  className="text-[9px] font-extrabold tracking-wider"
+                  textAnchor="start"
                 >
-                  tool call
+                  Autonomous Tool call
                 </text>
-                
+
                 {/* Manager -> Tools: goes down, then horizontally, then down into Tools */}
                 <path
                   d={`M ${coords.mx1},${coords.my1} L ${coords.mx1},${mMidY} L ${coords.mx2},${mMidY} L ${coords.mx2},${coords.y2 - 2}`}
@@ -362,20 +448,20 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   markerEnd="url(#green-arrow)"
                 />
                 <text
-                  x={(coords.mx1 + coords.mx2) / 2}
-                  y={mMidY - 4}
+                  x={coords.mx2 + 15}
+                  y={mMidY + 14}
                   fill="#10B981"
-                  className="text-[9px] font-extrabold tracking-wider uppercase"
-                  textAnchor="middle"
+                  className="text-[9px] font-extrabold tracking-wider"
+                  textAnchor="start"
                 >
-                  tool call
+                  Tool call on Human Decision
                 </text>
               </svg>
             );
           })()}
 
           {/* Bottom section: Tool Layer centered at the bottom */}
-          <div className="flex flex-col items-center w-full z-10 relative mt-6 pt-3 border-t border-border/40">
+          <div className="flex flex-col items-center w-full z-10 relative mt-2 pt-1.5 border-t border-border/40">
             {/* Tool Layer Card centered at the bottom */}
             <div className="w-full md:w-8/12">
               {pipelineNodes.filter(n => n.id === 'tools').map((node) => (
@@ -388,16 +474,49 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
                 >
                   <div
-                    className={`p-3 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
+                    className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3">
                         {node.icon}
-                        <div className="flex flex-col">
+                        <div className="flex-1">
                           <span className="text-xs font-extrabold">{node.label}</span>
-                          <span className="text-[10px] text-muted-foreground/80 font-medium mt-0.5">
-                            📋 Jira Epic · 📊 Google Sheets · 🔍 Tavily Search · 💬 Slack · 💻 GitHub
-                          </span>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 mt-1.5 border-t border-primary/20">
+                            {/* Sub-cluster 1: Autonomous Tools */}
+                            <div className="space-y-0.5">
+                              <div className="text-[9px] uppercase font-extrabold text-purple-500 tracking-wider flex items-center gap-1">
+                                <Bot size={10} />
+                                Autonomous
+                              </div>
+                              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">
+                                <span>🔍 Tavily Search</span>
+                                <span>💻 GitHub</span>
+                              </div>
+                            </div>
+
+                            {/* Sub-cluster 2: Export on Approval */}
+                            <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
+                              <div className="text-[9px] uppercase font-extrabold text-success tracking-wider flex items-center gap-1">
+                                <CheckSquare size={10} />
+                                Export On Approval
+                              </div>
+                              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">
+                                <span>📋 Jira Epic</span>
+                                <span>📊 Google Sheets</span>
+                              </div>
+                            </div>
+
+                            {/* Sub-cluster 3: Operations & Monitoring */}
+                            <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
+                              <div className="text-[9px] uppercase font-extrabold text-warning tracking-wider flex items-center gap-1">
+                                <Bell size={10} />
+                                Alerts
+                              </div>
+                              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">
+                                <span>💬 Slack Alerts</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <Info size={12} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
