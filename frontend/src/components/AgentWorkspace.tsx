@@ -183,7 +183,7 @@ export const AgentWorkspace: React.FC = () => {
   return (
     <div className="flex flex-col md:flex-row min-h-[100dvh] md:h-[100dvh] bg-background text-foreground md:overflow-hidden font-sans">
       {/* Left Sidebar Control Panel */}
-      <aside className="w-full md:w-80 bg-card border-b md:border-b-0 md:border-r border-border flex flex-col justify-between overflow-hidden shadow-xl shrink-0">
+      <aside className="w-full md:w-80 bg-card border-b md:border-b-0 md:border-r border-border flex flex-col justify-between overflow-hidden shadow-xl shrink-0 order-2 md:order-1">
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
           {/* User Sign-In/Sign-Out Container */}
           {loading ? (
@@ -415,7 +415,7 @@ export const AgentWorkspace: React.FC = () => {
       </aside>
 
       {/* Main Workstation Panel */}
-      <main className="flex-1 flex flex-col md:overflow-hidden bg-background">
+      <main className="flex-1 flex flex-col md:overflow-hidden bg-background order-1 md:order-2">
         {/* Main Header - uses min-h instead of fixed h so the title can wrap
             cleanly at narrow viewports (e.g. devtools open) without overflowing
             into the IngestionLanding hero below. items-start keeps the controls
