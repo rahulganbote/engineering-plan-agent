@@ -339,7 +339,7 @@ export const AgentWorkspace: React.FC = () => {
               {!runId && (
                 <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                  <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD.</span>
+                  <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD. Runtime varies based on the size and complexity of the BRD.</span>
                 </div>
               )}
             </div>

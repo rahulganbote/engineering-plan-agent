@@ -27,6 +27,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     secX: number; secY1: number; secY2: number;
     orchX: number; orchY1: number; orchY2: number;
     ragTopY: number;
+    critX: number; critY1: number; critY2: number;
   } | null>(null);
 
   useEffect(() => {
@@ -38,8 +39,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       const ragEl = document.getElementById('node-rag');
       const securityEl = document.getElementById('node-security');
       const orchestratorEl = document.getElementById('node-orchestrator');
+      const criticEl = document.getElementById('node-critic');
 
-      if (container && specialistsEl && managerEl && toolsEl && ragEl && securityEl && orchestratorEl) {
+      if (container && specialistsEl && managerEl && toolsEl && ragEl && securityEl && orchestratorEl && criticEl) {
         const containerRect = container.getBoundingClientRect();
         const specRect = specialistsEl.getBoundingClientRect();
         const mgrRect = managerEl.getBoundingClientRect();
@@ -47,6 +49,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
         const ragRect = ragEl.getBoundingClientRect();
         const secRect = securityEl.getBoundingClientRect();
         const orchRect = orchestratorEl.getBoundingClientRect();
+        const criticRect = criticEl.getBoundingClientRect();
 
         // Specialists connection: starts bottom-center of specialists
         const x1 = (specRect.left + specRect.right) / 2 - containerRect.left;
@@ -82,11 +85,17 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
         // Specialists -> RAG top center vertical line
         const ragTopY = ragRect.top - containerRect.top;
 
+        // Critic -> Manager vertical line
+        const critX = (criticRect.left + criticRect.right) / 2 - containerRect.left;
+        const critY1 = criticRect.bottom - containerRect.top;
+        const critY2 = mgrRect.top - containerRect.top;
+
         setCoords({
           x1, y1, x2, y2, mx1, my1, mx2, colLeft, colRight, specMidY, ragMidY, bottomSpaceY,
           secX, secY1, secY2,
           orchX, orchY1, orchY2,
-          ragTopY
+          ragTopY,
+          critX, critY1, critY2
         });
       }
     };
@@ -118,11 +127,13 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       const managerEl = document.getElementById('node-manager');
       const toolsEl = document.getElementById('node-tools');
       const ragEl = document.getElementById('node-rag');
+      const criticEl = document.getElementById('node-critic');
 
       if (specialistsEl) observer.observe(specialistsEl);
       if (managerEl) observer.observe(managerEl);
       if (toolsEl) observer.observe(toolsEl);
       if (ragEl) observer.observe(ragEl);
+      if (criticEl) observer.observe(criticEl);
 
       updateCoords();
     };
@@ -338,7 +349,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
               {pipelineNodes.filter(n => ['critic', 'manager'].includes(n.id)).map((node) => (
                 <div
                   key={node.id}
-                  id={node.id === 'manager' ? 'node-manager' : undefined}
+                  id={node.id === 'manager' ? 'node-manager' : node.id === 'critic' ? 'node-critic' : undefined}
                   className="relative group"
                   onMouseEnter={() => setActiveNode(node.id)}
                   onMouseLeave={() => setActiveNode(null)}
@@ -390,6 +401,9 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   <marker id="red-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444" />
                   </marker>
+                  <marker id="orange-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#F59E0B" />
+                  </marker>
                 </defs>
 
                 {/* Security -> Orchestrator vertical line */}
@@ -408,6 +422,15 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   stroke="#8B5CF6"
                   strokeWidth="2"
                   markerEnd="url(#purple-arrow)"
+                />
+
+                {/* Critic -> Manager vertical line */}
+                <path
+                  d={`M ${coords.critX},${coords.critY1} L ${coords.critX},${coords.critY2 - 2}`}
+                  fill="none"
+                  stroke="#F59E0B"
+                  strokeWidth="2"
+                  markerEnd="url(#orange-arrow)"
                 />
 
                 {/* Specialists -> RAG: straight vertical line between stacked cards */}
