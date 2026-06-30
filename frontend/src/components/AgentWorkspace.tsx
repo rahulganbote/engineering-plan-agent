@@ -206,7 +206,7 @@ export const AgentWorkspace: React.FC = () => {
           ) : (
             <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
               <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
-              <p className="text-xs text-muted-foreground">Sign in with Google to run a live demo of EM Copilot. Authentication helps prevent bots so the demo stays free for everyone. We only read your email to mark the run. We don't store anything else.</p>
+              <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, ensures seamless performance, and helps us maintain a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
               <button
                 onClick={login}
                 className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded font-bold text-xs transition duration-155"
@@ -311,10 +311,10 @@ export const AgentWorkspace: React.FC = () => {
                   onClick={triggerPipeline}
                   disabled={!selectedFile || !!runId || isStartingPipeline}
                   className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
-                      ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                      : selectedFile
-                        ? 'bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
-                        : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                    ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                    : selectedFile
+                      ? 'bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
+                      : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                     }`}
                 >
                   {isStartingPipeline ? (
@@ -693,10 +693,10 @@ export const AgentWorkspace: React.FC = () => {
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Export Results</h3>
                       <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === 'exported'
-                          ? 'bg-success/20 border border-success/40 text-success'
-                          : pipelineStatus === 'rejected'
-                            ? 'bg-danger/20 border border-danger/40 text-danger'
-                            : 'bg-warning/20 border border-warning/40 text-warning'
+                        ? 'bg-success/20 border border-success/40 text-success'
+                        : pipelineStatus === 'rejected'
+                          ? 'bg-danger/20 border border-danger/40 text-danger'
+                          : 'bg-warning/20 border border-warning/40 text-warning'
                         }`}>
                         {pipelineStatus === 'exported' ? '✓ Exported Successfully' : pipelineStatus === 'rejected' ? '✗ Plan Rejected' : '⚠ Export Failed'}
                       </span>
