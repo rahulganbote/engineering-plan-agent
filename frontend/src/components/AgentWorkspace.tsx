@@ -337,8 +337,8 @@ export const AgentWorkspace: React.FC = () => {
               {/* Runtime expectation - sits with the action surface so the user
                   knows what to expect at the moment they're about to commit. */}
               {!runId && (
-                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <div className="mt-2 flex items-start gap-2 text-[11px] text-muted-foreground">
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0 mt-1" />
                   <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD. Runtime varies based on the size and complexity of the BRD.</span>
                 </div>
               )}
