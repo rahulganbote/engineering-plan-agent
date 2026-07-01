@@ -632,10 +632,10 @@ def run_reference_based(agent_output: dict, expected: dict) -> dict:
 
         # Try BERTScore, fallback to token overlap
         score = _compute_similarity(actual_text, ref_text)
-        passed = score >= 0.60   # F1 >= 0.60 is reasonable for paraphrasing
+        passed = score >= 0.85   # F1 >= 0.85 is required for passing
         scores.append(score)
         _add(checks, f"Similarity - {label}", passed,
-             f"score={score:.2f}", ">= 0.60")
+             f"score={score:.2f}", ">= 0.85")
 
     avg_score = sum(scores) / len(scores) if scores else 0
     passed    = sum(1 for c in checks if c["passed"])
