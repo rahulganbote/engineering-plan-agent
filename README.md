@@ -117,7 +117,7 @@ The full architecture diagram with security boundaries, observability events, an
 | **Embeddings** | `text-embedding-3-large` (1024) | High dimensionality with customized text projection for dense architectural guides |
 | **Models** | GPT-4o (specialists) + GPT-4o-mini (critic) | Balance between specialist reasoning quality and critic execution cost |
 | **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, and non-blocking exports |
-| **Frontend UI** | Streamlit | Rapid internal prototyping & dashboard (easily swappable with a React/Next.js frontend backing the FastAPI server) |
+| **Frontend UI** | React 19 + Vite | Premium single-page application with SSE telemetry stream, live SVG rendering, and theme picker |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
@@ -167,7 +167,7 @@ The API enforces rate limits to prevent runaway LLM costs and protect against ab
 
 ## Multi-Provider Strategy
 
-I had to build fallback in case if a provider is not available or if we face rate limit, latency or cost issues. So I changed the strategy to build multiple provider to compare the latency, cost and output quality.  build the LLM client on a `LLMProvider` Protocol to be able to swap providers without code changes and measure the trade-offs honestly.
+To prevent single-provider vendor lock-in and mitigate outages, rate-limiting, or latency spikes, EM Copilot abstracts the model layer using a pluggable `LLMProvider` protocol. This allows seamless runtime switching between OpenAI and Anthropic, making it straightforward to measure performance and cost trade-offs empirically.
 
 | Dimension | OpenAI (`gpt-4o` / `gpt-4o-mini`) | Anthropic (`claude-sonnet-4-5` / `claude-haiku-4-5`) |
 |---|---|---|
@@ -236,7 +236,7 @@ L = Likelihood · I = Impact (Low / Medium / High)
 | **Aggregate-budget overrun** (N runs × $2 cap) | L → M | M | Per-run $2 cap limits single-input damage | **Per-user/day rate limit + global kill-switch + Slack alarm** |
 | Tavily monthly budget exhausted | L | L | Atomic counter degrades to "unavailable" pre-429 | Upstash atomic counter on multi-instance |
 | GitHub repo-name hallucination | L | M | Hard `GITHUB_ALLOWLIST` checked pre-network | Locked by test |
-| Prompt injection via Tavily snippet | M | M | Regex scan + `security_drop`; `trust_level=low` downweights | LLM-based Layer 5 scan at higher traffic |
+| Prompt injection via Tavily snippet | M | M | Regex scan + `security_drop`; downweights low trust_level sources | LLM-based Layer 5 scan at higher traffic |
 | ElevenLabs double-fires `/approve` | H | L | Symmetric idempotency: 200 no-op / 409 conflict | Locked by 4 unit tests |
 | Voice webhook secret leak | L | H | Secret in GCP Secret Manager; bearer check per call | Dual-secret list for zero-downtime rotation |
 | Cross-tenant access via stolen cookie | L | H | HttpOnly + HTTPS + SessionMiddleware + owner check | Short cookie TTL + CSRF tokens on writes |
