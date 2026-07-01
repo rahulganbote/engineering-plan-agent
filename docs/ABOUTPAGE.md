@@ -1,7 +1,19 @@
 # About
 ## About Me
 
-I am Rahul Ganbote. I have helped organizations solve complex problems by leveraging technology and building reliable AI systems. I have deep expertise in building scalable, reliable, and cost-effective software solutions and have led high-performing teams to deliver complex transformation projects. My forte is to take a concept or a business need, build a PoC, and operationalize it into a reliable AI system. This involves making critical design, cost, security, and scalability decisions to transform a prototype into a production-grade system that is both robust and user-friendly. Adoption and reliability are key metrics of my success and I believe in building observability as a product feature from day one.
+I'm Rahul Ganbote. My forte is taking a concept or a business need, building a PoC, and operationalizing it into a reliable AI system — making the design, cost, security, and scalability decisions that turn a prototype into something a team can actually run in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one, not bolted on after things start breaking.
+
+---
+
+## Principles behind EM Copilot
+
+Five rules of thumb that were followed while building EM Copilot, and that I bring into every system.
+
+- **[Start simple.](https://github.com/rahulganbote/engineering-plan-agent-demo#challenges--lessons-learned)** Default to a single agent and earn every extra one. Use modular design, build for evaluation, and think about reliability from day one.
+- **[Clarity beats cleverness.](https://github.com/rahulganbote/engineering-plan-agent-demo#architectural-overview)** Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.
+- **[Structure everything.](https://github.com/rahulganbote/engineering-plan-agent-demo#tech-stack-justification)** Plans, tool contracts, agent outputs, handoffs. If it's not structured, it's not production-ready.
+- **[Design for failure.](https://github.com/rahulganbote/engineering-plan-agent-demo#system-design--core-pillars)** Assume tools fail, agents disagree, and users are confused, then show how your system survives.
+- **[Measure what matters.](https://github.com/rahulganbote/engineering-plan-agent-demo#evaluation-framework)** Success rate, escalation quality, cost, latency, and trust.
 
 ---
 
@@ -30,18 +42,11 @@ EM Copilot is built with enterprise requirements in mind.
 The public demo repository below has detailed design documents, evaluation framework, and a mock pipeline anyone can run without API keys. The production prompts, RAG ingestion logic, production pipeline and integration logic stay in a private repository.
 [Browse Github public demo repo](https://github.com/rahulganbote/engineering-plan-agent-demo)
 
-
 ---
 
-## Principles behind EM Copilot
+## What I'm Looking For
 
-Five rules of thumb that were followed while building EM Copilot, and that I bring into every system.
-
-- **[Start simple.](https://github.com/rahulganbote/engineering-plan-agent-demo#challenges--lessons-learned)** Start with a simple, task-focused single agent. Use modular design to build a workflow and think how you will evaluate and how it can be a reliable AI system.
-- **[Clarity beats cleverness.](https://github.com/rahulganbote/engineering-plan-agent-demo#architectural-overview)** Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.
-- **[Structure everything.](https://github.com/rahulganbote/engineering-plan-agent-demo#tech-stack-justification)** Plans, tool contracts, agent outputs, handoffs. If it's not structured, it's not production-ready.
-- **[Design for failure.](https://github.com/rahulganbote/engineering-plan-agent-demo#system-design--core-pillars)** Assume tools fail, agents disagree, and users are confused, then show how your system survives.
-- **[Measure what matters.](https://github.com/rahulganbote/engineering-plan-agent-demo#evaluation-framework)** Success rate, escalation quality, cost, latency, and trust. 
+If you're building something in this space and want an engineering leader who thinks this way, say hi.
 
 ---
 
@@ -54,4 +59,3 @@ Five rules of thumb that were followed while building EM Copilot, and that I bri
 ---
 
 *© 2026 Rahul Ganbote · All rights reserved.*
-
