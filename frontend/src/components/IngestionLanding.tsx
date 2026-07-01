@@ -212,7 +212,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     },
     {
       id: 'manager',
-      label: 'Manager (HITL) Gate',
+      label: 'Manager (HITL) Decision Gate',
       desc: 'Pauses execution to obtain engineering manager approval before exporting to Google Sheets and Jira.',
       icon: <Milestone size={20} className="text-success" />,
       color: 'border-success/30 text-success bg-success/10',
