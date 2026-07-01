@@ -18,7 +18,7 @@ const DEMO_REPO_URL = "https://github.com/rahulganbote/engineering-plan-agent-de
 const PRINCIPLES: Array<{ headline: string; body: string; anchor: string }> = [
   {
     headline: "Start simple.",
-    body: "Default to a single agent and earn every extra one. Use modular design, build for evaluation, and think about reliability from day one.",
+    body: "Default to a single agent and earn every extra one. One task, one Agent, one goal. Use modular design, build for evaluation, and think about reliability from day one.",
     anchor: "#challenges--lessons-learned",
   },
   {
