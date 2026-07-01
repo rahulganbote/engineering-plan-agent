@@ -213,12 +213,6 @@ export const AgentWorkspace: React.FC = () => {
               >
                 Sign in with Google
               </button>
-              <a
-                href="#/about"
-                className="block text-[11px] text-muted-foreground hover:text-foreground transition pt-1"
-              >
-                Who built this? →
-              </a>
             </div>
           )}
 
