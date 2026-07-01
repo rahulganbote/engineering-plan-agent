@@ -57,10 +57,10 @@ export const AboutPage: React.FC = () => {
           <button
             onClick={goHome}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition font-semibold"
-            aria-label="Back to demo"
+            aria-label="Back to Copilot"
           >
             <ArrowLeft size={16} />
-            <span>Back to demo</span>
+            <span>Back to Copilot</span>
           </button>
           <div className="flex items-center gap-4">
             <span className="text-sm font-bold text-primary">EM Copilot</span>
@@ -70,39 +70,6 @@ export const AboutPage: React.FC = () => {
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-        {/* About Me */}
-        <section className="space-y-4 border-b border-border/40 pb-6">
-          <h1 className="text-3xl font-extrabold tracking-tight">About Me</h1>
-          <p className="text-sm leading-relaxed text-foreground">
-            I'm Rahul Ganbote. My forte is taking a concept or a business need, building a PoC, and operationalizing it into a reliable AI system — making the design, cost, security, and scalability decisions that turn a prototype into something a team can actually run in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one, not bolted on after things start breaking.
-          </p>
-        </section>
-
-        {/* Principles behind EM Copilot */}
-        <section className="space-y-4 border-b border-border/40 pb-6">
-          <h2 className="text-2xl font-bold tracking-tight">
-            Principles behind EM Copilot
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Five rules of thumb that were followed while building EM Copilot, and that I bring into every system.
-          </p>
-          <ul className="space-y-4 pt-2">
-            {PRINCIPLES.map((p) => (
-              <li key={p.headline} className="text-sm leading-relaxed space-y-0.5">
-                <a
-                  href={`${DEMO_REPO_URL}${p.anchor}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-foreground hover:text-primary hover:underline block w-fit"
-                >
-                  {p.headline}
-                </a>
-                <p className="text-muted-foreground leading-relaxed text-xs">{p.body}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
         {/* About EM Copilot */}
         <section className="space-y-6 border-b border-border/40 pb-6">
           <div className="space-y-2">
@@ -211,16 +178,46 @@ export const AboutPage: React.FC = () => {
             </a>
           </div>
         </section>
+        {/* About Me */}
+        <section className="space-y-4 border-b border-border/40 pb-6">
+          <h1 className="text-3xl font-extrabold tracking-tight">About Me</h1>
+          <p className="text-sm leading-relaxed text-foreground">
+            I'm Rahul Ganbote. My forte is taking a business need or a client goal, building a PoC, and operationalizing it into a reliable AI system. I handle the design, cost, security, and scalability decisions required to turn a prototype into a product in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one.
+          </p>
+        </section>
+
+        {/* Principles behind EM Copilot */}
+        <section className="space-y-2 border-b border-border/40 pb-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Principles behind EM Copilot
+          </h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Five rules of thumb that were followed while building EM Copilot, and that I bring into every system.
+          </p>
+          <ul className="space-y-2 pt-1">
+            {PRINCIPLES.map((p) => (
+              <li key={p.headline} className="text-sm leading-relaxed space-y-0">
+                <a
+                  href={`${DEMO_REPO_URL}${p.anchor}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-primary hover:underline block w-fit"
+                >
+                  {p.headline}
+                </a>
+                <p className="text-muted-foreground leading-normal text-xs">{p.body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {/* What I'm Looking For */}
         <section className="space-y-3 border-b border-border/40 pb-6">
           <h2 className="text-2xl font-bold tracking-tight">What I'm Looking For</h2>
           <p className="text-sm leading-relaxed text-foreground">
-            If you're building something in this space and want an engineering leader who thinks this way, say hi.
+            If you're building something in AI space and would like to discuss, I am just a message away.
           </p>
         </section>
-
-        {/* Contact */}
         <section className="space-y-4">
           <h2 className="text-2xl font-bold tracking-tight">Contact</h2>
           <ul className="space-y-2 text-sm">
