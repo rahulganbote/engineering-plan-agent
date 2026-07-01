@@ -1,7 +1,7 @@
 # About
 ## About Me
 
-I'm Rahul Ganbote. My forte is taking a concept or a business need, building a PoC, and operationalizing it into a reliable AI system — making the design, cost, security, and scalability decisions that turn a prototype into something a team can actually run in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one, not bolted on after things start breaking.
+I'm Rahul Ganbote. My forte is taking a business need or a client goal, building a PoC, and operationalizing it into a reliable AI system. I handle the design, cost, security, and scalability decisions required to turn a prototype into a product in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one.
 
 ---
 
@@ -9,7 +9,7 @@ I'm Rahul Ganbote. My forte is taking a concept or a business need, building a P
 
 Five rules of thumb that were followed while building EM Copilot, and that I bring into every system.
 
-- **[Start simple.](https://github.com/rahulganbote/engineering-plan-agent-demo#challenges--lessons-learned)** Default to a single agent and earn every extra one. Use modular design, build for evaluation, and think about reliability from day one.
+- **[Start simple.](https://github.com/rahulganbote/engineering-plan-agent-demo#challenges--lessons-learned)** Default to a single agent and earn every extra one. One task, one Agent, one goal. Use modular design, build for evaluation, and think about reliability from day one.
 - **[Clarity beats cleverness.](https://github.com/rahulganbote/engineering-plan-agent-demo#architectural-overview)** Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.
 - **[Structure everything.](https://github.com/rahulganbote/engineering-plan-agent-demo#tech-stack-justification)** Plans, tool contracts, agent outputs, handoffs. If it's not structured, it's not production-ready.
 - **[Design for failure.](https://github.com/rahulganbote/engineering-plan-agent-demo#system-design--core-pillars)** Assume tools fail, agents disagree, and users are confused, then show how your system survives.
@@ -46,7 +46,7 @@ The public demo repository below has detailed design documents, evaluation frame
 
 ## What I'm Looking For
 
-If you're building something in this space and want an engineering leader who thinks this way, say hi.
+If you're building something in AI space and would like to discuss, I am just a message away.
 
 ---
 
