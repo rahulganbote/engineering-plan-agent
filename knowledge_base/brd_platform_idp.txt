@@ -1,5 +1,5 @@
 # Business Requirements Document
-# Project: Internal Developer Platform (IDP) — Self-Service Infrastructure
+# Project: Internal Developer Platform (IDP) - Self-Service Infrastructure
 # Domain: Platform Engineering | Complexity: Complex | Version: 2.0
 
 ## Background and Business Context
@@ -41,22 +41,22 @@ FR-12: The platform shall support multi-region deployments (us-east-1, eu-west-1
 
 ## Non-Functional Requirements (NFRs)
 NFR-01 Performance: Platform API response time < 500ms at P99
-NFR-02 Availability: 99.9% uptime — platform downtime blocks all product deployments
+NFR-02 Availability: 99.9% uptime - platform downtime blocks all product deployments
 NFR-03 Scalability: Support 1,000 concurrent deployment jobs without queue degradation
 NFR-04 Security: Zero-trust networking, RBAC per team, all secrets encrypted at rest
 NFR-05 Auditability: Full audit trail for all infrastructure changes with 2-year retention
 NFR-06 Extensibility: Plugin architecture allowing teams to add custom deployment targets
 
 ## Constraints
-- Must work with existing GitHub Enterprise — no migration to GitLab
+- Must work with existing GitHub Enterprise - no migration to GitLab
 - Kubernetes on EKS is the only approved container runtime
-- HashiCorp Vault already deployed — secrets management cannot change
+- HashiCorp Vault already deployed - secrets management cannot change
 - Platform team budget: $1.2M per year including infrastructure
 - Must not require product teams to learn new programming languages
-- Rollout must be incremental — cannot force all 14 teams to migrate simultaneously
+- Rollout must be incremental - cannot force all 14 teams to migrate simultaneously
 
 ## Risks
-- RISK-01 (HIGH): 14 teams have divergent toolchains — standardization will cause friction
+- RISK-01 (HIGH): 14 teams have divergent toolchains - standardization will cause friction
 - RISK-02 (HIGH): Platform becomes single point of failure for all product deployments
 - RISK-03 (MEDIUM): Kubernetes expertise gap in 6 of 14 product teams
 - RISK-04 (MEDIUM): Cost attribution requires instrumentation changes in existing services

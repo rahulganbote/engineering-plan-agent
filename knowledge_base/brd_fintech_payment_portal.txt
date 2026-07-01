@@ -41,13 +41,13 @@ NFR-02 Availability: 99.95% uptime SLA (maximum 4.38 hours downtime per year)
 NFR-03 Scalability: Auto-scale from 100 to 10,000 concurrent users within 90 seconds
 NFR-04 Security: PCI-DSS Level 1, SOC 2 Type II, end-to-end encryption in transit and at rest
 NFR-05 Recoverability: RPO < 1 hour, RTO < 4 hours for any regional failure
-NFR-06 Compliance: GDPR data residency — EU customer data must remain in EU regions
+NFR-06 Compliance: GDPR data residency - EU customer data must remain in EU regions
 NFR-07 Observability: All transactions must be traceable end-to-end within 5 minutes of incident
 
 ## Constraints
-- Must integrate with existing Salesforce CRM — no replacement
+- Must integrate with existing Salesforce CRM - no replacement
 - Legacy Oracle database must remain as system of record for 18 months (migration later)
-- Engineering team: 6 engineers, 1 QA, 1 DevOps — no additional hiring approved
+- Engineering team: 6 engineers, 1 QA, 1 DevOps - no additional hiring approved
 - Budget: $480,000 total including infrastructure for first year
 - Timeline: MVP in 4 months, full feature set in 8 months
 - Must use AWS (existing enterprise agreement with volume discounts)
@@ -56,7 +56,7 @@ NFR-07 Observability: All transactions must be traceable end-to-end within 5 min
 - RISK-01 (HIGH): PCI-DSS audit timeline may slip if third-party auditor availability is limited
 - RISK-02 (MEDIUM): Stripe API migration from v2 to v3 requires full regression testing
 - RISK-03 (MEDIUM): Legacy Oracle integration may surface undocumented data schemas
-- RISK-04 (LOW): Team lacks BNPL integration experience — learning curve expected
+- RISK-04 (LOW): Team lacks BNPL integration experience - learning curve expected
 
 ## Success Criteria
 - Payment success rate >= 99.2% in production after 30 days

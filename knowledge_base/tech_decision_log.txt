@@ -1,5 +1,5 @@
 # Technology Decision Log
-# Source: Architecture Review Board — Approved Decisions
+# Source: Architecture Review Board - Approved Decisions
 # Format: Decision ID | Date | Context | Choice | Rationale | Outcome
 
 ## Approved Technology Stack (Current Org Standards)
@@ -10,12 +10,12 @@
 - Java 17: High-throughput transaction processing, legacy system integration
 - Go: Network-intensive services, CLI tools, infrastructure tooling
 
-### Databases — Relational
-- PostgreSQL 15: Default relational DB for new services — ACID compliance, strong ecosystem
-- MySQL: Legacy only — no new services approved on MySQL as of 2023
-- Oracle: System of record for Finance/ERP — migration planned 2025
+### Databases - Relational
+- PostgreSQL 15: Default relational DB for new services - ACID compliance, strong ecosystem
+- MySQL: Legacy only - no new services approved on MySQL as of 2023
+- Oracle: System of record for Finance/ERP - migration planned 2025
 
-### Databases — Non-relational
+### Databases - Non-relational
 - Redis: Session storage, caching, rate limiting, pub/sub for low-latency use cases
 - MongoDB: Document storage for unstructured content (CMS, user preferences)
 - DynamoDB: Serverless event stores, audit logs requiring infinite scale
@@ -23,13 +23,13 @@
 ### Message Queues / Streaming
 - Apache Kafka: High-throughput event streaming (>10,000 messages/sec)
 - AWS SQS/SNS: Standard async messaging, fan-out notifications
-- RabbitMQ: Legacy only — no new services after 2022
+- RabbitMQ: Legacy only - no new services after 2022
 
 ### Infrastructure
 - AWS: Primary cloud provider (enterprise agreement, 30% volume discount)
 - Kubernetes on EKS: Container orchestration for all production services
-- Terraform: Infrastructure as code — mandatory for all production environments
-- GitHub Actions: CI/CD standard — Jenkins decommissioned Q4 2024
+- Terraform: Infrastructure as code - mandatory for all production environments
+- GitHub Actions: CI/CD standard - Jenkins decommissioned Q4 2024
 
 ### Observability Stack
 - Datadog: APM, infrastructure monitoring, log aggregation (primary)
@@ -37,7 +37,7 @@
 - Grafana: Internal dashboards pulling from Prometheus for custom metrics
 
 ### Security
-- HashiCorp Vault: Secrets management — no hardcoded credentials permitted
+- HashiCorp Vault: Secrets management - no hardcoded credentials permitted
 - AWS IAM with least-privilege: All services use IAM roles, no long-lived keys
 - Snyk: Dependency vulnerability scanning in all CI pipelines
 
@@ -45,58 +45,58 @@
 
 ## Decision Log Entries
 
-### DL-2024-031 — Vector Database Selection
+### DL-2024-031 - Vector Database Selection
 Date: 2024-09-15
 Context: Three teams evaluating vector databases for RAG applications
 Decision: Pinecone (serverless) for managed, Qdrant self-hosted for cost-sensitive
 Rationale: Pinecone reduces ops overhead for teams without MLOps capacity.
   Qdrant chosen when team can manage infrastructure and cost is primary concern.
-  ChromaDB rejected — not production-ready for > 1M vectors.
-Outcome: Payments AI pilot on Pinecone — 99.97% uptime, P99 < 25ms query latency
+  ChromaDB rejected - not production-ready for > 1M vectors.
+Outcome: Payments AI pilot on Pinecone - 99.97% uptime, P99 < 25ms query latency
 
-### DL-2024-028 — LLM Provider Selection
+### DL-2024-028 - LLM Provider Selection
 Date: 2024-08-01
 Context: Standardizing LLM provider across 5 AI initiatives
 Decision: OpenAI GPT-4o as primary, Claude claude-sonnet-4-20250514 as secondary fallback
 Rationale: GPT-4o JSON mode reliability, function calling, and cost at scale.
   Claude selected as fallback for complex reasoning tasks where GPT-4o struggles.
-Outcome: GPT-4o powering 3 production features — avg cost $0.42 per 1000 user interactions
+Outcome: GPT-4o powering 3 production features - avg cost $0.42 per 1000 user interactions
 
-### DL-2024-021 — Agent Orchestration Framework
+### DL-2024-021 - Agent Orchestration Framework
 Date: 2024-06-10
-Context: Two teams building multi-agent systems — needed standard framework
+Context: Two teams building multi-agent systems - needed standard framework
 Decision: LangGraph for stateful multi-agent workflows
 Rationale: Graph-based state management gives explicit control over agent routing.
-  AutoGen rejected — too autonomous, hard to audit. CrewAI rejected — limited state control.
+  AutoGen rejected - too autonomous, hard to audit. CrewAI rejected - limited state control.
   LangGraph + LangSmith provides full traceability required by compliance.
-Outcome: Pilot system in production — 94% task completion rate, full trace visibility in LangSmith
+Outcome: Pilot system in production - 94% task completion rate, full trace visibility in LangSmith
 
-### DL-2023-045 — Frontend Framework Standardization
+### DL-2023-045 - Frontend Framework Standardization
 Date: 2023-11-20
 Context: 6 different frontend frameworks across product teams causing hiring difficulty
 Decision: Next.js 14+ (App Router) as standard for all customer-facing UIs
 Rationale: SSR for SEO, TypeScript native, strong hiring market, Vercel deployment option.
   React SPA acceptable for internal tools only.
-Outcome: 4 of 6 teams migrated — 25% faster onboarding of new frontend engineers
+Outcome: 4 of 6 teams migrated - 25% faster onboarding of new frontend engineers
 
-### DL-2023-018 — Legacy Migration Strategy
+### DL-2023-018 - Legacy Migration Strategy
 Date: 2023-07-05
-Context: Payment Portal v1 on 2019 monolith — needed modernization strategy
+Context: Payment Portal v1 on 2019 monolith - needed modernization strategy
 Decision: Strangler Fig pattern over big-bang rewrite
 Rationale: Zero-downtime requirement with $480K budget ruled out full rewrite risk.
   Strangler Fig allows incremental validation in production.
-Outcome: Currently at 60% traffic migrated — zero customer-impacting incidents during migration
+Outcome: Currently at 60% traffic migrated - zero customer-impacting incidents during migration
 
-### DL-2022-041 — Event Streaming Platform
+### DL-2022-041 - Event Streaming Platform
 Date: 2022-09-14
 Context: Order management and payments needed reliable async messaging at scale
 Decision: Apache Kafka on AWS MSK for event streaming
 Rationale: 50,000 messages/sec peak requirement exceeded SQS throughput.
   Kafka retention enables event replay for debugging and compliance.
   MSK removes operational burden vs self-managed Kafka.
-Outcome: Powering 8 services — 99.99% message delivery, 8ms P99 latency
+Outcome: Powering 8 services - 99.99% message delivery, 8ms P99 latency
 
-### DL-2022-019 — API Standards
+### DL-2022-019 - API Standards
 Date: 2022-05-03
 Context: 40+ services with inconsistent API designs causing integration friction
 Decision: REST for external APIs, gRPC for internal service-to-service
@@ -104,25 +104,25 @@ Rationale: REST familiar to external partners and frontend teams.
   gRPC provides typed contracts and 40% lower latency for internal calls.
 Outcome: New service integration time reduced from 3 days to 4 hours average
 
-### DL-2021-007 — Modular Monolith for New Products
+### DL-2021-007 - Modular Monolith for New Products
 Date: 2021-11-15
 Context: New product teams (< 3 engineers) over-engineering with microservices
 Decision: Modular monolith as default for teams < 4 engineers or projects < 6 months
 Rationale: Microservices complexity not justified at small scale.
   Teams can extract services once traffic and team size warrant it.
-Outcome: 3 products launched faster — average 35% reduction in time to first production deploy
+Outcome: 3 products launched faster - average 35% reduction in time to first production deploy
 
-### DL-2024-035 — Prompt Injection Detection Strategy
+### DL-2024-035 - Prompt Injection Detection Strategy
 Date: 2024-11-01
 Context: Three AI systems in production needed consistent injection defense
-Decision: Two-layer detection — regex pre-filter (Layer 1) + LLM semantic scan using gpt-4o-mini (Layer 2)
+Decision: Two-layer detection - regex pre-filter (Layer 1) + LLM semantic scan using gpt-4o-mini (Layer 2)
 Rationale: Regex alone misses obfuscated attacks (unicode tricks, character substitution).
   LLM alone is non-deterministic and costly. Two layers: regex catches known patterns at ~0ms;
   gpt-4o-mini catches novel/obfuscated at ~800ms only when regex passes.
   Fail-open on scanner error (regex already passed = acceptable risk vs blocking all uploads).
 Outcome: Zero confirmed injection incidents across 3 production systems over 6-month observation period.
 
-### DL-2024-033 — Pydantic v2 for Agent Output Contracts
+### DL-2024-033 - Pydantic v2 for Agent Output Contracts
 Date: 2024-10-12
 Context: Multi-agent pipelines needed runtime validation at every handoff to prevent hallucinated schema fields from propagating
 Decision: Pydantic v2 with field_validator on all agent output models; citations field required (min_length=1)
@@ -131,7 +131,7 @@ Rationale: Pydantic v1 lacked performance at scale. v2 is 5-17× faster validati
   Prompts can be ignored by LLMs; schema validation cannot.
 Outcome: Zero schema validation escapes in production; citations enforcement improved grounding scores by avg 0.8 points.
 
-### DL-2024-029 — CI/CD Security Scanning Standard
+### DL-2024-029 - CI/CD Security Scanning Standard
 Date: 2024-08-20
 Context: 3 P1 incidents caused by known CVEs in unpinned dependencies
 Decision: Snyk dependency scanning in CI pipeline; block on HIGH or CRITICAL CVEs; weekly scheduled scan
@@ -139,7 +139,7 @@ Rationale: Manual dependency review missed 2 of 3 incidents. Automated scanning 
   catches issues before merge. Snyk chosen over OWASP Dependency-Check for GitHub integration quality.
 Outcome: Zero CVE-related P1 incidents since adoption. 12 HIGH CVEs caught in CI before merge.
 
-### DL-2023-052 — Multi-Tenant Isolation Pattern (SaaS)
+### DL-2023-052 - Multi-Tenant Isolation Pattern (SaaS)
 Date: 2023-12-05
 Context: First B2B SaaS product required tenant data isolation; 3 isolation strategies evaluated
 Decision: Per-tenant namespace in Kubernetes + per-tenant S3 bucket + per-tenant DB schema (not shared tables with tenant_id column)
@@ -148,7 +148,7 @@ Rationale: Shared-table isolation with tenant_id column has too many ways to fai
   Defense-in-depth: attacker must bypass 3 independent isolation layers.
 Outcome: External penetration test found zero cross-tenant access vulnerabilities. SOC 2 Type II achieved.
 
-### DL-2023-041 — Event Sourcing for Audit Trails
+### DL-2023-041 - Event Sourcing for Audit Trails
 Date: 2023-09-18
 Context: Legal and financial products required immutable, court-admissible audit logs
 Decision: Append-only event store with SHA-256 hash chain; PostgreSQL with write-only service account; no delete API at any layer
@@ -157,7 +157,7 @@ Rationale: Relational audit tables with DELETE permission are not court-admissib
   PostgreSQL with write-only IAM role enforces immutability at infrastructure level.
 Outcome: Audit trail accepted as evidence in 2 legal proceedings. SOC 2 Type II compliance achieved.
 
-### DL-2023-028 — gRPC for Internal Service Communication
+### DL-2023-028 - gRPC for Internal Service Communication
 Date: 2023-06-14
 Context: 40+ microservices with REST APIs causing integration friction and performance issues
 Decision: gRPC + Protobuf for all internal service-to-service communication; REST kept for external APIs
@@ -166,7 +166,7 @@ Rationale: gRPC provides: typed contracts (Protobuf), 40% lower latency than RES
   Code generation from Protobuf eliminates integration errors between teams.
 Outcome: Internal API integration time reduced from 3 days to 4 hours average. P95 latency improved 38%.
 
-### DL-2022-055 — Kubernetes Resource Limits Enforcement
+### DL-2022-055 - Kubernetes Resource Limits Enforcement
 Date: 2022-11-30
 Context: Runaway container in shared cluster caused production outage for unrelated services
 Decision: Mandatory CPU and memory limits on all Kubernetes pods; LimitRange enforced at namespace level
@@ -174,3 +174,10 @@ Rationale: Without limits, one misbehaving pod can exhaust node resources and ca
   LimitRange at namespace level prevents new deployments without limits (operator cannot forget).
   AI/LLM workloads particularly prone to memory exhaustion under unexpected load.
 Outcome: Zero noisy-neighbor incidents since adoption. Memory-related pod crashes reduced by 94%.
+
+### DL-2025-001 - GitHub Tool Approved Repositories (Allowlist)
+Date: 2025-01-15
+Context: Allowlist of GitHub repositories approved for engineering signal velocity checking
+Decision: Limit GitHub API velocity tool to approved repositories: fastapi/fastapi, pallets/flask, django/django, langchain-ai/langgraph, openai/openai-python, anthropic/anthropic-sdk-python
+Rationale: Prevents arbitrary external API calls and guards against LLM hallucination of repository coordinates.
+Outcome: Security validator allowlist checked by get_github_velocity tool.

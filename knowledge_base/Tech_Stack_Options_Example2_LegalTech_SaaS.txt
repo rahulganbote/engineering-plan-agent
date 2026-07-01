@@ -1,5 +1,5 @@
-# Tech Stack Recommendation — Example
-# Project: LegalTech SaaS Platform — Practice Management and e-Discovery
+# Tech Stack Recommendation - Example
+# Project: LegalTech SaaS Platform - Practice Management and e-Discovery
 # Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 3.0
 # Synced to Agent 6 (Tech Stack Recommender) contract v2.0
 
@@ -9,17 +9,17 @@ run_id:              legaltech_2024_stack
 citations:           [tech_decision_log_chunk_1, tech_decision_log_chunk_5, org_engineering_standards_chunk_3]
 confidence_score:    0.85
 assumptions:
-  - AWS existing enterprise contract confirmed — volume discounts already negotiated
-  - SOC 2 Type II required within 12 months — compliance scope determines stack
+  - AWS existing enterprise contract confirmed - volume discounts already negotiated
+  - SOC 2 Type II required within 12 months - compliance scope determines stack
 flagged_ambiguities:
-  - BRD mentions 'enterprise clients may require on-premise' — assumed cloud-first with data residency config
+  - BRD mentions 'enterprise clients may require on-premise' - assumed cloud-first with data residency config
 
 ## Options
 
 options:
-  - name: Option 1 — AWS Native Compliance Stack
+  - name: Option 1 - AWS Native Compliance Stack
     components:
-      Container Orchestration: AWS EKS (Kubernetes) — per-tenant namespace isolation
+      Container Orchestration: AWS EKS (Kubernetes) - per-tenant namespace isolation
       API Gateway: Kong on EKS + AWS WAF
       Message Queue: Apache Kafka on AWS MSK
       Document Storage: AWS S3 with SSE-KMS (BYOK per tenant)
@@ -39,11 +39,11 @@ options:
       - Textract, MSK, and OpenSearch managed services reduce ops burden for 8-engineer team
       - Existing org AWS contract with volume discounts already negotiated
     cons:
-      - High AWS vendor lock-in — migration would require 6 to 12 months of effort
+      - High AWS vendor lock-in - migration would require 6 to 12 months of effort
       - MSK and OpenSearch have operational learning curves for team new to managed Kafka
     citation: tech_decision_log_chunk_1
 
-  - name: Option 2 — Multi-Cloud GCP Stack
+  - name: Option 2 - Multi-Cloud GCP Stack
     components:
       Container Orchestration: GKE (Google Kubernetes Engine)
       API Gateway: Kong + Google Cloud Armor
@@ -62,12 +62,12 @@ options:
       - Slightly lower cost than AWS at 50 tenants
       - GCP Document AI outperforms Textract on handwritten legal documents
     cons:
-      - Team has no GCP experience — 6 to 8 week ramp-up cost on critical path
-      - GCP legal-sector enterprise adoption lower than AWS — fewer reference customers for SOC 2 audit
-      - No existing org GCP contract — new vendor approval required (4 to 6 week ARB process)
+      - Team has no GCP experience - 6 to 8 week ramp-up cost on critical path
+      - GCP legal-sector enterprise adoption lower than AWS - fewer reference customers for SOC 2 audit
+      - No existing org GCP contract - new vendor approval required (4 to 6 week ARB process)
     citation: tech_decision_log_chunk_5
 
-  - name: Option 3 — Self-Hosted On-Premise Stack
+  - name: Option 3 - Self-Hosted On-Premise Stack
     components:
       Container Orchestration: Kubernetes self-hosted bare metal or VMware
       API Gateway: Kong self-hosted
@@ -83,32 +83,32 @@ options:
     integration_risk: high
     estimated_monthly_cost_usd: 11000.0
     pros:
-      - No cloud vendor dependency — satisfies government data residency requirements
+      - No cloud vendor dependency - satisfies government data residency requirements
       - Lowest infrastructure SaaS spend
     cons:
-      - SOC 2 self-certification requires 3x the audit evidence vs AWS — 6 extra months
-      - Requires 2 dedicated SREs not currently on team — $300K+ annual headcount
+      - SOC 2 self-certification requires 3x the audit evidence vs AWS - 6 extra months
+      - Requires 2 dedicated SREs not currently on team - $300K+ annual headcount
       - Tesseract OCR quality significantly below Textract or Document AI for complex legal PDFs
     citation: tech_decision_log_chunk_5
 
 ## Recommendation
-recommended_option: Option 1 — AWS Native Compliance Stack
+recommended_option: Option 1 - AWS Native Compliance Stack
 recommendation_rationale: |
   Option 1 recommended based on 5 factors from org tech decision log:
-  1. Team familiarity: 4/5 vs 2/5 for Options 2 and 3 — existing AWS skills eliminate
+  1. Team familiarity: 4/5 vs 2/5 for Options 2 and 3 - existing AWS skills eliminate
      ramp-up cost on 24-week timeline (DL-2022-019).
-  2. Compliance advantage: AWS SOC 2 inheritance reduces audit scope ~40% — critical
+  2. Compliance advantage: AWS SOC 2 inheritance reduces audit scope ~40% - critical
      for 12-month certification target. No AWS BAA renegotiation needed (org_standards_chunk_3).
-  3. Integration risk: low vs medium (Option 2) vs high (Option 3) — all components
+  3. Integration risk: low vs medium (Option 2) vs high (Option 3) - all components
      have existing org integrations per DL-2022-041 (Kafka/MSK) and DL-2022-019 (EKS).
   4. BYOK maturity: AWS KMS CMK is most widely accepted by enterprise legal clients.
-  5. Existing contract: AWS volume discounts already negotiated — no new vendor ARB process.
+  5. Existing contract: AWS volume discounts already negotiated - no new vendor ARB process.
   Option 3 would be chosen only if client contractually requires on-premise data residency.
 
 github_velocity_note: |
-  Kong (API Gateway): ~18 commits/week — stable, production-grade enterprise adoption.
-  AWS MSK managed Kafka: stability guaranteed by AWS SLA — no repo to monitor.
-  AWS OpenSearch: ~25 commits/week — active, AWS-backed, SOC 2 compliant.
-  Kubernetes: ~80 commits/week — most active infrastructure project globally.
-  HashiCorp Vault (Option 3): ~22 commits/week — solid but adds operational complexity.
+  Kong (API Gateway): ~18 commits/week - stable, production-grade enterprise adoption.
+  AWS MSK managed Kafka: stability guaranteed by AWS SLA - no repo to monitor.
+  AWS OpenSearch: ~25 commits/week - active, AWS-backed, SOC 2 compliant.
+  Kubernetes: ~80 commits/week - most active infrastructure project globally.
+  HashiCorp Vault (Option 3): ~22 commits/week - solid but adds operational complexity.
   All Option 1 dependencies actively maintained with strong legal-sector enterprise adoption.

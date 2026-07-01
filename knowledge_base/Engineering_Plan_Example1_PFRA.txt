@@ -1,4 +1,4 @@
-# Engineering Plan — Example
+# Engineering Plan - Example
 # Project: Product Finance Reporting Agent (PFRA)
 # Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
 # Synced to Agent 2 (Engineering Plan Generator) contract v2.0
@@ -13,7 +13,7 @@ citations:           [Engineering_Plan_Example1_PFRA_chunk_0, plan_templates_chu
 confidence_score:    0.82
 assumptions:
   - Assumed AWS cloud deployment based on org enterprise contract
-  - Assumed 2-week sprint cadence — BRD did not specify
+  - Assumed 2-week sprint cadence - BRD did not specify
   - Assumed Domain Expert available 50% time for validation phases
 flagged_ambiguities:
   - BRD does not specify whether PDF sources are ingested once or continuously refreshed
@@ -49,7 +49,7 @@ milestones:
 ## Phase 2: Development and Integration
 duration_weeks: 5
 objectives:
-  - Automated ETL scripts complete — handles all source data variability
+  - Automated ETL scripts complete - handles all source data variability
   - Cross-correlation synthesis module generating narrative output
   - Formatting and rendering module producing PDF and Markdown
   - End-to-end pipeline runs on synthetic data
@@ -68,15 +68,15 @@ milestones:
     owner_role: AI Engineer
   - name: E2E pipeline run
     week: 7
-    deliverable: Full pipeline run on synthetic data — zero errors, output reviewed
+    deliverable: Full pipeline run on synthetic data - zero errors, output reviewed
     owner_role: Tech Lead
 
 ## Phase 3: Validation and Testing
 duration_weeks: 3
 objectives:
   - Unit tests at >= 80% code coverage
-  - Domain accuracy Pilot 1 — manual vs agent comparison
-  - Usability Pilot 2 — Product Owner feedback
+  - Domain accuracy Pilot 1 - manual vs agent comparison
+  - Usability Pilot 2 - Product Owner feedback
   - Model refinement based on pilot findings
 milestones:
   - name: Unit test suite
@@ -85,7 +85,7 @@ milestones:
     owner_role: QA Engineer
   - name: Pilot 1 accuracy report
     week: 9
-    deliverable: Manual vs agent narrative comparison — 4 of 5 scenarios rated accurate
+    deliverable: Manual vs agent narrative comparison - 4 of 5 scenarios rated accurate
     owner_role: Domain Expert
   - name: Prompt refinement complete
     week: 10
@@ -115,7 +115,7 @@ milestones:
 
 ## Risks
 risks:
-  - description: External market report PDF formats are inconsistent — RAG chunking requires iteration
+  - description: External market report PDF formats are inconsistent - RAG chunking requires iteration
     likelihood: high
     impact: medium
     mitigation: Spike on 5 sample documents in Week 1 before building pipeline
@@ -123,9 +123,9 @@ risks:
   - description: LLM hallucination in financial narrative causes incorrect business decisions
     likelihood: medium
     impact: high
-    mitigation: Citation-back-to-source validation before every delivery — automated check
+    mitigation: Citation-back-to-source validation before every delivery - automated check
     citation: org_engineering_standards_chunk_4
-  - description: Domain Expert unavailable during Pilot 1 — blocks accuracy validation
+  - description: Domain Expert unavailable during Pilot 1 - blocks accuracy validation
     likelihood: medium
     impact: medium
     mitigation: Book Domain Expert time in Week 1, confirm commitment in project charter
@@ -145,6 +145,6 @@ reflection_notes: |
   First draft did not address NFR-01 (pipeline must complete in < 15 min) in any
   milestone or test criteria. Revised Phase 3 Pilot 1 milestone deliverable to include
   explicit timing requirement: 3 consecutive runs must complete in < 15 minutes.
-  Also found that all 3 risks lacked citation fields — added citations per contract
+  Also found that all 3 risks lacked citation fields - added citations per contract
   requirement. Adjusted Phase 2 from 4 to 5 weeks after recognizing ETL complexity
   for 5 disparate source formats was underestimated in first draft.

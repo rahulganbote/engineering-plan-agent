@@ -1,37 +1,36 @@
----
-title: EM Copilot
-emoji: 🧭
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: BRD to Engineering Plan Multi-Agent System
----
-
-# EM Copilot — BRD to Engineering Plan Agent
-
-
+# EM Copilot - BRD to Engineering Plan Agent
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue)](https://python.org)
 [![LangGraph](https://img.shields.io/badge/LangGraph-0.2.28-green)](https://github.com/langchain-ai/langgraph)
 [![Pinecone](https://img.shields.io/badge/RAG-Pinecone-purple)](https://pinecone.io)
 [![LangSmith](https://img.shields.io/badge/Observability-LangSmith-orange)](https://smith.langchain.com)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)](https://streamlit.io)
 [![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
-[![Slack](https://img.shields.io/badge/Alerts-Slack-4A154B)](https://slack.com)
+[![React](https://img.shields.io/badge/UI-React%2019%20%2B%20Vite-61DAFB)](https://react.dev)
+[![Anthropic](https://img.shields.io/badge/Multi--Provider-OpenAI%20%2B%20Anthropic-D97757)](https://www.anthropic.com)
+[![Tavily](https://img.shields.io/badge/Search-Tavily-orange)](https://tavily.com)
 
-> **EM Copilot** is an multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package.
+> EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon HITL (Human in the Loop) approval, it pushes the artifacts into Jira. 
+
+🔗 **Live:** [emcopilot.ai](https://emcopilot.ai) 
+🔗 **Loom walkthrough:** *(coming soon)*
 
 ---
 
 ## Executive Summary (TL;DR)
 
-* **What it is:** A production-grade, RAG-augmented multi-agent system that automates the translation of Business Requirements Documents (BRDs) into audit-ready engineering deliverables (System Architecture, Project Schedules, Tech Stacks, and PoC specifications) grounded in organizational standards.
-* **The ROI:** Redefines the standard planning lifecycle, reducing scoping and drafting time from weeks to minutes (~50s execution) with a low operational cost (~$0.31 per run).
-* **Enterprise Grade:** Built on LangGraph with Pinecone RAG for knowledge grounding, type-safe schemas, a 7-stage security sanitization pipeline (inc. PII redacting), isolated resilience, a dual-tier (L1/L2) cache, and full execution observability via LangSmith.
-* **Integrations:** Closes the feedback loop via Slack alerts, a voice/UI Human-in-the-Loop (HITL) gate, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP).
+* **What it is:** A production-grade, RAG-augmented multi-agent AI system that automates the translation of Business Requirements Documents (BRDs) into audit-ready engineering deliverables viz. System Architecture, Project Schedules, Tech Stacks, and PoC specifications that are grounded in organizational technology standards via Pinecone RAG.
+* **The ROI:** Reduces planning scoping and drafting from days to under two minutes. 
+    - Latency:
+        **OpenAI (n=13):** p50 ~26s · p95 ~72s 
+        **Anthropic (n=9):** p50 ~86s · p95 ~102s (~2.2× latency)
+    - Cost (median): 
+        **~$0.08 per run on OpenAI** 
+        **~$0.20 per run on Anthropic** (~2.5× cost; ~20-50% higher token rate).
+* **Enterprise Grade:** Multi-Agent Orchestration built on LangGraph with Pinecone RAG for knowledge grounding, Pydantic contracts, a multi-stage BRD sanitization security (PII redaction, format validation, and prompt injection protection), isolated resilience, a dual-tier (L1/L2) cache, multi-provider LLM with intelligent failover, and full execution observability via LangSmith. 
+* **AI Governance**: **$2.00 per-run budget ceiling**, Quality Gate (F3-Score across 5 dimensions for audit-readiness scoring, Green/Amber/Red badge), **Human-in-the-Loop (HITL)** review & approval.
+* **Resilience & Guardrails:** Pre-defined Contracts, Intelligent LLM Failover, Per-agent Circuit Breakers, Bulkhead Isolation (per-provider + per-family + global), per-tenant data isolation and an innovative **idempotent approval** that makes decision gate safe to retry without creating duplicate artifacts.
+* **Tools & Integrations:** Tavily Search, Voice AI (ElevenLabs) support for HITL, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP), and Slack alerts.
 
 ---
 
@@ -41,179 +40,75 @@ short_description: BRD to Engineering Plan Multi-Agent System
 
 ## Table of Contents
 1. [Executive Summary (TL;DR)](#executive-summary-tldr)
-2. [Business Use Case & Solution](#business-use-case--solution)
-3. [Architectural Overview](#architectural-overview)
-4. [System Design & Core Engineering Pillars](#system-design--core-engineering-pillars)
-   * [Core Capabilities Matrix](#core-capabilities-matrix)
-   * [Agent Design Patterns](#agent-design-patterns)
-   * [Security & Validation Pipeline](#security--validation-pipeline)
-   * [Distributed Resilience & Caching](#distributed-resilience--caching)
-   * [Observability & Tracing](#observability--tracing)
-5. [Screenshots](#screenshots)
-6. [Tech Stack Justification](#tech-stack-justification)
-7. [Vector DB & RAG Integration](#vector-db--rag-integration)
-8. [Evaluation Framework](#evaluation-framework)
-9. [Integrations & External Channels](#integrations--external-channels)
-10. [Token Usage & Execution Cost](#token-usage--execution-cost)
-11. [Project Directory Structure](#project-directory-structure)
-12. [Quick Start Guide](#quick-start-guide)
-13. [License](#license)
-14. [Author](#author)
+2. [Problem & Solution](#problem--solution)
+3. [Architecture](#architecture)
+4. [Tech Stack Justification](#tech-stack-justification)
+5. [Vector DB & RAG Integration](#vector-db--rag-integration)
+6. [Evaluation Framework](#evaluation-framework)
+7. [Rate Limiter and Security](#rate-limiter-and-security)
+8. [Screenshots of Demo](#screenshots-of-demo)
+9. [Multi-Provider Strategy](#multi-provider-strategy)
+10. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
+11. [Operational Metrics & SLOs](#operational-metrics--slos)
+12. [Known Limitations & Risk Register](#known-limitations--risk-register)
+13. [Quick Start](#quick-start)
+14. [Project Layout (Brief)](#project-layout-brief)
+15. [License & Author](#license--author)
 
 
 ---
 
-## Business Use Case & Solution
+## Problem & Solution
 
 ### The Challenge
-Engineering Managers (EMs) face a persistent bottleneck in translating complex Business Requirements Documents (BRDs) into structured technical plans, schedules, and architecture diagrams. This manual process is time-consuming and frequently results in:
-*   **Delivery Delays:** Weeks spent drafting sprint scopes, mapping timelines, and aligning teams.
-*   **Misalignment:** Gaps between business intent (BRD requirements) and engineering implementation.
-*   **Inconsistent Scoping:** Ad-hoc architectures and planning criteria that vary wildly across engineering squads.
+
+Engineering Managers face a persistent bottleneck in translating complex Business Requirements Documents (BRDs) into structured technical plans, schedules, and architecture diagrams. The manual process is time-consuming and frequently results in:
+
+* **Delivery delays** - days lost drafting sprint scopes, mapping timelines, and aligning teams.
+* **Misalignment** - gaps between business intent (BRD requirements) and engineering implementation.
+* **Inconsistent scoping** - ad-hoc architectures and planning criteria that vary wildly across engineering squads, making cross-team comparison and audit difficult.
 
 ### The EM Copilot Solution
-**EM Copilot** addresses these bottlenecks by building a multi-Agent workflow that ingests raw BRDs and produces a complete, audit-ready engineering bundle. The system matches the business opportunity in five key areas:
 
-*   **Faster Turnaround:** RAG-augmented specialist Agents reference past projects and templates, eliminating the need to write generic boilerplate drafts from scratch.
-*   **Standardized, Validated Planning:** A Critic Agent checks all planning outputs for completeness, consistency, and alignment before they are exposed to the user.
-*   **Grounded Intelligence:** Integrating a Pinecone RAG vector store ensures architectural decisions and project guidelines are grounded in organization standards and historical project data.
-*   **Evaluated Outputs:** Validated outputs for quality and scored based on 5 criterion to detect Hallucination, checking for citation, so Artifacts carry clear Green / Amber / Red quality badges based on exact evaluation criteria.
-*   **EM Enablement:** Generates decision-ready artifacts complete with source citations, allowing the EM to serve as an editor and approver rather than starting from a blank page.
+EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bundle through a multi-agent workflow. The system delivers across five dimensions:
 
----
+* **Faster turnaround.** RAG-augmented specialist agents reference past projects and templates, eliminating boilerplate drafting from scratch - measured median per run is ~26s on OpenAI and ~70s on Anthropic.
+* **Standardized, validated planning.** A Critic Agent checks all five specialist outputs for completeness, consistency, and alignment before they reach the EM, and enforces deterministic quality caps (FM-1/2/3) on top of the LLM-judge score.
+* **Grounded intelligence.** Pinecone RAG ensures architectural decisions and project guidelines are grounded in organization standards and historical project data, with explicit citation tracking per specialist output.
+* **Evaluated outputs.** Outputs are scored across five criteria - Groundedness, Completeness, Consistency, Actionability, and Hallucination resistance - so every artifact carries a clear Green / Amber / Red quality badge tied to verifiable metrics, not vibes.
+* **EM enablement.** The system generates decision-ready artifacts with source citations and a voice/UI approval gate, allowing the EM to serve as an editor and approver rather than a drafter staring at a blank page.
 
-## Architectural Overview
-
-```
-                         ┌─────────────────────────────────────────────────┐
-                         │         SECURITY VALIDATION LAYER               │
-BRD Upload ──► FastAP ──►│  File check → Parse → Injection Guard (regex)   │
-(Streamlit)     POST     │  → Injection Guard (LLM) → PII Redact → BRD ✓   │
-            run-pipeline └─────────────────────────────────────────────────┘
-                                              │ validated BRD text
-                                              ▼
-                                    Orchestrator Agent
-                                    (hub — parses, routes sections)
-                                              │
-                                              ▼
-            ┌─────────────────────────────────────────────────────────────────────────┐
-            │ ThreadPoolExecutor │ (parallel dispatch) │             │                │
-            ▼                    ▼                     ▼             ▼                ▼
-    Plan Generator    Schedule Estimator  Solution Architect  PoC Planner  Tech Stack Recommender
-    (RAG + Reflect)   (RAG + Timelines)   (RAG + Diagram)   (RAG + Timelines) (RAG + Org Stds)
-            │                     │    (Mermaid+Kroki) │                 │           │ 
-            ▼                     ▼                    ▼                 ▼           ▼ 
-            └─────────────────────└────────────────────────┘─────────────────└───────────┘
-                                    │                       
-                                    ▼       ◄──── all 5 outputs together  
-                             Critic Agent  
-                            (LLM-as-judge + FM-1/2/3 caps)
-                                    │
-                     ┌──────────────┴───────────────┐
-                     │  score < threshold?          │
-                     │  revision_count < 2?         │
-                     ▼ yes                          ▼ no
-              ↻ Targeted revision           HITL Approval Gate
-              (only flagged Agents)         (Button OR Voice via ElevenLabs)
-                                                    │
-                        ┌───────────────────────────┼───────────────────────────┐
-                        │                           │                           │
-                        ▼ Approved                  ▼ Rejected                  ▼
-          Sheets + Jira Epic (MCP) + Pinecone   Sheets audit row only              (wait)
-```
 
 ---
 
-## System Design & Core Engineering Pillars
+## Architecture
 
-This section outlines the architectural foundation, security validations, and resilience strategies that govern the EM Copilot system.
+```
+User uploads BRD ──► Security validation (7 checks) ──► Orchestrator parses sections
+                                                              │
+                                                              ▼
+                                           5 specialist agents run in parallel
+                                     Plan · Schedule · Architecture · PoC · Tech Stack
+                                                              │
+                                                              ▼
+                        Critic scores the bundle against LLM validation + deterministic caps
+                                                              │
+                                            score ≥ threshold? ── no ──► targeted revision (≤2 cycles)
+                                                              │ yes
+                                                              ▼
+                                          HITL approval - button or voice
+                                                              │
+                                       Approved ──► Sheets + Jira Epic + Pinecone re-ingest
+                                       Rejected ──► Audit row only
+```
 
-### 1. Core Capabilities Matrix
+Three architectural patterns matter more than the rest:
 
-| Capability | Engineering Implementation |
-|---|---|
-| **7-Agent LangGraph Pipeline** | Parallel execution via `ThreadPoolExecutor` (Orchestrator + 5 Specialists + Critic) |
-| **Type-Safe Schema Contracts** | Schema conformance validated at every transition to ensure structural integrity |
-| **7-Stage Security Pipeline** | Automated checks including format, size, regex guard, LLM injection guard, and PII redacting |
-| **Pinecone RAG Vector Search** | Dynamic context retrieval with document citation mapping and diversity filters |
-| **Critic Revision Loop** | LLM-as-Judge self-correction (capped at 2 loops) with deterministic failure-mode quality caps |
-| **Distributed Resilience** | Per-instance circuit breakers, jittered exponential backoff, bulkhead isolation, and sentinel fallbacks |
-| **Dual-Tier Hybrid Caching** | Local L1 (InMemory LRU+TTL) and distributed L2 (Redis) with semantic cache fallback for Critic queries |
-| **Specialist Registry & Policy Manifest** | Decoupled dynamic agent registration; policy manifests allow per-agent timeout/cache configuration |
-| **Visual Architecture Renderer** | LLM Mermaid syntax generation validated and rendered to SVG via Kroki API with local JS fallback | 
-| **ElevenLabs Voice HITL Gate** | Conversational approval webhook accepting natural language feedback and scoring inputs | 
-| **Jira Epic Integration via MCP** | MCP-native Atlassian server (stdio transport) with automatic fallback to Jira Cloud REST API |
-| **Google Sheets Logging** | Centralized audit row export powering historical insights with local CSV fallback |
-| **Slack Failure Alerting** | Webhook alerts trigger on critical execution errors for real-time alerting |
-| **BRD Pinecone Ingestion** | Post-approval BRD vector indexing to keep the RAG knowledge base automatically up to date |
-| **ReportLab PDF Exporter** | Automated compilation of all planning artifacts into a downloadable executive summary PDF |
-| **LangSmith Telemetry** | Full trace visualization covering model tokens, prompts, inputs, and latency |
+- **Hub-and-spoke parallel dispatch.** The Orchestrator fans out to 5 specialists concurrently - ~3× faster than sequential chaining, and each specialist's failure stays isolated to its bulkhead.
+- **Targeted revision loop.** When the Critic flags issues, only the affected specialists re-run. Cost-aware self-correction; capped at 2 revisions so a bad input never burns 10× the expected cost.
+- **Deterministic quality caps over LLM-judge.** LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating.
 
-### 2. Agent Design Patterns
-
-#### Parallel Dispatch (Hub-and-Spoke)
-Instead of sequentially chaining Agent calls, the Orchestrator splits the incoming BRD sections and routes them to all five specialist Agents concurrently using Python's `ThreadPoolExecutor`. This reduces total wall-clock execution time by **~3×** (~50 seconds compared to >2.5 minutes sequentially).
-
-#### Multi-Agent Aggregate Criticism
-The Critic node serves as a secondary routing hub. Rather than verifying each Agent individually, it acts on the aggregated `PipelineState` containing all 5 specialist outputs. This global view enables it to catch cross-specialist contradictions, such as the *Schedule Estimator* planning a 12-week project while the *Solution Architect* designs 25 separate microservices for a 2-engineer team.
-
-#### Targeted Revision Loop
-If the Critic flags issues, the pipeline does not rerun from scratch. Instead, it runs a selective revision loop (max 2 cycles). The loop only invokes the specialist Agents that were flagged with a quality score below the acceptable threshold.
-
-#### Deterministic Quality Caps
-To prevent the LLM Critic from being overly optimistic, the scoring pipeline enforces three deterministic quality overrides (hallucination penalties, uncited claim limits, and sentinel fallback caps). These rules are detailed under the [Evaluation Framework](#evaluation-framework) section.
-
-#### Specialist Registry (Decoupled Dispatch)
-Specialist agents register themselves at import time via `register_specialist("plan_generator", PlanGeneratorAgent)`. The pipeline's `_run_agent()` looks up the class via `get_specialist(name)` instead of a hardcoded `if/elif` chain. Adding a new specialist becomes a two-line change (one register call + one entry in the dispatch list) instead of touching multiple files.
-
-### 3. Security & Validation Pipeline
-
-Before any LLM node processes a user-uploaded document, the file passes through a strict, sequential 7-check security pipeline:
-1.  **Format Restriction:** Restricts file extensions to `.txt`, `.pdf`, and `.docx`.
-2.  **Size Guard:** Enforces a hard 10MB limit (preventing Denial of Service / resource exhaustion).
-3.  **Word Check:** Ensures the document contains at least 50 words to avoid parsing empty text.
-4.  **Regex Injection Guard:** Scans for 15 known LLM jailbreak and injection strings (e.g., `"ignore all previous instructions"`).
-5.  **Semantic Injection Guard:** A lightweight GPT-4o-mini scan to detect sophisticated, multi-paragraph prompt injections.
-6.  **PII Sanitizer:** Identifies and redacts Social Security Numbers, Credit Cards, email addresses, and phone numbers with placeholders (e.g., `[REDACTED-SSN]`).
-7.  **Completeness Check:** Inspects the parsed text structure to confirm key sections (Objectives, Requirements, Constraints, Risks, NFRs) are present.
-
-### 4. Distributed Resilience & Caching
-
-EM Copilot incorporates a production-grade resilience and caching architecture modeled on distributed-systems patterns (like Hystrix and resilience4j). The system guarantees that no single external dependency failure (OpenAI, Pinecone, Redis, or MCP) can crash the pipeline, while caching ensures cost-efficiency by preventing duplicate LLM execution.
-
-#### Two-Tier Caching System
-*   **L1 (In-Memory):** A fast, per-process LRU cache with TTL for immediate local retrieval.
-*   **L2 (Redis):** Distributed cache (gzipped/serialized with ~70% size reduction) to persist and share states across container instances.
-*   **Semantic Cache:** Powered by Pinecone (cosine threshold `0.95`) specifically for the Critic's evaluation revisions, recognizing similar inputs even when text varies slightly.
-*   **Decorator Flow:** The `@cached` decorator wraps the `@resilient` wrapper, meaning cache hits short-circuit before hitting timeouts or circuit breakers.
-*   **Dynamic Cache Policies:** Configurable per agent class via class-level `CACHE_POLICY` manifests to customize TTL and backend choice.
-
-#### Fault Tolerance & Isolation
-*   **Circuit Breakers:** Isolated per agent and external service class in a module-level registry. A failure in one agent (e.g., OpenAI rate limit) or external service (e.g., Pinecone timeout) does not cascade or trip other breakers.
-*   **Bulkheads:** Enforced per-agent execution timeouts. Parallel agent execution is managed concurrently via `ThreadPoolExecutor`. If an agent hangs, its thread is cancelled and returns a Sentinel Fallback (flagging a low confidence score), allowing the rest of the pipeline to complete successfully.
-*   **Dynamic Call Policies:** Declared on each agent subclass via a `RESILIENCE_POLICY` manifest to fine-tune retry counts, timeouts, and breaker cooldowns.
-*   **Graceful Degradation:** The pipeline automatically downgrades to L1 cache if Redis is offline, falls back to direct REST APIs if the Atlassian MCP server is down, and renders architecture diagrams client-side if the Kroki API fails.
-
-#### Event-Driven Observability
-*   A thread-safe, best-effort event emitter publishes resilience events (e.g., `cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`). These are streamed live to the Streamlit UI via Server-Sent Events (SSE) without affecting pipeline execution.
-
-#### Failure Mitigation Matrix
-The system maps infrastructure faults and LLM cognitive errors directly to specific resilience strategies:
-
-| Failure Mode | Mitigation & Recovery Mechanism |
-|---|---|
-| **API Down / Timeout** | Jittered backoff retries → isolated Circuit Breaker opens to fast-fail calls |
-| **Redis Outage** | Gracefully degrades to local L1 in-memory cache; auto-recovers |
-| **Integration Down** | Outages (Sheets/Jira) fall back to exporting local CSV/ZIP backups |
-| **MCP Server Offline** | Dynamic fallback directly to Jira Cloud REST APIs with idempotency hashes |
-| **Kroki Rendering Down** | UI automatically renders architectural charts client-side via `mermaid.js` |
-| **JSON Parse Failures** | Dynamic self-correction retries → safe mock sentinel fallback (badges Critic Amber) |
-| **Slow Agent (Bulkhead)** | ThreadPool executor halts hung agents after 90s timeout, using sentinel fallbacks |
-
-### 5. Observability & Tracing
-
-*   **Global Execution Tracing:** Integrates **LangSmith** to capture prompt structures, token counts, execution latency, and exact model responses. Detailed audit logs are simultaneously persisted locally as structured JSONL in `logs/pipeline.jsonl`.
-*   **Real-Time Event Bus:** Emitters publish structured runtime events (`cache_hit`, `retry`, `breaker_open`, `bulkhead_timeout`) on a thread-local channel. These events are streamed to the UI via FastAPI Server-Sent Events (SSE) for real-time latency and state monitoring.
+The full architecture diagram with security boundaries, observability events, and integration channels lives at [docs/Design.md](./docs/Design.md).
 
 ---
 
@@ -226,11 +121,11 @@ The system maps infrastructure faults and LLM cognitive errors directly to speci
 | **Embeddings** | `text-embedding-3-large` (1024) | High dimensionality with customized text projection for dense architectural guides |
 | **Models** | GPT-4o (specialists) + GPT-4o-mini (critic) | Balance between specialist reasoning quality and critic execution cost |
 | **Web Server** | FastAPI | Async endpoints, Server-Sent Events (SSE) for UI streaming, and non-blocking exports |
-| **Frontend UI** | Streamlit | Rapid internal prototyping & dashboard (easily swappable with a React/Next.js frontend backing the FastAPI server) |
+| **Frontend UI** | React 19 + Vite | Premium single-page application with SSE telemetry stream, live SVG rendering, and theme picker |
 | **Voice Interface** | ElevenLabs Conversational AI | Webhook integration executing natural language HITL discussion & approvals |
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
-| **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol — chosen at runtime via `init_default_backend_from_env()` |
+| **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol - chosen at runtime via `init_default_backend_from_env()` |
 | **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`; surfaced into Streamlit SSE stream |
 
 ---
@@ -246,231 +141,175 @@ The vector database stores organization-specific architectural patterns, plannin
 
 ## Evaluation Framework
 
-Our evaluation suite (`eval/run_eval.py`) verifies pipeline updates across 5 key dimensions:
+Five-method evaluation suite (`eval/run_eval.py`):
 
-```
-                  ┌───────────────────────────────────────────┐
-                  │          5-WAY EVALUATION SYSTEM          │
-                  └─────────────────────────┬─────────────────┘
-                                            │
-         ┌───────────────────┬──────────────┼──────────────────┬──────────────────┐
-         ▼                   ▼              ▼                  ▼                  ▼
-     Rule-Based         LLM-as-Judge    Execution          BERTScore          Human HITL
-    (Structural)       (Rubric Score)    (Schema)       (Semantic Diff)     (User Rating)
-```
+1. **Rule-based** - deterministic structural assertions (milestone count, owner coverage, citation format)
+2. **LLM-as-Judge** - 0–5 scores for Groundedness, Completeness, Consistency, Actionability
+3. **Execution-based** - Pydantic schema pass rate, Kroki render checks, total pipeline time SLA
+4. **Reference-based** - BERTScore F1 against golden output files
+5. **Human HITL** - 1–5 EM rating + free-text notes
 
-1.  **Method 1: Rule-Based Evaluation**
-    *   *Metric:* Deterministic structural assertions (minimum milestone count, 100% of milestones having assigned owners, citation formats).
-    *   *Dataset:* Run on all test files (`test_brd_simple.txt`, `test_brd_medium.txt`, `test_brd_complex.txt`, etc.).
-2.  **Method 2: LLM-as-Judge**
-    *   *Metric:* 0-5 scores for Groundedness (citations presence), Completeness, Consistency, and Actionability, calibrated via `critic_calibration_set.json`.
-    *   *Deterministic Quality Caps:* To override optimistic LLM self-ratings, the Critic enforces three rules:
-        *   **FM-1 (Hallucination Guard):** Deducts `0.3` points for every citation not matching valid keys in the Pinecone vector database.
-        *   **FM-2 (Uncited Claim Cap):** Caps the overall score at `3.9` (Amber) if any specialist agent fails to reference at least one vector database chunk.
-        *   **FM-3 (Sentinel Fallback Cap):** Caps the overall score at `3.9` (Amber) and flags a `ConsistencyIssue` in the UI if an agent fails or times out, forcing a mock fallback.
-3.  **Method 3: Execution-Based**
-    *   *Metric:* Pydantic validation pass rate (100% target), Kroki SVG rendering checks, and pipeline execution time (<300s SLA).
-4.  **Method 4: Reference-Based (BERTScore)**
-    *   *Metric:* Semantic similarity matching (BERTScore F1) of generated text fields against golden ground-truth files (`expected_output_simple.json`, `expected_output_medium.json`).
-5.  **Method 5: Human HITL**
-    *   *Metric:* 1-5 rating scores and text feedback logs submitted at the HITL approval step.
+**Deterministic quality caps** override optimistic LLM-judge scores:
 
-### Evaluation Results (v0 to v1 Improvement)
+- **FM-1 Hallucination Guard:** -0.3 per citation not matching the Pinecone index
+- **FM-2 Uncited Claim Cap:** caps overall at 3.9 (Amber) if any specialist fails to cite at least one chunk
+- **FM-3 Sentinel Fallback Cap:** caps overall at 3.9 (Amber) if any specialist times out and falls back
 
-The Critic loop drives a significant quality improvement, as demonstrated in our test runs:
-
-| Version | Groundedness | Completeness | Consistency | Actionability | Overall Score | Badge |
-|---|---|---|---|---|---|---|
-| **v0 (Initial)** | 2.40 | 3.80 | 4.10 | 3.20 | **3.38 / 5.00** | 🟡 Amber |
-| **v1 (Post-Critic)** | 3.90 | 4.80 | 4.60 | 4.00 | **4.33 / 5.00** | 🟢 Green |
-| **Net Delta** | **+1.50** | **+1.00** | **+0.50** | **+0.80** | **+0.95** | **+1 Badge** |
-
-For a complete breakdown of evaluation methods and the LangSmith trace logs, see [EVAL_RESULTS.md](file:///Users/rahul/Library/CloudStorage/OneDrive-Personal/Rahul/InterviewKickstart/AgenticAI/Capstone_Project/BRD_to_Engineering_Agent/engineering-plan-agent/docs/EVAL_RESULTS.md).
+**Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95, AMBER → GREEN). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
 
 ---
 
-## Integrations & External Channels
-
-The pipeline exposes four automated output integrations triggered only upon human approval:
-*   **Google Sheets Export:** Writes the complete state (summary, phases, schedule, stack) as a multi-tab row log using `gspread` to power a centralized historical insights dashboard. If credentials or network connection are missing, it falls back to writing CSV bundles locally in `logs/exports/<run_id>/`.
-*   **Jira Epic Integration (MCP):** On approval, creates a Jira **Epic** by calling an `mcp-atlassian` MCP server over stdio transport (MCP handshake → `list_tools` → `jira_create_issue`). If the server cannot be spawned, it falls back to a direct REST call. Either path builds the Epic description in Atlassian Document Format (ADF), containing the Critic's quality scores, architectural components, NFR mappings, and a link to the rendered Kroki architecture diagram.
-*   **Kroki.io SVG Render:** Converts Mermaid markup into a rendered SVG schema. If Kroki is down, the Streamlit frontend falls back gracefully to local client-side `mermaid.js` rendering.
-*   **PDF Exporter (ReportLab):** Generates a structured PDF document containing the full engineering plan, phase breakdowns, and critic badges on a local endpoint (`/download/{run_id}`).
-
----
-
-## Token Usage & Execution Cost
-
-Below is the token usage and cost breakdown for a single full execution of the EM Copilot pipeline (using a standard 5-section BRD):
-
-### Models in Use & Rate Limits
-*   **Specialist Agents:** `gpt-4o` (optimal reasoning & schema compliance)
-    *   Max Response Tokens: 4096 per response
-    *   Rate Limit: 150,000 input tokens/minute (Tier 1 standard)
-*   **Orchestrator & Critic:** `gpt-4o-mini` (fast, highly cost-effective)
-    *   Max Response Tokens: 4096 per response
-    *   Rate Limit: 200,000 input tokens/minute
-
-### Detailed Token & Cost Breakdown per Call
-| Phase / Agent | Model | Input Tokens | Output Tokens | Total Tokens | Cost (USD) |
-|---|---|---|---|---|---|
-| **Security Validator** | `gpt-4o-mini` | ~1,000 | ~100 | ~1,100 | ~$0.0002 |
-| **Orchestrator Hub** | `gpt-4o-mini` | ~1,500 | ~500 | ~2,000 | ~$0.0005 |
-| **Plan Generator** | `gpt-4o` | ~5,000 | ~2,500 | ~7,500 | ~$0.0625 |
-| **Schedule Estimator** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
-| **Solution Architect** | `gpt-4o` | ~6,000 | ~3,000 | ~9,000 | ~$0.0750 |
-| **PoC Planner** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
-| **Tech Stack** | `gpt-4o` | ~4,000 | ~1,500 | ~5,500 | ~$0.0425 |
-| **Critic Agent** | `gpt-4o-mini` | ~10,000 | ~1,000 | ~11,000 | ~$0.0021 |
-| **Total per Run** | — | **~39,500** | **~11,600** | **~51,100** | **~$0.31** |
-
-> [!TIP]
-> A full run costs approximately **$0.31 USD** end-to-end. This parallel execution is managed well within standard Tier 1 OpenAI rate limits (supporting up to 3 parallel pipeline runs per minute).
+## Rate Limiter and Security
+The API enforces rate limits to prevent runaway LLM costs and protect against abuse. Powered by `slowapi`, the `/run-pipeline` endpoint applies dual limits per user (`x/day` and `y/week`). Limits are keyed by the authenticated user's email and return a standard `429 Too Many Requests` response with a configurable `Retry-After` header (defaulting to 3600 seconds). Additionally, a hard budget cap of `$2.00` per run (`MAX_PIPELINE_RUN_BUDGET_USD`) is enforced to immediately abort any run exceeding this financial threshold. These parameters can be customized in production via environment variables.
 
 ---
 
 ## Screenshots of Demo
-See [screenshots/README.md](docs/screenshots/README.md) for sample run with screenshots and detailed annotations.
+** TO-DO: Update screenshots from new UI in the [screenshots/README.md](docs/screenshots/README.md) **   
 
 ---
 
-## Project Directory Structure
+## Multi-Provider Strategy
 
-```
-engineering-plan-agent/
-│
-├── README.md                       ← system documentation
-├── requirements.txt                ← locked dependencies
-├── Dockerfile                      ← Docker build configuration
-├── .env.example                    ← environment configuration keys template
-│
-├── src/                            ← application source code
-│   ├── core/
-│   │   ├── models.py               ← Pydantic schemas and pipeline state contracts
-│   │   ├── config.py               ← configuration settings loader
-│   │   ├── rag.py                  ← vector store ingestion and retrieval logic (cached + resilient)
-│   │   ├── cache.py                ← CachePolicy, backends (InMemory / Redis / Tiered / Semantic), @cached
-│   │   ├── resilience.py           ← CallPolicy, CircuitBreaker, @resilient, sensible defaults
-│   │   ├── events.py               ← observability event bus (cache_hit / retry / breaker_open ...)
-│   │   └── logger.py               ← JSONL logger with criteria trackers
-│   ├── agents/
-│   │   ├── base_agent.py           ← shared agent class wrapping LLM calls (per-agent breaker registry)
-│   │   ├── registry.py             ← specialist dispatch registry (register/get_specialist)
-│   │   ├── orchestrator.py         ← BRD parser and specialist dispatcher
-│   │   ├── plan_generator.py       ← reflection-based project plan creator
-│   │   ├── schedule.py             ← effort and sprint schedule estimator
-│   │   ├── architect.py            ← Mermaid diagram generator and Kroki client
-│   │   ├── poc_planner.py          ← PoC planner defining success metrics
-│   │   ├── tech_stack.py           ← technology options analyzer
-│   │   ├── critic.py               ← quality auditor and revision loop controller
-│   │   └── pipeline.py             ← LangGraph orchestrator state graph
-│   ├── api/
-│   │   └── main.py                 ← FastAPI web server endpoints
-│   ├── security/
-│   │   └── validator.py            ← 7-check security sanitization layers
-│   └── integrations/
-│       ├── sheets.py               ← Google Sheets gspread connector (idempotent on run_id)
-│       ├── jira.py                 ← Jira Cloud REST client (idempotency label: em-copilot-run-<id>)
-│       ├── jira_mcp.py             ← MCP-client Jira Epic integration (mcp-atlassian)
-│       ├── export_registry.py      ← pluggable export-handler registry
-│       ├── pdf_export.py           ← ReportLab PDF generator
-│       ├── voice.py                ← ElevenLabs webhook connector
-│       └── email.py                ← email notification handler
-│
-├── knowledge_base/                 ← RAG engineering standards text assets
-├── eval/                           ← test BRD scenarios & run_eval.py
-├── scripts/                        ← administrative deployment helper scripts
-├── tests/                          ← unit & integration tests
-├── docs/                           ← system architecture design, architectural diagrams, sprint implementation schedule, progress log & scripts
-└── logs/                           ← execution telemetry and export files
-```
+To prevent single-provider vendor lock-in and mitigate outages, rate-limiting, or latency spikes, EM Copilot abstracts the model layer using a pluggable `LLMProvider` protocol. This allows seamless runtime switching between OpenAI and Anthropic, making it straightforward to measure performance and cost trade-offs empirically.
+
+| Dimension | OpenAI (`gpt-4o` / `gpt-4o-mini`) | Anthropic (`claude-sonnet-4-5` / `claude-haiku-4-5`) |
+|---|---|---|
+| **End-to-end latency (p50)** | ~26s (n=13, measured) | ~86s (n=9, measured) |
+| **End-to-end latency (p95)** | ~72s (n=13, measured) | ~102s (n=9, measured) |
+| **Cost per run (median)** | ~$0.08 (n=13, measured) | ~$0.20 (n=9, measured; ~2.5× OpenAI on observed data) |
+| **Output tokens per run (mean)** | ~5,100 | ~11,300 (n=9; Anthropic is ~2.2× more verbose for the same prompt) |
+| **Critic GREEN-rate (standard BRDs)** | ~70% | ~75% (anecdotal, broader benchmarking pending) |
+| **Per-agent bulkhead timeout** | 90s | 180s |
+| **Best for** | Latency-sensitive demos; high-throughput; tight cost budgets | Complex BRDs needing deeper reasoning; consistency-critical drafts where the 2× cost is justified |
 
 ---
 
-## Quick Start Guide
+## Decisions Journal & Trade-offs
 
-### 1. Installation
+A condensed log of the larger trade-offs. SDM/TPM hiring managers should spend more time on this section than any other.
 
-Clone this repository, initialize your virtual environment, and install dependencies:
+*The initial UI was a Streamlit prototype (still on the [`main`](https://github.com/rahulganbote/engineering-plan-agent/tree/main) branch as a reference deploy). Migrated to React UI in v2; rationale documented in [ADR 0001](./docs/ADR/0001-react-migration.md).*
+
+| Decision | Alternatives | Why | Trade-off |
+|---|---|---|---|
+| **LangGraph** for state | LCEL chain; raw asyncio | Native cycles for Critic loop; LangSmith node visibility | Heavier dep; LangChain lock-in |
+| **Multi-provider failover** (OpenAI ↔ Anthropic) | Single provider | Production needs provider redundancy; forces clean `LLMProvider` abstraction | Per-family timeouts + two cost tables |
+| **`--max-instances=1`** on Cloud Run | Redis from day 1 | Shipped voice approval in days vs weeks; explicit migration path documented | Linear scaling ceiling until Redis lands |
+| **Async `/approve` + SSE `exports_finalized`** | Sync approve with full payload | ElevenLabs voice tools time out at 20s; sync was 504-ing | UI must listen for SSE event to hydrate URLs |
+| **Three tool patterns** - REST / `@tool` / MCP | One pattern for all | Each tool has different latency/auth/coupling; right pattern per tool keeps blast radius small | 3 patterns to maintain instead of 1 |
+| **Privacy boundary** on Tavily queries | Send BRD slice directly | Tavily is third-party; raw BRD risks PII leak | Slightly fuzzier search; Critic downweights `trust_level=low` |
+| **Idempotent `/approve` + structured 409** | Plain 400 on retry | Voice agents double-fire; UI races with voice; clients retry on timeout | One more state branch (4 dedicated tests) |
+| **Per-tenant `_run_owner` map** | OAuth check on every endpoint | OAuth alone doesn't cover voice-webhook path; one helper enforces both auth modes | Per-process; migrates with `_runs` to Redis |
+| **Hard $2.00 per-run budget ceiling** | Soft warning in logs | Silent overrun can burn 10× expected; `BudgetBreachedError` halts at earliest catchable point | May abort a legitimate large BRD - accepted as visible error vs silent burn |
+| **Voice-callback bearer auth** (`VOICE_WEBHOOK_SECRET`) | mTLS; signed JWT; IP allowlist | Lowest-friction pattern ElevenLabs supports natively; one rotation point | No zero-downtime rotation today |
+| **Critic deterministic caps** (FM-1/2/3) | Trust LLM-judge scores | LLM judges are systematically optimistic; deterministic overrides catch ~5% false-greens | Some strong runs capped at Amber - better than false-green |
+| **Defensive `ApprovalRequest` validators** | Reject malformed input with 422 | Voice LLMs emit verb forms, nested params, float ratings; normalize at the model boundary | More pre-validation surface (5 dedicated tests) |
+
+---
+
+## Operational Metrics & SLOs
+
+What I would commit to in a sprint plan if this graduated to a team-owned service.
+
+| SLI | Current (measured) | Proposed SLO | Reasoning |
+|---|---|---|---|
+| Latency p50/p95 - OpenAI | ~26s / ~72s (n=13) | 99% < 120s | Within ElevenLabs voice budget |
+| Latency p50/p95 - Anthropic | ~86s / ~102s (n=9) | 95% < 130s | ~3× wall-clock; ~2.2× output verbosity |
+| Cost / run - OpenAI median | ~$0.08 (n=13) | < $0.15 / 30-day rolling | Tracked via pricing table + Tavily counter |
+| Cost / run - Anthropic median | ~$0.20 (n=9) | < $0.30 / 30-day rolling | ~2.5× OpenAI on observed data |
+| Critic GREEN-rate | ~70% standard BRDs | 80% standard / 60% niche-tech | Measured against `eval/` golden set |
+| Pipeline error rate | < 2% | < 1% production | Excludes user-driven rejections |
+| `/approve` sync return | < 1s | < 5s p95 | Async refactor; SLO leaves cold-start slack |
+| Voice-approval idempotency | 100% same-decision retries | 100% (no degradation) | Locked by 4 unit tests |
+
+**Alerting:** cost regression via daily cron over `logs/pipeline.jsonl`; latency via LangSmith p95 widget; GREEN-rate via weekly `eval/run_eval.py` PR-blocking check; tool-call degradation via 1h ratio of `tool_call_degraded` to `tool_call_started`.
+
+---
+
+## Known Limitations & Risk Register
+
+What could go wrong with what I *did* build, what I do about it today, and what I would do next.
+
+L = Likelihood · I = Impact (Low / Medium / High)
+
+| Risk | L | I | Current Mitigation | Owner / Next Step |
+|---|---|---|---|---|
+| LLM provider rate-limit | M | H | Multi-provider failover; UI banner surfaces swap | Add `provider_fallback_rate` SLI |
+| **In-memory `_runs` + `_run_owner` lost on restart** | M | M | Pin `--max-instances=1`; "Clear Plan & Reset" path | **Migrate both maps to Upstash Redis *atomically*** |
+| **Aggregate-budget overrun** (N runs × $2 cap) | L → M | M | Per-run $2 cap limits single-input damage | **Per-user/day rate limit + global kill-switch + Slack alarm** |
+| Tavily monthly budget exhausted | L | L | Atomic counter degrades to "unavailable" pre-429 | Upstash atomic counter on multi-instance |
+| GitHub repo-name hallucination | L | M | Hard `GITHUB_ALLOWLIST` checked pre-network | Locked by test |
+| Prompt injection via Tavily snippet | M | M | Regex scan + `security_drop`; downweights low trust_level sources | LLM-based Layer 5 scan at higher traffic |
+| ElevenLabs double-fires `/approve` | H | L | Symmetric idempotency: 200 no-op / 409 conflict | Locked by 4 unit tests |
+| Voice webhook secret leak | L | H | Secret in GCP Secret Manager; bearer check per call | Dual-secret list for zero-downtime rotation |
+| Cross-tenant access via stolen cookie | L | H | HttpOnly + HTTPS + SessionMiddleware + owner check | Short cookie TTL + CSRF tokens on writes |
+| Critic over-optimistic on niche-tech BRDs | M | L | FM-1/2/3 caps; Tavily fallback on RAG miss | Expand calibration set each `eval/` run |
+| Background export crashes mid-flight | L | M | Status → `export_failed`; Clear & Reset path | `/approve/{run_id}/retry-export` with partial replay |
+| Cloud Run cold start | M | L | `--min-instances=0` for cost; 5–10s start | Flip to `min-instances=1` on first complaint |
+
+The two **bold** rows are highest-priority follow-ups - compounding risk if/when the project graduates beyond single-instance demo.
+
+---
+
+## Quick Start
+
 ```bash
-git clone https://github.com/morya99/engineering-plan-agent.git
+git clone https://github.com/rahulganbote/engineering-plan-agent.git
 cd engineering-plan-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
+cd frontend && npm ci && cd ..
 
-### 2. Configuration
+cp .env.example secrets/.env  # then fill in required keys
+python scripts/ingest_kb.py    # one-time RAG ingest
 
-Create your environment configuration:
-```bash
-cp .env.example secrets/.env
-```
-Fill out the keys in `secrets/.env`. Standard required keys are:
-*   `OPENAI_API_KEY`
-*   `PINECONE_API_KEY`
-
-
-For observability and integrations, configure:
-```env
-# LangSmith Observability
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=your_langsmith_key
-LANGCHAIN_PROJECT=em-copilot-brd-agent
-
-# External Services (Optional)
-JIRA_BASE_URL=https://your-domain.atlassian.net
-JIRA_EMAIL=your-email@domain.com
-JIRA_API_TOKEN=your_jira_token
-JIRA_PROJECT_KEY=SCRUM
-JIRA_ISSUE_TYPE   # Task or "Epic"
-JIRA_LABEL_PREFIX     # optional; defaults to em-copilot
-
-GOOGLE_SHEET_ID=your_sheet_id
-# Place google service account credentials in secrets/google_service_account.json
-
-ELEVENLABS_API_KEY=your_elevenlabs_key
-ELEVENLABS_AGENT_ID=your_agent_id
-```
-
-For the optional distributed cache & resilience tuning:
-```env
-# Optional — Distributed Cache & Resilience (Phases 8-9)
-REDIS_URL=rediss://default:<password>@<host>:<port>   # enables L2 cache; absent = L1 only
-AGENT_TIMEOUT_SEC=90                                   # per-agent bulkhead budget
-SEMANTIC_CACHE_THRESHOLD=0.95                          # Critic semantic match threshold
-```
-Without `REDIS_URL`, the cache layer runs L1-only (in-process LRU+TTL) and the pipeline behaves exactly as before. With Redis configured, cache state survives container restarts and is shared across replicas. See `docs/DEPLOYMENT_HUGGINGFACE.md` for the Upstash setup walkthrough.
-
-### 3. Database Ingestion (One-Time Setup)
-
-Ingest organization standards into Pinecone:
-```bash
-python scripts/ingest_kb.py
-```
-
-### 4. Running the Application
-
-Start the backend API server and the Streamlit frontend in separate terminals:
-
-```bash
-# Terminal 1 — Backend API
+# Terminal 1
 uvicorn src.api.main:app --reload --port 8000
-
-# Terminal 2 — UI
-streamlit run streamlit_app.py
+# Terminal 2
+cd frontend && npm run dev
+# Visit http://localhost:5173
 ```
-Access the application UI by visiting `http://localhost:8501`.
 
+**Required keys (minimum to run):** `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`), `PINECONE_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` + `SESSION_SECRET_KEY`.
 
+**Recommended for production parity:** `LANGCHAIN_API_KEY` (observability), `VOICE_WEBHOOK_SECRET` (voice auth), `MAX_PIPELINE_RUN_BUDGET_USD` (cost ceiling), `REDIS_URL` (L2 cache), `TAVILY_API_KEY` + `TAVILY_MONTHLY_BUDGET` (web grounding fallback), `MAX_CRITIC_REVISIONS` (maximum self-revision loops for quality criteria, default is `2`; set to `0` to disable and save tokens/time).
 
-## 📜 License
-MIT License - Feel free to use this project for learning and inspiration.
+Full configuration reference: [.env.example](./.env.example) - every variable is documented with its purpose and default.
 
+**Tests:**
+
+```bash
+.venv/bin/pytest tests/unit/ -q          # ~73 unit tests, no LLM calls
+python tests/smoke_test.py               # ~80 smoke tests across 14 groups
+cd frontend && npm test                  # Vitest + Playwright E2E
+```
 
 ---
 
-## 🧑‍💻 Author
-**Rahul Ganbote** — [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
+## Project Layout (Brief)
+
+```
+src/
+├── core/         models, config, providers, pricing, resilience, cache, events
+├── agents/       base + 5 specialists + critic + orchestrator + pipeline
+├── api/main.py   FastAPI endpoints (mounts React SPA at /)
+├── security/     7-stage validator + Google OAuth helpers
+└── integrations/ sheets, jira (REST + MCP), pdf, voice, slack, tavily, github
+
+frontend/        React 19 + Vite + TypeScript + Tailwind v4 SPA
+tests/           unit (pytest) + smoke (custom registry) + Playwright E2E
+eval/            5-method evaluation suite + golden BRDs
+docs/            Design.md, EVAL_RESULTS.md, screenshots, ADRs
+```
+
+---
+
+## License & Author
+
+**MIT License** - feel free to use for learning and inspiration.
+
+**Rahul Ganbote** - [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
 
 ---
 

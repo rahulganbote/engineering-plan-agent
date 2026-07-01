@@ -17,7 +17,7 @@
 <g id="clust2" class="cluster">
 <title>cluster_spec</title>
 <polygon fill="#fff1de" stroke="#e6bd8c" stroke-width="1.5" points="16,-797.6 16,-873.6 743,-873.6 743,-797.6 16,-797.6"/>
-<text text-anchor="middle" x="379.5" y="-860.8" font-family="Helvetica,sans-Serif" font-size="11.00">5 Specialist Agents &#160;— &#160;parallel &#160;· &#160;RAG&#45;grounded &#160;· &#160;Pydantic output</text>
+<text text-anchor="middle" x="379.5" y="-860.8" font-family="Helvetica,sans-Serif" font-size="11.00">5 Specialist Agents &#160;- &#160;parallel &#160;· &#160;RAG&#45;grounded &#160;· &#160;Pydantic output</text>
 </g>
 <!-- start -->
 <g id="node1" class="node">
@@ -208,7 +208,7 @@
 <g id="node13" class="node">
 <title>critic</title>
 <polygon fill="#e0524b" stroke="black" points="487.5,-665.6 252.5,-665.6 252.5,-613.6 487.5,-613.6 487.5,-665.6"/>
-<text text-anchor="middle" x="370" y="-648.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">Critic Agent &#160;— &#160;node_critic</text>
+<text text-anchor="middle" x="370" y="-648.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">Critic Agent &#160;- &#160;node_critic</text>
 <text text-anchor="middle" x="370" y="-636.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">LLM&#45;judge over 4 dimensions</text>
 <text text-anchor="middle" x="370" y="-624.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">FM&#45;1 / FM&#45;2 / FM&#45;3 deterministic caps</text>
 </g>
@@ -252,7 +252,7 @@
 <title>router&#45;&gt;dispatch</title>
 <path fill="none" stroke="#c0392b" stroke-width="2" d="M394.71,-533.31C443.99,-548.12 508.92,-573.55 555,-613.6 610.52,-661.84 583.65,-708.32 640,-755.6 660.05,-772.42 735.16,-776.05 750,-797.6 769.16,-825.42 769.85,-846.27 750,-873.6 715,-921.78 653.86,-944.95 597.63,-955.9"/>
 <polygon fill="#c0392b" stroke="#c0392b" stroke-width="2" points="596.77,-952.5 587.56,-957.74 598.03,-959.39 596.77,-952.5"/>
-<text text-anchor="middle" x="703" y="-738.4" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#c0392b">Reject &#160;— &#160;targeted revision</text>
+<text text-anchor="middle" x="703" y="-738.4" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#c0392b">Reject &#160;- &#160;targeted revision</text>
 <text text-anchor="middle" x="703" y="-728.4" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#c0392b">(rev_count &lt; 2)</text>
 </g>
 <!-- awaithitl -->
@@ -274,7 +274,7 @@
 <title>hitl</title>
 <polygon fill="#e8b21e" stroke="black" points="283,-314.6 100.74,-253.6 283,-192.6 465.26,-253.6 283,-314.6"/>
 <text text-anchor="middle" x="283" y="-262.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#3a2e00">HITL Gate</text>
-<text text-anchor="middle" x="283" y="-250.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#3a2e00">EM review &#160;— &#160;ElevenLabs Voice</text>
+<text text-anchor="middle" x="283" y="-250.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#3a2e00">EM review &#160;- &#160;ElevenLabs Voice</text>
 <text text-anchor="middle" x="283" y="-238.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#3a2e00">(with artifact briefing) &#160;or &#160;UI Buttons</text>
 </g>
 <!-- awaithitl&#45;&gt;hitl -->
@@ -357,7 +357,7 @@
 <g id="node22" class="node">
 <title>jira</title>
 <polygon fill="#1fb6cc" stroke="black" points="508,-132.6 316,-132.6 316,-80.6 508,-80.6 508,-132.6"/>
-<text text-anchor="middle" x="412" y="-115.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">Jira Cloud &#160;— &#160;Epic</text>
+<text text-anchor="middle" x="412" y="-115.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">Jira Cloud &#160;- &#160;Epic</text>
 <text text-anchor="middle" x="412" y="-103.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">via mcp&#45;atlassian MCP server</text>
 <text text-anchor="middle" x="412" y="-91.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="white">REST + ADF fallback</text>
 </g>

@@ -11,7 +11,7 @@
       "MiFID II"
     ],
     "purpose": "Golden expected output \u2014 complex BRD with regulatory, multi-team, high NFR profile",
-    "rubric_thresholds": {
+    "validation_thresholds": {
       "groundedness": 3.75,
       "completeness": 5.0,
       "consistency": 5.0,

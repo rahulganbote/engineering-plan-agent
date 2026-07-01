@@ -1,7 +1,7 @@
 """
 src/agents/registry.py
 ═══════════════════════
-Specialist agent registry — Phase 4.
+Specialist agent registry - Phase 4.
 
 Each specialist module calls register_specialist() at import time.
 pipeline.py uses get_specialist() to dispatch agents without a hardcoded
@@ -9,8 +9,6 @@ if/elif chain.
 """
 
 from __future__ import annotations
-
-from typing import Type
 
 SPECIALISTS: dict[str, type] = {}
 
@@ -25,7 +23,4 @@ def get_specialist(name: str) -> type:
     try:
         return SPECIALISTS[name]
     except KeyError:
-        raise KeyError(
-            f"Unknown specialist agent: '{name}'. "
-            f"Registered: {list(SPECIALISTS)}"
-        )
+        raise KeyError(f"Unknown specialist agent: '{name}'. Registered: {list(SPECIALISTS)}")

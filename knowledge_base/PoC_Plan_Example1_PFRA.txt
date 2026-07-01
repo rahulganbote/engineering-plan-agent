@@ -1,5 +1,5 @@
-# PoC Plan — Example
-# Project: Product Finance Reporting Agent (PFRA) — PoC v0.1
+# PoC Plan - Example
+# Project: Product Finance Reporting Agent (PFRA) - PoC v0.1
 # Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
 # Synced to Agent 5 (PoC Planner) contract v2.0
 
@@ -9,11 +9,11 @@ run_id:              pfra_2024_poc
 citations:           [PoC_Plan_Example1_PFRA_chunk_0, BRD_Example1_PFRA_chunk_1, arch_patterns_chunk_0]
 confidence_score:    0.80
 assumptions:
-  - PoC uses synthetic data only — no real customer financial data
-  - Domain Expert available 50% time for 2-week PoC — assumed per org validation standard
+  - PoC uses synthetic data only - no real customer financial data
+  - Domain Expert available 50% time for 2-week PoC - assumed per org validation standard
   - LangChain + GPT-4o available and funded for PoC duration
 flagged_ambiguities:
-  - BRD does not specify number of test scenarios for Pilot — assumed 5 based on org PoC standard
+  - BRD does not specify number of test scenarios for Pilot - assumed 5 based on org PoC standard
 
 ## PoC Hypothesis
 poc_hypothesis: |
@@ -28,15 +28,15 @@ scope_in:
   - Single predefined test question: Did sustainability sentiment shifts correlate with Product Line Alpha Q3 margin decline?
   - Two data sources only: Business Metrics DB (structured JSON) + 50 sample PDFs in Pinecone
   - Single LangChain synthesis chain with citation extraction
-  - Markdown text output only — one paragraph with source citations
+  - Markdown text output only - one paragraph with source citations
 
 ## Scope Out
 scope_out:
-  - Full ETL pipeline — use hardcoded sample data only
+  - Full ETL pipeline - use hardcoded sample data only
   - Email delivery automation
   - User interface or dashboards
   - Handling more than 2 data sources
-  - Ad-hoc query support — predefined question only
+  - Ad-hoc query support - predefined question only
   - Production infrastructure or authentication
   - PDF report generation
   - Error handling beyond basic logging
@@ -75,4 +75,4 @@ risk_if_poc_fails: |
 go_nogo_criteria:
   go:    "4 or more of 5 test scenarios rated accurate AND runtime < 15 min AND all claims contain source citations"
   no_go: "Fewer than 3 of 5 scenarios accurate OR hallucinations (uncited claims) detected in more than 2 outputs"
-  pivot: "3 to 4 of 5 scenarios accurate but insights lack specificity — pivot: tighten prompt constraints and re-test with pre-filled context template rather than pure RAG retrieval"
+  pivot: "3 to 4 of 5 scenarios accurate but insights lack specificity - pivot: tighten prompt constraints and re-test with pre-filled context template rather than pure RAG retrieval"

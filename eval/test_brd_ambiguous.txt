@@ -1,24 +1,24 @@
 # Business Requirements Document
 # Project: Customer Engagement Platform
 # Domain: SaaS | Complexity: Medium | Version: 0.1 DRAFT
-# EVAL NOTE — AMBIGUITY TEST (EDGE-003)
+# EVAL NOTE - AMBIGUITY TEST (EDGE-003)
 #
 # This BRD is intentionally vague and incomplete.
 # Expected behavior from ALL 5 specialist agents:
 #   1. flagged_ambiguities[] must be NON-EMPTY (at minimum 3 items each)
 #   2. assumptions[] must be NON-EMPTY and document conservative choices
 #   3. confidence_score must be < 0.65 (reflects BRD uncertainty)
-#   4. Agents must NOT guess and proceed — must flag and use conservative default
+#   4. Agents must NOT guess and proceed - must flag and use conservative default
 #   5. Critic must flag any agent with empty flagged_ambiguities[]
 #
 # DELIBERATE AMBIGUITIES EMBEDDED:
 # A1: No team size specified
 # A2: No timeline specified
 # A3: No budget or infrastructure constraint
-# A4: "Engage customers" — no definition of what engagement means
-# A5: "Scale as needed" — no numeric targets
+# A4: "Engage customers" - no definition of what engagement means
+# A5: "Scale as needed" - no numeric targets
 # A6: No NFR section at all
-# A7: "Modern tech stack" — no specifics
+# A7: "Modern tech stack" - no specifics
 # A8: No acceptance criteria for any FR
 # A9: Stakeholder section says "TBD"
 # A10: Risks section missing entirely

@@ -1,5 +1,5 @@
 # Business Requirements Document
-# Project: LegalTech SaaS Platform — Practice Management and e-Discovery System
+# Project: LegalTech SaaS Platform - Practice Management and e-Discovery System
 # Domain: LegalTech / B2B SaaS | Complexity: Complex | Version: 1.0
 # Architecture: Microservices | Tenancy: Multi-tenant B2B
 # Normalized from: LegalTech BRD document
@@ -35,33 +35,33 @@ suitable for court presentation.
 
 ## Scope Boundaries
 In Scope (Must Do):
-  - Matter Management microservice — case lifecycle, status, assignments
-  - Document Intake and OCR microservice — upload, hash generation, text extraction
-  - e-Discovery Search microservice — Boolean query, tenant-filtered indexing
-  - Time and Billing microservice — 1/10th hour tracking, LEDES export
-  - Access Control (ACL) microservice — role-based, matter-level, Ethical Wall
-  - Secure API Gateway — large-file handling, token-based auth, tenant routing
-  - Immutable audit ledger — append-only, cryptographically verifiable
+  - Matter Management microservice - case lifecycle, status, assignments
+  - Document Intake and OCR microservice - upload, hash generation, text extraction
+  - e-Discovery Search microservice - Boolean query, tenant-filtered indexing
+  - Time and Billing microservice - 1/10th hour tracking, LEDES export
+  - Access Control (ACL) microservice - role-based, matter-level, Ethical Wall
+  - Secure API Gateway - large-file handling, token-based auth, tenant routing
+  - Immutable audit ledger - append-only, cryptographically verifiable
 
 Out of Scope (Must NOT Do):
   - Custom integrations for legacy on-premise courtroom management software
-  - Physical media shipping services for data intake — digital upload only
+  - Physical media shipping services for data intake - digital upload only
   - Real-time courtroom transcription or stenography services
 
 ## Functional Requirements
 FR-01: System shall generate a unique SHA-256 cryptographic hash for every uploaded
        legal document immediately upon intake (before any processing begins)
 FR-02: Every user action that modifies, views, or exports a document shall be recorded
-       in an unalterable append-only audit log — no record may be deleted or modified
+       in an unalterable append-only audit log - no record may be deleted or modified
 FR-03: System shall automatically extract text via OCR from PDFs and scanned images
-       asynchronously using a message queue — processing must not block document intake
+       asynchronously using a message queue - processing must not block document intake
 FR-04: Search service shall support complex Boolean queries (AND, OR, NOT, proximity)
        across millions of legal artifacts with strict tenant-permission filtering
 FR-05: Billing service shall track time in 1/10th hour (6-minute) increments aligned
        with standard legal industry billing practices
 FR-06: Billing service shall compile approved time entries into LEDES format for
        corporate client processing and export
-FR-07: System shall enforce Ethical Wall rules programmatically — blocking named
+FR-07: System shall enforce Ethical Wall rules programmatically - blocking named
        attorneys within the same firm from accessing conflicting matters
 FR-08: System shall support legal hold configurations that prevent deletion or
        modification of documents flagged for active litigation, overriding all
@@ -73,7 +73,7 @@ FR-10: System shall support Bring Your Own Key (BYOK) encryption per enterprise 
 ## Non-Functional Requirements (NFRs)
 NFR-01 Security:      All stored files encrypted with separate tenant-specific keys
                       (BYOK support mandatory for enterprise tier)
-NFR-02 Isolation:     Zero cross-tenant data access — single tenant bug must not
+NFR-02 Isolation:     Zero cross-tenant data access - single tenant bug must not
                       expose any other tenant data under any failure mode
 NFR-03 Availability:  Document storage and ACL microservices maintain 99.99% uptime
                       SLA (maximum 52 minutes downtime per year)
@@ -84,11 +84,11 @@ NFR-05 Compliance:    GDPR Article 17 (right to erasure) with legal hold overrid
 NFR-06 Scalability:   OCR and indexing microservices auto-scale horizontally during
                       large discovery dumps (terabyte-scale ingestion events)
 NFR-07 Auditability:  All document events produce tamper-evident audit records
-                      verifiable by cryptographic hash chain — court-admissible
+                      verifiable by cryptographic hash chain - court-admissible
 NFR-08 Recoverability:RPO < 1 hour, RTO < 4 hours for any regional failure
 
 ## Constraints
-- Team: 8 engineers, 2 QA, 1 DevOps, 1 Security Engineer — no additional hiring
+- Team: 8 engineers, 2 QA, 1 DevOps, 1 Security Engineer - no additional hiring
 - Timeline: PoC in 6 weeks, MVP in 20 weeks, SOC 2 certification in 12 months
 - Technology: Must deploy on AWS (existing enterprise contract); Kubernetes required
 - Compliance: SOC 2 Type II audit must be completed before first enterprise client
@@ -97,15 +97,15 @@ NFR-08 Recoverability:RPO < 1 hour, RTO < 4 hours for any regional failure
 
 ## Risks
 - RISK-01 (CRITICAL): Single bug in tenant-isolation layer or API Gateway routing
-  could expose confidential trial strategies to opposing counsel — catastrophic liability.
+  could expose confidential trial strategies to opposing counsel - catastrophic liability.
   Mitigation: Mandatory penetration testing of isolation layer before any tenant
   onboarding; circuit breaker that halts routing if tenant token mismatch detected.
 - RISK-02 (HIGH): Legal discovery can involve terabytes of unorganized data dumped
-  simultaneously — document parsing microservices must throttle via message queues
+  simultaneously - document parsing microservices must throttle via message queues
   to prevent system-wide memory exhaustion.
   Mitigation: Kafka-backed queue with backpressure; auto-scaling OCR workers with
   hard memory limits per pod; load testing at 10TB ingestion simulation before launch.
-- RISK-03 (HIGH): BYOK key management complexity — if tenant loses encryption key,
+- RISK-03 (HIGH): BYOK key management complexity - if tenant loses encryption key,
   all their data is permanently inaccessible.
   Mitigation: Key escrow requirement for enterprise clients; documented recovery SLA.
 - RISK-04 (MEDIUM): Ethical Wall misconfiguration could create conflict-of-interest

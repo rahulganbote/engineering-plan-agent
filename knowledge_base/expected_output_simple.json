@@ -4,7 +4,7 @@
     "brd_name": "Employee Directory Mobile App",
     "complexity": "simple",
     "purpose": "Golden expected output for evaluation \u2014 compare agent outputs against these",
-    "rubric_thresholds": {
+    "validation_thresholds": {
       "groundedness": 3.75,
       "completeness": 5.0,
       "consistency": 5.0,

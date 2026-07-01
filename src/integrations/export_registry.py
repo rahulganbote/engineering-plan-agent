@@ -1,7 +1,7 @@
 """
 src/integrations/export_registry.py
 ═════════════════════════════════════
-Export-handler registry — Phase 7.
+Export-handler registry - Phase 7.
 
 Each integration module calls register_export() at module level.
 The /approve endpoint iterates EXPORTS filtered by decision to collect results,
@@ -13,7 +13,9 @@ on_decision values: "approve" | "reject" | "both" | "error"
 
 from __future__ import annotations
 
-from typing import Callable, Literal, Any
+from collections.abc import Callable
+from typing import Literal
+
 from src.core.models import PipelineState
 
 # Registry: name → {handler, on_decision}

@@ -1,7 +1,7 @@
 """
 src/agents/poc_planner.py
 ═════════════════════════
-PoC Planner Agent — specialist spoke.
+PoC Planner Agent - specialist spoke.
 
 RAG: source_types=["brd", "plan_template"]
 Contract: PoCOutput
@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 from src.agents.base_agent import BaseAgent
-from src.core.cache import CachePolicy, get_semantic_backend
+from src.core.cache import CachePolicy
 from src.core.logger import get_logger
 from src.core.models import PipelineState, PoCOutput, SuccessCriterion
 
@@ -27,7 +27,7 @@ Rules:
 3. success_criteria must be measurable with metric, target_value, and measurement_method.
 4. duration_weeks must be realistic and conservative.
 5. Flag ambiguous requirements instead of guessing silently.
-6. Output ONLY valid JSON — no markdown fences, no explanation."""
+6. Output ONLY valid JSON - no markdown fences, no explanation."""
 
 SCHEMA = """{
   "poc_hypothesis": "string",
@@ -92,7 +92,7 @@ class PoCPlannerAgent(BaseAgent):
         citation_ids: list[str],
         feedback: str,
     ) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
@@ -167,7 +167,7 @@ class PoCPlannerAgent(BaseAgent):
             run_id=run_id,
             citations=citation_ids or [cite],
             confidence_score=0.2,
-            assumptions=["Fallback PoC plan — agent parse error"],
+            assumptions=["Fallback PoC plan - agent parse error"],
             flagged_ambiguities=["PoC output could not be parsed"],
             poc_hypothesis="Validate the highest-risk workflow and integration before full build.",
             scope_in=["Core happy path", "Highest-risk integration", "Basic success metrics"],
@@ -180,4 +180,5 @@ class PoCPlannerAgent(BaseAgent):
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("poc_planner", PoCPlannerAgent)

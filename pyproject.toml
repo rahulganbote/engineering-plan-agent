@@ -1,0 +1,20 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable standard Pyflakes (F), Pycodestyle (E, W), Isort (I), Pep8-naming (N),
+# Pyupgrade (UP), Bugbear (B), and Comprehensions (C4) rules.
+select = ["F", "I"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+extraPaths = ["."]

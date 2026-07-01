@@ -17,14 +17,14 @@ Prerequisites
 
 Usage
 ─────
-    python scripts/test_jira_mcp.py            # full round-trip — creates a real Epic
+    python scripts/test_jira_mcp.py            # full round-trip - creates a real Epic
     python scripts/test_jira_mcp.py --dry-run  # build payload + check imports, no Jira call
 
 Expected on success
 ───────────────────
     ✓ Credentials OK
     ✓ mcp SDK importable
-    ✓ MCP server handshake complete — N tools discovered
+    ✓ MCP server handshake complete - N tools discovered
     ✓ Epic created
         key : SCRUM-123
         url : https://yourorg.atlassian.net/browse/SCRUM-123
@@ -48,7 +48,7 @@ from src.core.config import settings
 
 
 def _build_fixture_state():
-    """Minimal but realistic PipelineState — same shape used by test_jira_push.py."""
+    """Minimal but realistic PipelineState - same shape used by test_jira_push.py."""
     from src.core.models import (
         PipelineState, HITLDecision, QualityBadge, RiskLevel,
         EngineeringPlanOutput, Phase, Milestone, Risk,
@@ -104,7 +104,7 @@ def _build_fixture_state():
         duration_weeks=3,
         success_criteria=[SuccessCriterion(metric="payout success", target_value=">=99%",
                                            measurement_method="100 sandbox runs")],
-        team_size=3, risk_if_poc_fails="Evaluate alternative provider — adds 4w.",
+        team_size=3, risk_if_poc_fails="Evaluate alternative provider - adds 4w.",
     )
     state.stack_output = TechStackOutput(
         run_id="jira-mcp-smoke", citations=["chunk-13"], confidence_score=0.78,
@@ -147,7 +147,7 @@ async def main() -> int:
     args = ap.parse_args()
 
     print("─" * 64)
-    print("Jira MCP integration — smoke test")
+    print("Jira MCP integration - smoke test")
     print("─" * 64)
     print(f"  JIRA_URL        : {settings.jira_base_url or '(not set)'}")
     print(f"  JIRA_USERNAME   : {settings.jira_email or '(not set)'}")
@@ -192,7 +192,7 @@ async def main() -> int:
         print("--- Description preview (first 600 chars) ---")
         print(desc[:600])
         print()
-        print("✓ Dry run complete — imports OK, payload built. No Jira call made.")
+        print("✓ Dry run complete - imports OK, payload built. No Jira call made.")
         return 0
 
     # 4. Full MCP round-trip
@@ -209,7 +209,7 @@ async def main() -> int:
 
     if result.get("mode") == "jira":
         print()
-        print("✓ Epic created via MCP — open the URL above to verify it's an Epic.")
+        print("✓ Epic created via MCP - open the URL above to verify it's an Epic.")
         return 0
     print()
     print("✗ MCP path did not succeed. The /approve endpoint would fall back to REST.")

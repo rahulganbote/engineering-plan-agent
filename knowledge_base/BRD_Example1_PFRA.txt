@@ -50,7 +50,7 @@ FR-04: The agent shall perform cross-correlation analysis between FR-02 and FR-0
 FR-05: The agent shall format synthesized insights into a standardized report structure: Executive Summary, Key Metrics, Product Deep Dive, Market Context sections
 FR-06: The agent shall deliver the final report via email to a hardcoded distribution list as a PDF/Markdown attachment
 FR-07: If any data source fails, the agent shall halt gracefully, log the failure with timestamp and source name, and notify an administrator via email
-FR-08: All access to source data must be authenticated and authorized — no unauthenticated data access permitted
+FR-08: All access to source data must be authenticated and authorized - no unauthenticated data access permitted
 FR-09: The agent shall store a hash of each generated report for audit trail purposes
 
 ## Non-Functional Requirements (NFRs)
@@ -58,17 +58,17 @@ NFR-01 Performance:    Complete full cycle (FR-01 through FR-06) within 15 minut
 NFR-02 Accuracy:       Generated summary must reflect source data with < 2% deviation from manual calculation
 NFR-03 Availability:   Agent must be available for scheduled execution with 99% reliability
 NFR-04 Security:       Access to source data limited to authenticated services only; no PII in logs
-NFR-05 Robustness:     Any single source failure must not cause total system failure — degrade gracefully
+NFR-05 Robustness:     Any single source failure must not cause total system failure - degrade gracefully
 
 ## Constraints
-- Team: 2 AI Engineers, 1 Data Engineer — no additional hiring
+- Team: 2 AI Engineers, 1 Data Engineer - no additional hiring
 - Timeline: PoC in 3 weeks, MVP in 8 weeks, production in 12 weeks
 - Technology: Must use existing Vector Database infrastructure; LangChain + OpenAI preferred
-- Data: Agent is read-only — cannot modify any source system
+- Data: Agent is read-only - cannot modify any source system
 - Budget: Must operate within existing OpenAI API spend limits
 
 ## Risks
-- RISK-01 (HIGH):   External market report formats are inconsistent — RAG chunking strategy may require iteration. Mitigation: Spike on 5 sample documents in Week 1.
+- RISK-01 (HIGH):   External market report formats are inconsistent - RAG chunking strategy may require iteration. Mitigation: Spike on 5 sample documents in Week 1.
 - RISK-02 (MEDIUM): Cross-correlation narrative depth may not meet executive expectations on first run. Mitigation: Define 3 example "gold standard" insights as acceptance criteria.
 - RISK-03 (MEDIUM): LLM hallucination in financial narrative could cause incorrect business decisions. Mitigation: Implement citation-back-to-source validation before delivery.
 - RISK-04 (LOW):    Email delivery service rate limits may block report delivery. Mitigation: Implement retry with exponential backoff.

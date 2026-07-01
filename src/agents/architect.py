@@ -1,7 +1,7 @@
 """
 src/agents/architect.py
 ════════════════════════
-Solution Architect Agent — specialist spoke.
+Solution Architect Agent - specialist spoke.
 
 RAG: source_types=["arch_pattern", "standard"]
 Contract: ArchitectureOutput
@@ -12,11 +12,11 @@ to the Orchestrator Aggregator. It does not call other specialist agents.
 
 Diagram generation:
     The agent asks the LLM to emit a Mermaid `graph LR/TD` block that visualizes
-    the component data flow. The Mermaid source is the canonical artifact —
+    the component data flow. The Mermaid source is the canonical artifact -
     it round-trips to Jira (native code block), Confluence, GitHub README, and
-    any other surface that speaks Mermaid. For the Streamlit demo, we also
+    any other surface that speaks Mermaid. For the React UI, we also
     render the Mermaid to SVG via kroki.io and cache it on diagram_svg so the
-    UI can render the diagram with a single st.markdown call.
+    UI can render the diagram natively.
 
     Failure modes are handled gracefully:
         - LLM omits diagram_mermaid       → both fields stay None; UI shows
@@ -28,7 +28,6 @@ Diagram generation:
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 import requests
 
@@ -44,11 +43,11 @@ from src.core.models import (
 log = get_logger(__name__)
 
 # ── Kroki rendering config ───────────────────────────────────────────────────
-KROKI_URL          = "https://kroki.io/mermaid/svg"
-KROKI_TIMEOUT_SEC  = 15   # Per-attempt budget. 8s was too tight — kroki.io
-                           # occasionally serves a 10-12s response. 15 × 2 retries
-                           # = 30s worst case, still well under the 90s bulkhead.
-KROKI_MAX_RETRIES  = 2
+KROKI_URL = "https://kroki.io/mermaid/svg"
+KROKI_TIMEOUT_SEC = 15  # Per-attempt budget. 8s was too tight - kroki.io
+# occasionally serves a 10-12s response. 15 × 2 retries
+# = 30s worst case, still well under the 90s bulkhead.
+KROKI_MAX_RETRIES = 2
 
 SYSTEM_PROMPT = """You are a senior Solution Architect. Produce a grounded,
 actionable architecture from the BRD and knowledge-base context.
@@ -59,17 +58,17 @@ Rules:
 3. Include ordered data_flow steps.
 4. Include nfr_mappings with citation values from AVAILABLE CITATION IDs.
 5. Flag missing NFRs or ambiguous integration constraints.
-6. Produce diagram_mermaid — a valid Mermaid `graph LR` (preferred) or `graph TD`
+6. Produce diagram_mermaid - a valid Mermaid `graph LR` (preferred) or `graph TD`
    block that visualizes the major components and their primary data flow.
    - Use ONLY ASCII node ids (e.g. Client, ApiGateway, OrderSvc, Db, Queue).
    - Put human-readable labels in square brackets, e.g. ApiGateway[API Gateway].
    - Use arrows like A --> B or A -- "REST" --> B for labeled edges.
-   - Keep it under 14 nodes — a high-level overview an EM can scan in 10 seconds.
+   - Keep it under 14 nodes - a high-level overview an EM can scan in 10 seconds.
    - Do NOT wrap the diagram in markdown fences (no ```mermaid). Just the raw
      `graph LR\\n  …` text inside the JSON string field.
    - Avoid characters that break Mermaid: parentheses inside labels, smart
      quotes, or unescaped colons. Prefer hyphens.
-7. Output ONLY valid JSON — no markdown fences around the JSON, no explanation."""
+7. Output ONLY valid JSON - no markdown fences around the JSON, no explanation."""
 
 SCHEMA = """{
   "pattern": "string",
@@ -112,15 +111,32 @@ class SolutionArchitectAgent(BaseAgent):
             source_types=["arch_pattern", "standard"],
         )
 
+        guardrail_triggers = []
+        if self.has_no_rag_hits(citation_ids):
+            log.info(f"[{state.run_id}] No RAG hits for SolutionArchitect. Calling Tavily for live web grounding...")
+            # ── Privacy boundary ────────────────────────────────────────────────
+            # Tavily is third-party. Query MUST be derived metadata (section names
+            # + bounded concept keywords), NOT raw BRD content. Use the helper:
+            from src.integrations.tavily import build_tavily_query, tavily_search
+
+            safe_query = build_tavily_query("best architecture pattern", state.brd_sections)
+            web_results = tavily_search(safe_query)
+            context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
+            guardrail_triggers.append("tavily_web_grounding_used")
+            # Record the tool invocation regardless of outcome so the Critic can
+            # cross-check that a tavily_web_grounding citation appears in the output.
+            if "tavily_search" not in state.tools_used:
+                state.tools_used.append("tavily_search")
+            if not web_results.used_fallback:
+                citation_ids = ["tavily_web_grounding"] + web_results.sources
+
         raw = self._generate(brd_text, context_str, citation_ids, feedback)
         output = self._parse(raw, state.run_id, citation_ids)
 
         # Render Mermaid → SVG via Kroki. Non-blocking: SVG stays None on failure,
         # and the UI falls back to client-side mermaid.js rendering.
         if output.diagram_mermaid:
-            output.diagram_svg = self._render_kroki(
-                output.diagram_mermaid, state.run_id
-            )
+            output.diagram_svg = self._render_kroki(output.diagram_mermaid, state.run_id)
 
         self.log_run(
             run_id=state.run_id,
@@ -129,6 +145,7 @@ class SolutionArchitectAgent(BaseAgent):
             critic_score=None,
             start_time=start,
             revision_count=state.revision_count,
+            guardrail_triggers=guardrail_triggers,
         )
         log.info(
             f"[{state.run_id}] SolutionArchitect done | "
@@ -147,7 +164,7 @@ class SolutionArchitectAgent(BaseAgent):
         citation_ids: list[str],
         feedback: str,
     ) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
@@ -184,14 +201,16 @@ class SolutionArchitectAgent(BaseAgent):
                 cite = n.get("citation", first_cite)
                 if cite not in citation_ids:
                     cite = first_cite
-                nfr_mappings.append(NFRMapping(
-                    nfr=n.get("nfr", "Availability and reliability"),
-                    architecture_decision=n.get(
-                        "architecture_decision",
-                        "Use managed services, health checks, and retry-safe APIs.",
-                    ),
-                    citation=cite,
-                ))
+                nfr_mappings.append(
+                    NFRMapping(
+                        nfr=n.get("nfr", "Availability and reliability"),
+                        architecture_decision=n.get(
+                            "architecture_decision",
+                            "Use managed services, health checks, and retry-safe APIs.",
+                        ),
+                        citation=cite,
+                    )
+                )
 
             diagram_mermaid = self._sanitize_mermaid(d.get("diagram_mermaid"))
 
@@ -207,11 +226,14 @@ class SolutionArchitectAgent(BaseAgent):
                     "Selected to keep delivery scope controlled while preserving clear module boundaries.",
                 ),
                 components=components or self._default_components(),
-                data_flow=d.get("data_flow", [
-                    "User submits request through web/API entry point",
-                    "Application service validates and processes request",
-                    "Persistence layer stores transaction state and audit trail",
-                ]),
+                data_flow=d.get(
+                    "data_flow",
+                    [
+                        "User submits request through web/API entry point",
+                        "Application service validates and processes request",
+                        "Persistence layer stores transaction state and audit trail",
+                    ],
+                ),
                 nfr_mappings=nfr_mappings or [self._default_nfr(first_cite)],
                 deployment_model=d.get("deployment_model", "Cloud-managed container deployment"),
                 diagram_mermaid=diagram_mermaid or self._default_mermaid(components or self._default_components()),
@@ -224,7 +246,7 @@ class SolutionArchitectAgent(BaseAgent):
     # ── Mermaid helpers ──────────────────────────────────────────────────────
 
     @staticmethod
-    def _sanitize_mermaid(raw: Optional[str]) -> Optional[str]:
+    def _sanitize_mermaid(raw: str | None) -> str | None:
         """
         Strip common LLM-emitted wrappers from the Mermaid source.
         The agent prompt forbids markdown fences but LLMs add them ~5% of the time.
@@ -240,10 +262,20 @@ class SolutionArchitectAgent(BaseAgent):
         text = text.strip()
         # Confirm it looks like a Mermaid diagram
         head = text.split("\n", 1)[0].lower()
-        if not any(head.startswith(k) for k in (
-            "graph ", "flowchart ", "sequencediagram", "classdiagram",
-            "statediagram", "erdiagram", "journey", "c4context", "c4container",
-        )):
+        if not any(
+            head.startswith(k)
+            for k in (
+                "graph ",
+                "flowchart ",
+                "sequencediagram",
+                "classdiagram",
+                "statediagram",
+                "erdiagram",
+                "journey",
+                "c4context",
+                "c4container",
+            )
+        ):
             return None
         return text
 
@@ -264,7 +296,7 @@ class SolutionArchitectAgent(BaseAgent):
         prev = "N0"
         for i, c in enumerate(components):
             # ASCII-only node id; label in brackets, hyphenated to avoid colons
-            safe_label = (c.name or f"Component {i+1}").replace('"', "'").replace(":", " -")
+            safe_label = (c.name or f"Component {i + 1}").replace('"', "'").replace(":", " -")
             node = f"N{i}"
             lines.append(f"  {node}[{safe_label}]")
             if i > 0:
@@ -275,14 +307,14 @@ class SolutionArchitectAgent(BaseAgent):
     # ── Kroki render ─────────────────────────────────────────────────────────
 
     @classmethod
-    def _render_kroki(cls, mermaid_src: str, run_id: str) -> Optional[str]:
+    def _render_kroki(cls, mermaid_src: str, run_id: str) -> str | None:
         """
         POST raw Mermaid source to kroki.io and return SVG text.
-        Returns None on any error — caller treats that as "use mermaid.js fallback".
+        Returns None on any error - caller treats that as "use mermaid.js fallback".
         """
         if not mermaid_src or not mermaid_src.strip():
             return None
-        last_err: Optional[str] = None
+        last_err: str | None = None
         for attempt in range(1, KROKI_MAX_RETRIES + 1):
             try:
                 r = requests.post(
@@ -297,12 +329,8 @@ class SolutionArchitectAgent(BaseAgent):
                 last_err = f"HTTP {r.status_code}: {r.text[:120]}"
             except requests.RequestException as e:
                 last_err = f"{type(e).__name__}: {str(e)[:120]}"
-            log.warning(
-                f"[{run_id}] Kroki attempt {attempt}/{KROKI_MAX_RETRIES} failed | {last_err}"
-            )
-        log.warning(
-            f"[{run_id}] Kroki render skipped — UI will fall back to mermaid.js | {last_err}"
-        )
+            log.warning(f"[{run_id}] Kroki attempt {attempt}/{KROKI_MAX_RETRIES} failed | {last_err}")
+        log.warning(f"[{run_id}] Kroki render skipped - UI will fall back to mermaid.js | {last_err}")
         return None
 
     # ── Defaults / fallbacks ─────────────────────────────────────────────────
@@ -347,7 +375,7 @@ class SolutionArchitectAgent(BaseAgent):
             run_id=run_id,
             citations=citation_ids or [cite],
             confidence_score=0.2,
-            assumptions=["Fallback architecture — agent parse error"],
+            assumptions=["Fallback architecture - agent parse error"],
             flagged_ambiguities=["Architecture output could not be parsed"],
             pattern="Modular monolith with clear service boundaries",
             pattern_justification=(
@@ -368,4 +396,5 @@ class SolutionArchitectAgent(BaseAgent):
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("solution_architect", SolutionArchitectAgent)

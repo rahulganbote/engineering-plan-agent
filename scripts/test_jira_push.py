@@ -1,7 +1,7 @@
 """
 scripts/test_jira_push.py
 ══════════════════════════
-Standalone smoke test for the Jira integration — does NOT touch FastAPI
+Standalone smoke test for the Jira integration - does NOT touch FastAPI
 or the LangGraph pipeline. Run it directly to confirm:
 
     1. JIRA_* env vars are loaded correctly.
@@ -24,7 +24,7 @@ What you should see on success:
         mode    : jira
         detail  : Created Jira Task EMCP-42
 
-Open the URL — the Mermaid diagram should render inline in the issue body.
+Open the URL - the Mermaid diagram should render inline in the issue body.
 """
 
 from __future__ import annotations
@@ -144,7 +144,7 @@ def build_fixture_state():
             measurement_method="100 sandbox runs",
         )],
         team_size=3,
-        risk_if_poc_fails="Need to evaluate alternative payouts provider (Adyen) — adds 4w.",
+        risk_if_poc_fails="Need to evaluate alternative payouts provider (Adyen) - adds 4w.",
     )
 
     state.stack_output = TechStackOutput(
@@ -200,7 +200,7 @@ def build_fixture_state():
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--fixture", action="store_true",
-                    help="(default) use synthetic fixture state — no pipeline needed")
+                    help="(default) use synthetic fixture state - no pipeline needed")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the ADF payload that WOULD be posted; do not POST")
     args = ap.parse_args()
@@ -263,7 +263,7 @@ def main() -> int:
 
     if result.get("mode") == "jira":
         print()
-        print("✓ Success — open the URL above to verify the Mermaid diagram renders inline.")
+        print("✓ Success - open the URL above to verify the Mermaid diagram renders inline.")
         return 0
     print()
     print("✗ Push did not succeed. See 'detail' / 'reason' above.")

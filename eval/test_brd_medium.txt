@@ -36,7 +36,7 @@ FR-06: System shall provide pre-built dashboards for Product, Revenue, and CS te
 FR-07: System shall support data export in CSV, Excel, and PDF formats
 FR-08: System shall provide audit logs of all data access and report creation
 FR-09: System shall alert on anomalous metric movements (>2 standard deviations)
-FR-10: System shall support metric versioning — old reports must remain consistent
+FR-10: System shall support metric versioning - old reports must remain consistent
 
 ## Non-Functional Requirements
 NFR-01 Performance: Dashboard load time < 5 seconds for standard queries
@@ -51,8 +51,8 @@ NFR-06 Usability: Non-technical users able to build first report in < 30 minutes
 - Timeline: MVP in 12 weeks, full feature set in 20 weeks
 - Budget: $180,000 annual infrastructure + tooling
 - Must use existing Snowflake contract (enterprise license already paid)
-- dbt is the approved transformation layer — no alternatives
-- Cannot replace Salesforce or Stripe — integration only, no migration
+- dbt is the approved transformation layer - no alternatives
+- Cannot replace Salesforce or Stripe - integration only, no migration
 - Security review required before any production deployment
 
 ## Risks

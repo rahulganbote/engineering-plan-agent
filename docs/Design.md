@@ -1,4 +1,4 @@
-# EM Copilot — System Design Reference
+# EM Copilot - System Design Reference
 **Use this file to onboard Claude Code without feeding the whole project.**
 Start every session: "Read Plan.md, Design.md, and State.md. Then [task]."
 
@@ -6,7 +6,7 @@ Start every session: "Read Plan.md, Design.md, and State.md. Then [task]."
 
 ## System Overview
 
-**Product:** EM Copilot — BRD to Engineering Plan Multi-Agent AI System
+**Product:** EM Copilot - BRD to Engineering Plan Multi-Agent AI System
 **Pattern:** Central Orchestrator Hub-and-Spoke (Orchestrator + 5 specialist agents + 1 Critic)
 **Protocol:** All specialist messages, Critic feedback, revisions, and HITL decisions route through the Orchestrator. Specialist agents never call each other. Critic never talks to agents directly.
 
@@ -57,14 +57,14 @@ Layer 5: HITL              → Gate (approve/reject) → if appproved, export & 
 Layer 6: Output Delivery   → Google Sheets · Google Docs · Mermaid · Markdown · Jira
 ```
 
-## Architecture — 7 Layers
+## Architecture - 7 Layers
 
 ```
 Layer 1: BRD Ingestion     → Security Validator → Doc Parser → FastAPI
 Layer 2: RAG               → Pinecone (text-embedding-3-large · top-k=4 · cosine 0.72)
 Layer 3: Multi-Agent       → Orchestrator Hub → 5 Specialist Agents → Orchestrator Aggregator
 Layer 4: Validation        → Orchestrator → Critic → Orchestrator Decision Router
-Layer 5: HITL              → Gate (approve/reject) → if appproved, export Run Summary in Google Sheets & Push the BRD and all 5 artifacts to Jira. If rejected send email with notes + Critic — quality assessment from rejection along with BRD and all 5 artifacts.
+Layer 5: HITL              → Gate (approve/reject) → if appproved, export Run Summary in Google Sheets & Push the BRD and all 5 artifacts to Jira. If rejected send email with notes + Critic - quality assessment from rejection along with BRD and all 5 artifacts.
 Layer 6: Output Delivery   → Google Sheets · Mermaid · Kroki · Jira
 Layer 7: Governance        → LangSmith · LangFuse · JSONL logs · security
 ```
@@ -85,45 +85,41 @@ Agent 7: Critic	→ Validation: Score outputs on completeness, consistency, acti
 
 ```
 engineering-plan-agent/
-├── Plan.md                    ← 5-day sprint plan + rubric tracker
-├── Design.md                  ← THIS FILE — system design reference
-├── State.md                   ← daily progress log
-├── README.md                  ← portfolio README
-├── requirements.txt
-├── Dockerfile
+├── docs/                      ← Design documentation and ADRs
+├── frontend/                  ← React 19 SPA frontend (Vite, TypeScript, Tailwind)
+├── knowledge_base/            ← RAG grounding source documents
+├── legacy/
+│   └── streamlit/             ← Legacy Streamlit dashboard prototype
+├── scripts/                   ← GCP deployment and RAG ingestion scripts
+├── tests/                     ← Pytest unit, integration, and E2E tests
+├── tools/                     ← Developer diagnostic scripts and utilities
+├── requirements.txt           ← Pinned Python dependencies
+├── pyproject.toml             ← Ruff styling and linting configurations
+├── Dockerfile                 ← Production build definition
 ├── .env.example
-├── streamlit_app.py           ← UI entry point (NOT YET BUILT)
+├── .github/workflows/         ← CI/CD pipeline definition
 │
 ├── src/
-│   ├── core/
-│   │   ├── models.py          ← ALL Pydantic contracts (✅ COMPLETE)
-│   │   ├── config.py          ← pydantic-settings from .env (✅ COMPLETE)
-│   │   ├── logger.py          ← JSONL logging + success criteria (✅ COMPLETE)
-│   │   └── rag.py             ← Pinecone ingest + retrieve (✅ COMPLETE)
+│   ├── core/                  ← Models, config, cache, resilience, and logging
+│   │   ├── cache.py           ← Tiered caching (L1/L2 Redis)
+│   │   ├── resilience.py      ← Circuit breakers and bulkhead timeouts
+│   │   ├── models.py          ← Pydantic output contracts
+│   │   ├── config.py          ← Environment and settings management
+│   │   └── rag.py             ← Pinecone RAG retrieval pipeline
 │   ├── agents/
-│   │   ├── orchestrator.py    ← BRD parser + routing (✅ COMPLETE)
-│   │   ├── critic.py          ← Rubric scoring + revision loop (✅ COMPLETE)
-│   │   ├── plan_generator.py  ← BUILT
-│   │   ├── schedule.py        ← BUILT
-│   │   ├── architect.py       ← BUILT (includes Mermaid + Kroki tool)
-│   │   ├── poc_planner.py     ← BUILT
-│   │   ├── tech_stack.py      ← BUILT (includes GitHub API tool)
-│   │   └── pipeline.py        ← BUILT (LangGraph StateGraph)
-│   ├── api/
-│   │   └── main.py            ← FastAPI 5 endpoints (✅ COMPLETE)
-│   ├── security/
-│   │   └── validator.py       ← 7-check security layer (✅ COMPLETE)
-│   └── integrations/
-│       ├── sheets.py          ← Google Sheets write action (✅ COMPLETE)
-│       ├── email.py           ← audit email if rejected (❌ NOT BUILT, optional)
-│       └── voice.py           ← ElevenLabs for Voice Interface (✅ COMPLETE)
-│
-├── knowledge_base/            ← 6 RAG source docs (✅ COMPLETE)
-├── eval/                      ← Test BRDs (partial)
-├── scripts/
-│   └── ingest_kb.py           ← Pinecone KB population (✅ COMPLETE)
-└── tests/
-    └── unit/test_security.py  ← Security unit tests (✅ COMPLETE)
+│   │   ├── critic/            ← Critic package (rules, judge, hallucinations)
+│   │   ├── orchestrator.py    ← BRD parsing and fan-out dispatch
+│   │   ├── plan_generator.py  ← Engineering plan builder agent
+│   │   ├── schedule.py        ← Schedule and effort estimation agent
+│   │   ├── architect.py       ← Component and data flow diagram agent
+│   │   ├── poc_planner.py     ← PoC planner agent
+│   │   ├── tech_stack.py      ← Tech stack recommendation agent
+│   │   └── pipeline.py        ← Orchestration graph (LangGraph)
+│   ├── api/                   ← Modular FastAPI app (auth, runs, SSE events)
+│   │   ├── main.py            ← Application router setup
+│   │   └── routes/            ← Concerns-based route definitions
+│   ├── security/              ← Threat sanitization and prompt validator
+│   └── integrations/          ← Sheets, Jira (MCP + REST), PDF exports, Slack
 ```
 
 ---
@@ -167,7 +163,7 @@ All agents output Pydantic models inheriting from `AgentOutputBase`:
 class AgentOutputBase(BaseModel):
     agent_name: str
     run_id: str
-    citations: list[str]   # REQUIRED — min 1 RAG chunk ID
+    citations: list[str]   # REQUIRED - min 1 RAG chunk ID
     confidence_score: float
     assumptions: list[str]
     flagged_ambiguities: list[str]
@@ -211,7 +207,7 @@ REGION         = "us-east-1"   # free tier only
 
 ---
 
-## Critic Rubric Thresholds
+## Critic Validation Thresholds
 
 | Dimension | Threshold | What earns full score |
 |-----------|-----------|----------------------|
@@ -245,6 +241,7 @@ HITL Gate
 | OpenAI | All agents + Critic | LLM generation | API key |
 | Kroki.io | Solution Architect | Mermaid → SVG diagram | None (free) |
 | GitHub API | Tech Stack | Velocity data | None (public) |
+| Tavily | Solution Architect, Tech Stack | Live web grounding fallback | API key |
 | Google Sheets | Pipeline export | Write artifacts | Service account |
 | Jira | Pipeline export | Formatted report | Service account |
 | ElevenLabs | HITL | Voice approval | API key (optional) |
@@ -256,12 +253,12 @@ HITL Gate
 1. File format + size (Python, ~0ms)
 2. Document parse (pypdf/docx, ~50ms)
 3. Content length min 50 words (Python)
-4. Prompt injection — Layer 1: regex patterns (Python, ~1ms)
-5. Prompt injection — Layer 2: LLM semantic scan (gpt-4o-mini, ~800ms)
-6. PII detection + redaction (Python regex — WARNING not BLOCK)
+4. Prompt injection - Layer 1: regex patterns (Python, ~1ms)
+5. Prompt injection - Layer 2: LLM semantic scan (gpt-4o-mini, ~800ms)
+6. PII detection + redaction (Python regex - WARNING not BLOCK)
 7. BRD completeness check (keyword matching)
 
-**BRD Storage Decision:** Option A — RAM only, never persisted. Only SHA256 hash logged.
+**BRD Storage Decision:** Option A - RAM only, never persisted. Only SHA256 hash logged.
 
 ---
 
@@ -312,6 +309,69 @@ streamlit run streamlit_app.py
 # Open: http://localhost:8501
 ```
 
+## Open-Set Tool Extensibility
+
+To avoid rigid, closed-loop agent behaviors, EM Copilot is designed with **open-set tool extensibility**. Specialist agents can access external capabilities through three distinct integration patterns:
+
+1. **REST Tool Pattern (Direct HTTP Requests)**:
+   - Used for **Tavily Web Search**. When the internal RAG system returns no document chunks (`has_no_rag_hits`), the agent executes a direct REST call using `requests.post` to Tavily for live web grounding.
+2. **LangChain `@tool` Pattern (Annotated Python Functions)**:
+   - Used for the **GitHub API**. The `get_github_velocity` tool is declared using LangChain's `@tool` decorator, encapsulating calls to fetch repository statistics, calculate weekly star velocity, and compute issue close rates.
+3. **Model Context Protocol (MCP) Pattern (Subprocess Server integration)**:
+   - Used for **Jira Export**. The orchestrator utilizes a Model Context Protocol integration running over a subprocess to create, update, and manage Jira stories/epics.
+
+### Resilient Execution & Shape Validation
+- **Per-Tool Timeouts**: Tool calls have right-sized SLOs codified in `src/core/resilience.py`:
+  - **Tavily**: 5.0s timeout, 3 attempts (2 retries). Web search legitimately takes 1.5–4s for complex queries; a tight 3s budget would cause false-degraded fallbacks on healthy calls.
+  - **GitHub**: 3.0s timeout, 2 attempts (1 retry). GitHub's API is reliably sub-500ms; a tight budget catches real issues.
+- **Circuit Breaking & Retry**: Decorated with `@resilient(policy=TAVILY_POLICY)` or `@resilient(policy=GITHUB_POLICY)`. Both policies exclude `QuotaExceededError` from the retry-do list (no point retrying a hard cap).
+- **Strict Schema Enforcement**: JSON contracts are validated via Pydantic (`TavilyResponse`, `GitHubRepoResponse`, `GitHubSearchResponse`) to immediately detect shape deviation.
+- **Graceful Degradation**: If a tool fails (validation error, network outage, or timeout), the error is caught, logged, and a structured `ToolResult` with `used_fallback=True` is returned. The agent proceeds using alternative context instead of failing the pipeline.
+
+### Trust-Tier Citations (Critic Integration)
+Every `ToolResult` carries a `trust_level` field that flows into the Critic's groundedness scoring:
+
+| Source | Trust Level | Why |
+|---|---|---|
+| **RAG / Pinecone** | `high` | Curated organization knowledge base - verified content |
+| **GitHub API** | `medium` | Verified upstream, but third-party data (repo descriptions, star counts) |
+| **Tavily web search** | `low` | Arbitrary web content - useful for fallback grounding, but not authoritative |
+
+The Critic downweights low-trust citations in its groundedness scoring, so a plan grounded entirely in Tavily results cannot achieve a Green badge without additional RAG citations. This prevents agents from confidently citing random web content as if it were org policy.
+
+### Privacy Boundary on External Search
+**Tavily is a third-party service.** Sending raw BRD content there = potential data exposure (PII, customer names, financial details, internal codenames, etc.). Policy enforced at the source by `build_tavily_query()` in `src/integrations/tavily.py`:
+
+- **Allowed in queries**: section names ("Objectives", "NFRs"), bounded concept keywords from `_SAFE_CONCEPT_KEYWORDS` (`availability`, `scalability`, `microservices`, `event-driven`, `payments`, etc.).
+- **Forbidden in queries**: raw BRD paragraphs, customer/org names, requirement text, risk descriptions.
+
+Both `SolutionArchitect` and `TechStackRecommender` call `build_tavily_query(role, state.brd_sections)` rather than constructing query strings inline. This makes the privacy boundary syntactically enforceable - a code reviewer can grep for `tavily_search` calls and verify the query argument is the helper's output.
+
+### Observability - Per-Tool SSE Events
+Every tool call emits three structured events into the existing event bus, surfaced live in the React UI's pipeline engine console:
+- `tool_call_started` - `{tool, run_id, query_len OR owner/repo}`
+- `tool_call_succeeded` - `{tool, run_id, latency_ms, result_count OR stars}`
+- `tool_call_degraded` - `{tool, run_id, reason, latency_ms}`
+
+Recruiters can see in real time which tools fired, how fast they responded, and whether they degraded - same observability bar as the cache/breaker events from Phases 1–10.
+
+### Input/Output Security Boundary (Injection Guard)
+To prevent prompt injection from propagating into agent generation contexts:
+- **Scans on External Outputs**: Every external text snippet (RAG vector chunk, Tavily search result, or GitHub repository description) is scanned using the public helper `check_external_injection(text)` (`src/security/validator.py`).
+- **Regex-Only by Design** (Layer 1): we intentionally skip Layer 5 (LLM semantic guard) for tool outputs because (a) per-result LLM scan adds 200–500ms × N results, (b) per-result LLM cost adds materially, (c) tool outputs are bounded (≤3 Tavily results + 1 GitHub call per run). Regex catches ~85% of known injection signatures; the residual blast radius is bounded to a single agent's context (vs whole-prompt poisoning). Future enhancement: escalate to Layer 5 selectively when regex confidence is medium (using the existing Pinecone semantic cache as an embedding similarity check against known injection signatures).
+- **Dynamic Censorship**: If a regex prompt injection signature is detected:
+  - Malicious RAG chunks are dropped entirely (and a `security_drop` event is emitted).
+  - Flagged Tavily search snippets are skipped from the formatting list.
+  - Malicious GitHub fields are redacted (e.g. `[Redacted due to security policy]`) or the entire tool response is blocked.
+
+### GitHub Owner/Repo Allowlist
+The LLM constructs the `owner/repo` arguments passed to `get_github_velocity()`. Without a guardrail, a hallucinated repo would hit any public GitHub repository - security AND accuracy concern.
+
+`GITHUB_ALLOWLIST` in `src/integrations/github.py` is a hard allowlist of approved `(owner, repo)` tuples drawn from the org's `tech_decision_log.txt`. If the LLM passes an unapproved repo, the tool short-circuits BEFORE any network call and returns a `used_fallback=True` ToolResult.
+
+### Demo BRD: Niche Tech Triggers Tavily Fallback
+`eval/test_brd_niche_tech.txt` is a deliberately-crafted BRD that mentions tools NOT in the Pinecone knowledge base (FerretDB, libSQL, Bloop, Sourcebot, Toolbox). Running this BRD through the pipeline triggers `has_no_rag_hits` on both `SolutionArchitect` and `TechStackRecommender`, which fires the Tavily fallback path. Used for portfolio/Loom demos of the autonomous tool-calling story.
+
 ---
 
 ## Distributed Resilience & Caching (Phases 1–10)
@@ -336,7 +396,7 @@ Order matters: `@cached` runs **outside** `@resilient`, so a cache hit avoids th
 
 ### Per-Instance State, Shared Code
 
-The pattern is *shared code, never shared state*. `src/core/resilience.py` exports `CallPolicy` (frozen dataclass), `CircuitBreaker` class, and the `@resilient` factory — that's it. Each agent class and each external service **owns its own breaker instance**, registered in a module-level dict keyed by class name:
+The pattern is *shared code, never shared state*. `src/core/resilience.py` exports `CallPolicy` (frozen dataclass), `CircuitBreaker` class, and the `@resilient` factory - that's it. Each agent class and each external service **owns its own breaker instance**, registered in a module-level dict keyed by class name:
 
 ```python
 _LLM_BREAKERS: dict[str, CircuitBreaker] = {}
@@ -355,8 +415,8 @@ A failing `PlanGeneratorAgent` cannot open the `ScheduleEstimatorAgent` breaker.
 
 | Backend | Purpose | Activation |
 |---|---|---|
-| `InMemoryCache` | L1 — LRU + TTL, per-process | Always |
-| `RedisCache` | L2 — pickle+gzip, shared across replicas | `REDIS_URL` env var set |
+| `InMemoryCache` | L1 - LRU + TTL, per-process | Always |
+| `RedisCache` | L2 - pickle+gzip, shared across replicas | `REDIS_URL` env var set |
 | `TieredCache` | Composes L1 + L2 (read L1 first, back-fill on L2 hit, write-through) | Auto when both present |
 | `SemanticBackend` | Pinecone cosine similarity (`namespace="llm-cache"`, threshold 0.95) | Critic opt-in |
 
@@ -372,7 +432,7 @@ class BaseAgent:
     RESILIENCE_POLICY: CallPolicy  = OPENAI_POLICY
 ```
 
-Subclasses override these to tune TTL, timeout, retry count, or breaker thresholds without touching `_call_llm_with_retry`. The Critic, for example, opts into the `SemanticBackend` by setting its `CACHE_POLICY` accordingly. This is the Phase 5 extensibility win — adding a new agent with custom resilience characteristics is a two-line change.
+Subclasses override these to tune TTL, timeout, retry count, or breaker thresholds without touching `_call_llm_with_retry`. The Critic, for example, opts into the `SemanticBackend` by setting its `CACHE_POLICY` accordingly. This is the Phase 5 extensibility win - adding a new agent with custom resilience characteristics is a two-line change.
 
 ### Specialist Registry (Phase 4)
 
@@ -391,13 +451,13 @@ Subclasses override these to tune TTL, timeout, retry count, or breaker threshol
 - `breaker_open` / `breaker_short_circuit` / `breaker_half_open`
 - `bulkhead_timeout` (agent name, budget)
 
-The bus best-effort attaches the current thread's `run_id` (via thread-local from `base_agent`) so events correlate to a specific run. FastAPI wires the sink at startup and fans events into the SSE stream consumed by the Streamlit UI. The bus never raises — observability cannot break the caller.
+The bus best-effort attaches the current thread's `run_id` (via thread-local from `base_agent`) so events correlate to a specific run. FastAPI wires the sink at startup and fans events into the SSE stream consumed by the Streamlit UI. The bus never raises - observability cannot break the caller.
 
 ### Why Custom Instead of Hystrix-Py / pybreaker / aiocache
 
 | Library | Why not chosen |
 |---|---|
-| `pybreaker` | Only does the breaker — no integrated retry/timeout/cache stack |
+| `pybreaker` | Only does the breaker - no integrated retry/timeout/cache stack |
 | `tenacity` | Retry-only; we previously used it and removed it in Phase 1 |
 | `aiocache` | Async-first; our codebase is sync (ThreadPoolExecutor parallelism) |
 | `cachetools` | LRU only; no TTL, no semantic, no pluggable backend |

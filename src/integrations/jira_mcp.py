@@ -1,7 +1,7 @@
 """
 src/integrations/jira_mcp.py
 ═════════════════════════════
-MCP-client integration for Jira — creates an **Epic** by calling the
+MCP-client integration for Jira - creates an **Epic** by calling the
 `mcp-atlassian` MCP server over stdio, instead of hitting the Jira REST API
 directly.
 
@@ -27,7 +27,7 @@ Reliability
 ───────────
 This module NEVER raises. If the `mcp` SDK or the `mcp-atlassian` server is
 unavailable, or the tool call fails, it returns a dict with mode="skipped" and
-a fallback_reason — the /approve endpoint then falls back to the REST path in
+a fallback_reason - the /approve endpoint then falls back to the REST path in
 src/integrations/jira.py, so a missing MCP server can never break the demo.
 
 Setup (one-time)
@@ -36,7 +36,7 @@ Setup (one-time)
     # OR, if you have `uv`:  uvx mcp-atlassian   (no install needed)
 
 The server reads JIRA_URL / JIRA_USERNAME / JIRA_API_TOKEN from the environment
-this module passes it — the SAME credentials the REST path already uses.
+this module passes it - the SAME credentials the REST path already uses.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ log = get_logger(__name__)
 # ── MCP server launch configuration ──────────────────────────────────────────
 # How to start the `mcp-atlassian` MCP server as a stdio subprocess.
 # `mcp-atlassian` 0.11.x ships no `__main__.py`, so `python -m mcp_atlassian`
-# fails. The package exposes a `main()` entry point — launch it with the current
+# fails. The package exposes a `main()` entry point - launch it with the current
 # interpreter (sys.executable) so it runs in the SAME venv where mcp-atlassian
 # is installed, with no PATH lookup needed.
 MCP_SERVER_COMMAND: str = sys.executable
@@ -81,6 +81,7 @@ MCP_TIMEOUT_SEC = 45
 # Public entry point (async)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
     """
     Create a Jira **Epic** for this run via the mcp-atlassian MCP server.
@@ -94,7 +95,7 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
           "fallback_reason": str | None,    # populated when skipped
           "transport":       "mcp",         # marks which path produced this
         }
-    Never raises — caller falls back to the REST path on mode != "jira".
+    Never raises - caller falls back to the REST path on mode != "jira".
     """
     run_id = state.run_id
 
@@ -106,16 +107,17 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
     # 2. MCP SDK importable?
     try:
         import asyncio
+
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
     except ImportError as e:
         return _skip(f"mcp SDK not installed ({e}); run: pip install mcp mcp-atlassian")
 
     # 3. Build the issue payload
-    summary     = _build_summary(state)
+    summary = _build_summary(state)
     description = _build_markdown_description(state)
-    labels      = _build_labels(state)
-    # Phase 7: idempotency — add run-specific label so we can search for it
+    labels = _build_labels(state)
+    # Phase 7: idempotency - add run-specific label so we can search for it
     idempotency_label = f"em-copilot-run-{state.run_id}"
     if idempotency_label not in labels:
         labels = list(labels) + [idempotency_label]
@@ -128,37 +130,39 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
             # The MCP SDK passes this dict to the subprocess VERBATIM (no merge
             # with the parent env), so inherit PATH / HOME / TLS-cert vars.
             **os.environ,
-            "JIRA_URL":        settings.jira_base_url,
-            "JIRA_USERNAME":   settings.jira_email,
-            "JIRA_API_TOKEN":  settings.jira_api_token,
+            "JIRA_URL": settings.jira_base_url,
+            "JIRA_USERNAME": settings.jira_email,
+            "JIRA_API_TOKEN": settings.jira_api_token,
             # Limit the server to Jira tools only (skip Confluence) for speed.
-            "ENABLED_TOOLS":   "jira_create_issue,jira_get_issue",
+            "ENABLED_TOOLS": "jira_create_issue,jira_get_issue",
         },
     )
 
-    # Phase 7: idempotency — search for an existing Epic with this run's label
+    # Phase 7: idempotency - search for an existing Epic with this run's label
     existing = await _search_existing_epic_mcp(state, idempotency_label)
     if existing:
-        log.info(f"[{run_id}] Jira MCP — idempotent skip, Epic already exists: {existing}")
+        log.info(f"[{run_id}] Jira MCP - idempotent skip, Epic already exists: {existing}")
         from src.core.events import emit as _evt
-        _evt("idempotent_skip", run_id=run_id, issue_key=existing,
-             transport="mcp", label=idempotency_label)
+
+        _evt("idempotent_skip", run_id=run_id, issue_key=existing, transport="mcp", label=idempotency_label)
         base = (settings.jira_base_url or "").rstrip("/")
         return {
-            "url":             f"{base}/browse/{existing}" if base else None,
-            "mode":            "jira",
-            "detail":          f"Idempotent skip — Epic {existing} already exists (label={idempotency_label})",
-            "issue_key":       existing,
+            "url": f"{base}/browse/{existing}" if base else None,
+            "mode": "jira",
+            "detail": f"Idempotent skip - Epic {existing} already exists (label={idempotency_label})",
+            "issue_key": existing,
             "fallback_reason": None,
-            "transport":       "mcp",
+            "transport": "mcp",
         }
 
-    log.info(f"[{run_id}] Jira MCP — spawning mcp-atlassian server via stdio")
+    log.info(f"[{run_id}] Jira MCP - spawning mcp-atlassian server via stdio")
 
     try:
         result_text = await asyncio.wait_for(
             _call_mcp_create_issue(
-                stdio_client, ClientSession, server_params,
+                stdio_client,
+                ClientSession,
+                server_params,
                 project_key=settings.jira_project_key,
                 summary=summary,
                 description=description,
@@ -167,7 +171,7 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
             ),
             timeout=MCP_TIMEOUT_SEC,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return _skip(f"MCP call timed out after {MCP_TIMEOUT_SEC}s")
     except Exception as e:
         return _skip(f"MCP transport error: {type(e).__name__}: {str(e)[:200]}")
@@ -177,14 +181,14 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
     if not key:
         return _skip(f"MCP server returned no issue key. Raw: {str(result_text)[:200]}")
 
-    log.info(f"[{run_id}] Jira MCP — Epic created | key={key} | url={url}")
+    log.info(f"[{run_id}] Jira MCP - Epic created | key={key} | url={url}")
     return {
-        "url":             url,
-        "mode":            "jira",
-        "detail":          f"Created Jira Epic {key} via MCP (mcp-atlassian server)",
-        "issue_key":       key,
+        "url": url,
+        "mode": "jira",
+        "detail": f"Created Jira Epic {key} via MCP (mcp-atlassian server)",
+        "issue_key": key,
         "fallback_reason": None,
-        "transport":       "mcp",
+        "transport": "mcp",
     }
 
 
@@ -192,10 +196,17 @@ async def push_epic_to_jira_via_mcp(state: PipelineState) -> dict[str, Any]:
 # MCP round-trip
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 async def _call_mcp_create_issue(
-    stdio_client, ClientSession, server_params,
-    *, project_key: str, summary: str, description: str,
-    labels: list[str], run_id: str,
+    stdio_client,
+    ClientSession,
+    server_params,
+    *,
+    project_key: str,
+    summary: str,
+    description: str,
+    labels: list[str],
+    run_id: str,
 ) -> Any:
     """
     Open an MCP stdio session, initialize, discover tools, and invoke
@@ -203,29 +214,26 @@ async def _call_mcp_create_issue(
     """
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
-            # MCP handshake — exchange protocol version + capabilities.
+            # MCP handshake - exchange protocol version + capabilities.
             await session.initialize()
 
-            # Tool discovery — proves the MCP architecture is live.
+            # Tool discovery - proves the MCP architecture is live.
             tools = await session.list_tools()
             tool_names = [t.name for t in tools.tools]
-            log.info(f"[{run_id}] Jira MCP — server exposes {len(tool_names)} tool(s): {tool_names[:8]}")
+            log.info(f"[{run_id}] Jira MCP - server exposes {len(tool_names)} tool(s): {tool_names[:8]}")
             if MCP_CREATE_ISSUE_TOOL not in tool_names:
-                raise RuntimeError(
-                    f"MCP server does not expose '{MCP_CREATE_ISSUE_TOOL}'. "
-                    f"Available: {tool_names}"
-                )
+                raise RuntimeError(f"MCP server does not expose '{MCP_CREATE_ISSUE_TOOL}'. Available: {tool_names}")
 
-            # Invoke the tool — this is the MCP equivalent of the REST POST.
+            # Invoke the tool - this is the MCP equivalent of the REST POST.
             call_result = await session.call_tool(
                 MCP_CREATE_ISSUE_TOOL,
                 arguments={
-                    "project_key":       project_key,
-                    "summary":           summary[:255],
-                    "issue_type":        "Epic",
-                    "description":       description,
+                    "project_key": project_key,
+                    "summary": summary[:255],
+                    "issue_type": "Epic",
+                    "description": description,
                     # additional_fields must be a dict (dict[str, Any] | None),
-                    # not a JSON string — the mcp-atlassian tool validates type.
+                    # not a JSON string - the mcp-atlassian tool validates type.
                     "additional_fields": {"labels": labels},
                 },
             )
@@ -254,7 +262,8 @@ def _result_to_text(call_result: Any) -> str:
 
 
 def _extract_issue_key_and_url(
-    raw_text: Any, base_url: str,
+    raw_text: Any,
+    base_url: str,
 ) -> tuple[str | None, str | None]:
     """
     Defensively pull the Jira issue key + browse URL out of whatever the
@@ -264,7 +273,7 @@ def _extract_issue_key_and_url(
     base = (base_url or "").rstrip("/")
     text = raw_text if isinstance(raw_text, str) else str(raw_text)
 
-    # Attempt 1 — parse as JSON and search recursively for a "key".
+    # Attempt 1 - parse as JSON and search recursively for a "key".
     try:
         data = json.loads(text)
 
@@ -311,8 +320,9 @@ def _extract_issue_key_and_url(
     except (json.JSONDecodeError, TypeError):
         pass
 
-    # Attempt 2 — regex a KEY-123 token straight out of plain text.
+    # Attempt 2 - regex a KEY-123 token straight out of plain text.
     import re
+
     m = re.search(r"\b([A-Z][A-Z0-9]+-\d+)\b", text)
     if m:
         key = m.group(1)
@@ -325,6 +335,7 @@ def _extract_issue_key_and_url(
 # Markdown description (mcp-atlassian accepts markdown; it converts to ADF)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _build_markdown_description(state: PipelineState) -> str:
     """
     Build a Markdown description for the Epic. mcp-atlassian converts Markdown
@@ -333,26 +344,23 @@ def _build_markdown_description(state: PipelineState) -> str:
     """
     lines: list[str] = []
     critic = state.critic_output
-    arch   = state.arch_output
-    plan   = state.plan_output
-    poc    = state.poc_output
-    stack  = state.stack_output
-    sched  = state.schedule_output
+    arch = state.arch_output
+    plan = state.plan_output
+    poc = state.poc_output
+    stack = state.stack_output
+    sched = state.schedule_output
 
     lines.append("h2. EM Copilot Pipeline Run")
     lines.append(f"*Run ID:* {state.run_id}  ·  *Revisions:* {state.revision_count}")
     lines.append("")
 
     if critic:
-        lines.append("h3. Critic — Quality Assessment")
-        lines.append(
-            f"*Badge:* {critic.badge.value.upper()}  ·  "
-            f"*Overall:* {critic.overall_score:.2f} / 5.0"
-        )
+        lines.append("h3. Critic - Quality Assessment")
+        lines.append(f"*Badge:* {critic.badge.value.upper()}  ·  *Overall:* {critic.overall_score:.2f} / 5.0")
         for name, dim in [
-            ("Groundedness",  critic.groundedness),
-            ("Completeness",  critic.completeness),
-            ("Consistency",   critic.consistency),
+            ("Groundedness", critic.groundedness),
+            ("Completeness", critic.completeness),
+            ("Consistency", critic.consistency),
             ("Actionability", critic.actionability),
         ]:
             verdict = "PASS" if dim.passed else "FAIL"
@@ -374,7 +382,7 @@ def _build_markdown_description(state: PipelineState) -> str:
         if arch.components:
             lines.append("*Components:*")
             for c in arch.components:
-                lines.append(f"* {c.name} ({c.technology}) — {c.responsibility}")
+                lines.append(f"* {c.name} ({c.technology}) - {c.responsibility}")
         lines.append("")
 
     if stack:
@@ -384,7 +392,7 @@ def _build_markdown_description(state: PipelineState) -> str:
             lines.append(stack.recommendation_rationale)
         for opt in stack.options:
             lines.append(
-                f"* {opt.name} — scalability {opt.scalability_rating}/5, "
+                f"* {opt.name} - scalability {opt.scalability_rating}/5, "
                 f"familiarity {opt.team_familiarity_rating}/5, "
                 f"risk {opt.integration_risk.value}, "
                 f"~${opt.estimated_monthly_cost_usd:.0f}/mo"
@@ -398,7 +406,7 @@ def _build_markdown_description(state: PipelineState) -> str:
         if plan.phases:
             lines.append("*Phases:*")
             for p in plan.phases:
-                lines.append(f"* {p.name} ({p.duration_weeks}w) — {len(p.milestones)} milestone(s)")
+                lines.append(f"* {p.name} ({p.duration_weeks}w) - {len(p.milestones)} milestone(s)")
         lines.append("")
 
     if poc:
@@ -411,17 +419,16 @@ def _build_markdown_description(state: PipelineState) -> str:
 
     if sched:
         lines.append("h3. Schedule")
-        lines.append(
-            f"*Total effort:* {sched.total_effort_days:.1f} days  ·  "
-            f"*Buffer:* {sched.buffer_weeks} weeks"
-        )
+        lines.append(f"*Total effort:* {sched.total_effort_days:.1f} days  ·  *Buffer:* {sched.buffer_weeks} weeks")
         if sched.critical_path:
             lines.append("*Critical path:* " + " -> ".join(sched.critical_path))
         lines.append("")
 
     lines.append("----")
-    lines.append("_Created by EM Copilot via the mcp-atlassian MCP server "
-                 "(Model Context Protocol). 7-agent BRD-to-engineering pipeline._")
+    lines.append(
+        "_Created by EM Copilot via the mcp-atlassian MCP server "
+        "(Model Context Protocol). 7-agent BRD-to-engineering pipeline._"
+    )
     return "\n".join(lines)
 
 
@@ -429,23 +436,24 @@ def _build_markdown_description(state: PipelineState) -> str:
 # Helper
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 async def _search_existing_epic_mcp(state, label: str) -> str | None:
     """
     Search for an existing Epic with the given idempotency label via REST
     (simpler than MCP for a read-only search). Returns the issue key if found.
     """
     try:
-        from src.integrations.jira import _basic_auth_header
         import requests as _requests
+
+        from src.integrations.jira import _basic_auth_header
+
         jql = f'project = "{settings.jira_project_key}" AND labels = "{label}"'
         url = f"{settings.jira_base_url.rstrip('/')}/rest/api/3/search"
         headers = {
             "Authorization": _basic_auth_header(),
             "Accept": "application/json",
         }
-        r = _requests.get(url, headers=headers,
-                          params={"jql": jql, "maxResults": 1, "fields": "key"},
-                          timeout=8)
+        r = _requests.get(url, headers=headers, params={"jql": jql, "maxResults": 1, "fields": "key"}, timeout=8)
         if r.status_code == 200:
             issues = r.json().get("issues", [])
             if issues:
@@ -457,20 +465,21 @@ async def _search_existing_epic_mcp(state, label: str) -> str | None:
 
 def _skip(reason: str) -> dict[str, Any]:
     """Build a uniform skip result. Logged at INFO since skip is a normal state."""
-    log.info(f"Jira MCP push skipped — {reason}")
+    log.info(f"Jira MCP push skipped - {reason}")
     return {
-        "url":             None,
-        "mode":            "skipped",
-        "detail":          f"Jira MCP push skipped: {reason}",
-        "issue_key":       None,
+        "url": None,
+        "mode": "skipped",
+        "detail": f"Jira MCP push skipped: {reason}",
+        "issue_key": None,
         "fallback_reason": reason,
-        "transport":       "mcp",
+        "transport": "mcp",
     }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Phase 7: combined Jira handler (MCP → REST fallback) + export registry
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 async def push_epic_to_jira(state) -> dict:
     """
@@ -484,15 +493,18 @@ async def push_epic_to_jira(state) -> dict:
             jresult = None
     except Exception as e:
         from src.core.logger import get_logger as _gl
+
         _gl(__name__).warning(f"[{state.run_id}] Jira MCP raised in combined handler: {e}")
         jresult = None
 
     if jresult is None:
         from src.integrations.jira import push_artifacts_to_jira
+
         jresult = push_artifacts_to_jira(state)
 
     return jresult
 
 
 from src.integrations.export_registry import register_export
+
 register_export("jira", push_epic_to_jira, "approve")

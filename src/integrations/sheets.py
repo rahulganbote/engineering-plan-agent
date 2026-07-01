@@ -1,38 +1,35 @@
 """
 src/integrations/sheets.py
 ═══════════════════════════
-Artifact export — writes approved engineering artifacts to Google Sheets,
+Artifact export - writes approved engineering artifacts to Google Sheets,
 with an automatic local-CSV fallback when Google credentials are missing.
 
 Called by the pipeline ONLY after the EM approves via HITL gate (POST /approve).
 
 Export modes:
-    1. "sheets"  — service-account JSON + sheet ID are configured AND the
+    1. "sheets"  - service-account JSON + sheet ID are configured AND the
                    Google API call succeeds. Writes 4 tabs to the sheet
                    ("Run Summary", "Engineering Plan", "Schedule", "Tech Stack").
                    Returns the Google Sheets URL.
-    2. "local"   — fallback when credentials are missing or the Google API
+    2. "local"   - fallback when credentials are missing or the Google API
                    call raises. Writes the same 4 datasets as CSV files into
                    logs/exports/<run_id>/ and returns a file:// URL.
                    Lets the demo run end-to-end with zero external setup.
 
 External tool: gspread + Google Service Account JSON credentials (when available).
-This counts as the "Action — write to external system" rubric requirement.
+This implements the external database/system integration for plan audits.
 
 Setup for real Sheets export:
     1. Google Cloud Console → Create Service Account
     2. Download JSON key → save to secrets/google_service_account.json
     3. Share your Google Sheet with the service account email
     4. Copy Sheet ID from URL → GOOGLE_SHEET_ID in .env
-
-Rubric:
-    - Tools (external system): 2 pts ← external API integration
-    - Action (write):               ← artifacts written on HITL approval
 """
 
 from __future__ import annotations
 
 import csv
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -49,13 +46,14 @@ SCOPES = [
 ]
 
 # Where local CSV bundles are written when Sheets credentials are unavailable.
-# Relative to whatever cwd uvicorn was launched from — matches src/core/logger.py.
+# Relative to whatever cwd uvicorn was launched from - matches src/core/logger.py.
 LOCAL_EXPORT_ROOT = Path("logs/exports")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Public entry point
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str, Any]:
     """
@@ -70,7 +68,7 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
           "fallback_reason": str | None,   # populated only when falling back
         }
 
-    Never raises — failures during the Google Sheets path fall through to
+    Never raises - failures during the Google Sheets path fall through to
     the local CSV path so the pipeline never gets stuck post-approval.
     """
     run_id = state.run_id
@@ -81,18 +79,18 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
             url = _write_to_google_sheets(state, email)
             log.info(f"[{run_id}] Sheets export complete | url={url}")
             return {
-                "url":              url,
-                "mode":             "sheets",
-                "detail":           "Wrote Run Summary + Plan + Schedule + Tech Stack tabs to Google Sheets",
-                "files":            [],
-                "fallback_reason":  None,
+                "url": url,
+                "mode": "sheets",
+                "detail": "Wrote Pipeline Run Summary to Google Sheets for audit purposes.",
+                "files": [],
+                "fallback_reason": None,
             }
         except Exception as e:
             reason = f"Sheets API error: {type(e).__name__}: {str(e)[:160]}"
-            log.warning(f"[{run_id}] Sheets export failed — falling back to local | {reason}")
+            log.warning(f"[{run_id}] Sheets export failed - falling back to local | {reason}")
             return _write_local_export(state, fallback_reason=reason, email=email)
 
-    log.info(f"[{run_id}] Sheets credentials unavailable ({why_not}) — writing local CSV bundle")
+    log.info(f"[{run_id}] Sheets credentials unavailable ({why_not}) - writing local CSV bundle")
     return _write_local_export(state, fallback_reason=why_not, email=email)
 
 
@@ -100,8 +98,9 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
 # Credentials probe
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _credentials_status() -> tuple[bool, str]:
-    """Return (ok, reason) — reason is the why-not string when ok is False."""
+    """Return (ok, reason) - reason is the why-not string when ok is False."""
     sheet_id = (settings.google_sheet_id or "").strip()
     creds_path_str = (settings.google_service_account_json or "").strip()
 
@@ -121,13 +120,14 @@ def _credentials_status() -> tuple[bool, str]:
 # Google Sheets path
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
     """
     Write all approved artifacts to Google Sheets.
     Creates tabs if they don't exist. Appends rows on subsequent runs.
     Returns the Sheet URL.
     """
-    # Imports are local — gspread / google-auth are only required for this path
+    # Imports are local - gspread / google-auth are only required for this path
     import gspread
     from google.oauth2.service_account import Credentials
 
@@ -135,17 +135,17 @@ def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
         settings.google_service_account_json,
         scopes=SCOPES,
     )
-    gc     = gspread.authorize(creds)
-    sh     = gc.open_by_key(settings.google_sheet_id)
+    gc = gspread.authorize(creds)
+    sh = gc.open_by_key(settings.google_sheet_id)
     run_id = state.run_id
-    ts     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     log.info(f"[{run_id}] Writing artifacts to Google Sheets")
 
     # ── Tab: Run Summary ─────────────────────────────────────────────────────
     summary_ws = _get_or_create_worksheet(sh, "Run Summary", rows=100, cols=20)
     _ensure_min_cols(summary_ws, len(_summary_headers()))
-    summary_ws.update("A1", [_summary_headers()])
+    summary_ws.update(values=[_summary_headers()], range_name="A1")
     # Write to Run Summary - always appends a new row
     _upsert_summary_row(summary_ws, state, ts, email)
 
@@ -153,31 +153,35 @@ def _write_to_google_sheets(state: PipelineState, email: str = "") -> str:
     if state.plan_output:
         plan_ws = _get_or_create_worksheet(sh, "Engineering Plan", rows=500, cols=8)
         _ensure_headers_gs(plan_ws, _plan_headers())
-        for row in _plan_rows(state):
-            plan_ws.append_row(row)
+        plan_rows = list(_plan_rows(state))
+        if plan_rows:
+            plan_ws.insert_rows(plan_rows, row=2)
 
     # ── Tab: Schedule ─────────────────────────────────────────────────────────
     if state.schedule_output:
         sched_ws = _get_or_create_worksheet(sh, "Schedule", rows=500, cols=7)
         _ensure_headers_gs(sched_ws, _schedule_headers())
-        for row in _schedule_rows(state):
-            sched_ws.append_row(row)
+        sched_rows = list(_schedule_rows(state))
+        if sched_rows:
+            sched_ws.insert_rows(sched_rows, row=2)
 
     # ── Tab: Tech Stack ───────────────────────────────────────────────────────
     if state.stack_output:
         stack_ws = _get_or_create_worksheet(sh, "Tech Stack", rows=100, cols=10)
         _ensure_headers_gs(stack_ws, _tech_stack_headers())
-        for row in _tech_stack_rows(state):
-            stack_ws.append_row(row)
+        stack_rows = list(_tech_stack_rows(state))
+        if stack_rows:
+            stack_ws.insert_rows(stack_rows, row=2)
 
     return f"https://docs.google.com/spreadsheets/d/{settings.google_sheet_id}"
 
 
 def _upsert_summary_row(ws, state, ts: str, email: str = "") -> None:
     """
-    Write the Run Summary row. Always appends a new row to support multiple log entries per run_id.
+    Write the Run Summary row at the top (row 2, right below the header)
+    so that the latest run is always at the top of the worksheet.
     """
-    ws.append_row(_summary_row(state, ts, email))
+    ws.insert_row(_summary_row(state, ts, email), index=2)
 
 
 def _ensure_min_cols(ws, min_cols: int) -> None:
@@ -192,6 +196,7 @@ def _ensure_min_cols(ws, min_cols: int) -> None:
 def _get_or_create_worksheet(sh, title: str, rows: int = 100, cols: int = 10):
     """Get worksheet by name or create it if it doesn't exist."""
     import gspread
+
     try:
         return sh.worksheet(title)
     except gspread.WorksheetNotFound:
@@ -208,6 +213,7 @@ def _ensure_headers_gs(ws, headers: list[str]) -> None:
 # Local CSV fallback path
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _write_local_export(state: PipelineState, fallback_reason: str = "", email: str = "") -> dict[str, Any]:
     """
     Write artifacts as CSVs into logs/exports/<run_id>/.
@@ -215,7 +221,7 @@ def _write_local_export(state: PipelineState, fallback_reason: str = "", email: 
     Also writes README.txt explaining the export and fallback reason.
     """
     run_id = state.run_id
-    ts     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     export_dir = LOCAL_EXPORT_ROOT / run_id
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -248,7 +254,7 @@ def _write_local_export(state: PipelineState, fallback_reason: str = "", email: 
     # README
     readme_path = export_dir / "README.txt"
     readme_path.write_text(
-        f"EM Copilot — local artifact bundle\n"
+        f"EM Copilot - local artifact bundle\n"
         f"Run ID   : {run_id}\n"
         f"Exported : {ts}\n"
         f"Files    : {len(written)}\n"
@@ -266,11 +272,11 @@ def _write_local_export(state: PipelineState, fallback_reason: str = "", email: 
     log.info(f"[{run_id}] Local export complete | dir={export_dir} | files={len(written)}")
 
     return {
-        "url":              url,
-        "mode":             "local",
-        "detail":           f"Wrote {len(written)} files to {export_dir}",
-        "files":            written,
-        "fallback_reason":  fallback_reason or None,
+        "url": url,
+        "mode": "local",
+        "detail": f"Wrote {len(written)} files to {export_dir}",
+        "files": written,
+        "fallback_reason": fallback_reason or None,
     }
 
 
@@ -297,12 +303,28 @@ def _append_or_write_csv(path: Path, headers: list[str], row: list[Any]) -> None
 # Shared schema (used by both Sheets and local paths so output is identical)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _summary_headers() -> list[str]:
     return [
-        "run_id", "brd_name", "timestamp", "badge", "overall_score",
-        "groundedness", "completeness", "consistency", "actionability",
-        "revisions", "hitl_decision", "notes", "em_rating", "processing_time_sec",
-        "plan_duration_weeks", "plan_confidence", "pipeline_status", "email-id"
+        "run_id",
+        "email-id",
+        "brd_name",
+        "timestamp",
+        "badge",
+        "overall_score",
+        "groundedness",
+        "completeness",
+        "consistency",
+        "actionability",
+        "revisions",
+        "hitl_decision",
+        "notes",
+        "em_rating",
+        "processing_time_sec",
+        "plan_duration_weeks",
+        "plan_confidence",
+        "pipeline_status",
+        "environment",
     ]
 
 
@@ -315,25 +337,27 @@ def _summary_row(state: PipelineState, ts: str, email: str = "") -> list[Any]:
     if not notes and state.pipeline_status == "error" and state.errors:
         notes = "; ".join(state.errors)[:500]
     em_rating = state.hitl_em_ratings[-1].get("em_rating", "") if state.hitl_em_ratings else ""
+    env_name = "GCP" if os.getenv("K_SERVICE") else "local"
     return [
         state.run_id,
+        email,
         state.brd_name,
         ts,
-        critic.badge.value         if critic else "N/A",
-        critic.overall_score       if critic else 0,
-        critic.groundedness.score  if critic else 0,
-        critic.completeness.score  if critic else 0,
-        critic.consistency.score   if critic else 0,
+        critic.badge.value if critic else "N/A",
+        critic.overall_score if critic else 0,
+        critic.groundedness.score if critic else 0,
+        critic.completeness.score if critic else 0,
+        critic.consistency.score if critic else 0,
         critic.actionability.score if critic else 0,
         state.revision_count,
         state.hitl_decision.value,
         notes,
         em_rating,
         round(state.processing_time_sec, 2),
-        plan.total_duration_weeks  if plan else 0,
-        plan.confidence_score      if plan else 0.0,
+        plan.total_duration_weeks if plan else 0,
+        plan.confidence_score if plan else 0.0,
         state.pipeline_status,
-        email,
+        env_name,
     ]
 
 
@@ -348,10 +372,17 @@ def _plan_rows(state: PipelineState) -> list[list[Any]]:
     rows = []
     for phase in state.plan_output.phases:
         for ms in phase.milestones:
-            rows.append([
-                state.run_id, phase.name, ms.name, ms.week,
-                ms.owner_role, ms.deliverable, citations,
-            ])
+            rows.append(
+                [
+                    state.run_id,
+                    phase.name,
+                    ms.name,
+                    ms.week,
+                    ms.owner_role,
+                    ms.deliverable,
+                    citations,
+                ]
+            )
     return rows
 
 
@@ -365,7 +396,9 @@ def _schedule_rows(state: PipelineState) -> list[list[Any]]:
     citations = ", ".join(state.schedule_output.citations)
     return [
         [
-            state.run_id, row.sprint, row.week_range,
+            state.run_id,
+            row.sprint,
+            row.week_range,
             " | ".join(row.deliverables),
             row.effort_days,
             ", ".join(row.team_members),
@@ -377,8 +410,15 @@ def _schedule_rows(state: PipelineState) -> list[list[Any]]:
 
 def _tech_stack_headers() -> list[str]:
     return [
-        "run_id", "option", "recommended", "scalability",
-        "familiarity", "integration_risk", "cost_usd", "pros", "cons",
+        "run_id",
+        "option",
+        "recommended",
+        "scalability",
+        "familiarity",
+        "integration_risk",
+        "cost_usd",
+        "pros",
+        "cons",
     ]
 
 
@@ -388,7 +428,8 @@ def _tech_stack_rows(state: PipelineState) -> list[list[Any]]:
     rec = state.stack_output.recommended_option
     return [
         [
-            state.run_id, opt.name,
+            state.run_id,
+            opt.name,
             "YES" if opt.name == rec else "",
             opt.scalability_rating,
             opt.team_familiarity_rating,
@@ -403,4 +444,5 @@ def _tech_stack_rows(state: PipelineState) -> list[list[Any]]:
 
 # Phase 7: export-handler registry
 from src.integrations.export_registry import register_export
+
 register_export("sheets", write_artifacts_to_sheet, "both")

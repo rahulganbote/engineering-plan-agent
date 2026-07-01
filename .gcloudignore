@@ -1,0 +1,60 @@
+# Files NOT uploaded to Cloud Build context.
+# Keeps the upload tarball small + the build context fast.
+
+# ── Build artifacts (will be regenerated inside Docker) ──
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+node_modules/
+
+# ── Python venvs / caches ──
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Git internals (not needed at build) ──
+.git/
+.gitignore
+.github/
+
+# ── Secrets — must NEVER be uploaded; Secret Manager owns these ──
+secrets/
+*.pem
+*.key
+*.crt
+.env
+.env.*
+secrets/.env
+
+# ── Logs / scratch ──
+logs/
+scratch/
+*.log
+.DS_Store
+
+# ── Large docs not needed at build (saves upload bandwidth) ──
+docs/demo_*.png
+docs/screenshots/
+docs/react_mockups/
+docs/*.png
+docs/*.svg
+
+# ── IDE / editor ──
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── OS junk ──
+Thumbs.db
+
+# ── Streamlit (legacy v1) — Cloud Run React deploy doesn't need it ──
+.streamlit/
+
+# ── Knowledge-base source docs are large; the Pinecone index has the embeddings ──
+knowledge_base/

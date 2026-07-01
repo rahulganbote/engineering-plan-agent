@@ -1,4 +1,4 @@
-# Solution Architecture Design Document — Example
+# Solution Architecture Design Document - Example
 # Project: Product Finance Reporting Agent (PFRA)
 # Domain: Fintech / AI Agent | Complexity: Medium | Version: 3.0
 # Synced to Agent 4 (Solution Architect) contract v2.0
@@ -9,11 +9,11 @@ run_id:              pfra_2024_arch
 citations:           [arch_patterns_chunk_0, arch_patterns_chunk_1, Solution_Architect_Example1_PFRA_chunk_0]
 confidence_score:    0.85
 assumptions:
-  - AWS cloud deployment assumed — org enterprise contract confirmed
-  - Pinecone Serverless used for RAG — approved per org standard DL-2024-031
+  - AWS cloud deployment assumed - org enterprise contract confirmed
+  - Pinecone Serverless used for RAG - approved per org standard DL-2024-031
 flagged_ambiguities:
-  - BRD does not specify whether vector DB must be self-hosted or cloud — assumed cloud per org standards
-  - Retention period for generated reports not specified — assumed 90 days
+  - BRD does not specify whether vector DB must be self-hosted or cloud - assumed cloud per org standards
+  - Retention period for generated reports not specified - assumed 90 days
 
 ## Pattern Selection
 pattern: Orchestrator-Agent with RAG Knowledge Layer
@@ -21,10 +21,10 @@ pattern_justification: |
   The PFRA requires sequential coordination of 3 distinct operations: structured DB
   retrieval, unstructured PDF search (RAG), and LLM synthesis. Orchestrator pattern
   provides explicit per-step control and failure handling mapping directly to BRD FR-01-FR-06.
-  Team size is 2 AI Engineers — microservices not justified (org standard DL-2021-007:
+  Team size is 2 AI Engineers - microservices not justified (org standard DL-2021-007:
   microservices require 4+ independent teams). Event-driven pattern rejected: no need
   for async fan-out at monthly batch frequency. CQRS rejected: read-only data access
-  pattern with single output — no write separation benefit. Source: arch_patterns_chunk_0.
+  pattern with single output - no write separation benefit. Source: arch_patterns_chunk_0.
 
 ## Components
 components:
@@ -82,7 +82,7 @@ nfr_mappings:
     citation: arch_patterns_chunk_0
 
 ## Deployment Model
-deployment_model: Serverless (AWS Lambda) — monthly scheduled trigger, pay-per-use, auto-scaling
+deployment_model: Serverless (AWS Lambda) - monthly scheduled trigger, pay-per-use, auto-scaling
 
 ## Architecture Diagram (Mermaid)
 mermaid_diagram: |

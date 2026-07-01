@@ -1,7 +1,7 @@
 """
 src/agents/tech_stack.py
 ════════════════════════
-Tech Stack Recommender Agent — specialist spoke.
+Tech Stack Recommender Agent - specialist spoke.
 
 RAG: source_types=["tech_log", "standard"]
 Contract: TechStackOutput
@@ -10,8 +10,6 @@ Contract: TechStackOutput
 from __future__ import annotations
 
 import json
-
-import requests
 
 from src.agents.base_agent import BaseAgent
 from src.core.logger import get_logger
@@ -28,7 +26,7 @@ Rules:
 3. Each option must include components, scalability_rating, team_familiarity_rating,
    integration_risk, estimated_monthly_cost_usd, pros, cons, and citation.
 4. recommendation_rationale must reference team familiarity, cost, and risk.
-5. Output ONLY valid JSON — no markdown fences, no explanation."""
+5. Output ONLY valid JSON - no markdown fences, no explanation."""
 
 SCHEMA = """{
   "options": [
@@ -65,7 +63,43 @@ class TechStackAgent(BaseAgent):
             query=query,
             source_types=["tech_log", "standard"],
         )
-        github_signal = self._github_velocity_signal()
+
+        from src.integrations.github import get_github_velocity
+
+        github_signal = ""
+        github_sources = []
+        try:
+            github_result = get_github_velocity.invoke({"owner": "fastapi", "repo": "fastapi"})
+            github_signal = github_result.content
+            # Record the tool invocation so the Critic can detect unciteed usage.
+            if "get_github_velocity" not in state.tools_used:
+                state.tools_used.append("get_github_velocity")
+            if not github_result.used_fallback:
+                github_sources = github_result.sources
+        except Exception as e:
+            log.warning(f"Error calling GitHub LangChain tool: {e}")
+            github_signal = ""
+
+        guardrail_triggers = ["github_api_signal_used"] if github_signal else []
+        if github_sources:
+            citation_ids.extend(github_sources)
+
+        if self.has_no_rag_hits(citation_ids):
+            log.info(f"[{state.run_id}] No RAG hits for TechStackAgent. Calling Tavily for live web grounding...")
+            # ── Privacy boundary ────────────────────────────────────────────────
+            # Tavily is third-party. Query MUST be derived metadata (section names
+            # + bounded concept keywords), NOT raw BRD content. Use the helper:
+            from src.integrations.tavily import build_tavily_query, tavily_search
+
+            safe_query = build_tavily_query("recommended technology stack", state.brd_sections)
+            web_results = tavily_search(safe_query)
+            context_str = f"ORGANIZATION KNOWLEDGE BASE: (Empty/No matching records found)\n\nWEB GROUNDING (TAVILY SEARCH):\n{web_results.content}"
+            guardrail_triggers.append("tavily_web_grounding_used")
+            # Record the tool invocation so the Critic can detect unciteed usage.
+            if "tavily_search" not in state.tools_used:
+                state.tools_used.append("tavily_search")
+            if not web_results.used_fallback:
+                citation_ids = ["tavily_web_grounding"] + web_results.sources
 
         raw = self._generate(brd_text, context_str, citation_ids, feedback, github_signal)
         output = self._parse(raw, state.run_id, citation_ids)
@@ -77,38 +111,15 @@ class TechStackAgent(BaseAgent):
             critic_score=None,
             start_time=start,
             revision_count=state.revision_count,
-            guardrail_triggers=["github_api_signal_used"] if github_signal else [],
+            guardrail_triggers=guardrail_triggers,
         )
         log.info(
-            f"[{state.run_id}] TechStack done | "
-            f"options={len(output.options)} recommended={output.recommended_option}"
+            f"[{state.run_id}] TechStack done | options={len(output.options)} recommended={output.recommended_option}"
         )
         return output
 
     def _brd_text(self, state: PipelineState) -> str:
         return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
-
-    def _github_velocity_signal(self) -> str:
-        """
-        Lightweight public GitHub API signal for tool-call coverage.
-        Failure is non-blocking because stack recommendation must still work offline.
-        """
-        try:
-            response = requests.get(
-                "https://api.github.com/repos/fastapi/fastapi",
-                timeout=3,
-                headers={"Accept": "application/vnd.github+json"},
-            )
-            if response.status_code != 200:
-                return ""
-            data = response.json()
-            return (
-                f"GitHub public signal: fastapi stars={data.get('stargazers_count')}, "
-                f"open_issues={data.get('open_issues_count')}."
-            )
-        except Exception as e:
-            log.warning(f"GitHub API signal unavailable | {type(e).__name__}: {e}")
-            return ""
 
     def _generate(
         self,
@@ -118,14 +129,14 @@ class TechStackAgent(BaseAgent):
         feedback: str,
         github_signal: str,
     ) -> str:
-        feedback_block = f"\nCRITIC FEEDBACK — address all points:\n{feedback}\n" if feedback else ""
+        feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
                 f"{feedback_block}"
                 f"AVAILABLE CITATION IDs:\n{cites}\n\n"
-                f"GITHUB API SIGNAL:\n{github_signal or 'Unavailable — use org standards and BRD constraints.'}\n\n"
+                f"GITHUB API SIGNAL:\n{github_signal or 'Unavailable - use org standards and BRD constraints.'}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 f"BRD:\n{brd_text}\n\n"
                 f"Output ONLY JSON:\n{SCHEMA}"
@@ -147,24 +158,29 @@ class TechStackAgent(BaseAgent):
                 cite = o.get("citation", first_cite)
                 if cite not in citation_ids:
                     cite = first_cite
-                options.append(StackOption(
-                    name=o.get("name", f"Option {len(options) + 1}"),
-                    components=o.get("components", {
-                        "api": "FastAPI",
-                        "database": "PostgreSQL",
-                        "frontend": "Streamlit",
-                    }),
-                    scalability_rating=int(o.get("scalability_rating", 3)),
-                    team_familiarity_rating=int(o.get("team_familiarity_rating", 4)),
-                    integration_risk=_coerce_risk_level(o.get("integration_risk")),
-                    estimated_monthly_cost_usd=float(o.get("estimated_monthly_cost_usd", 500.0)),
-                    pros=o.get("pros", ["Familiar, fast to deliver"]),
-                    cons=o.get("cons", ["May need refactoring at larger scale"]),
-                    citation=cite,
-                ))
+                options.append(
+                    StackOption(
+                        name=o.get("name", f"Option {len(options) + 1}"),
+                        components=o.get(
+                            "components",
+                            {
+                                "api": "FastAPI",
+                                "database": "PostgreSQL",
+                                "frontend": "React",
+                            },
+                        ),
+                        scalability_rating=int(o.get("scalability_rating", 3)),
+                        team_familiarity_rating=int(o.get("team_familiarity_rating", 4)),
+                        integration_risk=_coerce_risk_level(o.get("integration_risk")),
+                        estimated_monthly_cost_usd=float(o.get("estimated_monthly_cost_usd", 500.0)),
+                        pros=o.get("pros", ["Familiar, fast to deliver"]),
+                        cons=o.get("cons", ["May need refactoring at larger scale"]),
+                        citation=cite,
+                    )
+                )
 
             while len(options) < 2:
-                options.extend(self._default_options(first_cite)[len(options):len(options) + 1])
+                options.extend(self._default_options(first_cite)[len(options) : len(options) + 1])
 
             recommended = d.get("recommended_option", options[0].name)
             if recommended not in [o.name for o in options]:
@@ -193,7 +209,7 @@ class TechStackAgent(BaseAgent):
                 name="Lean Python Web Stack",
                 components={
                     "api": "FastAPI",
-                    "frontend": "Streamlit",
+                    "frontend": "React",
                     "database": "PostgreSQL",
                     "hosting": "Container platform",
                 },
@@ -231,7 +247,7 @@ class TechStackAgent(BaseAgent):
             run_id=run_id,
             citations=citation_ids or [cite],
             confidence_score=0.2,
-            assumptions=["Fallback tech stack — agent parse error"],
+            assumptions=["Fallback tech stack - agent parse error"],
             flagged_ambiguities=["Tech stack output could not be parsed"],
             options=options,
             recommended_option=options[0].name,
@@ -248,23 +264,23 @@ class TechStackAgent(BaseAgent):
 # any string to the closest valid RiskLevel rather than raising ValidationError.
 
 _RISK_LEVEL_ALIASES = {
-    "low":      "low",
-    "minimal":  "low",
-    "minor":    "low",
+    "low": "low",
+    "minimal": "low",
+    "minor": "low",
     "negligible": "low",
-    "medium":   "medium",
+    "medium": "medium",
     "moderate": "medium",
-    "mid":      "medium",
-    "normal":   "medium",
-    "high":     "high",
+    "mid": "medium",
+    "normal": "medium",
+    "high": "high",
     "elevated": "high",
-    "severe":   "high",
-    "major":    "high",
+    "severe": "high",
+    "major": "high",
     "critical": "critical",
-    "extreme":  "critical",
+    "extreme": "critical",
     "very high": "critical",
     "veryhigh": "critical",
-    "blocker":  "critical",
+    "blocker": "critical",
 }
 
 
@@ -279,9 +295,10 @@ def _coerce_risk_level(value, default: str = "medium") -> RiskLevel:
     if mapped:
         return RiskLevel(mapped)
     # Fallback: if the LLM emitted something we haven't mapped, log + use default
-    log.warning(f"Unknown RiskLevel value {value!r} — coercing to {default!r}")
+    log.warning(f"Unknown RiskLevel value {value!r} - coercing to {default!r}")
     return RiskLevel(default)
 
 
 from src.agents.registry import register_specialist
+
 register_specialist("tech_stack_recommender", TechStackAgent)

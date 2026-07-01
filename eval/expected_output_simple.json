@@ -3,8 +3,8 @@
     "brd_file": "test_brd_simple.txt",
     "brd_name": "Employee Directory Mobile App",
     "complexity": "simple",
-    "purpose": "Golden expected output for evaluation — compare agent outputs against these",
-    "rubric_thresholds": {
+    "purpose": "Golden expected output for evaluation - compare agent outputs against these",
+    "validation_thresholds": {
       "groundedness": 3.75,
       "completeness": 5.0,
       "consistency": 5.0,
@@ -89,7 +89,7 @@
 
   "architecture": {
     "pattern": "Modular monolith",
-    "pattern_justification": "Team < 4 engineers, 8-week timeline, low traffic — modular monolith is the right choice per org standards (DL-2021-007). Microservices complexity not justified.",
+    "pattern_justification": "Team < 4 engineers, 8-week timeline, low traffic - modular monolith is the right choice per org standards (DL-2021-007). Microservices complexity not justified.",
     "components": [
       {"name": "Mobile App (React Native)", "technology": "React Native", "responsibility": "iOS + Android UI"},
       {"name": "Backend API", "technology": "FastAPI / Python", "responsibility": "Search, profiles, auth"},
@@ -116,10 +116,10 @@
   },
 
   "tech_stack": {
-    "recommended": "Option A — React Native + FastAPI + PostgreSQL",
+    "recommended": "Option A - React Native + FastAPI + PostgreSQL",
     "options": [
       {
-        "name": "Option A — React Native + FastAPI + PostgreSQL",
+        "name": "Option A - React Native + FastAPI + PostgreSQL",
         "scalability": 3,
         "team_familiarity": 5,
         "integration_risk": "low",
@@ -128,7 +128,7 @@
         "cons": ["React Native can have native module issues", "Smaller team than web"]
       },
       {
-        "name": "Option B — Flutter + FastAPI + PostgreSQL",
+        "name": "Option B - Flutter + FastAPI + PostgreSQL",
         "scalability": 3,
         "team_familiarity": 2,
         "integration_risk": "medium",

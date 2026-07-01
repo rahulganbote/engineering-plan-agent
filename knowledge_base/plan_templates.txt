@@ -1,5 +1,5 @@
 # Engineering Plan Templates
-# Source: Org PMO — Approved planning templates
+# Source: Org PMO - Approved planning templates
 # Version: 3.1 | Updated: 2024-Q3
 
 ## Template A: Standard 4-Phase Delivery (Medium Complexity, 12-16 weeks)
@@ -8,7 +8,7 @@ Suitable for: 4-8 engineer teams, moderate NFR requirements, existing platform
 ### Phase 1: Discovery and Architecture (Weeks 1-2)
 Objectives:
   - Align all stakeholders on scope, success criteria, and delivery milestones
-  - Finalize technical architecture — ADR document required before Phase 2 starts
+  - Finalize technical architecture - ADR document required before Phase 2 starts
   - Identify and spike on top 2 technical risks
   - Establish team working agreements, branching strategy, deployment pipeline
 
@@ -19,11 +19,11 @@ Milestones:
 
 Recommended team: EM (0.5 FTE), Tech Lead (1 FTE), 1-2 Senior Engineers (1 FTE each)
 
-### Phase 2: Core Build — MVP (Weeks 3-8)
+### Phase 2: Core Build - MVP (Weeks 3-8)
 Objectives:
   - Implement core functional requirements (FR-01 through FR-06 typically)
   - Establish data model and API contracts before sprint 2
-  - Weekly demo to stakeholders — no surprises at end of phase
+  - Weekly demo to stakeholders - no surprises at end of phase
 
 Milestones:
   - W4: API contracts finalized and shared with consuming teams
@@ -37,11 +37,11 @@ Objectives:
   - Integration testing with all dependent systems
   - Performance testing against NFR thresholds (load test at 2× expected peak)
   - Security review and penetration testing if required by compliance
-  - Bug fixes — no new features in this phase
+  - Bug fixes - no new features in this phase
 
 Milestones:
   - W10: All integration tests passing in staging
-  - W11: Load test completed — P95 latency validated against NFR
+  - W11: Load test completed - P95 latency validated against NFR
   - W12: Security review sign-off obtained
   - W12: UAT environment ready for business stakeholders
 
@@ -52,29 +52,29 @@ Objectives:
   - Canary release to 5% → 25% → 100% of traffic over 2 weeks
   - On-call runbook completed and on-call rotation established
   - Monitoring dashboards and alerting thresholds configured
-  - Hypercare support — daily check-in for first 2 weeks post-launch
+  - Hypercare support - daily check-in for first 2 weeks post-launch
 
 Milestones:
   - W13: Go/no-go review completed with all stakeholders
-  - W14: Canary at 25% — zero P1 incidents for 48 hours before full rollout
+  - W14: Canary at 25% - zero P1 incidents for 48 hours before full rollout
   - W15: 100% traffic migrated, legacy system on standby
   - W16: Hypercare complete, team transitions to BAU on-call
 
 ## Template B: Fast Track (Simple, 6-8 weeks)
 Suitable for: 2-3 engineers, well-understood problem space, low NFR requirements
 
-Phase 1 — Design (W1): ADR + wireframes + API contract
-Phase 2 — Build (W2-W5): Feature complete, unit tests, staging deployment
-Phase 3 — Launch (W6-W8): QA, UAT, production rollout with feature flag
+Phase 1 - Design (W1): ADR + wireframes + API contract
+Phase 2 - Build (W2-W5): Feature complete, unit tests, staging deployment
+Phase 3 - Launch (W6-W8): QA, UAT, production rollout with feature flag
 
 ## Template C: Large Program (Complex, 24-36 weeks)
 Suitable for: 8+ engineers, multiple teams, high NFR, regulatory requirements
 
-Phase 1 — Program Setup (W1-W3): Architecture board approval, team onboarding, shared infrastructure
-Phase 2 — Foundation (W4-W8): Core platform services, shared libraries, observability baseline
-Phase 3 — Feature Development (W9-W22): Parallel workstreams per team, bi-weekly integration syncs
-Phase 4 — Integration and Compliance (W23-W30): End-to-end testing, regulatory audits, pen test
-Phase 5 — Staged Rollout (W31-W36): Region-by-region rollout, hypercare per region
+Phase 1 - Program Setup (W1-W3): Architecture board approval, team onboarding, shared infrastructure
+Phase 2 - Foundation (W4-W8): Core platform services, shared libraries, observability baseline
+Phase 3 - Feature Development (W9-W22): Parallel workstreams per team, bi-weekly integration syncs
+Phase 4 - Integration and Compliance (W23-W30): End-to-end testing, regulatory audits, pen test
+Phase 5 - Staged Rollout (W31-W36): Region-by-region rollout, hypercare per region
 
 ## Risk Matrix Template
 Standard likelihood × impact scoring for engineering plans:

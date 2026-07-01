@@ -3,16 +3,16 @@ scripts/ingest_kb.py
 ═════════════════════
 One-time script to ingest all 6 knowledge base documents into Pinecone.
 
-Run this ONCE before starting the pipeline. Safe to re-run — Pinecone
+Run this ONCE before starting the pipeline. Safe to re-run - Pinecone
 upsert is idempotent so existing vectors are overwritten, not duplicated.
 
 Knowledge base documents (in knowledge_base/):
-    brd_fintech_payment_portal.txt  — past BRD, fintech domain, medium complexity
-    brd_platform_idp.txt            — past BRD, platform domain, complex
-    arch_patterns.txt               — 6 architecture patterns with trade-offs
-    plan_templates.txt              — phased delivery templates with milestones
-    project_timelines.csv           — 15 historical projects with velocity data
-    tech_decision_log.txt           — org technology decisions with rationale
+    brd_fintech_payment_portal.txt  - past BRD, fintech domain, medium complexity
+    brd_platform_idp.txt            - past BRD, platform domain, complex
+    arch_patterns.txt               - 6 architecture patterns with trade-offs
+    plan_templates.txt              - phased delivery templates with milestones
+    project_timelines.csv           - 15 historical projects with velocity data
+    tech_decision_log.txt           - org technology decisions with rationale
 
 Usage:
     # Full ingestion + retrieval test (recommended first time)
@@ -25,12 +25,12 @@ Usage:
     python scripts/ingest_kb.py --test-only
 
 Expected output:
-    ✅ brd_fintech_payment_portal.txt — 12 chunks
-    ✅ brd_platform_idp.txt           — 11 chunks
-    ✅ arch_patterns.txt              — 7 chunks
-    ✅ plan_templates.txt             — 8 chunks
-    ✅ project_timelines.csv          — 15 chunks
-    ✅ tech_decision_log.txt          — 14 chunks
+    ✅ brd_fintech_payment_portal.txt - 12 chunks
+    ✅ brd_platform_idp.txt           - 11 chunks
+    ✅ arch_patterns.txt              - 7 chunks
+    ✅ plan_templates.txt             - 8 chunks
+    ✅ project_timelines.csv          - 15 chunks
+    ✅ tech_decision_log.txt          - 14 chunks
     ─────────────────────────────────
     Total: 67 chunks ingested
     ✅ All retrieval tests passed
@@ -274,7 +274,7 @@ DOCUMENTS.extend(STANDARDS_DOCUMENTS)
 # ── Additional Tech Stack Recommendation ──────────────────────────────
 TECH_STACK_RECOMMENDATION_DOCUMENTS = [
     {
-        "filename":    "Tech Stack Recommender for Microservices and WebApp Development.txt",
+        "filename":    "Tech_Stack_Recommender_Microservices_WebApp.txt",
         "source_type": "tech_log",
         "domain":      "Microservices or WebApp",
         "complexity":  "complex",
@@ -282,7 +282,7 @@ TECH_STACK_RECOMMENDATION_DOCUMENTS = [
                         "aws-native", "scalable", "generic", "byok", "security"],
     },
        {
-        "filename":    "Tech Stack Recommender for AIML and Data Science.txt",
+        "filename":    "Tech_Stack_Recommender_AIML_DataScience.txt",
         "source_type": "tech_log",
         "domain":      "AIML and Data Science Engineering",
         "complexity":  "complex",
@@ -301,7 +301,7 @@ KB_DIR = PROJECT_ROOT / "knowledge_base"
 def ingest_all() -> tuple[int, list[str]]:
     """Ingest all KB documents. Returns (total_chunks, failed_files)."""
     print("=" * 60)
-    print("EM Copilot — Knowledge Base Ingestion")
+    print("EM Copilot - Knowledge Base Ingestion")
     #print(f"Target: Pinecone index '{__import__(\"os\").getenv(\"PINECONE_INDEX\", \"brd-knowledge-base\")}'")
     print(f"Target: Pinecone index '{os.getenv('PINECONE_INDEX', 'brd-knowledge-base')}'")
                                         
@@ -366,7 +366,7 @@ def test_retrieval() -> bool:
             all_passed = False
 
     if all_passed:
-        print("\n✅ All retrieval tests passed — KB is ready.")
+        print("\n✅ All retrieval tests passed - KB is ready.")
     else:
         print("\n⚠️  Some tests returned no results. Check ingestion errors above.")
         print("   Pinecone may need 15-30 seconds after upsert to index new vectors.")
@@ -407,7 +407,7 @@ if __name__ == "__main__":
         total, failed = ingest_all()
 
         if total == 0:
-            print("\n❌ No chunks ingested — check errors above.")
+            print("\n❌ No chunks ingested - check errors above.")
             sys.exit(1)
 
         print("\nWaiting 45 seconds for Pinecone to index vectors...")

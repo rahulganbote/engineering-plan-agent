@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EM Copilot</title>
+    <!-- FOUC prevention - apply theme class BEFORE React mounts.
+         Reads localStorage('em-copilot-theme'); falls back to LIGHT (the
+         public-demo default). Users opting into System or Dark have their
+         choice persisted. Synchronous + tiny so it never blocks render. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('em-copilot-theme');
+          var mode = stored || 'light';
+          var isDark =
+            mode === 'dark' ||
+            (mode === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+    <!-- ElevenLabs Conversational AI Voice Widget SDK (Versioned & Integrity-Pinned) -->
+    <script 
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed@0.13.1" 
+      integrity="sha384-bSJqctM1j+2F7i0a/YBQMKFYjXKRfYa0j1n7QsBRlsYJO8jfSwcNGSmQux/Lt+vy" 
+      crossorigin="anonymous" 
+      async 
+      type="text/javascript">
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
