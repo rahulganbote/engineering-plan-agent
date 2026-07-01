@@ -213,6 +213,12 @@ export const AgentWorkspace: React.FC = () => {
               >
                 Sign in with Google
               </button>
+              <a
+                href="#/about"
+                className="block text-[11px] text-muted-foreground hover:text-foreground transition pt-1"
+              >
+                Who built this? →
+              </a>
             </div>
           )}
 
@@ -437,6 +443,12 @@ export const AgentWorkspace: React.FC = () => {
             />
           )}
           <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+            <a
+              href="#/about"
+              className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg"
+            >
+              ℹ️ About
+            </a>
             <button
               onClick={() => setIsFeedbackOpen(true)}
               className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg"
