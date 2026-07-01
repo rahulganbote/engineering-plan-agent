@@ -69,9 +69,9 @@ export const AboutPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-12 space-y-12">
+      <main className="max-w-3xl mx-auto px-6 py-6 space-y-6">
         {/* About Me */}
-        <section className="space-y-4">
+        <section className="space-y-4 border-b border-border/40 pb-6">
           <h1 className="text-3xl font-extrabold tracking-tight">About Me</h1>
           <p className="text-sm leading-relaxed text-foreground/90 font-medium">
             I am Rahul Ganbote. I have helped organizations solve complex problems by leveraging technology and building reliable AI systems. I have deep expertise in building scalable, reliable, and cost-effective software solutions and have led high-performing teams to deliver complex transformation projects.
@@ -81,10 +81,8 @@ export const AboutPage: React.FC = () => {
           </p>
         </section>
 
-        <hr className="border-border/60" />
-
         {/* About EM Copilot */}
-        <section className="space-y-6">
+        <section className="space-y-6 border-b border-border/40 pb-6">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight">About EM Copilot</h2>
             <p className="text-sm text-muted-foreground">
@@ -192,10 +190,8 @@ export const AboutPage: React.FC = () => {
           </div>
         </section>
 
-        <hr className="border-border/60" />
-
         {/* Principles behind EM Copilot */}
-        <section className="space-y-4">
+        <section className="space-y-4 border-b border-border/40 pb-6">
           <h2 className="text-2xl font-bold tracking-tight">
             Principles behind EM Copilot
           </h2>
@@ -218,8 +214,6 @@ export const AboutPage: React.FC = () => {
             ))}
           </ul>
         </section>
-
-        <hr className="border-border/60" />
 
         {/* Contact */}
         <section className="space-y-4">
