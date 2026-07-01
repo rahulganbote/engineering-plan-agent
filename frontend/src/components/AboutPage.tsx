@@ -261,7 +261,7 @@ export const AboutPage: React.FC = () => {
             onClick={goHome}
             className="text-xs text-muted-foreground hover:text-foreground transition font-semibold"
           >
-            ← Back to demo
+            ← Back to Copilot
           </button>
           <span className="text-xs text-muted-foreground font-medium">
             © 2026 Rahul Ganbote · All rights reserved.
