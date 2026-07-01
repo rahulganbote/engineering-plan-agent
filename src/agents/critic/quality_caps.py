@@ -23,8 +23,9 @@ THRESHOLDS: dict[str, float] = {
     "consistency": 5.0,  # zero contradictions
     "actionability": 4.0,  # EM can act immediately
 }
-GREEN_THRESHOLD = 4.0
-AMBER_THRESHOLD = 3.0
+GREEN_THRESHOLD = 4.25
+AMBER_THRESHOLD = 3.75
+RED_THRESHOLD = 3.5
 
 
 def calibrate_scores(
@@ -208,8 +209,10 @@ def assign_badge(scores: dict, overall: float) -> QualityBadge:
     Assign Green/Amber/Red quality badge based on dimension scores.
     """
     below = sum(1 for dim, threshold in THRESHOLDS.items() if scores.get(dim, 0) < threshold)
+    if below >= 2 or overall <= RED_THRESHOLD:
+        return QualityBadge.RED
     if below == 0 and overall >= GREEN_THRESHOLD:
         return QualityBadge.GREEN
-    elif below <= 1 and overall >= AMBER_THRESHOLD:
+    if below == 1 or (AMBER_THRESHOLD <= overall < GREEN_THRESHOLD):
         return QualityBadge.AMBER
     return QualityBadge.RED
