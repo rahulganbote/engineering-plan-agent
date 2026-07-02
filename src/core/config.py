@@ -126,6 +126,10 @@ class Settings(BaseSettings):
     rate_limit_retry_after_sec: int = 3600
     voice_webhook_secret: str = ""  # Token used by ElevenLabs webhook to authenticate voice approvals
     max_pipeline_run_budget_usd: float = 2.00  # Hard budget limit per pipeline run (dollars)
+    # Gate for diagnostic routes like GET /debug/config-status. False in
+    # production so the endpoint 404s and doesn't advertise the voice webhook
+    # setup. Set to True locally or during voice-auth debugging.
+    debug_endpoints_enabled: bool = False
 
     # ── Jira ──────────────────────────────────────────────────────────────
     jira_base_url: str = ""

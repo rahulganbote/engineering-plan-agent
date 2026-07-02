@@ -53,7 +53,10 @@ def verify_run_ownership(run_id: str, request: Request, allow_voice_agent: bool 
             token = auth_header.split(" ", 1)[1].strip()
             valid_secrets = [s.strip() for s in settings.voice_webhook_secret.split(",") if s.strip()]
             if token in valid_secrets:
-                log.info(f"[{run_id}] voice-agent auth OK (token_len={len(token)})")
+                # DEBUG (not INFO) because the OK case fires on every voice
+                # call and would otherwise dominate Cloud Run stdout at cost.
+                # FAILED / missing-Bearer stay at WARNING for actionable alerts.
+                log.debug(f"[{run_id}] voice-agent auth OK (token_len={len(token)})")
                 return  # Authorized voice agent bypass
             log.warning(f"[{run_id}] voice-agent auth FAILED: token_len={len(token)} valid_count={len(valid_secrets)}")
         else:

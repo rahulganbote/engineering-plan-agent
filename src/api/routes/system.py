@@ -6,7 +6,7 @@ System status, configuration, and diagnostics endpoints.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from src.api.models import FeedbackRequest
 from src.core.config import settings
@@ -28,11 +28,12 @@ async def config_status():
     revision. NEVER returns the value itself - only presence and length so a
     misconfigured deploy surfaces immediately without leaking the secret.
 
-    Curl in production after any env-var change:
-      curl https://emcopilot.ai/debug/config-status
-    A length of 0 means the env var isn't reaching the process (wrong tab,
-    revision not rolled forward, or typo in the variable name).
+    Gated behind DEBUG_ENDPOINTS_ENABLED so this route 404s in production and
+    doesn't advertise the voice webhook to unauthenticated visitors. Flip the
+    env var on temporarily when diagnosing voice-auth config, and off when done.
     """
+    if not settings.debug_endpoints_enabled:
+        raise HTTPException(status_code=404, detail="Not Found")
     return {
         "voice_webhook_secret_set": bool(settings.voice_webhook_secret),
         "voice_webhook_secret_len": len(settings.voice_webhook_secret),
