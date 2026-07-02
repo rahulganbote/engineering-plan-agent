@@ -23,8 +23,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Literal
 
-from src.core.pipeline_status import PipelineStatus
-
 from langgraph.graph import END, StateGraph
 
 import src.agents  # noqa: F401 - side-effect: registers all specialists
@@ -41,6 +39,7 @@ from src.agents.registry import get_specialist
 from src.core.config import settings
 from src.core.logger import get_logger, log_pipeline_summary
 from src.core.models import PipelineState
+from src.core.pipeline_status import PipelineStatus
 
 log = get_logger(__name__)
 MAX_REVISIONS = settings.max_critic_revisions

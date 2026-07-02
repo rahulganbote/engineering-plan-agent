@@ -68,7 +68,6 @@ class CallPolicy:
 
 from src.core.exceptions import QuotaExceededError
 
-
 OPENAI_POLICY = CallPolicy(
     timeout_sec=40.0, max_attempts=3, backoff_min=1.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
 )

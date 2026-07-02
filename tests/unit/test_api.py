@@ -489,6 +489,7 @@ def test_pipeline_task_records_security_block():
     """When SecurityValidator returns BLOCKED, task records error state,
     emits security_blocked SSE event, and skips run_pipeline entirely."""
     import json
+
     from src.api.main import _run_events, _run_pipeline_task, _runs
     from src.security.validator import ValidationResult, ValidationStatus
 
@@ -536,7 +537,7 @@ def test_pipeline_task_records_security_block():
 def test_run_pipeline_endpoint_latency_and_background_task(client):
     """Assert POST /run-pipeline returns instantly and queues task in background."""
     import hashlib
-    from src.api.main import _runs, _run_events
+
 
     with patch("src.api.routes.runs._run_pipeline_task") as mock_task:
         import time

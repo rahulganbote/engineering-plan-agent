@@ -18,7 +18,7 @@ from fastapi.responses import StreamingResponse
 from src.api.dependencies import get_current_user_email, verify_run_ownership
 from src.api.limiter import limiter
 from src.api.models import PipelineRunResponse
-from src.api.state import _push_event, _run_events, _run_export, _run_owner, _runs
+from src.api.state import _run_events, _run_export, _run_owner, _runs
 from src.api.tasks import _run_pipeline_task
 from src.core.config import settings
 from src.core.logger import get_logger
