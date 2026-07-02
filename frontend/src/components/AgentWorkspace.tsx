@@ -370,7 +370,7 @@ export const AgentWorkspace: React.FC = () => {
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
-                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
+                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus === 'critic_review' || pipelineStatus === 'evaluating') ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
                 onClick={() => {
@@ -544,16 +544,16 @@ export const AgentWorkspace: React.FC = () => {
               {/* Performance Metrics Summary */}
               <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border">
                 <div>
-                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "-")}</span>
+                  <strong>Evaluation Score:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-success font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
                 </div>
                 <div>
-                  <strong>Total Processing Time:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
+                  <strong>Total Processing Time:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-success font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Tokens used:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
+                  <strong>Tokens used:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-success font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Cost Spent:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-success font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
+                  <strong>Cost Spent:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-success font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
                 </div>
               </div>
 
@@ -575,7 +575,7 @@ export const AgentWorkspace: React.FC = () => {
                       <div className="space-y-1">
                         <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
                         <div className="text-xs text-muted-foreground">
-                          Revision {criticOutput.revisionNumber} · Overall <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
+                          Final Score: <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)}/5.0</strong>  |  Total Revision(s): <strong className="text-foreground">{criticOutput.revisionNumber}</strong>
                         </div>
                       </div>
                       <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
@@ -647,7 +647,7 @@ export const AgentWorkspace: React.FC = () => {
                   {/* Tab Display Area */}
                   <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
                     <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
-                      {pipelineStatus === 'dispatching' ? (
+                      {['dispatching', 'specialist_executing'].includes(pipelineStatus) ? (
                         <PlanSkeleton />
                       ) : (
                         <div>

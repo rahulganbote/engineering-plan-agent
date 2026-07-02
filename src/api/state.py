@@ -7,6 +7,7 @@ In-memory run storage and telemetry push helper.
 from __future__ import annotations
 
 import json
+import time
 
 from src.core.logger import get_logger
 from src.core.models import PipelineState
@@ -25,6 +26,8 @@ def _push_event(run_id: str, data: dict) -> None:
         _run_events[run_id] = []
     log.info(f"[_push_event] run_id={run_id} type={data.get('type')} data={data}")
     try:
-        _run_events[run_id].append(json.dumps(data))
+        seq = len(_run_events[run_id])
+        payload = {**data, "seq": seq, "ts": time.time()}
+        _run_events[run_id].append(json.dumps(payload))
     except Exception as e:
         log.error(f"[_push_event] failed to serialize: {e}")

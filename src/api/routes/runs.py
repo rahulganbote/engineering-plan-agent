@@ -7,6 +7,7 @@ Pipeline execution, status streaming, and event log routes.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import uuid
 from collections.abc import AsyncGenerator
@@ -47,40 +48,24 @@ async def trigger_pipeline(
 
     content = await file.read()
 
-    validator = SecurityValidator()
-    val_result = validator.validate(
-        file_bytes=content,
-        filename=file.filename or "upload.txt",
-        content_type=file.content_type or "text/plain",
-        model_family=model_family,  # route security LLM calls to the chosen family
-    )
-
-    if val_result.status == ValidationStatus.BLOCKED:
-        raise HTTPException(status_code=400, detail=val_result.user_message)
-
-    brd_text = val_result.brd_text_clean or ""
-    brd_hash = val_result.brd_hash or ""
+    brd_hash = hashlib.sha256(content).hexdigest()
     run_id = f"{brd_hash[:8]}-{uuid.uuid4().hex[:4]}"
 
     _run_owner[run_id] = user_email
-
-    # Clear any prior run state for this run_id so polling never returns
-    # a stale "awaiting_hitl" from a previous session for the same BRD hash.
+    # Clear any prior run state for this run_id so polling never returns a stale awaiting_hitl
     _runs.pop(run_id, None)
     _run_export.pop(run_id, None)
     _run_events[run_id] = []
-    if val_result.pii_types_found:
-        _push_event(
-            run_id,
-            {
-                "type": "pii_warning",
-                "pii_types": val_result.pii_types_found,
-                "message": val_result.user_message,
-            },
-        )
 
     background_tasks.add_task(
-        _run_pipeline_task, brd_text, brd_hash, run_id, file.filename or "upload.txt", model_family, enable_fallback
+        _run_pipeline_task,
+        content,
+        brd_hash,
+        run_id,
+        file.filename or "upload.txt",
+        file.content_type or "text/plain",
+        model_family,
+        enable_fallback,
     )
 
     log.info(
@@ -102,6 +87,7 @@ async def stream_status(run_id: str, request: Request):
         sent = 0
         timeout = settings.pipeline_timeout_sec
         elapsed = 0
+        last_yielded_status: str | None = None
 
         while elapsed < timeout:
             events = _run_events.get(run_id, [])
@@ -111,7 +97,9 @@ async def stream_status(run_id: str, request: Request):
 
             state = _runs.get(run_id)
             if state and state.pipeline_status in ("exported", "export_failed", "awaiting_hitl"):
-                yield f"data: {json.dumps({'type': 'status', 'status': state.pipeline_status, 'run_id': run_id})}\n\n"
+                if state.pipeline_status != last_yielded_status:
+                    yield f"data: {json.dumps({'type': 'status', 'status': state.pipeline_status, 'run_id': run_id})}\n\n"
+                    last_yielded_status = state.pipeline_status
                 if state.pipeline_status in ("exported", "export_failed"):
                     break
 

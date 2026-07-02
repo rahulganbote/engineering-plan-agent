@@ -25,6 +25,12 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
         return `[Agent: ${log.agent}] Starting execution...`;
       case 'agent_complete':
         return `[Agent: ${log.agent}] Completed execution successfully.`;
+      case 'revision_start': {
+        const targets = Array.isArray(log.targets) ? log.targets : Array.isArray(log.payload?.targets) ? (log.payload.targets as string[]) : [];
+        return `[Revision] Revision ${log.revision || log.payload?.revision || 1} started. Target agents: ${targets.length ? targets.join(', ') : 'all'}`;
+      }
+      case 'revision_complete':
+        return `[Revision] Revision ${log.revision || log.payload?.revision || 1} ended successfully.`;
       case 'status':
       case 'pipeline_status':
         return `[Pipeline] Status changed: ${log.status || log.payload?.status || 'unknown'}`;
@@ -32,6 +38,12 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
         return `[Pipeline] Run completed. Final status: ${log.status || log.final_status || 'completed'}`;
       case 'pii_warning':
         return `[PII Check] Blocked/redacted potential sensitive data. Types: ${Array.isArray(log.pii_types) ? log.pii_types.join(', ') : JSON.stringify(log.pii_types)}`;
+      case 'security_start':
+        return `[Security Scan] Started file size check and PII checks...`;
+      case 'security_complete':
+        return `[Security Scan] Completed successfully. Clean BRD passed.`;
+      case 'security_blocked':
+        return `[Security Scan] BLOCKED: ${log.message || log.payload?.message || 'Injection or invalid file'}`;
       case 'hitl_decision':
         return `[HITL] Human Decision: Reviewer "${log.reviewer || 'EM'}" marked run as "${log.decision || 'unknown'}".`;
       case 'hitl_escalated':
@@ -96,7 +108,11 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'status':
       case 'token_update':
       case 'artifacts_update':
+      case 'security_start':
         return 'text-cyan-400';
+      case 'revision_start':
+      case 'revision_complete':
+        return 'text-cyan-400 font-bold';
 
       // Amber (Warning)
       case 'retry':
@@ -113,11 +129,13 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       case 'breaker_open':
       case 'export_failed':
       case 'pinecone_ingest_failed':
+      case 'security_blocked':
         return 'text-danger font-bold';
 
       // Green (Success)
       case 'pipeline_complete':
       case 'export_complete':
+      case 'security_complete':
       case 'cache_hit':
       case 'jira_pushed':
       case 'idempotent_skip':

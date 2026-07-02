@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { cleanLlmErrorMessage } from '../lib/utils';
 
@@ -29,6 +29,10 @@ export interface LogEvent {
   timeout_sec?: number;
   input?: number;
   output?: number;
+  revision?: number;
+  targets?: string[];
+  seq?: number;
+  ts?: number;
 }
 
 export interface CriticDimension {
@@ -114,7 +118,6 @@ interface ArtifactsResponse {
 export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [logs, setLogs] = useState<LogEvent[]>([]);
   const [pipelineStatus, setPipelineStatus] = useState<string>('idle');
-  const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
   const [artifacts, setArtifacts] = useState<ArtifactsState | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [tokenUsage, setTokenUsage] = useState<{ input: number; output: number } | null>(null);
@@ -125,6 +128,8 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [fallbackActive, setFallbackActive] = useState<{ from: string; to: string } | null>(null);
   const [prevRunId, setPrevRunId] = useState<string | null>(null);
 
+  const seenSeqs = useRef<Set<number>>(new Set());
+
   if (runId !== prevRunId) {
     setPrevRunId(runId);
     if (runId) {
@@ -132,10 +137,9 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     }
   }
 
-  const clearRun = useCallback(() => {
+  const clearRun = useCallback((newStatus: string = 'idle') => {
     setLogs([]);
-    setPipelineStatus('idle');
-    setCompletedAgents(new Set());
+    setPipelineStatus(newStatus);
     setArtifacts(null);
     setElapsedSeconds(0);
     setTokenUsage(null);
@@ -144,10 +148,49 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     setApprovalResult(null);
     setErrorMessage(null);
     setFallbackActive(null);
+    seenSeqs.current.clear();
   }, []);
+
+  const completedAgents = useMemo(() => {
+    const s = new Set<string>();
+
+    for (const log of logs) {
+      if (log.type === 'agent_start' && log.agent) {
+        s.delete(log.agent);
+      } else if ((log.type === 'agent_complete' || log.type === 'agent_failed') && log.agent) {
+        s.add(log.agent);
+      }
+    }
+
+    if (artifacts?.brd_sections && (artifacts.brd_sections as unknown[]).length > 0) {
+      s.add('orchestrator');
+    }
+    if (artifacts?.plan_output) {
+      s.add('engineering_plan_generator');
+    }
+    if (artifacts?.schedule_output) {
+      s.add('schedule_estimator');
+    }
+    if (artifacts?.arch_output) {
+      s.add('solution_architect');
+    }
+    if (artifacts?.poc_output) {
+      s.add('poc_planner');
+    }
+    if (artifacts?.stack_output) {
+      s.add('tech_stack_recommender');
+    }
+    if (artifacts?.critic_output) {
+      s.add('critic');
+    }
+
+    return s;
+  }, [artifacts, logs]);
 
   useEffect(() => {
     if (!runId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    clearRun('initializing');
 
     const es = new EventSource(`${apiBaseUrl}/status/${runId}`, { withCredentials: true });
     const startTs = Date.now();
@@ -158,16 +201,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     let processedIndex = 0;
 
     const processEvent = (data: LogEvent) => {
-      setLogs((prev) => {
-        // Guard against duplicate logs if both SSE and polling receive them
-        const isDuplicate = prev.some(l => 
-          l.type === data.type && 
-          l.agent === data.agent && 
-          (l.timestamp === data.timestamp || (!l.timestamp && !data.timestamp))
-        );
-        if (isDuplicate) return prev;
-        return [...prev, data];
-      });
+      if (typeof data.seq === 'number') {
+        if (seenSeqs.current.has(data.seq)) return;
+        seenSeqs.current.add(data.seq);
+      }
+      setLogs((prev) => [...prev, data]);
 
       switch (data.type) {
         case 'status':
@@ -181,39 +219,6 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
             from: data.from_family || '',
             to: data.to_family || '',
           });
-          break;
-        }
-        case 'agent_start': {
-          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-          if (agent) {
-            setCompletedAgents((prev) => {
-              const next = new Set(prev);
-              next.delete(agent);
-              return next;
-            });
-          }
-          break;
-        }
-        case 'agent_complete': {
-          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-          if (agent) {
-            setCompletedAgents((prev) => {
-              const next = new Set(prev);
-              next.add(agent);
-              return next;
-            });
-          }
-          break;
-        }
-        case 'agent_failed': {
-          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-          if (agent) {
-            setCompletedAgents((prev) => {
-              const next = new Set(prev);
-              next.add(agent);
-              return next;
-            });
-          }
           break;
         }
         case 'artifacts_update': {
@@ -307,6 +312,14 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           clearInterval(tick);
           break;
         }
+        case 'security_blocked': {
+          setPipelineStatus('error');
+          setErrorMessage(cleanLlmErrorMessage(data.message || 'Security validation blocked.'));
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
+          break;
+        }
         case 'error': {
           setPipelineStatus('error');
           setErrorMessage(cleanLlmErrorMessage(data.message || 'An unexpected error occurred.'));
@@ -353,7 +366,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       clearInterval(pollInterval);
       es.close();
     };
-  }, [runId, apiBaseUrl]);
+  }, [runId, apiBaseUrl, clearRun]);
 
   // Fetch final artifacts when runId is set and pipeline status transitions to final/gate states
   const fetchArtifacts = useCallback(async () => {
@@ -423,33 +436,6 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           jira_detail: data.export.jira?.detail || undefined,
         });
       }
-
-      // Force-fill completed agents if artifacts exist
-      setCompletedAgents((prev) => {
-        const next = new Set(prev);
-        if (data.brd_sections && data.brd_sections.length > 0) {
-          next.add('orchestrator');
-        }
-        if (data.plan_output) {
-          next.add('engineering_plan_generator');
-        }
-        if (data.schedule_output) {
-          next.add('schedule_estimator');
-        }
-        if (data.arch_output) {
-          next.add('solution_architect');
-        }
-        if (data.poc_output) {
-          next.add('poc_planner');
-        }
-        if (data.stack_output) {
-          next.add('tech_stack_recommender');
-        }
-        if (data.critic_output) {
-          next.add('critic');
-        }
-        return next;
-      });
     } catch (e) {
       console.error('Failed to fetch artifacts:', e);
     }

@@ -173,7 +173,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     {
       id: 'security',
       label: 'Security Validator',
-      desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
+      desc: 'Performs file size check, BRD validity check, prompt injection assessment, and filters/redacts PII patterns.',
       icon: <ShieldCheck size={20} className="text-danger" />,
       color: 'border-danger/30 text-danger bg-danger/10',
       activeColor: 'ring-danger/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',

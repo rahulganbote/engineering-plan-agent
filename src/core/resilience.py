@@ -66,8 +66,7 @@ class CallPolicy:
     enforce_timeout: bool = True  # If False, rely on the underlying SDK
 
 
-class QuotaExceededError(Exception):
-    """Raised when API credits/tokens have expired or reached limit."""
+from src.core.exceptions import QuotaExceededError
 
 
 OPENAI_POLICY = CallPolicy(

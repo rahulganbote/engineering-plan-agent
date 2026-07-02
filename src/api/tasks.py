@@ -14,10 +14,54 @@ log = get_logger(__name__)
 
 
 def _run_pipeline_task(
-    brd_text: str, brd_hash: str, run_id: str, brd_name: str, model_family: str = "openai", enable_fallback: bool = True
+    file_bytes: bytes,
+    brd_hash: str,
+    run_id: str,
+    brd_name: str,
+    content_type: str = "text/plain",
+    model_family: str = "openai",
+    enable_fallback: bool = True,
 ) -> None:
     state = None
     try:
+        from src.core.models import PipelineState
+        state = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name)
+        state.pipeline_status = "security_check"
+        _runs[run_id] = state
+
+        _push_event(run_id, {"type": "pipeline_status", "status": "security_check"})
+        _push_event(run_id, {"type": "security_start"})
+
+        from src.security.validator import SecurityValidator, ValidationStatus
+        validator = SecurityValidator()
+        val_result = validator.validate(
+            file_bytes=file_bytes,
+            filename=brd_name,
+            content_type=content_type,
+            model_family=model_family,
+        )
+
+        if val_result.status == ValidationStatus.BLOCKED:
+            _push_event(run_id, {"type": "security_blocked", "message": val_result.user_message})
+            state.pipeline_status = "error"
+            state.errors.append(val_result.user_message)
+            _runs[run_id] = state
+            return
+
+        _push_event(run_id, {"type": "security_complete"})
+
+        if val_result.pii_types_found:
+            _push_event(
+                run_id,
+                {
+                    "type": "pii_warning",
+                    "pii_types": val_result.pii_types_found,
+                    "message": val_result.user_message,
+                },
+            )
+
+        brd_text = val_result.brd_text_clean or ""
+
         _push_event(run_id, {"type": "agent_start", "agent": "orchestrator"})
         from src.agents.pipeline import run_pipeline
 
@@ -37,14 +81,11 @@ def _run_pipeline_task(
         )
         log.info(f"[{run_id}] Pipeline task complete | status={state.pipeline_status}")
     except Exception as e:
-        from src.core.exceptions import BudgetBreachedError
-        from src.core.resilience import QuotaExceededError
+        from src.core.exceptions import GovernedFailure
 
         err_msg = str(e)
-        if isinstance(e, QuotaExceededError) or "your api credits/tokens" in err_msg.lower():
-            err_msg = "Your API Credits/Tokens has expired or reached limit. Please try again later. Sorry."
-        elif isinstance(e, BudgetBreachedError):
-            err_msg = f"Pipeline execution aborted: {str(e)}"
+        if isinstance(e, GovernedFailure):
+            err_msg = e.user_message
 
         log.error(f"[{run_id}] Pipeline task failed | error={e}")
         _push_event(run_id, {"type": "error", "message": err_msg})

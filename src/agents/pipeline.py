@@ -143,7 +143,7 @@ def node_orchestrator_hub(state: dict) -> dict:
 
     output, sections = OrchestratorAgent().run(brd_text, ps.run_id)
     ps.brd_sections = sections
-    _set_status(ps, "dispatching" if output.validation_passed else "error")
+    _set_status(ps, "specialist_executing" if output.validation_passed else "error")
     state["_routing_plan"] = output.routing_plan
     state["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
 
@@ -168,7 +168,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     if ps.pipeline_status == "error":
         return _dump(ps, state)
 
-    _set_status(ps, "dispatching")
+    _set_status(ps, "specialist_executing")
     max_workers = min(len(targets), len(ALL_SPECIALIST_AGENTS)) or 1
 
     # ── Phase 9 - Bulkhead: per-agent timeout at the executor ───────────────
@@ -260,7 +260,7 @@ def node_aggregate_outputs(state: dict) -> dict:
         ps.errors.append(f"Missing specialist outputs before Critic: {missing}")
         return _dump(ps, state)
 
-    _set_status(ps, "critic_review")
+    _set_status(ps, "evaluating")
     log.info(
         f"[{ps.run_id}] Aggregated outputs | "
         f"plan={ps.plan_output is not None} schedule={ps.schedule_output is not None} "
@@ -275,6 +275,7 @@ def node_critic(state: dict) -> dict:
     ps = _ps(state)
     log.info(f"[{ps.run_id}] NODE critic | rev={ps.revision_count}")
 
+    _set_status(ps, "evaluating")
     _safe_emit("agent_start", agent="critic")
 
     try:
