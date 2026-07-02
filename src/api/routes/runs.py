@@ -22,7 +22,6 @@ from src.api.state import _push_event, _run_events, _run_export, _run_owner, _ru
 from src.api.tasks import _run_pipeline_task
 from src.core.config import settings
 from src.core.logger import get_logger
-from src.security.validator import SecurityValidator, ValidationStatus
 
 log = get_logger(__name__)
 router = APIRouter(tags=["runs"])

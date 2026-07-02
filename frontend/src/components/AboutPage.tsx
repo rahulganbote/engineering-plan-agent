@@ -33,7 +33,7 @@ const PRINCIPLES: Array<{ headline: string; body: string; anchor: string }> = [
   },
   {
     headline: "Design for failure.",
-    body: "Assume tools fail, agents disagree, and users are confused, then show how your system survives.",
+    body: "Assume tools fail, agents disagree, and users are confused then show how your system survives.",
     anchor: "#system-design--core-pillars",
   },
   {
@@ -73,7 +73,7 @@ export const AboutPage: React.FC = () => {
         {/* About EM Copilot */}
         <section className="space-y-6 border-b border-border/40 pb-6">
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight">About EM Copilot</h2>
+            <h1 className="text-2xl font-bold tracking-tight">About EM Copilot</h1>
             <p className="text-sm text-muted-foreground">
               EM Copilot is built with enterprise requirements in mind. Below is a structural overview of its core features and capabilities.
             </p>
@@ -180,14 +180,14 @@ export const AboutPage: React.FC = () => {
         </section>
         {/* About Me */}
         <section className="space-y-4 border-b border-border/40 pb-6">
-          <h1 className="text-3xl font-extrabold tracking-tight">About Me</h1>
+          <h2 className="text-3xl font-extrabold tracking-tight">About Me</h2>
           <p className="text-sm leading-relaxed text-foreground">
             I'm Rahul Ganbote. My forte is taking a business need or a client goal, building a PoC, and operationalizing it into a reliable AI system. I handle the design, cost, security, and scalability decisions required to turn a prototype into a product in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one.
           </p>
         </section>
 
         {/* Principles behind EM Copilot */}
-        <section className="space-y-2 border-b border-border/40 pb-4">
+        <section className="space-y-2 border-b border-border/40 pb-6">
           <h2 className="text-2xl font-bold tracking-tight">
             Principles behind EM Copilot
           </h2>
@@ -215,10 +215,10 @@ export const AboutPage: React.FC = () => {
         <section className="space-y-3 border-b border-border/40 pb-6">
           <h2 className="text-2xl font-bold tracking-tight">What I'm Looking For</h2>
           <p className="text-sm leading-relaxed text-foreground">
-            If you're building something in AI space and would like to discuss, I am just a message away.
+            If you're building something in the AI space and would like to discuss with an engineering leader who thinks this way, I am just a message away.
           </p>
         </section>
-        <section className="space-y-4">
+        <section className="space-y-4 border-b border-border/40 pb-6">
           <h2 className="text-2xl font-bold tracking-tight">Contact</h2>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-3">
@@ -256,7 +256,7 @@ export const AboutPage: React.FC = () => {
         </section>
 
         {/* Footer */}
-        <footer className="pt-8 border-t border-border text-center flex flex-col items-center justify-between gap-4 sm:flex-row">
+        <footer className="pt-6 text-center flex flex-col items-center justify-between gap-4 sm:flex-row font-medium">
           <button
             onClick={goHome}
             className="text-xs text-muted-foreground hover:text-foreground transition font-semibold"

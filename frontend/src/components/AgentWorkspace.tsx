@@ -8,6 +8,7 @@ import { HITLApprovalGate, type ApprovalResponse } from './HITLApprovalGate';
 import { apiFetch } from '../lib/apiClient';
 import { IngestionLanding } from './IngestionLanding';
 import { TimelineStepper } from './TimelineStepper';
+import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 import { LogConsole } from './LogConsole';
 import { CriticFindings } from './CriticFindings';
 import { PlanTab } from './PlanTab';
@@ -118,7 +119,7 @@ export const AgentWorkspace: React.FC = () => {
   }, [fallbackActive]);
 
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
-    setPipelineStatus(data.pipeline_status);
+    setPipelineStatus(data.pipeline_status as PipelineStatus);
     setApprovalResult({
       decision: data.decision,
       sheet_url: data.sheet_url || undefined,
@@ -370,7 +371,7 @@ export const AgentWorkspace: React.FC = () => {
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
-                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus === 'critic_review' || pipelineStatus === 'evaluating') ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
+                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
                 onClick={() => {
@@ -428,7 +429,7 @@ export const AgentWorkspace: React.FC = () => {
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent AI Software Engineering Planning System</p>
           </div>
-          {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
+          {elevenlabsAgentId && runId && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
             <VoiceWidgetFAB
               agentId={elevenlabsAgentId}
               runId={runId}
@@ -478,7 +479,7 @@ export const AgentWorkspace: React.FC = () => {
                 onFileSelect={setSelectedFile}
                 onRemoveFile={() => setSelectedFile(null)}
                 onTrigger={triggerPipeline}
-                isLoading={pipelineStatus === 'initializing'}
+                isLoading={pipelineStatus === PIPELINE_STATUS.INITIALIZING}
                 isAuthenticated={isAuthenticated}
                 onLogin={login}
               />
@@ -501,7 +502,7 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Pipeline Error Alert Banner */}
-              {pipelineStatus === "error" && (
+              {pipelineStatus === PIPELINE_STATUS.ERROR && (
                 <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-2 animate-fade-in">
                   <h4 className="text-sm font-bold text-danger flex items-center gap-2">
                     <span>❌</span> Pipeline Execution Failed
@@ -513,7 +514,7 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* HITL Awaiting Alert Banner */}
-              {pipelineStatus === "awaiting_hitl" && !approvalResult && (
+              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && !approvalResult && (
                 <div className="bg-warning/20 border-l-4 border-warning p-4 rounded shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">⏸️</span>
@@ -647,7 +648,7 @@ export const AgentWorkspace: React.FC = () => {
                   {/* Tab Display Area */}
                   <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
                     <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
-                      {['dispatching', 'specialist_executing'].includes(pipelineStatus) ? (
+                      {pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING ? (
                         <PlanSkeleton />
                       ) : (
                         <div>
@@ -674,7 +675,7 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Decision Gate Section */}
-              {pipelineStatus === "awaiting_hitl" && (
+              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
                 <div className="border-t border-border pt-8">
                   <ErrorBoundary fallback={
                     <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
@@ -693,23 +694,23 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Export Status / Final Decision Section */}
-              {(pipelineStatus === "exported" || pipelineStatus === "export_failed" || pipelineStatus === "rejected") && (
+              {(pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED) && (
                 <div className="border-t border-border pt-8">
                   <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Export Results</h3>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === 'exported'
+                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === PIPELINE_STATUS.EXPORTED
                         ? 'bg-success/20 border border-success/40 text-success'
-                        : pipelineStatus === 'rejected'
+                        : pipelineStatus === PIPELINE_STATUS.REJECTED
                           ? 'bg-danger/20 border border-danger/40 text-danger'
                           : 'bg-warning/20 border border-warning/40 text-warning'
                         }`}>
-                        {pipelineStatus === 'exported' ? '✓ Exported Successfully' : pipelineStatus === 'rejected' ? '✗ Plan Rejected' : '⚠ Export Failed'}
+                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? '✗ Plan Rejected' : '⚠ Export Failed'}
                       </span>
                     </div>
 
-                    {pipelineStatus === 'rejected' && (
-                      <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-lg space-y-1">
+                    {pipelineStatus === PIPELINE_STATUS.REJECTED && (
+                      <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-lg space-y-1 font-semibold">
                         <div className="text-xs font-bold uppercase tracking-wider">Re-evaluation Required</div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                           This plan was rejected by the manager. Review the feedback logs and adjust details before starting a new run.
@@ -757,7 +758,7 @@ export const AgentWorkspace: React.FC = () => {
                       ) : null}
 
                       {/* Jira Status Box */}
-                      {pipelineStatus !== "rejected" && (
+                      {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
                         approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
                           <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
                             <div className="text-xs font-bold text-success">

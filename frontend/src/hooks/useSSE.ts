@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { cleanLlmErrorMessage } from '../lib/utils';
+import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
 export interface LogEvent {
   type: string;
@@ -117,7 +118,7 @@ interface ArtifactsResponse {
 
 export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [logs, setLogs] = useState<LogEvent[]>([]);
-  const [pipelineStatus, setPipelineStatus] = useState<string>('idle');
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>(PIPELINE_STATUS.IDLE);
   const [artifacts, setArtifacts] = useState<ArtifactsState | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [tokenUsage, setTokenUsage] = useState<{ input: number; output: number } | null>(null);
@@ -133,11 +134,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   if (runId !== prevRunId) {
     setPrevRunId(runId);
     if (runId) {
-      setPipelineStatus('initializing');
+      setPipelineStatus(PIPELINE_STATUS.INITIALIZING);
     }
   }
 
-  const clearRun = useCallback((newStatus: string = 'idle') => {
+  const clearRun = useCallback((newStatus: PipelineStatus = PIPELINE_STATUS.IDLE) => {
     setLogs([]);
     setPipelineStatus(newStatus);
     setArtifacts(null);
@@ -211,7 +212,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         case 'status':
         case 'pipeline_status': {
           const status = data.status || (data.payload as Record<string, string>)?.status;
-          setPipelineStatus(status || 'unknown');
+          setPipelineStatus((status || PIPELINE_STATUS.IDLE) as PipelineStatus);
           break;
         }
         case 'provider_fallback': {
@@ -275,7 +276,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
             jira_detail: payload.jira_detail as string | undefined,
           });
           const finalStatus = payload.pipeline_status as string | undefined;
-          if (finalStatus) setPipelineStatus(finalStatus);
+          if (finalStatus) setPipelineStatus(finalStatus as PipelineStatus);
           // This is the TRUE end of the run lifecycle (pipeline + exports done).
           // Now safe to close SSE; useEffect cleanup also closes on unmount.
           clearInterval(tick);
@@ -285,7 +286,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         }
         case 'pipeline_complete': {
           const finalStatus = data.status || data.final_status || (data.payload as Record<string, string>)?.final_status || (data.payload as Record<string, string>)?.status;
-          setPipelineStatus(finalStatus || 'completed');
+          setPipelineStatus((finalStatus || PIPELINE_STATUS.AWAITING_HITL) as PipelineStatus);
           const flat = data as unknown as Record<string, unknown>;
           const inner = (data.payload as Record<string, unknown>) || {};
           const pt = (flat.processing_time_sec ?? inner.processing_time_sec) as number | undefined;
@@ -313,7 +314,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           break;
         }
         case 'security_blocked': {
-          setPipelineStatus('error');
+          setPipelineStatus(PIPELINE_STATUS.ERROR);
           setErrorMessage(cleanLlmErrorMessage(data.message || 'Security validation blocked.'));
           clearInterval(tick);
           clearInterval(pollInterval);
@@ -321,7 +322,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           break;
         }
         case 'error': {
-          setPipelineStatus('error');
+          setPipelineStatus(PIPELINE_STATUS.ERROR);
           setErrorMessage(cleanLlmErrorMessage(data.message || 'An unexpected error occurred.'));
           clearInterval(tick);
           clearInterval(pollInterval);
@@ -404,7 +405,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         });
       }
       if (data.pipeline_status === 'error') {
-        setPipelineStatus('error');
+        setPipelineStatus(PIPELINE_STATUS.ERROR);
         setErrorMessage(cleanLlmErrorMessage(data.errors?.[0] || 'An unexpected error occurred.'));
       }
 
@@ -444,7 +445,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   useEffect(() => {
     if (!runId) return;
 
-    if (['awaiting_hitl', 'exported', 'export_failed', 'rejected', 'error'].includes(pipelineStatus)) {
+    if (([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.EXPORT_FAILED, PIPELINE_STATUS.REJECTED, PIPELINE_STATUS.ERROR] as PipelineStatus[]).includes(pipelineStatus)) {
       Promise.resolve().then(() => {
         fetchArtifacts();
       });

@@ -9,6 +9,7 @@ from __future__ import annotations
 from src.api.state import _push_event, _run_export, _runs
 from src.core.logger import get_logger
 from src.core.models import HITLDecision
+from src.core.pipeline_status import PipelineStatus
 
 log = get_logger(__name__)
 
@@ -26,10 +27,10 @@ def _run_pipeline_task(
     try:
         from src.core.models import PipelineState
         state = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name)
-        state.pipeline_status = "security_check"
+        state.pipeline_status = PipelineStatus.SECURITY_CHECK.value
         _runs[run_id] = state
 
-        _push_event(run_id, {"type": "pipeline_status", "status": "security_check"})
+        _push_event(run_id, {"type": "pipeline_status", "status": PipelineStatus.SECURITY_CHECK.value})
         _push_event(run_id, {"type": "security_start"})
 
         from src.security.validator import SecurityValidator, ValidationStatus
@@ -43,7 +44,7 @@ def _run_pipeline_task(
 
         if val_result.status == ValidationStatus.BLOCKED:
             _push_event(run_id, {"type": "security_blocked", "message": val_result.user_message})
-            state.pipeline_status = "error"
+            state.pipeline_status = PipelineStatus.ERROR.value
             state.errors.append(val_result.user_message)
             _runs[run_id] = state
             return
@@ -99,14 +100,14 @@ def _run_pipeline_task(
             except Exception:
                 state = None
         if state is not None:
-            state.pipeline_status = "error"
+            state.pipeline_status = PipelineStatus.ERROR.value
             if err_msg not in state.errors:
                 state.errors.append(err_msg)
             _runs[run_id] = state
 
     # A failed run never reaches the HITL gate / POST /approve, so log a Run
     # Summary row here too - the EM sees errored runs on the Sheets dashboard.
-    if state is not None and state.pipeline_status == "error":
+    if state is not None and state.pipeline_status == PipelineStatus.ERROR.value:
         try:
             from src.integrations.sheets import write_artifacts_to_sheet
 
@@ -195,9 +196,9 @@ async def _run_export_handlers_background(
                 "ok" if export_mode == "sheets" else ("local_fallback" if export_mode == "local" else "failed")
             )
             if decision == HITLDecision.APPROVED:
-                state.pipeline_status = "exported"
+                state.pipeline_status = PipelineStatus.EXPORTED.value
             elif decision == HITLDecision.REJECTED:
-                state.pipeline_status = "rejected"
+                state.pipeline_status = PipelineStatus.REJECTED.value
             _run_export[run_id] = {
                 "sheet_url": sheet_url,
                 "mode": export_mode,
@@ -301,9 +302,9 @@ async def _run_export_handlers_background(
         # Ensure fallback state so frontend poll exit triggers
         _push_event(run_id, {"type": "error", "message": f"Background export worker crashed: {str(e)}"})
         if decision == HITLDecision.APPROVED:
-            state.pipeline_status = "export_failed"
+            state.pipeline_status = PipelineStatus.EXPORT_FAILED.value
         elif decision == HITLDecision.REJECTED:
-            state.pipeline_status = "rejection_failed"
+            state.pipeline_status = PipelineStatus.EXPORT_FAILED.value
 
     finally:
         # Mark finalized to release any waiting polling client

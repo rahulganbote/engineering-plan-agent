@@ -1,9 +1,10 @@
 import React from 'react';
 import { Shield, FileJson, Cpu, MessageSquare, UserCheck, FileCheck, Check, Loader2, X } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type ApprovalResult, type LogEvent } from '../hooks/useSSE';
+import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
 interface TimelineStepperProps {
-  pipelineStatus: string;
+  pipelineStatus: PipelineStatus;
   completedAgents: Set<string>;
   artifacts: ArtifactsState | null;
   criticOutput: CriticOutput | null;
@@ -29,16 +30,16 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       description: 'Security & PII Check',
       icon: Shield,
       get isCompleted() {
-        if (pipelineStatus === 'error') {
+        if (pipelineStatus === PIPELINE_STATUS.ERROR) {
           return logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
         }
-        return ['dispatching', 'specialist_executing', 'critic_review', 'evaluating', 'awaiting_hitl', 'exported', 'rejected'].includes(pipelineStatus) || completedAgents.has('orchestrator') || hasBrdSections;
+        return ([PIPELINE_STATUS.SPECIALIST_EXECUTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus) || completedAgents.has('orchestrator') || hasBrdSections;
       },
       get isFailed() {
-        return pipelineStatus === 'error' && !this.isCompleted;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && !this.isCompleted;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === 'initializing' || pipelineStatus === 'started' || pipelineStatus === 'security_check');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED || pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK);
       },
     },
     {
@@ -52,10 +53,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       get isFailed() {
         // If security failed, Orchestrator never ran and thus shouldn't be marked failed (should stay pending)
         const securityPassed = logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
-        return pipelineStatus === 'error' && securityPassed && !this.isCompleted;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && securityPassed && !this.isCompleted;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === 'running');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.RUNNING);
       },
     },
     {
@@ -74,10 +75,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       },
       get isFailed() {
         const orchestratorCompleted = completedAgents.has('orchestrator') || hasBrdSections;
-        return pipelineStatus === 'error' && orchestratorCompleted && !this.isCompleted;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && orchestratorCompleted && !this.isCompleted;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === 'dispatching' || pipelineStatus === 'specialist_executing' || pipelineStatus === 'revising');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING || pipelineStatus === PIPELINE_STATUS.REVISING);
       },
     },
     {
@@ -96,10 +97,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           completedAgents.has('poc_planner') &&
           completedAgents.has('tech_stack_recommender')
         ) || !!artifacts?.plan_output;
-        return pipelineStatus === 'error' && specialistsCompleted && !this.isCompleted;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && specialistsCompleted && !this.isCompleted;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === 'critic_review' || pipelineStatus === 'evaluating');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.EVALUATING);
       },
     },
     {
@@ -110,17 +111,17 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       get isCompleted() {
         return (
           !!approvalResult ||
-          pipelineStatus === 'exported' ||
-          pipelineStatus === 'export_failed' ||
-          pipelineStatus === 'rejected'
+          pipelineStatus === PIPELINE_STATUS.EXPORTED ||
+          pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED ||
+          pipelineStatus === PIPELINE_STATUS.REJECTED
         );
       },
       get isFailed() {
         const criticCompleted = completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output;
-        return pipelineStatus === 'error' && criticCompleted && !this.isCompleted;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && criticCompleted && !this.isCompleted;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && pipelineStatus === 'awaiting_hitl';
+        return !this.isCompleted && !this.isFailed && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL;
       },
     },
     {
@@ -130,15 +131,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       icon: FileCheck,
       get isCompleted() {
         return (
-          pipelineStatus === 'exported' ||
-          pipelineStatus === 'rejected'
+          pipelineStatus === PIPELINE_STATUS.EXPORTED ||
+          pipelineStatus === PIPELINE_STATUS.REJECTED
         );
       },
       get isFailed() {
-        return pipelineStatus === 'export_failed';
+        return pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === 'exported' || pipelineStatus === 'export_failed' || pipelineStatus === 'rejected');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED);
       },
     },
   ];
@@ -158,10 +159,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     const label = labels[agentKey] || agentKey;
 
     if (agentKey === 'security') {
-      if (pipelineStatus === 'error' && !logs.some(l => l.type === 'agent_start' || l.type === 'status')) {
+      if (pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_start' || l.type === 'status')) {
         return { status: 'failed', label };
       }
-      if (pipelineStatus !== 'idle') {
+      if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
         return { status: 'completed', label };
       }
       return { status: 'pending', label };
@@ -174,10 +175,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     if (agentKey === 'orchestrator') {
       const anySpecialistActive = completedAgents.has('engineering_plan_generator') ||
         logs.some(l => l.type === 'agent_start' && l.agent !== 'orchestrator');
-      if (anySpecialistActive || !!artifacts?.brd_sections || ['dispatching', 'specialist_executing', 'critic_review', 'evaluating', 'awaiting_hitl', 'exported', 'rejected'].includes(pipelineStatus)) {
+      if (anySpecialistActive || !!artifacts?.brd_sections || ([PIPELINE_STATUS.SPECIALIST_EXECUTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus)) {
         return { status: 'completed', label };
       }
-      if (pipelineStatus === 'initializing' || pipelineStatus === 'started' || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator')) {
+      if (pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED || pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator')) {
         return { status: 'running', label };
       }
       return { status: 'pending', label };
@@ -187,7 +188,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       if (completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output) {
         return { status: 'completed', label };
       }
-      if (pipelineStatus === 'critic_review' || pipelineStatus === 'evaluating') {
+      if (pipelineStatus === PIPELINE_STATUS.EVALUATING) {
         return { status: 'running', label };
       }
       return { status: 'pending', label };
@@ -207,7 +208,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider"><span>🤖</span> Agentic Workflow Progress</h3>
         <div className="flex items-center gap-2">
-          {pipelineStatus !== 'idle' && pipelineStatus !== 'exported' && pipelineStatus !== 'rejected' && pipelineStatus !== 'error' && (
+          {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && pipelineStatus !== PIPELINE_STATUS.ERROR && (
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -215,11 +216,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           )}
           <span className="text-xs text-muted-foreground font-semibold capitalize">
             Status: <span className={
-              pipelineStatus === 'error' ? 'text-danger' :
-                pipelineStatus === 'exported' ? 'text-success' :
-                  pipelineStatus === 'awaiting_hitl' ? 'text-warning' :
+              pipelineStatus === PIPELINE_STATUS.ERROR ? 'text-danger' :
+                pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'text-success' :
+                  pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'text-warning' :
                     'text-primary'
-            }>{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : (pipelineStatus === 'critic_review' || pipelineStatus === 'evaluating') ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
+            }>{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
           </span>
         </div>
       </div>
