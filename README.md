@@ -303,7 +303,7 @@ docs/            Design.md, EVAL_RESULTS.md, screenshots, ADRs
 
 ## License & Author
 
-**MIT License** - feel free to use for learning and inspiration.
+**MIT License** 
 
 **Rahul Ganbote** - [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
 

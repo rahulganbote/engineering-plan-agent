@@ -182,7 +182,7 @@ export const AboutPage: React.FC = () => {
         <section className="space-y-4 border-b border-border/40 pb-6">
           <h2 className="text-3xl font-extrabold tracking-tight">About Me</h2>
           <p className="text-sm leading-relaxed text-foreground">
-            I'm Rahul Ganbote. My forte is taking a business need or a client goal, building a PoC, and operationalizing it into a reliable AI system. I handle the design, cost, security, and scalability decisions required to turn a prototype into a product in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one.
+            I'm Rahul Ganbote. My forte is taking a business need, building a PoC, and operationalizing it into a reliable AI system. I own the design, cost, security, and scalability decisions required to turn a prototype into a product in production. Adoption and reliability are the metrics I measure my work against, and observability belongs in the product from day one.
           </p>
         </section>
 
@@ -264,6 +264,7 @@ export const AboutPage: React.FC = () => {
             ← Back to Copilot
           </button>
           <span className="text-xs text-muted-foreground font-medium">
+            EMCopilot™
             © 2026 Rahul Ganbote · All rights reserved.
           </span>
         </footer>

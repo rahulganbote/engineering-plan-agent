@@ -20,6 +20,26 @@ async def health_check():
     return {"status": "ok", "version": "1.1.0"}
 
 
+@router.get("/debug/config-status")
+async def config_status():
+    """
+    Boolean-only diagnostic for the voice webhook secret. Confirms whether the
+    VOICE_WEBHOOK_SECRET env var is populated at runtime in this Cloud Run
+    revision. NEVER returns the value itself - only presence and length so a
+    misconfigured deploy surfaces immediately without leaking the secret.
+
+    Curl in production after any env-var change:
+      curl https://emcopilot.ai/debug/config-status
+    A length of 0 means the env var isn't reaching the process (wrong tab,
+    revision not rolled forward, or typo in the variable name).
+    """
+    return {
+        "voice_webhook_secret_set": bool(settings.voice_webhook_secret),
+        "voice_webhook_secret_len": len(settings.voice_webhook_secret),
+        "voice_webhook_secret_count": len([s for s in settings.voice_webhook_secret.split(",") if s.strip()]),
+    }
+
+
 @router.get("/api/config")
 async def public_config():
     """

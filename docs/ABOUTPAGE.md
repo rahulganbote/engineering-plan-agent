@@ -56,6 +56,8 @@ If you're building something in AI space and would like to discuss, I am just a 
 - **LinkedIn:** [linkedin.com/in/rahul-ganbote](https://www.linkedin.com/in/rahul-ganbote-040a7b/)
 - **GitHub:** [github.com/rahulganbote](https://github.com/rahulganbote)
 
+# EMCopilot &trade;
+
 ---
 
 *© 2026 Rahul Ganbote · All rights reserved.*
