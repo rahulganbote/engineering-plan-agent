@@ -26,6 +26,7 @@ def _run_pipeline_task(
     state = None
     try:
         from src.core.models import PipelineState
+
         state = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name)
         state.pipeline_status = PipelineStatus.SECURITY_CHECK.value
         _runs[run_id] = state
@@ -34,6 +35,7 @@ def _run_pipeline_task(
         _push_event(run_id, {"type": "security_start"})
 
         from src.security.validator import SecurityValidator, ValidationStatus
+
         validator = SecurityValidator()
         val_result = validator.validate(
             file_bytes=file_bytes,

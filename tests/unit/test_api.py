@@ -275,13 +275,14 @@ def test_pipeline_task_catches_budget_breached_error():
     _run_events.pop(run_id, None)
 
     from src.security.validator import ValidationResult, ValidationStatus
+
     mock_val = ValidationResult(
         status=ValidationStatus.PASSED,
         brd_text_clean="mock brd content is sufficiently long and realistic to bypass validation checks.",
         brd_hash="mockhash",
         user_message="Clean",
         technical_detail="Clean",
-        pii_types_found=[]
+        pii_types_found=[],
     )
     with patch("src.security.validator.SecurityValidator.validate", return_value=mock_val):
         with patch("src.agents.pipeline.run_pipeline", side_effect=BudgetBreachedError("Budget breached during test")):
@@ -503,7 +504,7 @@ def test_pipeline_task_records_security_block():
         brd_hash="mockhash",
         user_message="Your BRD is blocked due to PII/Injection checks.",
         technical_detail="PII details: SSN matched",
-        pii_types_found=["SSN"]
+        pii_types_found=["SSN"],
     )
 
     with patch("src.security.validator.SecurityValidator.validate", return_value=mock_val):
@@ -538,19 +539,16 @@ def test_run_pipeline_endpoint_latency_and_background_task(client):
     """Assert POST /run-pipeline returns instantly and queues task in background."""
     import hashlib
 
-
     with patch("src.api.routes.runs._run_pipeline_task") as mock_task:
         import time
+
         start_time = time.time()
 
         # Send request with mock file
         response = client.post(
             "/run-pipeline",
-            data={
-                "model_family": "openai",
-                "enable_fallback": True
-            },
-            files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")}
+            data={"model_family": "openai", "enable_fallback": True},
+            files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
         )
 
         latency_ms = (time.time() - start_time) * 1000
