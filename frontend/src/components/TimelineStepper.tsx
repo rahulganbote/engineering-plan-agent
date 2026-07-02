@@ -10,7 +10,20 @@ interface TimelineStepperProps {
   criticOutput: CriticOutput | null;
   approvalResult: ApprovalResult | null;
   logs: LogEvent[];
+  onCancel?: () => void;
 }
+
+// States during which "Cancel Run" is a reasonable action. Excludes terminal
+// states (exported, rejected, error), the HITL wait (user should approve or
+// reject, not cancel), and idle.
+const CANCELLABLE_STATES: PipelineStatus[] = [
+  PIPELINE_STATUS.SECURITY_CHECK,
+  PIPELINE_STATUS.RUNNING,
+  PIPELINE_STATUS.SPECIALIST_EXECUTING,
+  PIPELINE_STATUS.EVALUATING,
+  PIPELINE_STATUS.REVISING,
+  PIPELINE_STATUS.INITIALIZING,
+];
 
 export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   pipelineStatus,
@@ -19,6 +32,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   criticOutput,
   approvalResult,
   logs,
+  onCancel,
 }) => {
   const hasBrdSections = Array.isArray(artifacts?.brd_sections) && (artifacts.brd_sections as unknown[]).length > 0;
 
@@ -222,6 +236,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                     'text-primary'
             }>{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
           </span>
+          {onCancel && CANCELLABLE_STATES.includes(pipelineStatus) && (
+            <button
+              onClick={onCancel}
+              className="ml-3 text-xs text-muted-foreground hover:text-danger transition font-medium underline underline-offset-2 decoration-dotted"
+              title="Reset the UI. The pipeline task will finish in the background."
+            >
+              Cancel Run
+            </button>
+          )}
         </div>
       </div>
 

@@ -118,6 +118,18 @@ export const AgentWorkspace: React.FC = () => {
     );
   }, [fallbackActive]);
 
+  // Shared reset - clears run state and returns the UI to the empty landing.
+  // Used by the sidebar Clear Plan & Reset button, the error-banner "Clear &
+  // Try Again" button, and the mid-run "Cancel Run" button. Note: for mid-run
+  // cancels, the backend pipeline task keeps executing in the background until
+  // it finishes on its own; this only resets the UI.
+  const handleReset = () => {
+    setSelectedFile(null);
+    clearRun();
+    setRunId(null);
+    setStartupError(null);
+  };
+
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
     setPipelineStatus(data.pipeline_status as PipelineStatus);
     setApprovalResult({
@@ -374,12 +386,7 @@ export const AgentWorkspace: React.FC = () => {
                 Status: <span className="font-semibold text-success capitalize">{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
-                onClick={() => {
-                  setSelectedFile(null);
-                  clearRun();
-                  setRunId(null);
-                  setStartupError(null);
-                }}
+                onClick={handleReset}
                 className="w-full py-1.5 border border-destructive bg-destructive/10 hover:bg-destructive/40 rounded text-xs font-semibold text-destructive hover:text-destructive transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
               >
                 Clear Plan & Reset
@@ -503,10 +510,18 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Pipeline Error Alert Banner */}
               {pipelineStatus === PIPELINE_STATUS.ERROR && (
-                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-2 animate-fade-in">
-                  <h4 className="text-sm font-bold text-danger flex items-center gap-2">
-                    <span>❌</span> Pipeline Execution Failed
-                  </h4>
+                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-start justify-between gap-4">
+                    <h4 className="text-sm font-bold text-danger flex items-center gap-2">
+                      <span>❌</span> Pipeline Execution Failed
+                    </h4>
+                    <button
+                      onClick={handleReset}
+                      className="shrink-0 px-3 py-1.5 bg-danger/20 hover:bg-danger/40 border border-danger/50 text-danger text-xs font-bold rounded transition"
+                    >
+                      Clear & Try Again
+                    </button>
+                  </div>
                   <p className="text-xs text-danger/90 leading-relaxed font-semibold">
                     {errorMessage || "An unexpected error occurred during execution. Please check the logs."}
                   </p>
@@ -539,6 +554,7 @@ export const AgentWorkspace: React.FC = () => {
                 criticOutput={criticOutput}
                 approvalResult={approvalResult}
                 logs={logs}
+                onCancel={handleReset}
               />
 
 
@@ -813,11 +829,7 @@ export const AgentWorkspace: React.FC = () => {
                         user has just finished a run, not aborting one mid-flight. */}
                     <div className="border-t border-border pt-5 flex justify-end">
                       <button
-                        onClick={() => {
-                          setSelectedFile(null);
-                          clearRun();
-                          setRunId(null);
-                        }}
+                        onClick={handleReset}
                         className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
                       >
                         <Plus size={14} />
