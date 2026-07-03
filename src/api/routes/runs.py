@@ -133,11 +133,15 @@ _TERMINAL_STATES_FOR_CANCEL: frozenset[str] = frozenset(
 )
 
 
-@router.post("/runs/{run_id}/cancel")
+@router.post("/cancel/{run_id}")
 async def cancel_run(run_id: str, request: Request):
     """
     Cooperative cancellation. Sets a flag on the run; the pipeline observes it
     between LangGraph nodes (inside _set_status) and raises RunCanceledError.
+
+    URL pattern matches the flat convention used by /approve/{run_id},
+    /status/{run_id}, /events/{run_id} - keeps the local Vite dev proxy simple
+    and the routes readable side-by-side.
 
     - 404 if the run doesn't exist
     - 409 if the run is already in a terminal state (nothing to cancel)

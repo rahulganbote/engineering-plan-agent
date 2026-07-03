@@ -121,15 +121,18 @@ export const AgentWorkspace: React.FC = () => {
   // Shared reset - clears run state and returns the UI to the empty landing.
   // Used by the sidebar Clear Plan & Reset button, the error-banner "Clear &
   // Try Again" button, and the mid-run "Cancel Run" button. When there's an
-  // active run, we fire POST /runs/{run_id}/cancel first so the backend can
-  // observe the cooperative cancel flag between pipeline nodes and unwind.
-  // The UI reset happens either way - 404/409 from the endpoint (already done
-  // or gone) is fine, we don't want to block on network to clear the UI.
+  // active run, we fire POST /cancel/{run_id} first so the backend can observe
+  // the cooperative cancel flag between pipeline nodes and unwind. The UI
+  // reset happens either way - 404 (gone) or 409 (already terminal) from the
+  // endpoint is expected and not user-facing, so X-Skip-Toast keeps the
+  // reset flow visually silent regardless of the response.
   const handleReset = () => {
     const currentRunId = runId;
     if (currentRunId) {
-      apiFetch(`${apiBaseUrl}/runs/${currentRunId}/cancel`, { method: 'POST' })
-        .catch(() => { /* Already terminal or gone - UI reset proceeds either way. */ });
+      apiFetch(`${apiBaseUrl}/cancel/${currentRunId}`, {
+        method: 'POST',
+        headers: { 'X-Skip-Toast': 'true' },
+      }).catch(() => { /* Best-effort; UI reset proceeds either way. */ });
     }
     setSelectedFile(null);
     clearRun();
@@ -540,7 +543,7 @@ export const AgentWorkspace: React.FC = () => {
                 <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
                   <div className="flex items-start justify-between gap-4">
                     <h4 className="text-sm font-bold text-danger flex items-center gap-2">
-                      <span>❌</span> Pipeline Execution Failed
+                      <span>❌</span> Agentic Workflow Execution Failed
                     </h4>
                     <button
                       onClick={handleReset}

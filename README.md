@@ -281,6 +281,8 @@ python tests/smoke_test.py               # ~80 smoke tests across 14 groups
 cd frontend && npm test                  # Vitest + Playwright E2E
 ```
 
+**Adding a new API route?** The Vite dev proxy at [`frontend/vite.config.ts`](./frontend/vite.config.ts) forwards only specific URL prefixes to FastAPI (`/api`, `/status`, `/approve`, `/cancel`, `/events`, etc.). New routes must either reuse an existing prefix or add a matching proxy entry — otherwise the frontend request hits Vite (not FastAPI) and returns a non-JSON 404 that surfaces as an "API Failure" toast. Production (Cloud Run) has no proxy so this trap only surfaces in local dev; catches everyone once.
+
 ---
 
 ## Project Layout (Brief)
