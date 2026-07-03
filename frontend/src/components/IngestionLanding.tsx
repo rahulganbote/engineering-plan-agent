@@ -205,7 +205,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     {
       id: 'critic',
       label: 'Critic Reviewer - Evaluation',
-      desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if thresholds are not met (Green badge requires all dimensions passing and overall >= 4.25).',
+      desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if thresholds are not met (Green badge requires all dimensions passing and overall >= 4.5).',
       icon: <GitPullRequest size={20} className="text-warning" />,
       color: 'border-warning/30 text-warning bg-warning/10',
       activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',

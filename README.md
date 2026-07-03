@@ -148,10 +148,10 @@ Five-method evaluation suite (`eval/run_eval.py`):
 **Deterministic quality caps** override optimistic LLM-judge scores:
 
 - **FM-1 Hallucination Guard:** -0.3 per citation not matching the Pinecone index
-- **FM-2 Uncited Claim Cap:** caps overall at 3.9 (Amber) if any specialist fails to cite at least one chunk
-- **FM-3 Sentinel Fallback Cap:** caps overall at 3.9 (Amber) if any specialist times out and falls back
+- **FM-2 Uncited Claim Cap:** caps overall at 4.2 (below the 4.5 Green threshold) if any specialist fails to cite at least one chunk
+- **FM-3 Sentinel Fallback Cap:** caps overall at 4.2 (below the 4.5 Green threshold) if any specialist times out and falls back
 
-**Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95, AMBER → GREEN). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
+**Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95 lift after one revision cycle; ~28% relative improvement on the 5-point scale). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
 
 ---
 
