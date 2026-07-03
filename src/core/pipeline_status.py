@@ -13,3 +13,4 @@ class PipelineStatus(StrEnum):
     REJECTED = "rejected"
     EXPORT_FAILED = "export_failed"
     ERROR = "error"
+    CANCELED = "canceled"  # user aborted via POST /runs/{run_id}/cancel

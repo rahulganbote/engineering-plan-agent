@@ -18,4 +18,5 @@ def test_pipeline_status_values_are_stable():
         "rejected",
         "export_failed",
         "error",
+        "canceled",
     }

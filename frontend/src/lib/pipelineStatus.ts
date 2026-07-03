@@ -10,6 +10,7 @@ export const PIPELINE_STATUS = {
   REJECTED: 'rejected',
   EXPORT_FAILED: 'export_failed',
   ERROR: 'error',
+  CANCELED: 'canceled',
   // Frontend-only/transient statuses
   INITIALIZING: 'initializing',
   STARTED: 'started',

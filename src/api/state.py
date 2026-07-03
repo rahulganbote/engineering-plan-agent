@@ -19,6 +19,11 @@ _runs: dict[str, PipelineState] = {}
 _run_events: dict[str, list[str]] = {}
 _run_export: dict[str, dict] = {}  # run_id → {sheet_url, status, error}
 _run_owner: dict[str, str] = {}  # run_id → user_email
+# Cooperative cancellation flags. POST /runs/{run_id}/cancel sets True here;
+# the pipeline checks the flag inside _set_status between LangGraph nodes and
+# raises RunCanceledError. Not thread-safe by design - single-process in-memory
+# store, one bit per run, race is benign (worst case: one extra LLM call runs).
+_run_cancel_flags: dict[str, bool] = {}
 
 
 def _push_event(run_id: str, data: dict) -> None:

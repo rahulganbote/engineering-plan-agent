@@ -120,10 +120,17 @@ export const AgentWorkspace: React.FC = () => {
 
   // Shared reset - clears run state and returns the UI to the empty landing.
   // Used by the sidebar Clear Plan & Reset button, the error-banner "Clear &
-  // Try Again" button, and the mid-run "Cancel Run" button. Note: for mid-run
-  // cancels, the backend pipeline task keeps executing in the background until
-  // it finishes on its own; this only resets the UI.
+  // Try Again" button, and the mid-run "Cancel Run" button. When there's an
+  // active run, we fire POST /runs/{run_id}/cancel first so the backend can
+  // observe the cooperative cancel flag between pipeline nodes and unwind.
+  // The UI reset happens either way - 404/409 from the endpoint (already done
+  // or gone) is fine, we don't want to block on network to clear the UI.
   const handleReset = () => {
+    const currentRunId = runId;
+    if (currentRunId) {
+      apiFetch(`${apiBaseUrl}/runs/${currentRunId}/cancel`, { method: 'POST' })
+        .catch(() => { /* Already terminal or gone - UI reset proceeds either way. */ });
+    }
     setSelectedFile(null);
     clearRun();
     setRunId(null);

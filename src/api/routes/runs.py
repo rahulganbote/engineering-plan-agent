@@ -18,10 +18,11 @@ from fastapi.responses import StreamingResponse
 from src.api.dependencies import get_current_user_email, verify_run_ownership
 from src.api.limiter import limiter
 from src.api.models import PipelineRunResponse
-from src.api.state import _run_events, _run_export, _run_owner, _runs
+from src.api.state import _run_cancel_flags, _run_events, _run_export, _run_owner, _runs
 from src.api.tasks import _run_pipeline_task
 from src.core.config import settings
 from src.core.logger import get_logger
+from src.core.pipeline_status import PipelineStatus
 
 log = get_logger(__name__)
 router = APIRouter(tags=["runs"])
@@ -115,6 +116,55 @@ async def stream_status(run_id: str, request: Request):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# Terminal states where cancellation is meaningless (run is already finished).
+# awaiting_hitl is deliberately EXCLUDED - even though the pipeline itself is
+# done, the user might still want to abandon the run before deciding, so we
+# treat awaiting_hitl as cancellable (frontend will just clear the UI).
+_TERMINAL_STATES_FOR_CANCEL: frozenset[str] = frozenset(
+    {
+        PipelineStatus.EXPORTED.value,
+        PipelineStatus.REJECTED.value,
+        PipelineStatus.EXPORT_FAILED.value,
+        PipelineStatus.ERROR.value,
+        PipelineStatus.CANCELED.value,
+    }
+)
+
+
+@router.post("/runs/{run_id}/cancel")
+async def cancel_run(run_id: str, request: Request):
+    """
+    Cooperative cancellation. Sets a flag on the run; the pipeline observes it
+    between LangGraph nodes (inside _set_status) and raises RunCanceledError.
+
+    - 404 if the run doesn't exist
+    - 409 if the run is already in a terminal state (nothing to cancel)
+    - 200 with {run_id, status: "cancel_requested"} on success
+
+    Idempotent: calling multiple times on the same run returns 200 each time.
+    In-flight LLM calls finish before the pipeline unwinds, so cancellation
+    isn't instant - typically completes within one LLM-call worth of time.
+    """
+    verify_run_ownership(run_id, request)
+
+    state = _runs.get(run_id)
+    if not state:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    if state.pipeline_status in _TERMINAL_STATES_FOR_CANCEL:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "run_already_terminal",
+                "message": f"Run {run_id} is already {state.pipeline_status}; nothing to cancel.",
+            },
+        )
+
+    _run_cancel_flags[run_id] = True
+    log.info(f"[{run_id}] Cancel requested by user (current status={state.pipeline_status})")
+    return {"run_id": run_id, "status": "cancel_requested"}
 
 
 @router.get("/events/{run_id}")

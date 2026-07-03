@@ -329,6 +329,18 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           es.close();
           break;
         }
+        case 'canceled': {
+          // User-initiated cancellation. Backend has unwound the pipeline
+          // between LangGraph nodes. Typically the frontend has already reset
+          // the UI (handleReset fires POST /cancel then clearRun), so this
+          // handler is defensive - handles the edge case where a canceled
+          // event arrives before the runId setter takes effect.
+          setPipelineStatus(PIPELINE_STATUS.CANCELED);
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
+          break;
+        }
       }
     };
 

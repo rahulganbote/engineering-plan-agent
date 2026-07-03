@@ -97,11 +97,33 @@ def _set_status(ps: PipelineState, status: PipelineStatus) -> None:
     dispatch_specialists sets it again at its entry). Without this guard,
     every same-status re-set would emit a duplicate pipeline_status SSE event
     and the console log would stutter on every transition.
+
+    Cancellation checkpoint: before mutating status, check the cooperative
+    cancel flag. If set, raise RunCanceledError so tasks.py can unwind. This
+    means cancellation is observed between LangGraph nodes (in-flight LLM
+    calls still complete first). Cheap; the flag lookup is a dict hit.
     """
+    _raise_if_canceled(ps)
     if ps.pipeline_status == status.value:
         return  # No change - suppress redundant SSE emit.
     ps.pipeline_status = status.value
     _safe_emit("pipeline_status", status=status.value)
+
+
+def _raise_if_canceled(ps: PipelineState) -> None:
+    """Cooperative cancel probe. Called from _set_status at every transition."""
+    try:
+        from src.api.state import _run_cancel_flags
+        from src.core.exceptions import RunCanceledError
+
+        if _run_cancel_flags.get(ps.run_id):
+            raise RunCanceledError("Run canceled by user.")
+    except RunCanceledError:
+        raise
+    except Exception:
+        # If the import path is unavailable (unusual test config etc.), don't
+        # let cancellation infrastructure break the pipeline.
+        return
 
 
 def _revision_targets(ps: PipelineState) -> list[str]:

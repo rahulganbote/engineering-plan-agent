@@ -87,16 +87,25 @@ def _run_pipeline_task(
         )
         log.info(f"[{run_id}] Pipeline task complete | status={state.pipeline_status}")
     except Exception as e:
-        from src.core.exceptions import GovernedFailure
+        from src.core.exceptions import GovernedFailure, RunCanceledError
 
         err_msg = str(e)
         if isinstance(e, GovernedFailure):
             err_msg = e.user_message
 
-        log.error(f"[{run_id}] Pipeline task failed | error={e}")
-        _push_event(run_id, {"type": "error", "message": err_msg})
-        # Pipeline raised before producing a state - synthesize a minimal error
-        # state so the failed run is still recorded and visible to the EM.
+        # RunCanceledError is a user-initiated abort, not a system failure.
+        # Log at INFO, emit a distinct SSE event type, and set CANCELED status
+        # so downstream (Sheets audit, Slack alerts) can differentiate.
+        is_canceled = isinstance(e, RunCanceledError)
+        if is_canceled:
+            log.info(f"[{run_id}] Pipeline task canceled by user")
+            _push_event(run_id, {"type": "canceled", "message": err_msg})
+        else:
+            log.error(f"[{run_id}] Pipeline task failed | error={e}")
+            _push_event(run_id, {"type": "error", "message": err_msg})
+
+        # Pipeline raised before producing a state - synthesize a minimal state
+        # so the failed / canceled run is still recorded.
         if state is None:
             try:
                 from src.core.models import PipelineState
@@ -105,13 +114,25 @@ def _run_pipeline_task(
             except Exception:
                 state = None
         if state is not None:
-            state.pipeline_status = PipelineStatus.ERROR.value
+            state.pipeline_status = PipelineStatus.CANCELED.value if is_canceled else PipelineStatus.ERROR.value
             if err_msg not in state.errors:
                 state.errors.append(err_msg)
             _runs[run_id] = state
 
+    # Always drop the cancel flag so it doesn't shadow a subsequent run reusing
+    # the same run_id (the id includes a random suffix so collisions are rare,
+    # but this keeps the map bounded either way).
+    try:
+        from src.api.state import _run_cancel_flags
+
+        _run_cancel_flags.pop(run_id, None)
+    except Exception:
+        pass
+
     # A failed run never reaches the HITL gate / POST /approve, so log a Run
     # Summary row here too - the EM sees errored runs on the Sheets dashboard.
+    # Canceled runs are intentionally NOT logged: they clutter the audit trail
+    # with "user changed their mind" entries and don't reflect quality signal.
     if state is not None and state.pipeline_status == PipelineStatus.ERROR.value:
         try:
             from src.integrations.sheets import write_artifacts_to_sheet
