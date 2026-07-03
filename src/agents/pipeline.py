@@ -89,7 +89,17 @@ def _safe_emit(event_type: str, **fields) -> None:
 
 
 def _set_status(ps: PipelineState, status: PipelineStatus) -> None:
-    """Set pipeline_status and emit a status event to the client."""
+    """Set pipeline_status and emit a status event to the client.
+
+    Idempotent: if the requested status equals the current one, this is a
+    no-op. Several graph nodes legitimately set the same status back-to-back
+    (e.g. orchestrator hub sets `specialist_executing` at its exit, and
+    dispatch_specialists sets it again at its entry). Without this guard,
+    every same-status re-set would emit a duplicate pipeline_status SSE event
+    and the console log would stutter on every transition.
+    """
+    if ps.pipeline_status == status.value:
+        return  # No change - suppress redundant SSE emit.
     ps.pipeline_status = status.value
     _safe_emit("pipeline_status", status=status.value)
 

@@ -65,7 +65,10 @@ def _run_pipeline_task(
 
         brd_text = val_result.brd_text_clean or ""
 
-        _push_event(run_id, {"type": "agent_start", "agent": "orchestrator"})
+        # The orchestrator LangGraph node emits its own agent_start when it
+        # begins execution, exactly like every other agent. A prior version of
+        # this code pushed an extra agent_start here as a defensive hook; it's
+        # no longer needed and only produced a duplicate console line.
         from src.agents.pipeline import run_pipeline
 
         state = run_pipeline(brd_text, brd_hash, run_id, brd_name, model_family, enable_fallback)

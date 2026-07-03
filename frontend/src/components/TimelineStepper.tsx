@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield, FileJson, Cpu, MessageSquare, UserCheck, FileCheck, Check, Loader2, X } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type ApprovalResult, type LogEvent } from '../hooks/useSSE';
-import { type PipelineStatus, PIPELINE_STATUS, CANCELLABLE_STATES } from '../lib/pipelineStatus';
+import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
 interface TimelineStepperProps {
   pipelineStatus: PipelineStatus;
@@ -10,7 +10,6 @@ interface TimelineStepperProps {
   criticOutput: CriticOutput | null;
   approvalResult: ApprovalResult | null;
   logs: LogEvent[];
-  onCancel?: () => void;
 }
 
 export const TimelineStepper: React.FC<TimelineStepperProps> = ({
@@ -20,7 +19,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   criticOutput,
   approvalResult,
   logs,
-  onCancel,
 }) => {
   const hasBrdSections = Array.isArray(artifacts?.brd_sections) && (artifacts.brd_sections as unknown[]).length > 0;
 
@@ -224,15 +222,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                     'text-primary'
             }>{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
           </span>
-          {onCancel && CANCELLABLE_STATES.includes(pipelineStatus) && (
-            <button
-              onClick={onCancel}
-              className="ml-3 text-xs text-muted-foreground hover:text-danger transition font-medium underline underline-offset-2 decoration-dotted"
-              title="Reset the UI. The pipeline task will finish in the background."
-            >
-              Cancel Run
-            </button>
-          )}
         </div>
       </div>
 

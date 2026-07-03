@@ -574,7 +574,6 @@ export const AgentWorkspace: React.FC = () => {
                 criticOutput={criticOutput}
                 approvalResult={approvalResult}
                 logs={logs}
-                onCancel={handleReset}
               />
 
 
