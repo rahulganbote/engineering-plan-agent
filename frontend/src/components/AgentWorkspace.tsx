@@ -8,7 +8,7 @@ import { HITLApprovalGate, type ApprovalResponse } from './HITLApprovalGate';
 import { apiFetch } from '../lib/apiClient';
 import { IngestionLanding } from './IngestionLanding';
 import { TimelineStepper } from './TimelineStepper';
-import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
+import { type PipelineStatus, PIPELINE_STATUS, CANCELLABLE_STATES } from '../lib/pipelineStatus';
 import { LogConsole } from './LogConsole';
 import { CriticFindings } from './CriticFindings';
 import { PlanTab } from './PlanTab';
@@ -289,6 +289,11 @@ export const AgentWorkspace: React.FC = () => {
                 <input
                   type="file"
                   onChange={handleFileChange}
+                  // Clear value on every click so re-selecting the same file after
+                  // clearing it (or after the picker is cancelled) reliably fires
+                  // the change event. Without this, <input type="file"> silently
+                  // no-ops when the browser thinks the value hasn't changed.
+                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                   accept=".pdf,.docx,.txt"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
@@ -354,6 +359,21 @@ export const AgentWorkspace: React.FC = () => {
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0 mt-1" />
                   <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD. Runtime varies based on the size and complexity of the BRD.</span>
                 </div>
+              )}
+
+              {/* Cancel Run - primary access, right where users look for run
+                  controls. Only appears during active states (excludes idle,
+                  awaiting_hitl, terminal). The subtle header link in the
+                  timeline stepper is a secondary access path. */}
+              {runId && CANCELLABLE_STATES.includes(pipelineStatus) && (
+                <button
+                  onClick={handleReset}
+                  className="mt-2 w-full py-2 border border-danger bg-danger/10 hover:bg-danger/25 rounded text-xs font-bold text-danger transition flex items-center justify-center gap-2"
+                  title="Reset the UI. The pipeline task will finish in the background."
+                >
+                  <X size={14} />
+                  Cancel Run
+                </button>
               )}
             </div>
           )}

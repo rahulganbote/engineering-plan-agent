@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield, FileJson, Cpu, MessageSquare, UserCheck, FileCheck, Check, Loader2, X } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type ApprovalResult, type LogEvent } from '../hooks/useSSE';
-import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
+import { type PipelineStatus, PIPELINE_STATUS, CANCELLABLE_STATES } from '../lib/pipelineStatus';
 
 interface TimelineStepperProps {
   pipelineStatus: PipelineStatus;
@@ -12,18 +12,6 @@ interface TimelineStepperProps {
   logs: LogEvent[];
   onCancel?: () => void;
 }
-
-// States during which "Cancel Run" is a reasonable action. Excludes terminal
-// states (exported, rejected, error), the HITL wait (user should approve or
-// reject, not cancel), and idle.
-const CANCELLABLE_STATES: PipelineStatus[] = [
-  PIPELINE_STATUS.SECURITY_CHECK,
-  PIPELINE_STATUS.RUNNING,
-  PIPELINE_STATUS.SPECIALIST_EXECUTING,
-  PIPELINE_STATUS.EVALUATING,
-  PIPELINE_STATUS.REVISING,
-  PIPELINE_STATUS.INITIALIZING,
-];
 
 export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   pipelineStatus,
