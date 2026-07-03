@@ -23,7 +23,12 @@ THRESHOLDS: dict[str, float] = {
     "consistency": 5.0,  # zero contradictions
     "actionability": 4.0,  # EM can act immediately
 }
-GREEN_THRESHOLD = 4.25
+# Green requires overall >= 4.5. Sits above the deterministic-pin equilibrium
+# (completeness=5 + consistency=5 + actionability=4 + groundedness=3 = 4.25),
+# so a Green badge signals genuine LLM-judge lift above the deterministic floor
+# rather than exact-threshold convergence. See critic/llm_judge.py for the
+# matching temperature bump that keeps runs from clustering on the same score.
+GREEN_THRESHOLD = 4.5
 AMBER_THRESHOLD = 3.75
 RED_THRESHOLD = 3.5
 
