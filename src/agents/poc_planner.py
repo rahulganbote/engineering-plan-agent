@@ -122,10 +122,10 @@ class PoCPlannerAgent(BaseAgent):
                 )
                 for c in d.get("success_criteria", [])
             ]
-            return PoCOutput(
+            poc = PoCOutput(
                 run_id=run_id,
                 citations=citation_ids or ["poc_plan_chunk_0"],
-                confidence_score=float(d.get("confidence_score", 0.72)),
+                confidence_score=float(d.get("confidence_score", 0.72)),  # LLM value; overridden below
                 assumptions=d.get("assumptions", []),
                 flagged_ambiguities=d.get("flagged_ambiguities", []),
                 poc_hypothesis=d.get(
@@ -142,6 +142,15 @@ class PoCPlannerAgent(BaseAgent):
                     "Revisit architecture, timeline, or vendor assumptions before full implementation.",
                 ),
             )
+            from src.agents.confidence import compute_poc_confidence
+
+            poc.llm_confidence_score = poc.confidence_score
+            poc.confidence_score, poc.confidence_drivers = compute_poc_confidence(poc)
+            log.info(
+                f"[{run_id}] poc confidence | llm_raw={poc.llm_confidence_score:.2f} "
+                f"derived={poc.confidence_score:.2f} drivers={poc.confidence_drivers}"
+            )
+            return poc
         except Exception as e:
             log.error(f"[{run_id}] PoCPlanner build error: {e}")
             return self._fallback(run_id, citation_ids, str(e))
@@ -166,7 +175,8 @@ class PoCPlannerAgent(BaseAgent):
         return PoCOutput(
             run_id=run_id,
             citations=citation_ids or [cite],
-            confidence_score=0.2,
+            confidence_score=0.15,
+            confidence_drivers=["parse-failure fallback: agent output could not be built"],
             assumptions=["Fallback PoC plan - agent parse error"],
             flagged_ambiguities=["PoC output could not be parsed"],
             poc_hypothesis="Validate the highest-risk workflow and integration before full build.",

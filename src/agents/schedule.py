@@ -191,10 +191,10 @@ class ScheduleEstimatorAgent(BaseAgent):
             if not comparable:
                 comparable = citation_ids[:2]
 
-            return ScheduleOutput(
+            sched = ScheduleOutput(
                 run_id=run_id,
                 citations=citation_ids,
-                confidence_score=float(d.get("confidence_score", 0.7)),
+                confidence_score=float(d.get("confidence_score", 0.7)),  # LLM value; overridden below
                 assumptions=d.get("assumptions", []),
                 flagged_ambiguities=d.get("flagged_ambiguities", []),
                 sprints=sprints if sprints else self._default_sprints(),
@@ -203,6 +203,15 @@ class ScheduleEstimatorAgent(BaseAgent):
                 buffer_weeks=int(d.get("buffer_weeks", 1)),
                 comparable_projects=comparable,
             )
+            from src.agents.confidence import compute_schedule_confidence
+
+            sched.llm_confidence_score = sched.confidence_score
+            sched.confidence_score, sched.confidence_drivers = compute_schedule_confidence(sched)
+            log.info(
+                f"[{run_id}] schedule confidence | llm_raw={sched.llm_confidence_score:.2f} "
+                f"derived={sched.confidence_score:.2f} drivers={sched.confidence_drivers}"
+            )
+            return sched
         except Exception as e:
             log.error(f"[{run_id}] ScheduleEstimator build error: {e}")
             return self._fallback(run_id, citation_ids, str(e))
@@ -231,7 +240,8 @@ class ScheduleEstimatorAgent(BaseAgent):
         return ScheduleOutput(
             run_id=run_id,
             citations=citation_ids or ["project_timelines_chunk_0"],
-            confidence_score=0.2,
+            confidence_score=0.15,
+            confidence_drivers=["parse-failure fallback: agent output could not be built"],
             assumptions=["Fallback schedule - agent parse error"],
             flagged_ambiguities=["Schedule estimate unavailable"],
             sprints=sprints,

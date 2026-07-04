@@ -214,10 +214,10 @@ class SolutionArchitectAgent(BaseAgent):
 
             diagram_mermaid = self._sanitize_mermaid(d.get("diagram_mermaid"))
 
-            return ArchitectureOutput(
+            arch = ArchitectureOutput(
                 run_id=run_id,
                 citations=citation_ids or [first_cite],
-                confidence_score=float(d.get("confidence_score", 0.72)),
+                confidence_score=float(d.get("confidence_score", 0.72)),  # LLM value; overridden below
                 assumptions=d.get("assumptions", []),
                 flagged_ambiguities=d.get("flagged_ambiguities", []),
                 pattern=d.get("pattern", "Modular monolith with service boundaries"),
@@ -239,6 +239,15 @@ class SolutionArchitectAgent(BaseAgent):
                 diagram_mermaid=diagram_mermaid or self._default_mermaid(components or self._default_components()),
                 # diagram_svg populated after construction by run() via _render_kroki
             )
+            from src.agents.confidence import compute_arch_confidence
+
+            arch.llm_confidence_score = arch.confidence_score
+            arch.confidence_score, arch.confidence_drivers = compute_arch_confidence(arch)
+            log.info(
+                f"[{run_id}] arch confidence | llm_raw={arch.llm_confidence_score:.2f} "
+                f"derived={arch.confidence_score:.2f} drivers={arch.confidence_drivers}"
+            )
+            return arch
         except Exception as e:
             log.error(f"[{run_id}] SolutionArchitect build error: {e}")
             return self._fallback(run_id, citation_ids, str(e))
@@ -374,7 +383,8 @@ class SolutionArchitectAgent(BaseAgent):
         return ArchitectureOutput(
             run_id=run_id,
             citations=citation_ids or [cite],
-            confidence_score=0.2,
+            confidence_score=0.15,
+            confidence_drivers=["parse-failure fallback: agent output could not be built"],
             assumptions=["Fallback architecture - agent parse error"],
             flagged_ambiguities=["Architecture output could not be parsed"],
             pattern="Modular monolith with clear service boundaries",
