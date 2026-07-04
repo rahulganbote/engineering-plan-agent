@@ -15,7 +15,7 @@ The following scores represent the LLM-as-Judge evaluation (Method 2) on a scale
 | **Net Improvement** | **+1.50** | **+1.00** | **+0.50** | **+0.80** | **+0.95** | — |
 
 > [!NOTE]
-> Badge assignment (Green ≥ 4.5, Amber ≥ 3.75, Red ≤ 3.5) is threshold-dependent and evolves as calibration tightens. This table reports raw LLM-judge scores so results stay comparable across threshold changes; the ~28% overall lift is the primary signal.
+> Badge assignment (Green ≥ 4.0, Amber ≥ 3.5, Red < 3.5) is threshold-dependent and evolves as calibration tightens. This table reports raw LLM-judge scores so results stay comparable across threshold changes; the ~28% overall lift is the primary signal.
 
 > [!NOTE]
 > Groundedness saw the largest increase (+1.50) because the Critic successfully identified and rejected specialist assertions that lacked exact Pinecone RAG citations, forcing the specialists to anchor their planning in organization standards during the revision cycle.
