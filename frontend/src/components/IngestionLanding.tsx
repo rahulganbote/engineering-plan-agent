@@ -173,7 +173,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     {
       id: 'security',
       label: 'Security Validator',
-      desc: 'Performs file size scans, prompt injection assessment, and filters/redacts PII patterns.',
+      desc: 'Performs file size check, BRD validity check, prompt injection assessment, and filters/redacts PII patterns.',
       icon: <ShieldCheck size={20} className="text-danger" />,
       color: 'border-danger/30 text-danger bg-danger/10',
       activeColor: 'ring-danger/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
@@ -196,7 +196,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     },
     {
       id: 'rag',
-      label: 'RAG (Pinecone Store)',
+      label: 'RAG (Pinecone Vector DB)',
       desc: 'Grounds outputs in organization guidelines, engineering standards, and template repositories via Pinecone semantic search.',
       icon: <BookOpen size={20} className="text-ai-spark" />,
       color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
@@ -204,16 +204,16 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     },
     {
       id: 'critic',
-      label: 'Critic Reviewer',
-      desc: 'Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if needed.',
+      label: 'Critic Reviewer - Evaluation',
+      desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if thresholds are not met (Green badge requires all dimensions passing and overall >= 4.0).',
       icon: <GitPullRequest size={20} className="text-warning" />,
       color: 'border-warning/30 text-warning bg-warning/10',
       activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',
     },
     {
       id: 'manager',
-      label: 'Manager (HITL) Gate',
-      desc: 'Pauses execution to obtain engineering manager approval before exporting to Google Sheets and Jira.',
+      label: 'Manager (HITL) Decision Gate',
+      desc: 'Pauses execution to obtain engineering manager approval before exporting to Google Sheets and Jira. Voice AI support (ElevenLabs) at Decision Gate.',
       icon: <Milestone size={20} className="text-success" />,
       color: 'border-success/30 text-success bg-success/10',
       activeColor: 'ring-success/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]',

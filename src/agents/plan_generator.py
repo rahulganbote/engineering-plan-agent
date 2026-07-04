@@ -250,10 +250,10 @@ Rules:
                 log.warning(f"[{run_id}] Fixing total_duration_weeks {total_weeks}→{phase_sum}")
                 total_weeks = phase_sum
 
-            return EngineeringPlanOutput(
+            plan = EngineeringPlanOutput(
                 run_id=run_id,
                 citations=citation_ids,
-                confidence_score=float(d.get("confidence_score", 0.72)),
+                confidence_score=float(d.get("confidence_score", 0.72)),  # LLM value; overridden below
                 assumptions=d.get("assumptions", []),
                 flagged_ambiguities=d.get("flagged_ambiguities", []),
                 phases=phases,
@@ -264,6 +264,19 @@ Rules:
                     "reflection_notes", "Milestones clarified with owner_role. Risks cited to KB chunks."
                 ),
             )
+            # Derive confidence from verifiable signals; discards LLM self-report
+            # for the primary confidence_score but preserves it on the object as
+            # llm_confidence_score so the HITL gate can surface a review flag
+            # when the two disagree by more than 0.20.
+            from src.agents.confidence import compute_plan_confidence
+
+            plan.llm_confidence_score = plan.confidence_score
+            plan.confidence_score, plan.confidence_drivers = compute_plan_confidence(plan)
+            log.info(
+                f"[{run_id}] plan confidence | llm_raw={plan.llm_confidence_score:.2f} "
+                f"derived={plan.confidence_score:.2f} drivers={plan.confidence_drivers}"
+            )
+            return plan
         except Exception as e:
             log.error(f"[{run_id}] PlanGenerator build error: {e}")
             return self._fallback(run_id, citation_ids, str(e))
@@ -283,7 +296,8 @@ Rules:
         return EngineeringPlanOutput(
             run_id=run_id,
             citations=citation_ids or [cite],
-            confidence_score=0.2,
+            confidence_score=0.15,  # sentinel - distinct from any legitimate derived low score
+            confidence_drivers=["parse-failure fallback: agent output could not be built"],
             assumptions=["Fallback output - agent parse error"],
             flagged_ambiguities=["Agent output could not be parsed"],
             phases=[

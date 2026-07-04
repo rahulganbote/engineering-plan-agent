@@ -110,6 +110,17 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
             )
 
     # Check 6: Plan duration vs schedule effort (math sanity)
+    #
+    # Applies a 0.70 utilization factor so implied effort reflects realistic
+    # team capacity, not blackboard hours. Rationale mirrors the 80% sprint
+    # capacity rule in src/agents/confidence.py: engineers aren't 100% on any
+    # given project (meetings, code review, unplanned work, PMs/EMs at partial
+    # allocation). Without this factor Rule 6 fires on every healthy plan
+    # because the implied number is unrealistically large.
+    #
+    # Ratio threshold tightened from 0.5 to 0.25 so a 25% cross-agent disagreement
+    # counts as a signal rather than "close enough". Real-world plans rarely
+    # disagree by that much when specialists are properly calibrated.
     if (
         state.plan_output
         and state.schedule_output
@@ -117,19 +128,21 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
         and state.plan_output.total_duration_weeks
     ):
         team_size = sum(state.plan_output.team_composition.values())
-        implied_effort = state.plan_output.total_duration_weeks * team_size * 5
+        _PLAN_UTILIZATION_FACTOR = 0.70
+        implied_effort = state.plan_output.total_duration_weeks * team_size * 5 * _PLAN_UTILIZATION_FACTOR
         actual_effort = state.schedule_output.total_effort_days or 0
         if implied_effort > 0 and actual_effort > 0:
             ratio = abs(actual_effort - implied_effort) / implied_effort
-            if ratio > 0.5:
+            if ratio > 0.25:
                 direction = "exceeds" if actual_effort > implied_effort else "is under"
                 issues.append(
                     ConsistencyIssue(
                         agents_involved=["engineering_plan_generator", "schedule_estimator"],
                         conflict_description=(
                             f"Schedule effort ({actual_effort} days) {direction} "
-                            f"plan implied effort ({implied_effort} days for "
-                            f"{state.plan_output.total_duration_weeks}w × {team_size} engineers). "
+                            f"plan implied effort ({implied_effort:.0f} days for "
+                            f"{state.plan_output.total_duration_weeks}w × {team_size} engineers "
+                            f"× 70% utilization). "
                             f"Discrepancy is {ratio * 100:.0f}% - agents disagree on workload."
                         ),
                         severity=RiskLevel.MEDIUM,
@@ -170,4 +183,15 @@ def check_cross_agent_consistency(state: PipelineState) -> list[ConsistencyIssue
 
     if issues:
         log.warning(f"[{state.run_id}] Cross-agent consistency issues: {len(issues)}")
+        # Log each issue's description on its own line so debugging can identify
+        # exactly which of the 7 rules fired without guessing from the count.
+        # Kept at WARNING so it stays visible under default log filters; run-id
+        # in the prefix lets multi-run log searches disambiguate quickly.
+        for idx, issue in enumerate(issues, 1):
+            severity = issue.severity.value if hasattr(issue.severity, "value") else str(issue.severity)
+            agents = ",".join(issue.agents_involved) if issue.agents_involved else "unknown"
+            log.warning(
+                f"[{state.run_id}] consistency issue #{idx} "
+                f"| severity={severity} | agents=[{agents}] | {issue.conflict_description}"
+            )
     return issues

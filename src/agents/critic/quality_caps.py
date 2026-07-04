@@ -23,8 +23,16 @@ THRESHOLDS: dict[str, float] = {
     "consistency": 5.0,  # zero contradictions
     "actionability": 4.0,  # EM can act immediately
 }
+# Badge thresholds. Kept aligned with QualityBadge docstring in core/models.py.
+#   GREEN : overall >= 4.0  AND  all 4 dimensions passing their per-dim threshold
+#   AMBER : overall >= 3.5  OR   one dimension below its per-dim threshold
+#   RED   : overall <  3.5  OR   two+ dimensions below their per-dim thresholds
+# FM-2 and FM-3 caps in critic/__init__.py must sit below GREEN_THRESHOLD so a
+# failure-mode trip guarantees Amber. Any change here needs a matching update
+# to those caps and to the IngestionLanding "Critic Reviewer" card copy.
 GREEN_THRESHOLD = 4.0
-AMBER_THRESHOLD = 3.0
+AMBER_THRESHOLD = 3.5
+RED_THRESHOLD = 3.5
 
 
 def calibrate_scores(
@@ -208,8 +216,10 @@ def assign_badge(scores: dict, overall: float) -> QualityBadge:
     Assign Green/Amber/Red quality badge based on dimension scores.
     """
     below = sum(1 for dim, threshold in THRESHOLDS.items() if scores.get(dim, 0) < threshold)
+    if below >= 2 or overall <= RED_THRESHOLD:
+        return QualityBadge.RED
     if below == 0 and overall >= GREEN_THRESHOLD:
         return QualityBadge.GREEN
-    elif below <= 1 and overall >= AMBER_THRESHOLD:
+    if below == 1 or (AMBER_THRESHOLD <= overall < GREEN_THRESHOLD):
         return QualityBadge.AMBER
     return QualityBadge.RED

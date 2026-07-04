@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useSSE, type LogEvent, type CriticOutput, type ApprovalResult, type ArtifactsState } from '../hooks/useSSE';
+import { type PipelineStatus } from '../lib/pipelineStatus';
 
 interface WorkspaceContextType {
   runId: string | null;
@@ -7,7 +8,7 @@ interface WorkspaceContextType {
   apiBaseUrl: string;
   setApiBaseUrl: (url: string) => void;
   logs: LogEvent[];
-  pipelineStatus: string;
+  pipelineStatus: PipelineStatus;
   completedAgents: Set<string>;
   artifacts: ArtifactsState | null;
   elapsedSeconds: number;
@@ -15,9 +16,9 @@ interface WorkspaceContextType {
   costUsd: number | null;
   criticOutput: CriticOutput | null;
   approvalResult: ApprovalResult | null;
-  clearRun: () => void;
+  clearRun: (newStatus?: PipelineStatus) => void;
   fetchArtifacts: () => Promise<void>;
-  setPipelineStatus: (status: string) => void;
+  setPipelineStatus: (status: PipelineStatus) => void;
   setApprovalResult: (result: ApprovalResult | null) => void;
   errorMessage: string | null;
   fallbackActive: { from: string; to: string } | null;

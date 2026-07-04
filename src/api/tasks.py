@@ -9,16 +9,66 @@ from __future__ import annotations
 from src.api.state import _push_event, _run_export, _runs
 from src.core.logger import get_logger
 from src.core.models import HITLDecision
+from src.core.pipeline_status import PipelineStatus
 
 log = get_logger(__name__)
 
 
 def _run_pipeline_task(
-    brd_text: str, brd_hash: str, run_id: str, brd_name: str, model_family: str = "openai", enable_fallback: bool = True
+    file_bytes: bytes,
+    brd_hash: str,
+    run_id: str,
+    brd_name: str,
+    content_type: str = "text/plain",
+    model_family: str = "openai",
+    enable_fallback: bool = True,
 ) -> None:
     state = None
     try:
-        _push_event(run_id, {"type": "agent_start", "agent": "orchestrator"})
+        from src.core.models import PipelineState
+
+        state = PipelineState(run_id=run_id, brd_raw_hash=brd_hash, brd_name=brd_name)
+        state.pipeline_status = PipelineStatus.SECURITY_CHECK.value
+        _runs[run_id] = state
+
+        _push_event(run_id, {"type": "pipeline_status", "status": PipelineStatus.SECURITY_CHECK.value})
+        _push_event(run_id, {"type": "security_start"})
+
+        from src.security.validator import SecurityValidator, ValidationStatus
+
+        validator = SecurityValidator()
+        val_result = validator.validate(
+            file_bytes=file_bytes,
+            filename=brd_name,
+            content_type=content_type,
+            model_family=model_family,
+        )
+
+        if val_result.status == ValidationStatus.BLOCKED:
+            _push_event(run_id, {"type": "security_blocked", "message": val_result.user_message})
+            state.pipeline_status = PipelineStatus.ERROR.value
+            state.errors.append(val_result.user_message)
+            _runs[run_id] = state
+            return
+
+        _push_event(run_id, {"type": "security_complete"})
+
+        if val_result.pii_types_found:
+            _push_event(
+                run_id,
+                {
+                    "type": "pii_warning",
+                    "pii_types": val_result.pii_types_found,
+                    "message": val_result.user_message,
+                },
+            )
+
+        brd_text = val_result.brd_text_clean or ""
+
+        # The orchestrator LangGraph node emits its own agent_start when it
+        # begins execution, exactly like every other agent. A prior version of
+        # this code pushed an extra agent_start here as a defensive hook; it's
+        # no longer needed and only produced a duplicate console line.
         from src.agents.pipeline import run_pipeline
 
         state = run_pipeline(brd_text, brd_hash, run_id, brd_name, model_family, enable_fallback)
@@ -37,19 +87,25 @@ def _run_pipeline_task(
         )
         log.info(f"[{run_id}] Pipeline task complete | status={state.pipeline_status}")
     except Exception as e:
-        from src.core.exceptions import BudgetBreachedError
-        from src.core.resilience import QuotaExceededError
+        from src.core.exceptions import GovernedFailure, RunCanceledError
 
         err_msg = str(e)
-        if isinstance(e, QuotaExceededError) or "your api credits/tokens" in err_msg.lower():
-            err_msg = "Your API Credits/Tokens has expired or reached limit. Please try again later. Sorry."
-        elif isinstance(e, BudgetBreachedError):
-            err_msg = f"Pipeline execution aborted: {str(e)}"
+        if isinstance(e, GovernedFailure):
+            err_msg = e.user_message
 
-        log.error(f"[{run_id}] Pipeline task failed | error={e}")
-        _push_event(run_id, {"type": "error", "message": err_msg})
-        # Pipeline raised before producing a state - synthesize a minimal error
-        # state so the failed run is still recorded and visible to the EM.
+        # RunCanceledError is a user-initiated abort, not a system failure.
+        # Log at INFO, emit a distinct SSE event type, and set CANCELED status
+        # so downstream (Sheets audit, Slack alerts) can differentiate.
+        is_canceled = isinstance(e, RunCanceledError)
+        if is_canceled:
+            log.info(f"[{run_id}] Pipeline task canceled by user")
+            _push_event(run_id, {"type": "canceled", "message": err_msg})
+        else:
+            log.error(f"[{run_id}] Pipeline task failed | error={e}")
+            _push_event(run_id, {"type": "error", "message": err_msg})
+
+        # Pipeline raised before producing a state - synthesize a minimal state
+        # so the failed / canceled run is still recorded.
         if state is None:
             try:
                 from src.core.models import PipelineState
@@ -58,14 +114,26 @@ def _run_pipeline_task(
             except Exception:
                 state = None
         if state is not None:
-            state.pipeline_status = "error"
+            state.pipeline_status = PipelineStatus.CANCELED.value if is_canceled else PipelineStatus.ERROR.value
             if err_msg not in state.errors:
                 state.errors.append(err_msg)
             _runs[run_id] = state
 
+    # Always drop the cancel flag so it doesn't shadow a subsequent run reusing
+    # the same run_id (the id includes a random suffix so collisions are rare,
+    # but this keeps the map bounded either way).
+    try:
+        from src.api.state import _run_cancel_flags
+
+        _run_cancel_flags.pop(run_id, None)
+    except Exception:
+        pass
+
     # A failed run never reaches the HITL gate / POST /approve, so log a Run
     # Summary row here too - the EM sees errored runs on the Sheets dashboard.
-    if state is not None and state.pipeline_status == "error":
+    # Canceled runs are intentionally NOT logged: they clutter the audit trail
+    # with "user changed their mind" entries and don't reflect quality signal.
+    if state is not None and state.pipeline_status == PipelineStatus.ERROR.value:
         try:
             from src.integrations.sheets import write_artifacts_to_sheet
 
@@ -154,9 +222,9 @@ async def _run_export_handlers_background(
                 "ok" if export_mode == "sheets" else ("local_fallback" if export_mode == "local" else "failed")
             )
             if decision == HITLDecision.APPROVED:
-                state.pipeline_status = "exported"
+                state.pipeline_status = PipelineStatus.EXPORTED.value
             elif decision == HITLDecision.REJECTED:
-                state.pipeline_status = "rejected"
+                state.pipeline_status = PipelineStatus.REJECTED.value
             _run_export[run_id] = {
                 "sheet_url": sheet_url,
                 "mode": export_mode,
@@ -260,9 +328,9 @@ async def _run_export_handlers_background(
         # Ensure fallback state so frontend poll exit triggers
         _push_event(run_id, {"type": "error", "message": f"Background export worker crashed: {str(e)}"})
         if decision == HITLDecision.APPROVED:
-            state.pipeline_status = "export_failed"
+            state.pipeline_status = PipelineStatus.EXPORT_FAILED.value
         elif decision == HITLDecision.REJECTED:
-            state.pipeline_status = "rejection_failed"
+            state.pipeline_status = PipelineStatus.EXPORT_FAILED.value
 
     finally:
         # Mark finalized to release any waiting polling client

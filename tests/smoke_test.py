@@ -1655,6 +1655,37 @@ def _():
     assert isinstance(cost, float) and cost > 0
 
 
+@test("Ruff check (unused imports and lint checks)", group="lint")
+def _():
+    import subprocess
+
+    res = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", "src/", "tests/"],
+        capture_output=True,
+        text=True,
+    )
+    if res.returncode != 0:
+        raise AssertionError(
+            f"Ruff lint checks failed:\n{res.stdout or res.stderr}\n"
+            f"Run './.venv/bin/ruff check --fix src/ tests/' to fix."
+        )
+
+
+@test("Ruff format check", group="lint")
+def _():
+    import subprocess
+
+    res = subprocess.run(
+        [sys.executable, "-m", "ruff", "format", "--check", "src/", "tests/"],
+        capture_output=True,
+        text=True,
+    )
+    if res.returncode != 0:
+        raise AssertionError(
+            f"Ruff format checks failed:\n{res.stdout or res.stderr}\nRun './.venv/bin/ruff format src/ tests/' to fix."
+        )
+
+
 if __name__ == "__main__":
     filter_group = sys.argv[1] if len(sys.argv) > 1 else None
     groups = [
@@ -1672,6 +1703,7 @@ if __name__ == "__main__":
         "bulkhead",
         "events",
         "providers",
+        "lint",
     ]
     if filter_group == "day3":
         groups = ["day3"]

@@ -152,10 +152,10 @@ Five-method evaluation suite (`eval/run_eval.py`):
 **Deterministic quality caps** override optimistic LLM-judge scores:
 
 - **FM-1 Hallucination Guard:** -0.3 per citation not matching the Pinecone index
-- **FM-2 Uncited Claim Cap:** caps overall at 3.9 (Amber) if any specialist fails to cite at least one chunk
-- **FM-3 Sentinel Fallback Cap:** caps overall at 3.9 (Amber) if any specialist times out and falls back
+- **FM-2 Uncited Claim Cap:** caps overall at 3.9 (below the 4.0 Green threshold) if any specialist fails to cite at least one chunk
+- **FM-3 Sentinel Fallback Cap:** caps overall at 3.9 (below the 4.0 Green threshold) if any specialist times out and falls back
 
-**Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95, AMBER → GREEN). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
+**Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95 lift after one revision cycle; ~28% relative improvement on the 5-point scale). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
 
 ---
 
@@ -285,6 +285,8 @@ python tests/smoke_test.py               # ~80 smoke tests across 14 groups
 cd frontend && npm test                  # Vitest + Playwright E2E
 ```
 
+**Adding a new API route?** The Vite dev proxy at [`frontend/vite.config.ts`](./frontend/vite.config.ts) forwards only specific URL prefixes to FastAPI (`/api`, `/status`, `/approve`, `/cancel`, `/events`, etc.). New routes must either reuse an existing prefix or add a matching proxy entry — otherwise the frontend request hits Vite (not FastAPI) and returns a non-JSON 404 that surfaces as an "API Failure" toast. Production (Cloud Run) has no proxy so this trap only surfaces in local dev; catches everyone once.
+
 ---
 
 ## Project Layout (Brief)
@@ -307,7 +309,7 @@ docs/            Design.md, EVAL_RESULTS.md, screenshots, ADRs
 
 ## License & Author
 
-**MIT License** - feel free to use for learning and inspiration.
+**MIT License** 
 
 **Rahul Ganbote** - [LinkedIn](https://www.linkedin.com/in/rahul-ganbote-040a7b/) · [GitHub @rahulganbote](https://github.com/rahulganbote)
 

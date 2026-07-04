@@ -35,8 +35,8 @@ class QualityBadge(str, Enum):
 
     Thresholds:
         GREEN : overall_score >= 4.0  AND  all dimensions above threshold
-        AMBER : overall_score >= 3.0  OR   one dimension below threshold
-        RED   : overall_score <  3.0  OR   two+ dimensions below threshold
+        AMBER : overall_score >= 3.5  OR   one dimension below threshold
+        RED   : overall_score <  3.5  OR   two+ dimensions below threshold
     """
 
     GREEN = "green"
@@ -102,6 +102,18 @@ class AgentOutputBase(BaseModel):
     )
 
     confidence_score: float = Field(..., ge=0.0, le=1.0)
+    # LLM's raw self-reported confidence, preserved BEFORE the derived formula
+    # in confidence.py overwrites confidence_score. Used to surface a HITL
+    # warning when |llm_confidence_score - confidence_score| > 0.20 - the LLM
+    # picked up on something the structural signals didn't. None on any output
+    # produced before this field existed or on parse-failure fallbacks.
+    llm_confidence_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Human-readable list of signals that produced confidence_score. Populated
+    # by src/agents/confidence.py AFTER the LLM output is parsed - not asked for
+    # in any specialist prompt. Empty list means either the specialist hasn't
+    # been wired up to the derived-confidence scorer yet, or the artifact
+    # scored a perfect 1.0 with no deductions to explain.
+    confidence_drivers: list[str] = Field(default_factory=list)
     assumptions: list[str] = Field(default_factory=list)
     flagged_ambiguities: list[str] = Field(default_factory=list)
 

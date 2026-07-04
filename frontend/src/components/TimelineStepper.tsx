@@ -1,9 +1,10 @@
 import React from 'react';
 import { Shield, FileJson, Cpu, MessageSquare, UserCheck, FileCheck, Check, Loader2, X } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type ApprovalResult, type LogEvent } from '../hooks/useSSE';
+import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
 interface TimelineStepperProps {
-  pipelineStatus: string;
+  pipelineStatus: PipelineStatus;
   completedAgents: Set<string>;
   artifacts: ArtifactsState | null;
   criticOutput: CriticOutput | null;
@@ -19,6 +20,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   approvalResult,
   logs,
 }) => {
+  const hasBrdSections = Array.isArray(artifacts?.brd_sections) && (artifacts.brd_sections as unknown[]).length > 0;
 
   // Define the steps
   const steps = [
@@ -27,8 +29,18 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       label: 'Security',
       description: 'Security & PII Check',
       icon: Shield,
-      isCompleted: pipelineStatus !== 'idle' && pipelineStatus !== 'error',
-      isActive: false, // Security validation is instantaneous before pipeline runs
+      get isCompleted() {
+        if (pipelineStatus === PIPELINE_STATUS.ERROR) {
+          return logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
+        }
+        return ([PIPELINE_STATUS.SPECIALIST_EXECUTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus) || completedAgents.has('orchestrator') || hasBrdSections;
+      },
+      get isFailed() {
+        return pipelineStatus === PIPELINE_STATUS.ERROR && !this.isCompleted;
+      },
+      get isActive() {
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED || pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK);
+      },
     },
     {
       id: 2,
@@ -36,10 +48,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       description: 'Parsing BRD',
       icon: FileJson,
       get isCompleted() {
-        return completedAgents.has('orchestrator') || !!artifacts?.brd_sections;
+        return completedAgents.has('orchestrator') || hasBrdSections;
+      },
+      get isFailed() {
+        // If security failed, Orchestrator never ran and thus shouldn't be marked failed (should stay pending)
+        const securityPassed = logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && securityPassed && !this.isCompleted;
       },
       get isActive() {
-        return !this.isCompleted && (pipelineStatus === 'initializing' || pipelineStatus === 'started');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.RUNNING);
       },
     },
     {
@@ -56,8 +73,12 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           completedAgents.has('tech_stack_recommender')
         ) || !!artifacts?.plan_output;
       },
+      get isFailed() {
+        const orchestratorCompleted = completedAgents.has('orchestrator') || hasBrdSections;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && orchestratorCompleted && !this.isCompleted;
+      },
       get isActive() {
-        return !this.isCompleted && (pipelineStatus === 'dispatching' || pipelineStatus === 'revising');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING || pipelineStatus === PIPELINE_STATUS.REVISING);
       },
     },
     {
@@ -68,8 +89,18 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       get isCompleted() {
         return completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output;
       },
+      get isFailed() {
+        const specialistsCompleted = (
+          completedAgents.has('engineering_plan_generator') &&
+          completedAgents.has('schedule_estimator') &&
+          completedAgents.has('solution_architect') &&
+          completedAgents.has('poc_planner') &&
+          completedAgents.has('tech_stack_recommender')
+        ) || !!artifacts?.plan_output;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && specialistsCompleted && !this.isCompleted;
+      },
       get isActive() {
-        return !this.isCompleted && pipelineStatus === 'critic_review';
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.EVALUATING);
       },
     },
     {
@@ -80,13 +111,17 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       get isCompleted() {
         return (
           !!approvalResult ||
-          pipelineStatus === 'exported' ||
-          pipelineStatus === 'export_failed' ||
-          pipelineStatus === 'rejected'
+          pipelineStatus === PIPELINE_STATUS.EXPORTED ||
+          pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED ||
+          pipelineStatus === PIPELINE_STATUS.REJECTED
         );
       },
+      get isFailed() {
+        const criticCompleted = completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && criticCompleted && !this.isCompleted;
+      },
       get isActive() {
-        return !this.isCompleted && pipelineStatus === 'awaiting_hitl';
+        return !this.isCompleted && !this.isFailed && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL;
       },
     },
     {
@@ -96,13 +131,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       icon: FileCheck,
       get isCompleted() {
         return (
-          pipelineStatus === 'exported' ||
-          pipelineStatus === 'export_failed' ||
-          pipelineStatus === 'rejected'
+          pipelineStatus === PIPELINE_STATUS.EXPORTED ||
+          pipelineStatus === PIPELINE_STATUS.REJECTED
         );
       },
+      get isFailed() {
+        return pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED;
+      },
       get isActive() {
-        return !this.isCompleted && (pipelineStatus === 'exported' || pipelineStatus === 'export_failed' || pipelineStatus === 'rejected');
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED);
       },
     },
   ];
@@ -122,10 +159,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     const label = labels[agentKey] || agentKey;
 
     if (agentKey === 'security') {
-      if (pipelineStatus === 'error' && !logs.some(l => l.type === 'agent_start' || l.type === 'status')) {
+      if (pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_start' || l.type === 'status')) {
         return { status: 'failed', label };
       }
-      if (pipelineStatus !== 'idle') {
+      if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
         return { status: 'completed', label };
       }
       return { status: 'pending', label };
@@ -138,10 +175,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     if (agentKey === 'orchestrator') {
       const anySpecialistActive = completedAgents.has('engineering_plan_generator') ||
         logs.some(l => l.type === 'agent_start' && l.agent !== 'orchestrator');
-      if (anySpecialistActive || !!artifacts?.brd_sections || ['dispatching', 'critic_review', 'awaiting_hitl', 'exported', 'rejected'].includes(pipelineStatus)) {
+      if (anySpecialistActive || !!artifacts?.brd_sections || ([PIPELINE_STATUS.SPECIALIST_EXECUTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus)) {
         return { status: 'completed', label };
       }
-      if (pipelineStatus === 'initializing' || pipelineStatus === 'started' || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator')) {
+      if (pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED || pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator')) {
         return { status: 'running', label };
       }
       return { status: 'pending', label };
@@ -151,7 +188,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       if (completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output) {
         return { status: 'completed', label };
       }
-      if (pipelineStatus === 'critic_review') {
+      if (pipelineStatus === PIPELINE_STATUS.EVALUATING) {
         return { status: 'running', label };
       }
       return { status: 'pending', label };
@@ -169,9 +206,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   return (
     <div className="w-full bg-card border border-border rounded-xl p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider"><span>🤖</span> Agentic Workflow Progress</h3>
+        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Agentic Workflow Progress</h3>
         <div className="flex items-center gap-2">
-          {pipelineStatus !== 'idle' && pipelineStatus !== 'exported' && pipelineStatus !== 'rejected' && pipelineStatus !== 'error' && (
+          {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && pipelineStatus !== PIPELINE_STATUS.ERROR && (
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -179,11 +216,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           )}
           <span className="text-xs text-muted-foreground font-semibold capitalize">
             Status: <span className={
-              pipelineStatus === 'error' ? 'text-danger' :
-                pipelineStatus === 'exported' ? 'text-success' :
-                  pipelineStatus === 'awaiting_hitl' ? 'text-warning' :
+              pipelineStatus === PIPELINE_STATUS.ERROR ? 'text-danger' :
+                pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'text-success' :
+                  pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'text-warning' :
                     'text-primary'
-            }>{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : pipelineStatus.replace(/_/g, ' ')}</span>
+            }>{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
           </span>
         </div>
       </div>
@@ -195,6 +232,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         {steps.map((step, idx) => {
           const StepIcon = step.icon;
           const isCompleted = step.isCompleted;
+          const isFailed = step.isFailed;
           const isActive = step.isActive;
 
           // Compute style tokens
@@ -205,6 +243,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           if (isCompleted) {
             iconContainerClasses += "bg-success/80 border-success text-success shadow-[0_0_15px_rgba(16,185,129,0.2)]";
             textLabelClasses += "text-success";
+          } else if (isFailed) {
+            iconContainerClasses += "bg-danger/20 border-danger text-danger shadow-[0_0_15px_rgba(239,68,68,0.2)]";
+            textLabelClasses += "text-danger";
           } else if (isActive) {
             iconContainerClasses += "bg-primary/10 border-primary text-primary ring-4 ring-primary/30 animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]";
             textLabelClasses += "text-primary font-extrabold";
@@ -218,16 +259,21 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               {/* Line connector segment highlight */}
               {idx > 0 && (
                 <div
-                  className={`absolute left-[-50%] right-[50%] top-6 h-0.5 -z-10 transition-all duration-500 ${steps[idx - 1].isCompleted
+                  className={`absolute left-[-50%] right-[50%] top-6 h-0.5 -z-10 transition-all duration-500 ${
+                    steps[idx - 1].isCompleted
                       ? 'bg-gradient-to-r from-success to-primary'
+                      : steps[idx - 1].isFailed
+                      ? 'bg-gradient-to-r from-danger to-secondary'
                       : 'bg-secondary'
-                    }`}
+                  }`}
                 />
               )}
 
               <div className={iconContainerClasses}>
                 {isCompleted ? (
                   <Check size={20} className="stroke-[3px] animate-scale-in" />
+                ) : isFailed ? (
+                  <X size={20} className="stroke-[3px] animate-scale-in text-danger" />
                 ) : isActive ? (
                   <Loader2 size={20} className="animate-spin text-primary" />
                 ) : (

@@ -31,6 +31,7 @@ export default defineConfig({
       '/status': { target: 'http://localhost:8000', changeOrigin: true },
       '/events': 'http://localhost:8000',
       '/approve': 'http://localhost:8000',
+      '/cancel': 'http://localhost:8000',
       '/download': 'http://localhost:8000',
       '/auth': 'http://localhost:8000',
       '/results': 'http://localhost:8000',

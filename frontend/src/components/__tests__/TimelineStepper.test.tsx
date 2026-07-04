@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { TimelineStepper } from '../TimelineStepper';
+import { type PipelineStatus, PIPELINE_STATUS } from '../../lib/pipelineStatus';
 
 describe('TimelineStepper', () => {
   const baseProps = {
-    pipelineStatus: 'idle',
+    pipelineStatus: PIPELINE_STATUS.IDLE as PipelineStatus,
     completedAgents: new Set<string>(),
     artifacts: null,
     criticOutput: null,
@@ -30,7 +31,7 @@ describe('TimelineStepper', () => {
 
   it('reflects completed orchestrator status visually', () => {
     const { container } = render(
-      <TimelineStepper {...baseProps} pipelineStatus="dispatching" completedAgents={new Set(['orchestrator'])} />
+      <TimelineStepper {...baseProps} pipelineStatus={PIPELINE_STATUS.SPECIALIST_EXECUTING} completedAgents={new Set(['orchestrator'])} />
     );
     expect(container).toBeTruthy();
   });

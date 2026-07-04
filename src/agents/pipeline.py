@@ -39,6 +39,7 @@ from src.agents.registry import get_specialist
 from src.core.config import settings
 from src.core.logger import get_logger, log_pipeline_summary
 from src.core.models import PipelineState
+from src.core.pipeline_status import PipelineStatus
 
 log = get_logger(__name__)
 MAX_REVISIONS = settings.max_critic_revisions
@@ -87,10 +88,42 @@ def _safe_emit(event_type: str, **fields) -> None:
         pass
 
 
-def _set_status(ps: PipelineState, status: str) -> None:
-    """Set pipeline_status and emit a status event to the client."""
-    ps.pipeline_status = status
-    _safe_emit("pipeline_status", status=status)
+def _set_status(ps: PipelineState, status: PipelineStatus) -> None:
+    """Set pipeline_status and emit a status event to the client.
+
+    Idempotent: if the requested status equals the current one, this is a
+    no-op. Several graph nodes legitimately set the same status back-to-back
+    (e.g. orchestrator hub sets `specialist_executing` at its exit, and
+    dispatch_specialists sets it again at its entry). Without this guard,
+    every same-status re-set would emit a duplicate pipeline_status SSE event
+    and the console log would stutter on every transition.
+
+    Cancellation checkpoint: before mutating status, check the cooperative
+    cancel flag. If set, raise RunCanceledError so tasks.py can unwind. This
+    means cancellation is observed between LangGraph nodes (in-flight LLM
+    calls still complete first). Cheap; the flag lookup is a dict hit.
+    """
+    _raise_if_canceled(ps)
+    if ps.pipeline_status == status.value:
+        return  # No change - suppress redundant SSE emit.
+    ps.pipeline_status = status.value
+    _safe_emit("pipeline_status", status=status.value)
+
+
+def _raise_if_canceled(ps: PipelineState) -> None:
+    """Cooperative cancel probe. Called from _set_status at every transition."""
+    try:
+        from src.api.state import _run_cancel_flags
+        from src.core.exceptions import RunCanceledError
+
+        if _run_cancel_flags.get(ps.run_id):
+            raise RunCanceledError("Run canceled by user.")
+    except RunCanceledError:
+        raise
+    except Exception:
+        # If the import path is unavailable (unusual test config etc.), don't
+        # let cancellation infrastructure break the pipeline.
+        return
 
 
 def _revision_targets(ps: PipelineState) -> list[str]:
@@ -134,16 +167,16 @@ def node_orchestrator_hub(state: dict) -> dict:
     brd_text = state.get("_brd_text", "")
     log.info(f"[{ps.run_id}] NODE orchestrator_hub")
     _safe_emit("agent_start", agent="orchestrator")
-    _set_status(ps, "running")
+    _set_status(ps, PipelineStatus.RUNNING)
 
     if not brd_text:
         ps.errors.append("No BRD text provided")
-        _set_status(ps, "error")
+        _set_status(ps, PipelineStatus.ERROR)
         return _dump(ps, state)
 
     output, sections = OrchestratorAgent().run(brd_text, ps.run_id)
     ps.brd_sections = sections
-    _set_status(ps, "dispatching" if output.validation_passed else "error")
+    _set_status(ps, PipelineStatus.SPECIALIST_EXECUTING if output.validation_passed else PipelineStatus.ERROR)
     state["_routing_plan"] = output.routing_plan
     state["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
 
@@ -168,7 +201,7 @@ def node_dispatch_specialists(state: dict) -> dict:
     if ps.pipeline_status == "error":
         return _dump(ps, state)
 
-    _set_status(ps, "dispatching")
+    _set_status(ps, PipelineStatus.SPECIALIST_EXECUTING)
     max_workers = min(len(targets), len(ALL_SPECIALIST_AGENTS)) or 1
 
     # ── Phase 9 - Bulkhead: per-agent timeout at the executor ───────────────
@@ -251,16 +284,16 @@ def node_aggregate_outputs(state: dict) -> dict:
     log.info(f"[{ps.run_id}] NODE aggregate_outputs | rev={ps.revision_count}")
 
     if ps.errors:
-        _set_status(ps, "error")
+        _set_status(ps, PipelineStatus.ERROR)
         return _dump(ps, state)
 
     missing = [agent_name for agent_name, field_name in AGENT_OUTPUT_FIELDS.items() if getattr(ps, field_name) is None]
     if missing:
-        _set_status(ps, "error")
+        _set_status(ps, PipelineStatus.ERROR)
         ps.errors.append(f"Missing specialist outputs before Critic: {missing}")
         return _dump(ps, state)
 
-    _set_status(ps, "critic_review")
+    _set_status(ps, PipelineStatus.EVALUATING)
     log.info(
         f"[{ps.run_id}] Aggregated outputs | "
         f"plan={ps.plan_output is not None} schedule={ps.schedule_output is not None} "
@@ -275,6 +308,7 @@ def node_critic(state: dict) -> dict:
     ps = _ps(state)
     log.info(f"[{ps.run_id}] NODE critic | rev={ps.revision_count}")
 
+    _set_status(ps, PipelineStatus.EVALUATING)
     _safe_emit("agent_start", agent="critic")
 
     try:
@@ -300,7 +334,7 @@ def node_critic(state: dict) -> dict:
         _safe_emit("agent_failed", agent="critic")
         log.error(f"[{ps.run_id}] critic error: {e}")
         ps.errors.append(f"critic: {str(e)[:140]}")
-        _set_status(ps, "error")
+        _set_status(ps, PipelineStatus.ERROR)
 
     return _dump(ps, state)
 
@@ -314,12 +348,12 @@ def node_decision_router(state: dict) -> dict:
     log.info(f"[{ps.run_id}] NODE decision_router | rev={ps.revision_count}")
 
     if ps.errors:
-        _set_status(ps, "error")
+        _set_status(ps, PipelineStatus.ERROR)
         return _dump(ps, state)
 
     if not ps.critic_output:
         ps.errors.append("Critic output missing")
-        _set_status(ps, "error")
+        _set_status(ps, PipelineStatus.ERROR)
         return _dump(ps, state)
 
     should_revise = ps.critic_output.requires_revision and ps.revision_count < MAX_REVISIONS
@@ -330,11 +364,11 @@ def node_decision_router(state: dict) -> dict:
             targets = ALL_SPECIALIST_AGENTS.copy()
             log.warning(f"[{ps.run_id}] Critic requested revision but gave no targets; rerunning all specialists")
         ps.revision_count += 1
-        _set_status(ps, "revising")
+        _set_status(ps, PipelineStatus.REVISING)
         state["_revision_targets"] = targets
         log.info(f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS} | targets={targets}")
     else:
-        _set_status(ps, "awaiting_hitl")
+        _set_status(ps, PipelineStatus.AWAITING_HITL)
         state["_revision_targets"] = []
         reason = "max_revisions" if ps.revision_count >= MAX_REVISIONS else "quality_gate"
         log.info(f"[{ps.run_id}] Routing to HITL | badge={ps.critic_output.badge.value} reason={reason}")
@@ -345,7 +379,7 @@ def node_decision_router(state: dict) -> dict:
 def node_await_hitl(state: dict) -> dict:
     """Pause point for FastAPI/React HITL approval."""
     ps = _ps(state)
-    _set_status(ps, "awaiting_hitl")
+    _set_status(ps, PipelineStatus.AWAITING_HITL)
     badge = ps.critic_output.badge.value if ps.critic_output else "unknown"
     log.info(f"[{ps.run_id}] Awaiting HITL | badge={badge}")
     return _dump(ps, state)
@@ -353,7 +387,7 @@ def node_await_hitl(state: dict) -> dict:
 
 def node_error(state: dict) -> dict:
     ps = _ps(state)
-    _set_status(ps, "error")
+    _set_status(ps, PipelineStatus.ERROR)
     log.error(f"[{ps.run_id}] NODE error | errors={ps.errors}")
     return _dump(ps, state)
 

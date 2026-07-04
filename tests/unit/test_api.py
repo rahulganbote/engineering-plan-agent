@@ -274,16 +274,27 @@ def test_pipeline_task_catches_budget_breached_error():
     _runs.pop(run_id, None)
     _run_events.pop(run_id, None)
 
-    # We mock run_pipeline to raise BudgetBreachedError
-    with patch("src.agents.pipeline.run_pipeline", side_effect=BudgetBreachedError("Budget breached during test")):
-        _run_pipeline_task(
-            brd_text="mock brd content",
-            brd_hash="mockhash",
-            run_id=run_id,
-            brd_name="test.txt",
-            model_family="openai",
-            enable_fallback=True,
-        )
+    from src.security.validator import ValidationResult, ValidationStatus
+
+    mock_val = ValidationResult(
+        status=ValidationStatus.PASSED,
+        brd_text_clean="mock brd content is sufficiently long and realistic to bypass validation checks.",
+        brd_hash="mockhash",
+        user_message="Clean",
+        technical_detail="Clean",
+        pii_types_found=[],
+    )
+    with patch("src.security.validator.SecurityValidator.validate", return_value=mock_val):
+        with patch("src.agents.pipeline.run_pipeline", side_effect=BudgetBreachedError("Budget breached during test")):
+            _run_pipeline_task(
+                file_bytes=b"mock brd content",
+                brd_hash="mockhash",
+                run_id=run_id,
+                brd_name="test.txt",
+                content_type="text/plain",
+                model_family="openai",
+                enable_fallback=True,
+            )
 
     # Check that the run was registered as error state
     assert run_id in _runs
@@ -473,3 +484,82 @@ def test_submit_feedback(client):
             feedback_file.unlink()
         except OSError:
             pass
+
+
+def test_pipeline_task_records_security_block():
+    """When SecurityValidator returns BLOCKED, task records error state,
+    emits security_blocked SSE event, and skips run_pipeline entirely."""
+    import json
+
+    from src.api.main import _run_events, _run_pipeline_task, _runs
+    from src.security.validator import ValidationResult, ValidationStatus
+
+    run_id = "test-security-blocked-run"
+    _runs.pop(run_id, None)
+    _run_events.pop(run_id, None)
+
+    mock_val = ValidationResult(
+        status=ValidationStatus.BLOCKED,
+        brd_text_clean="",
+        brd_hash="mockhash",
+        user_message="Your BRD is blocked due to PII/Injection checks.",
+        technical_detail="PII details: SSN matched",
+        pii_types_found=["SSN"],
+    )
+
+    with patch("src.security.validator.SecurityValidator.validate", return_value=mock_val):
+        with patch("src.agents.pipeline.run_pipeline") as mock_pipeline:
+            _run_pipeline_task(
+                file_bytes=b"blocked content",
+                brd_hash="mockhash",
+                run_id=run_id,
+                brd_name="blocked.txt",
+                content_type="text/plain",
+                model_family="openai",
+                enable_fallback=True,
+            )
+            # Ensure the pipeline execution is skipped
+            mock_pipeline.assert_not_called()
+
+    # Assert status and errors
+    assert run_id in _runs
+    state = _runs[run_id]
+    assert state.pipeline_status == "error"
+    assert "Your BRD is blocked due to PII/Injection checks." in state.errors
+
+    # Assert security_blocked event was pushed
+    events = _run_events.get(run_id, [])
+    assert len(events) > 0
+    blocked_event = next((json.loads(e) for e in events if json.loads(e).get("type") == "security_blocked"), None)
+    assert blocked_event is not None
+    assert blocked_event["message"] == "Your BRD is blocked due to PII/Injection checks."
+
+
+def test_run_pipeline_endpoint_latency_and_background_task(client):
+    """Assert POST /run-pipeline returns instantly and queues task in background."""
+    import hashlib
+
+    with patch("src.api.routes.runs._run_pipeline_task") as mock_task:
+        import time
+
+        start_time = time.time()
+
+        # Send request with mock file
+        response = client.post(
+            "/run-pipeline",
+            data={"model_family": "openai", "enable_fallback": True},
+            files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+        )
+
+        latency_ms = (time.time() - start_time) * 1000
+        assert latency_ms < 100  # Latency under 100ms
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "run_id" in data
+
+        # Ensure background task was added
+        mock_task.assert_called_once()
+        args, kwargs = mock_task.call_args
+        assert args[1] == hashlib.sha256(b"Mock BRD contents").hexdigest()
+        assert args[2] == data["run_id"]

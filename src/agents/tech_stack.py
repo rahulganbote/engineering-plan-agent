@@ -186,10 +186,10 @@ class TechStackAgent(BaseAgent):
             if recommended not in [o.name for o in options]:
                 recommended = options[0].name
 
-            return TechStackOutput(
+            stack = TechStackOutput(
                 run_id=run_id,
                 citations=citation_ids or [first_cite],
-                confidence_score=float(d.get("confidence_score", 0.72)),
+                confidence_score=float(d.get("confidence_score", 0.72)),  # LLM value; overridden below
                 assumptions=d.get("assumptions", []),
                 flagged_ambiguities=d.get("flagged_ambiguities", []),
                 options=options[:3],
@@ -199,6 +199,15 @@ class TechStackAgent(BaseAgent):
                     "Recommended option balances team familiarity, moderate cost, and manageable integration risk.",
                 ),
             )
+            from src.agents.confidence import compute_stack_confidence
+
+            stack.llm_confidence_score = stack.confidence_score
+            stack.confidence_score, stack.confidence_drivers = compute_stack_confidence(stack)
+            log.info(
+                f"[{run_id}] stack confidence | llm_raw={stack.llm_confidence_score:.2f} "
+                f"derived={stack.confidence_score:.2f} drivers={stack.confidence_drivers}"
+            )
+            return stack
         except Exception as e:
             log.error(f"[{run_id}] TechStack build error: {e}")
             return self._fallback(run_id, citation_ids, str(e))
@@ -246,7 +255,8 @@ class TechStackAgent(BaseAgent):
         return TechStackOutput(
             run_id=run_id,
             citations=citation_ids or [cite],
-            confidence_score=0.2,
+            confidence_score=0.15,
+            confidence_drivers=["parse-failure fallback: agent output could not be built"],
             assumptions=["Fallback tech stack - agent parse error"],
             flagged_ambiguities=["Tech stack output could not be parsed"],
             options=options,

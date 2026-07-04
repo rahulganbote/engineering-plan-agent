@@ -8,6 +8,7 @@ import { HITLApprovalGate, type ApprovalResponse } from './HITLApprovalGate';
 import { apiFetch } from '../lib/apiClient';
 import { IngestionLanding } from './IngestionLanding';
 import { TimelineStepper } from './TimelineStepper';
+import { type PipelineStatus, PIPELINE_STATUS, CANCELLABLE_STATES } from '../lib/pipelineStatus';
 import { LogConsole } from './LogConsole';
 import { CriticFindings } from './CriticFindings';
 import { PlanTab } from './PlanTab';
@@ -117,8 +118,30 @@ export const AgentWorkspace: React.FC = () => {
     );
   }, [fallbackActive]);
 
+  // Shared reset - clears run state and returns the UI to the empty landing.
+  // Used by the sidebar Clear Plan & Reset button, the error-banner "Clear &
+  // Try Again" button, and the mid-run "Cancel Run" button. When there's an
+  // active run, we fire POST /cancel/{run_id} first so the backend can observe
+  // the cooperative cancel flag between pipeline nodes and unwind. The UI
+  // reset happens either way - 404 (gone) or 409 (already terminal) from the
+  // endpoint is expected and not user-facing, so X-Skip-Toast keeps the
+  // reset flow visually silent regardless of the response.
+  const handleReset = () => {
+    const currentRunId = runId;
+    if (currentRunId) {
+      apiFetch(`${apiBaseUrl}/cancel/${currentRunId}`, {
+        method: 'POST',
+        headers: { 'X-Skip-Toast': 'true' },
+      }).catch(() => { /* Best-effort; UI reset proceeds either way. */ });
+    }
+    setSelectedFile(null);
+    clearRun();
+    setRunId(null);
+    setStartupError(null);
+  };
+
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
-    setPipelineStatus(data.pipeline_status);
+    setPipelineStatus(data.pipeline_status as PipelineStatus);
     setApprovalResult({
       decision: data.decision,
       sheet_url: data.sheet_url || undefined,
@@ -276,6 +299,11 @@ export const AgentWorkspace: React.FC = () => {
                 <input
                   type="file"
                   onChange={handleFileChange}
+                  // Clear value on every click so re-selecting the same file after
+                  // clearing it (or after the picker is cancelled) reliably fires
+                  // the change event. Without this, <input type="file"> silently
+                  // no-ops when the browser thinks the value hasn't changed.
+                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                   accept=".pdf,.docx,.txt"
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
@@ -342,6 +370,21 @@ export const AgentWorkspace: React.FC = () => {
                   <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD. Runtime varies based on the size and complexity of the BRD.</span>
                 </div>
               )}
+
+              {/* Cancel Run - primary access, right where users look for run
+                  controls. Only appears during active states (excludes idle,
+                  awaiting_hitl, terminal). The subtle header link in the
+                  timeline stepper is a secondary access path. */}
+              {runId && CANCELLABLE_STATES.includes(pipelineStatus) && (
+                <button
+                  onClick={handleReset}
+                  className="mt-2 w-full py-2 border border-danger bg-danger/10 hover:bg-danger/25 rounded text-xs font-bold text-danger transition flex items-center justify-center gap-2"
+                  title="Reset the UI. The pipeline task will finish in the background."
+                >
+                  <X size={14} />
+                  Cancel Run
+                </button>
+              )}
             </div>
           )}
 
@@ -370,15 +413,10 @@ export const AgentWorkspace: React.FC = () => {
                 </button>
               </div>
               <div className="text-xs text-muted-foreground">
-                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
+                Status: <span className="font-semibold text-success capitalize">{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
-                onClick={() => {
-                  setSelectedFile(null);
-                  clearRun();
-                  setRunId(null);
-                  setStartupError(null);
-                }}
+                onClick={handleReset}
                 className="w-full py-1.5 border border-destructive bg-destructive/10 hover:bg-destructive/40 rounded text-xs font-semibold text-destructive hover:text-destructive transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
               >
                 Clear Plan & Reset
@@ -428,7 +466,7 @@ export const AgentWorkspace: React.FC = () => {
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent AI Software Engineering Planning System</p>
           </div>
-          {elevenlabsAgentId && runId && pipelineStatus === 'awaiting_hitl' && (
+          {elevenlabsAgentId && runId && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
             <VoiceWidgetFAB
               agentId={elevenlabsAgentId}
               runId={runId}
@@ -478,7 +516,7 @@ export const AgentWorkspace: React.FC = () => {
                 onFileSelect={setSelectedFile}
                 onRemoveFile={() => setSelectedFile(null)}
                 onTrigger={triggerPipeline}
-                isLoading={pipelineStatus === 'initializing'}
+                isLoading={pipelineStatus === PIPELINE_STATUS.INITIALIZING}
                 isAuthenticated={isAuthenticated}
                 onLogin={login}
               />
@@ -501,11 +539,19 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Pipeline Error Alert Banner */}
-              {pipelineStatus === "error" && (
-                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-2 animate-fade-in">
-                  <h4 className="text-sm font-bold text-danger flex items-center gap-2">
-                    <span>❌</span> Pipeline Execution Failed
-                  </h4>
+              {pipelineStatus === PIPELINE_STATUS.ERROR && (
+                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-start justify-between gap-4">
+                    <h4 className="text-sm font-bold text-danger flex items-center gap-2">
+                      <span>❌</span> Agentic Workflow Execution Failed
+                    </h4>
+                    <button
+                      onClick={handleReset}
+                      className="shrink-0 px-3 py-1.5 bg-danger/20 hover:bg-danger/40 border border-danger/50 text-danger text-xs font-bold rounded transition"
+                    >
+                      Clear & Try Again
+                    </button>
+                  </div>
                   <p className="text-xs text-danger/90 leading-relaxed font-semibold">
                     {errorMessage || "An unexpected error occurred during execution. Please check the logs."}
                   </p>
@@ -513,7 +559,7 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* HITL Awaiting Alert Banner */}
-              {pipelineStatus === "awaiting_hitl" && !approvalResult && (
+              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && !approvalResult && (
                 <div className="bg-warning/20 border-l-4 border-warning p-4 rounded shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">⏸️</span>
@@ -544,16 +590,16 @@ export const AgentWorkspace: React.FC = () => {
               {/* Performance Metrics Summary */}
               <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border">
                 <div>
-                  <strong>Current Status:</strong> <span className="text-foreground capitalize font-medium">{pipelineStatus === 'awaiting_hitl' ? 'awaiting decision' : pipelineStatus === 'critic_review' ? 'critic evaluation' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "-")}</span>
+                  <strong>Evaluation Score:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-success font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
                 </div>
                 <div>
-                  <strong>Total Processing Time:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
+                  <strong>Total Processing Time:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-success font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Tokens used:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-foreground">{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
+                  <strong>Tokens used:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-success font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Cost Spent:</strong> <code className="bg-background border border-border px-2.5 py-1 rounded font-mono text-success font-bold">{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
+                  <strong>Cost Spent:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-success font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
                 </div>
               </div>
 
@@ -575,7 +621,7 @@ export const AgentWorkspace: React.FC = () => {
                       <div className="space-y-1">
                         <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
                         <div className="text-xs text-muted-foreground">
-                          Revision {criticOutput.revisionNumber} · Overall <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)} / 5.0</strong>
+                          Final Score: <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)}/5.0</strong>  |  Total Revision(s): <strong className="text-foreground">{criticOutput.revisionNumber}</strong>
                         </div>
                       </div>
                       <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
@@ -647,7 +693,7 @@ export const AgentWorkspace: React.FC = () => {
                   {/* Tab Display Area */}
                   <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
                     <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
-                      {pipelineStatus === 'dispatching' ? (
+                      {pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING ? (
                         <PlanSkeleton />
                       ) : (
                         <div>
@@ -674,7 +720,7 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Decision Gate Section */}
-              {pipelineStatus === "awaiting_hitl" && (
+              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
                 <div className="border-t border-border pt-8">
                   <ErrorBoundary fallback={
                     <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
@@ -693,23 +739,23 @@ export const AgentWorkspace: React.FC = () => {
               )}
 
               {/* Export Status / Final Decision Section */}
-              {(pipelineStatus === "exported" || pipelineStatus === "export_failed" || pipelineStatus === "rejected") && (
+              {(pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED) && (
                 <div className="border-t border-border pt-8">
                   <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Export Results</h3>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === 'exported'
+                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === PIPELINE_STATUS.EXPORTED
                         ? 'bg-success/20 border border-success/40 text-success'
-                        : pipelineStatus === 'rejected'
+                        : pipelineStatus === PIPELINE_STATUS.REJECTED
                           ? 'bg-danger/20 border border-danger/40 text-danger'
                           : 'bg-warning/20 border border-warning/40 text-warning'
                         }`}>
-                        {pipelineStatus === 'exported' ? '✓ Exported Successfully' : pipelineStatus === 'rejected' ? '✗ Plan Rejected' : '⚠ Export Failed'}
+                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? '✗ Plan Rejected' : '⚠ Export Failed'}
                       </span>
                     </div>
 
-                    {pipelineStatus === 'rejected' && (
-                      <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-lg space-y-1">
+                    {pipelineStatus === PIPELINE_STATUS.REJECTED && (
+                      <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-lg space-y-1 font-semibold">
                         <div className="text-xs font-bold uppercase tracking-wider">Re-evaluation Required</div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                           This plan was rejected by the manager. Review the feedback logs and adjust details before starting a new run.
@@ -757,7 +803,7 @@ export const AgentWorkspace: React.FC = () => {
                       ) : null}
 
                       {/* Jira Status Box */}
-                      {pipelineStatus !== "rejected" && (
+                      {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
                         approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
                           <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
                             <div className="text-xs font-bold text-success">
@@ -812,11 +858,7 @@ export const AgentWorkspace: React.FC = () => {
                         user has just finished a run, not aborting one mid-flight. */}
                     <div className="border-t border-border pt-5 flex justify-end">
                       <button
-                        onClick={() => {
-                          setSelectedFile(null);
-                          clearRun();
-                          setRunId(null);
-                        }}
+                        onClick={handleReset}
                         className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
                       >
                         <Plus size={14} />

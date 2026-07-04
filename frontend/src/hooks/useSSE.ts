@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch } from '../lib/apiClient';
 import { cleanLlmErrorMessage } from '../lib/utils';
+import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
 export interface LogEvent {
   type: string;
@@ -29,6 +30,10 @@ export interface LogEvent {
   timeout_sec?: number;
   input?: number;
   output?: number;
+  revision?: number;
+  targets?: string[];
+  seq?: number;
+  ts?: number;
 }
 
 export interface CriticDimension {
@@ -113,8 +118,7 @@ interface ArtifactsResponse {
 
 export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [logs, setLogs] = useState<LogEvent[]>([]);
-  const [pipelineStatus, setPipelineStatus] = useState<string>('idle');
-  const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus>(PIPELINE_STATUS.IDLE);
   const [artifacts, setArtifacts] = useState<ArtifactsState | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
   const [tokenUsage, setTokenUsage] = useState<{ input: number; output: number } | null>(null);
@@ -125,17 +129,18 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [fallbackActive, setFallbackActive] = useState<{ from: string; to: string } | null>(null);
   const [prevRunId, setPrevRunId] = useState<string | null>(null);
 
+  const seenSeqs = useRef<Set<number>>(new Set());
+
   if (runId !== prevRunId) {
     setPrevRunId(runId);
     if (runId) {
-      setPipelineStatus('initializing');
+      setPipelineStatus(PIPELINE_STATUS.INITIALIZING);
     }
   }
 
-  const clearRun = useCallback(() => {
+  const clearRun = useCallback((newStatus: PipelineStatus = PIPELINE_STATUS.IDLE) => {
     setLogs([]);
-    setPipelineStatus('idle');
-    setCompletedAgents(new Set());
+    setPipelineStatus(newStatus);
     setArtifacts(null);
     setElapsedSeconds(0);
     setTokenUsage(null);
@@ -144,10 +149,49 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     setApprovalResult(null);
     setErrorMessage(null);
     setFallbackActive(null);
+    seenSeqs.current.clear();
   }, []);
+
+  const completedAgents = useMemo(() => {
+    const s = new Set<string>();
+
+    for (const log of logs) {
+      if (log.type === 'agent_start' && log.agent) {
+        s.delete(log.agent);
+      } else if ((log.type === 'agent_complete' || log.type === 'agent_failed') && log.agent) {
+        s.add(log.agent);
+      }
+    }
+
+    if (artifacts?.brd_sections && (artifacts.brd_sections as unknown[]).length > 0) {
+      s.add('orchestrator');
+    }
+    if (artifacts?.plan_output) {
+      s.add('engineering_plan_generator');
+    }
+    if (artifacts?.schedule_output) {
+      s.add('schedule_estimator');
+    }
+    if (artifacts?.arch_output) {
+      s.add('solution_architect');
+    }
+    if (artifacts?.poc_output) {
+      s.add('poc_planner');
+    }
+    if (artifacts?.stack_output) {
+      s.add('tech_stack_recommender');
+    }
+    if (artifacts?.critic_output) {
+      s.add('critic');
+    }
+
+    return s;
+  }, [artifacts, logs]);
 
   useEffect(() => {
     if (!runId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    clearRun('initializing');
 
     const es = new EventSource(`${apiBaseUrl}/status/${runId}`, { withCredentials: true });
     const startTs = Date.now();
@@ -158,22 +202,17 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     let processedIndex = 0;
 
     const processEvent = (data: LogEvent) => {
-      setLogs((prev) => {
-        // Guard against duplicate logs if both SSE and polling receive them
-        const isDuplicate = prev.some(l => 
-          l.type === data.type && 
-          l.agent === data.agent && 
-          (l.timestamp === data.timestamp || (!l.timestamp && !data.timestamp))
-        );
-        if (isDuplicate) return prev;
-        return [...prev, data];
-      });
+      if (typeof data.seq === 'number') {
+        if (seenSeqs.current.has(data.seq)) return;
+        seenSeqs.current.add(data.seq);
+      }
+      setLogs((prev) => [...prev, data]);
 
       switch (data.type) {
         case 'status':
         case 'pipeline_status': {
           const status = data.status || (data.payload as Record<string, string>)?.status;
-          setPipelineStatus(status || 'unknown');
+          setPipelineStatus((status || PIPELINE_STATUS.IDLE) as PipelineStatus);
           break;
         }
         case 'provider_fallback': {
@@ -181,39 +220,6 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
             from: data.from_family || '',
             to: data.to_family || '',
           });
-          break;
-        }
-        case 'agent_start': {
-          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-          if (agent) {
-            setCompletedAgents((prev) => {
-              const next = new Set(prev);
-              next.delete(agent);
-              return next;
-            });
-          }
-          break;
-        }
-        case 'agent_complete': {
-          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-          if (agent) {
-            setCompletedAgents((prev) => {
-              const next = new Set(prev);
-              next.add(agent);
-              return next;
-            });
-          }
-          break;
-        }
-        case 'agent_failed': {
-          const agent = data.agent || (data.payload as Record<string, string>)?.agent;
-          if (agent) {
-            setCompletedAgents((prev) => {
-              const next = new Set(prev);
-              next.add(agent);
-              return next;
-            });
-          }
           break;
         }
         case 'artifacts_update': {
@@ -270,7 +276,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
             jira_detail: payload.jira_detail as string | undefined,
           });
           const finalStatus = payload.pipeline_status as string | undefined;
-          if (finalStatus) setPipelineStatus(finalStatus);
+          if (finalStatus) setPipelineStatus(finalStatus as PipelineStatus);
           // This is the TRUE end of the run lifecycle (pipeline + exports done).
           // Now safe to close SSE; useEffect cleanup also closes on unmount.
           clearInterval(tick);
@@ -280,7 +286,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         }
         case 'pipeline_complete': {
           const finalStatus = data.status || data.final_status || (data.payload as Record<string, string>)?.final_status || (data.payload as Record<string, string>)?.status;
-          setPipelineStatus(finalStatus || 'completed');
+          setPipelineStatus((finalStatus || PIPELINE_STATUS.AWAITING_HITL) as PipelineStatus);
           const flat = data as unknown as Record<string, unknown>;
           const inner = (data.payload as Record<string, unknown>) || {};
           const pt = (flat.processing_time_sec ?? inner.processing_time_sec) as number | undefined;
@@ -307,9 +313,29 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           clearInterval(tick);
           break;
         }
+        case 'security_blocked': {
+          setPipelineStatus(PIPELINE_STATUS.ERROR);
+          setErrorMessage(cleanLlmErrorMessage(data.message || 'Security validation blocked.'));
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
+          break;
+        }
         case 'error': {
-          setPipelineStatus('error');
+          setPipelineStatus(PIPELINE_STATUS.ERROR);
           setErrorMessage(cleanLlmErrorMessage(data.message || 'An unexpected error occurred.'));
+          clearInterval(tick);
+          clearInterval(pollInterval);
+          es.close();
+          break;
+        }
+        case 'canceled': {
+          // User-initiated cancellation. Backend has unwound the pipeline
+          // between LangGraph nodes. Typically the frontend has already reset
+          // the UI (handleReset fires POST /cancel then clearRun), so this
+          // handler is defensive - handles the edge case where a canceled
+          // event arrives before the runId setter takes effect.
+          setPipelineStatus(PIPELINE_STATUS.CANCELED);
           clearInterval(tick);
           clearInterval(pollInterval);
           es.close();
@@ -353,7 +379,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       clearInterval(pollInterval);
       es.close();
     };
-  }, [runId, apiBaseUrl]);
+  }, [runId, apiBaseUrl, clearRun]);
 
   // Fetch final artifacts when runId is set and pipeline status transitions to final/gate states
   const fetchArtifacts = useCallback(async () => {
@@ -391,7 +417,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         });
       }
       if (data.pipeline_status === 'error') {
-        setPipelineStatus('error');
+        setPipelineStatus(PIPELINE_STATUS.ERROR);
         setErrorMessage(cleanLlmErrorMessage(data.errors?.[0] || 'An unexpected error occurred.'));
       }
 
@@ -423,33 +449,6 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           jira_detail: data.export.jira?.detail || undefined,
         });
       }
-
-      // Force-fill completed agents if artifacts exist
-      setCompletedAgents((prev) => {
-        const next = new Set(prev);
-        if (data.brd_sections && data.brd_sections.length > 0) {
-          next.add('orchestrator');
-        }
-        if (data.plan_output) {
-          next.add('engineering_plan_generator');
-        }
-        if (data.schedule_output) {
-          next.add('schedule_estimator');
-        }
-        if (data.arch_output) {
-          next.add('solution_architect');
-        }
-        if (data.poc_output) {
-          next.add('poc_planner');
-        }
-        if (data.stack_output) {
-          next.add('tech_stack_recommender');
-        }
-        if (data.critic_output) {
-          next.add('critic');
-        }
-        return next;
-      });
     } catch (e) {
       console.error('Failed to fetch artifacts:', e);
     }
@@ -458,7 +457,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   useEffect(() => {
     if (!runId) return;
 
-    if (['awaiting_hitl', 'exported', 'export_failed', 'rejected', 'error'].includes(pipelineStatus)) {
+    if (([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.EXPORT_FAILED, PIPELINE_STATUS.REJECTED, PIPELINE_STATUS.ERROR] as PipelineStatus[]).includes(pipelineStatus)) {
       Promise.resolve().then(() => {
         fetchArtifacts();
       });

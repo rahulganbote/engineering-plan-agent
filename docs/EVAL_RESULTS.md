@@ -8,11 +8,14 @@ This document summarizes the evaluation framework and results for **EM Copilot (
 
 The following scores represent the LLM-as-Judge evaluation (Method 2) on a scale of `0.0` to `5.0` across 4 core quality dimensions:
 
-| Pipeline Version | Groundedness | Completeness | Consistency | Actionability | Overall Score | Badge |
+| Pipeline Version | Groundedness | Completeness | Consistency | Actionability | Overall Score | Relative Lift |
 |---|---|---|---|---|---|---|
-| **v0 (Initial)** | 2.40 | 3.80 | 4.10 | 3.20 | **3.38 / 5.00** | 🟡 Amber |
-| **v1 (Post-Critic)** | 3.90 | 4.80 | 4.60 | 4.00 | **4.33 / 5.00** | 🟢 Green |
-| **Net Improvement** | **+1.50** | **+1.00** | **+0.50** | **+0.80** | **+0.95** | **+1 Badge** |
+| **v0 (Initial)** | 2.40 | 3.80 | 4.10 | 3.20 | **3.38 / 5.00** | — |
+| **v1 (Post-Critic)** | 3.90 | 4.80 | 4.60 | 4.00 | **4.33 / 5.00** | +28% |
+| **Net Improvement** | **+1.50** | **+1.00** | **+0.50** | **+0.80** | **+0.95** | — |
+
+> [!NOTE]
+> Badge assignment (Green ≥ 4.0, Amber ≥ 3.5, Red < 3.5) is threshold-dependent and evolves as calibration tightens. This table reports raw LLM-judge scores so results stay comparable across threshold changes; the ~28% overall lift is the primary signal.
 
 > [!NOTE]
 > Groundedness saw the largest increase (+1.50) because the Critic successfully identified and rejected specialist assertions that lacked exact Pinecone RAG citations, forcing the specialists to anchor their planning in organization standards during the revision cycle.
