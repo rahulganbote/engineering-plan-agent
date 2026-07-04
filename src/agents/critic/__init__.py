@@ -106,7 +106,7 @@ class CriticAgent:
             log.warning(
                 f"[{state.run_id}] no_rag_hits failure mode - forcing Amber badge | agents_without_rag={no_rag_agents}"
             )
-            overall = min(overall, 4.2)  # cap at Amber threshold
+            overall = min(overall, 3.9)  # cap below GREEN_THRESHOLD (4.0) to force Amber
 
         # FM-3: Force Amber if any agent self-reported confidence ≤ 0.3.
         low_confidence_agents = []
@@ -128,7 +128,7 @@ class CriticAgent:
                 f"[{state.run_id}] low confidence - forcing Amber badge | "
                 f"agents={[(a, round(c, 2)) for a, c in low_confidence_agents]}"
             )
-            overall = min(overall, 4.2)  # cap at Amber threshold
+            overall = min(overall, 3.9)  # cap below GREEN_THRESHOLD (4.0) to force Amber
             for agent_name, conf in low_confidence_agents:
                 consistency_issues.append(
                     ConsistencyIssue(

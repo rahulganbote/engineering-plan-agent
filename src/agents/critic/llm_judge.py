@@ -132,10 +132,10 @@ Return ONLY valid JSON with this exact structure:
             model_family=family,
             messages=[{"role": "user", "content": prompt}],
             model="mini",
-            # 0.2 (not 0.1) introduces small run-to-run variance in the LLM judge's
+            # 0.3 (not 0.1) introduces small run-to-run variance in the LLM judge's
             # groundedness / actionability scores. At 0.1, mini models lock onto
             # round-number priors and every run converged on overall = 4.25 exactly.
-            temperature=0.2,
+            temperature=0.3,
             response_format={"type": "json_object"},
         )
 

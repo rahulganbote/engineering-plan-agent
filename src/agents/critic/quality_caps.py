@@ -23,13 +23,15 @@ THRESHOLDS: dict[str, float] = {
     "consistency": 5.0,  # zero contradictions
     "actionability": 4.0,  # EM can act immediately
 }
-# Green requires overall >= 4.5. Sits above the deterministic-pin equilibrium
-# (completeness=5 + consistency=5 + actionability=4 + groundedness=3 = 4.25),
-# so a Green badge signals genuine LLM-judge lift above the deterministic floor
-# rather than exact-threshold convergence. See critic/llm_judge.py for the
-# matching temperature bump that keeps runs from clustering on the same score.
-GREEN_THRESHOLD = 4.5
-AMBER_THRESHOLD = 3.75
+# Badge thresholds. Kept aligned with QualityBadge docstring in core/models.py.
+#   GREEN : overall >= 4.0  AND  all 4 dimensions passing their per-dim threshold
+#   AMBER : overall >= 3.5  OR   one dimension below its per-dim threshold
+#   RED   : overall <  3.5  OR   two+ dimensions below their per-dim thresholds
+# FM-2 and FM-3 caps in critic/__init__.py must sit below GREEN_THRESHOLD so a
+# failure-mode trip guarantees Amber. Any change here needs a matching update
+# to those caps and to the IngestionLanding "Critic Reviewer" card copy.
+GREEN_THRESHOLD = 4.0
+AMBER_THRESHOLD = 3.5
 RED_THRESHOLD = 3.5
 
 
