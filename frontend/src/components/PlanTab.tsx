@@ -30,6 +30,8 @@ interface PlanOutput {
   total_duration_weeks?: number;
   reflection_notes?: string;
   confidence_score?: number;
+  llm_confidence_score?: number | null;
+  confidence_drivers?: string[];
 }
 
 interface PlanTabProps {
@@ -112,6 +114,25 @@ export const PlanTab: React.FC<PlanTabProps> = ({ planData }) => {
             <div>
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Plan Confidence</span>
               <span className="text-2xl font-black text-primary">{(plan.confidence_score * 100).toFixed(0)}%</span>
+              {plan.confidence_drivers && plan.confidence_drivers.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-[10px] text-muted-foreground leading-snug">
+                  {plan.confidence_drivers.map((driver, idx) => (
+                    <li key={idx}>{driver}</li>
+                  ))}
+                </ul>
+              )}
+              {/* Judge-disagreement flag: LLM saw something the structural signals missed
+                  (or vice versa). Surfaced only when the gap exceeds 0.20, so a healthy
+                  ±0.05 drift stays quiet and doesn't cry wolf. */}
+              {plan.llm_confidence_score != null &&
+                Math.abs(plan.llm_confidence_score - plan.confidence_score) > 0.15 && (
+                <div className="mt-2 flex items-start gap-1.5 rounded border border-warning/40 bg-warning/10 px-2 py-1.5 text-[10px] text-warning leading-snug">
+                  <span aria-hidden="true">⚠</span>
+                  <span>
+                    LLM judge scored <strong>{(plan.llm_confidence_score * 100).toFixed(0)}%</strong> here — {Math.abs(plan.llm_confidence_score - plan.confidence_score) >= 0.5 ? 'large' : 'notable'} gap from the structural {Math.round(plan.confidence_score * 100)}%. Worth a closer look before approval.
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

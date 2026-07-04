@@ -16,6 +16,8 @@ interface ScheduleOutput {
   buffer_weeks?: number;
   comparable_projects?: string[];
   confidence_score?: number;
+  llm_confidence_score?: number | null;
+  confidence_drivers?: string[];
 }
 
 interface ScheduleTabProps {
@@ -78,6 +80,22 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
           <div>
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Estimation Confidence</span>
             <span className="text-2xl font-black text-primary">{(sched.confidence_score * 100).toFixed(0)}%</span>
+            {sched.confidence_drivers && sched.confidence_drivers.length > 0 && (
+              <ul className="mt-2 space-y-0.5 text-[10px] text-muted-foreground leading-snug">
+                {sched.confidence_drivers.map((driver, idx) => (
+                  <li key={idx}>{driver}</li>
+                ))}
+              </ul>
+            )}
+            {sched.llm_confidence_score != null &&
+              Math.abs(sched.llm_confidence_score - sched.confidence_score) > 0.15 && (
+              <div className="mt-2 flex items-start gap-1.5 rounded border border-warning/40 bg-warning/10 px-2 py-1.5 text-[10px] text-warning leading-snug">
+                <span aria-hidden="true">⚠</span>
+                <span>
+                  LLM judge scored <strong>{(sched.llm_confidence_score * 100).toFixed(0)}%</strong> here — {Math.abs(sched.llm_confidence_score - sched.confidence_score) >= 0.5 ? 'large' : 'notable'} gap from the structural {Math.round(sched.confidence_score * 100)}%. Worth a closer look before approval.
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
