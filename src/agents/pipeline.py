@@ -228,6 +228,9 @@ def node_orchestrator_hub(state: dict) -> dict:
 
 
 def _run_specialists_in_parallel(ps: PipelineState, target_agents: list[str]) -> dict:
+    # NOTE: specialists must NOT mutate `ps` during parallel execution. They may
+    # only READ from state and RETURN their output. The dispatcher writes results
+    # back to state after all futures complete.
     from concurrent.futures import ThreadPoolExecutor
 
     log.info(f"[{ps.run_id}] Dispatching {len(target_agents)} specialists in parallel: {target_agents}")
@@ -267,7 +270,8 @@ def node_pass1_drafting(state: dict) -> dict:
         ps.draft_plan_output = results.get("engineering_plan_generator")
         ps.draft_schedule_output = results.get("schedule_estimator")
 
-        # Also populate standard outputs so downstream code doesn't crash during drafting
+        # Also populate standard outputs so downstream code doesn't crash during drafting.
+        # TODO: Pass 1 outputs are placeholder — replaced by Pass 2 unless error occurs.
         ps.arch_output = ps.draft_arch_output
         ps.stack_output = ps.draft_stack_output
         ps.poc_output = ps.draft_poc_output
@@ -432,7 +436,6 @@ def node_decision_router(state: dict) -> dict:
         state["_reran_upstream"] = False
         log.info(f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS}")
     else:
-        _set_status(ps, PipelineStatus.AWAITING_HITL)
         reason = "max_revisions" if ps.revision_count >= MAX_REVISIONS else "quality_gate"
         log.info(f"[{ps.run_id}] Routing to HITL | badge={ps.critic_output.badge.value} reason={reason}")
 

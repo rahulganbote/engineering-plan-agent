@@ -538,43 +538,7 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* EM Alignment Directives Banner */}
-              {artifacts?.alignment_memo?.directives && artifacts.alignment_memo.directives.length > 0 && (
-                <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
-                  <div className="flex items-start justify-between gap-4">
-                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
-                      <span>📢</span> Engineering Manager Alignment Directives (Pass 2)
-                    </h4>
-                  </div>
-                  {artifacts.alignment_memo.overall_strategy && (
-                    <p className="text-xs text-muted-foreground italic mb-2">
-                      Strategy: "{artifacts.alignment_memo.overall_strategy}"
-                    </p>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                    {artifacts.alignment_memo.directives.map((d: any, idx: number) => (
-                      <div key={idx} className="p-3 rounded-lg bg-background/50 border border-border/80 flex flex-col gap-1 text-xs">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-primary capitalize">
-                            {d.agent_name.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <p className="text-foreground leading-relaxed">
-                          <strong>Directive:</strong> {d.directive}
-                        </p>
-                        <p className="text-muted-foreground text-[11px] mt-1">
-                          <strong>Reasoning:</strong> {d.reasoning}
-                        </p>
-                        {d.evidence && (
-                          <p className="text-[10px] text-muted-foreground/80 italic mt-0.5 border-t border-border/40 pt-1">
-                            Quote: "{d.evidence}"
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+
 
               {/* Loop Warnings / Non-terminal Flagged Concerns Banner */}
               {pipelineStatus !== PIPELINE_STATUS.ERROR && artifacts?.warnings && artifacts.warnings.length > 0 && (
@@ -656,6 +620,51 @@ export const AgentWorkspace: React.FC = () => {
                   <strong>Cost Spent:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-success font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
                 </div>
               </div>
+
+              {/* EM Alignment Directives Banner */}
+              {artifacts?.alignment_memo && (
+                <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-start justify-between gap-4">
+                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                     Engineering Manager Alignment Directives
+                    </h4>
+                  </div>
+                  {artifacts.alignment_memo.overall_strategy && (
+                    <div className="bg-primary/10 border-l-4 border-primary p-3.5 rounded-r-lg text-xs leading-relaxed text-foreground/90 font-medium mb-1">
+                      <span className="font-bold text-primary uppercase text-[10px] tracking-wider block mb-1">EM Overall Strategy</span>
+                      "{artifacts.alignment_memo.overall_strategy}"
+                    </div>
+                  )}
+                  {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                      {artifacts.alignment_memo.directives.map((d: any, idx: number) => (
+                        <div key={idx} className="p-3 rounded-lg bg-background/50 border border-border/80 flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-bold text-primary capitalize">
+                              {d.agent_name.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                          <p className="text-foreground leading-relaxed">
+                            <strong>Directive:</strong> {d.directive}
+                          </p>
+                          <p className="text-muted-foreground text-[11px] mt-1">
+                            <strong>Reasoning:</strong> {d.reasoning}
+                          </p>
+                          {d.evidence && (
+                            <p className="text-[10px] text-muted-foreground/80 italic mt-0.5 border-t border-border/40 pt-1">
+                              Quote: "{d.evidence}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold mt-1">
+                      <span>🟢</span> All Pass 1 drafts aligned — no arbitration needed.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Critic Scoring Cards */}
               {criticOutput && (
