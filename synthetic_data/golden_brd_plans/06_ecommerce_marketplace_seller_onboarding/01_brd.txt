@@ -1,0 +1,79 @@
+# Business Requirements Document
+# Project: Marketplace Seller Onboarding and Compliance
+# Domain: Ecommerce | Synthetic Golden Dataset | Version: 1.0
+
+## Background and Business Context
+Automate seller onboarding, document checks, tax validation, and catalog readiness for a curated marketplace.
+
+Current state: Seller onboarding takes 18 days on average due to manual document review and repeated catalog-quality rework.
+
+Primary users: Marketplace sellers, compliance analysts, category managers.
+
+## Objectives
+1. Reduce median seller onboarding time from 18 days to 5 days.
+2. Auto-approve 70% of low-risk sellers after KYC and tax checks.
+3. Catch restricted-product catalog issues before first listing publish.
+4. Maintain a complete audit history for seller decisions.
+
+## Stakeholders
+- Product Owner: Seller Experience Product Lead
+- Technical Lead: Senior Engineering Manager, Marketplace
+- Business Sponsor: GM Marketplace
+- Primary Users: Marketplace sellers, compliance analysts, category managers
+- Compliance / Security: KYC/KYB, sanctions screening, marketplace product policy, SOC 2 control owners
+- External: Vendors and platform teams for Identity verification vendor, tax validation API, sanctions screening API, catalog service, seller portal, payout platform
+
+## Scope Boundaries
+In Scope:
+- Seller application workflow with document upload.
+- KYC, tax ID, sanctions, and bank-account validation integrations.
+- Catalog readiness checks for required attributes and restricted categories.
+- Compliance review queue with decision evidence.
+
+Out of Scope:
+- Seller advertising tools.
+- Payout disbursement engine changes.
+- Cross-border VAT filing.
+
+## Functional Requirements
+FR-01: The system shall provide Seller application workflow with document upload.
+FR-02: The system shall integrate with Identity verification vendor, tax validation API, sanctions screening API, catalog service, seller portal, payout platform.
+FR-03: The system shall manage data assets including Seller profiles, business documents, tax IDs, bank verification status, catalog submissions, review decisions.
+FR-04: The system shall enforce compliance controls for KYC/KYB, sanctions screening, marketplace product policy, SOC 2.
+FR-05: The system shall expose role-based workflows for primary users.
+FR-06: The system shall record decision provenance, user actions, and system-generated outputs.
+FR-07: The system shall provide operational dashboards for throughput, failures, and business KPIs.
+FR-08: The system shall support export or downstream handoff for approved outputs.
+FR-09: The system shall handle partial integration failures with retry, queueing, and user-visible status.
+FR-10: The system shall support audit review by exporting evidence for selected records.
+
+## Non-Functional Requirements
+NFR-01 Performance: Seller dashboard actions respond in <= 2 seconds P95.
+NFR-02 Availability: 99.9% uptime for seller onboarding workflows.
+NFR-03 Scalability: Support 10,000 concurrent seller applications during campaigns.
+NFR-04 Security: Encrypt business documents and restrict analyst access by case assignment.
+NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 1 hour.
+NFR-06 Auditability: Every automated and manual decision must include evidence and policy version.
+
+## Constraints
+- Team: Cross-functional product squad with 5-8 engineers, QA, security, and part-time domain experts.
+- Timeline: MVP target in 14 weeks; production launch target in 18 weeks.
+- Budget: Implementation must fit an annualized run-rate approved by the business sponsor.
+- Technology: Prefer organization-approved cloud, identity, observability, and RAG tooling.
+- Compliance: KYC/KYB, sanctions screening, marketplace product policy, SOC 2 requirements must be traceable before launch.
+
+## Risks
+- RISK-01 (HIGH): KYC vendor false negatives can block legitimate sellers - Mitigation: Route borderline results to manual review and monitor appeal outcomes.
+- RISK-02 (HIGH): Restricted product rules may be incomplete - Mitigation: Category manager review and versioned policy tests.
+- RISK-03 (MEDIUM): Document upload PII increases breach impact - Mitigation: Use short-lived URLs and malware scanning.
+
+## Acceptance Criteria
+- FR-01 through FR-04 pass integration tests using representative synthetic and historical sample data.
+- All NFRs have automated or operational validation evidence before go-live.
+- Security review confirms encryption, access control, audit logging, and data-retention behavior.
+- Business owner signs off on pilot KPI dashboard and exception workflow.
+
+## Success Criteria Post Launch
+- Reduce median seller onboarding time from 18 days to 5 days.
+- Auto-approve 70% of low-risk sellers after KYC and tax checks.
+- Catch restricted-product catalog issues before first listing publish.

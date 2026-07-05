@@ -1,0 +1,92 @@
+# System Architecture
+# Project: Provider Payment Reconciliation Hub
+# Domain: Insurance Payments | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: solution_architect
+run_id: 04_insurance_payment_reconciliation_architecture
+citations: [arch_patterns_chunk_1, Solution_Architect_Template_chunk_0, org_engineering_standards_chunk_1]
+confidence_score: 0.86
+assumptions:
+  - Enterprise SSO, secrets management, centralized logs, and CI/CD are available.
+  - Dependent systems expose approved sandbox APIs.
+flagged_ambiguities:
+  - Final deployment region and data residency constraints require confirmation.
+
+## Pattern Selection
+pattern: Batch data pipeline with workflow service
+pattern_justification: |
+  Daily finance reconciliation is batch-oriented with heavy audit needs; streaming microservices were rejected because real-time settlement is out of scope. Team size is assumed to be 5-8 engineers, which is enough for clear component ownership without creating unnecessary platform overhead. The primary NFR driver is Process 1 million payment lines in <= 45 minutes. The architecture respects compliance constraints for HIPAA, SOX, SOC 2, NACHA file handling.
+
+## Components
+components:
+  - name: File Ingestion Service
+    responsibility: Receives and validates bank, claims, and EDI files.
+    technology: AWS Transfer Family + Lambda
+    interfaces: [SFTP, S3 events]
+  - name: Matching Engine
+    responsibility: Performs deterministic and fuzzy payment matching.
+    technology: Python Spark on EMR Serverless
+    interfaces: [Batch jobs, SQL]
+  - name: Exception Workflow API
+    responsibility: Manages analyst review and approvals.
+    technology: Django REST Framework
+    interfaces: [REST, PostgreSQL]
+  - name: Audit Evidence Store
+    responsibility: Stores immutable run logs and approvals.
+    technology: S3 Object Lock + PostgreSQL
+    interfaces: [SQL, object API]
+
+## Data Flow
+data_flow:
+  - "1. User or upstream system submits data for Provider Payment Reconciliation Hub."
+  - "2. Entry service validates identity, schema, and consent or policy constraints."
+  - "3. Processing components enrich, score, or route the request using Payment extracts, ACH files, EDI 835 remittances, provider master data, GL adjustment records."
+  - "4. Workflow/API layer presents results to Payment operations analysts, provider support, finance controllers and records audit evidence."
+  - "5. Failure path: integration failures are queued, retried, and shown with actionable status."
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01 Performance: Process 1 million payment lines in <= 45 minutes."
+    architecture_decision: "Batch data pipeline with workflow service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_1
+  - nfr: "NFR-02 Availability: 99.5% uptime with batch restartability."
+    architecture_decision: "Batch data pipeline with workflow service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_2
+  - nfr: "NFR-03 Scalability: Support 2x annual enrollment peak volume."
+    architecture_decision: "Batch data pipeline with workflow service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_3
+  - nfr: "NFR-04 Security: Encrypt PHI and payment data; mask bank account details in UI."
+    architecture_decision: "Batch data pipeline with workflow service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_4
+  - nfr: "NFR-05 Recoverability: RPO <= 30 minutes and restart failed batch from last checkpoint."
+    architecture_decision: "Batch data pipeline with workflow service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_5
+  - nfr: "NFR-06 Auditability: Retain reconciliation evidence and approvals for 7 years."
+    architecture_decision: "Batch data pipeline with workflow service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_6
+
+## Deployment Model
+deployment_model: Managed cloud deployment with private networking, centralized identity, encrypted data stores, and monitored CI/CD promotion.
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    U[Users and Upstream Systems] --> G[API Gateway and Identity]
+    G --> C1
+    C1[File Ingestion Service] --> C2
+    C2[Matching Engine] --> C3
+    C3[Exception Workflow API] --> C4
+    C4[Audit Evidence Store] --> C1
+    C1 --> A[Audit and Observability]
+    C2 --> A
+    C3 --> A
+
+## Architecture Decision Checklist
+- Pattern justified against team size and NFRs: Y
+- External dependencies listed with fallback behavior: Y
+- Data flow covers happy path and primary failure mode: Y
+- Every BRD NFR has a corresponding nfr_mapping entry: Y
+- Security controls specified: Y
+- Observability covered: Y
+- Mermaid diagram included: Y

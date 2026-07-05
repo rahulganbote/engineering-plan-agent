@@ -1,0 +1,79 @@
+# Business Requirements Document
+# Project: Clinical Trial Recruitment Matching Platform
+# Domain: Pharmaceutical | Synthetic Golden Dataset | Version: 1.0
+
+## Background and Business Context
+Match eligible patients to clinical trials using protocol criteria, EHR extracts, and consent-aware outreach workflows.
+
+Current state: Trial enrollment delays average 11 weeks because coordinators manually screen charts against complex inclusion and exclusion criteria.
+
+Primary users: Clinical research coordinators, investigators, patient navigators.
+
+## Objectives
+1. Reduce chart-screening effort by 50% for pilot oncology trials.
+2. Identify candidate patients with >= 85% recall against coordinator-reviewed baselines.
+3. Respect consent and site-specific recruitment rules.
+4. Produce inspection-ready evidence for match decisions.
+
+## Stakeholders
+- Product Owner: Clinical Trial Digital Product Owner
+- Technical Lead: Engineering Lead, Clinical Systems
+- Business Sponsor: VP Clinical Operations
+- Primary Users: Clinical research coordinators, investigators, patient navigators
+- Compliance / Security: HIPAA, GxP validation expectations, 21 CFR Part 11, IRB recruitment rules control owners
+- External: Vendors and platform teams for FHIR server, CTMS, eConsent system, identity provider, secure email
+
+## Scope Boundaries
+In Scope:
+- Protocol criteria ingestion and structured rule extraction.
+- EHR cohort matching from FHIR resources and lab data.
+- Coordinator review worklist with match rationale.
+- Consent-aware outreach handoff.
+
+Out of Scope:
+- Patient diagnosis or treatment recommendations.
+- Direct patient messaging without coordinator approval.
+- Clinical trial management system replacement.
+
+## Functional Requirements
+FR-01: The system shall provide Protocol criteria ingestion and structured rule extraction.
+FR-02: The system shall integrate with FHIR server, CTMS, eConsent system, identity provider, secure email.
+FR-03: The system shall manage data assets including FHIR Conditions, Observations, Medications, demographics, consent status, protocol eligibility criteria.
+FR-04: The system shall enforce compliance controls for HIPAA, GxP validation expectations, 21 CFR Part 11, IRB recruitment rules.
+FR-05: The system shall expose role-based workflows for primary users.
+FR-06: The system shall record decision provenance, user actions, and system-generated outputs.
+FR-07: The system shall provide operational dashboards for throughput, failures, and business KPIs.
+FR-08: The system shall support export or downstream handoff for approved outputs.
+FR-09: The system shall handle partial integration failures with retry, queueing, and user-visible status.
+FR-10: The system shall support audit review by exporting evidence for selected records.
+
+## Non-Functional Requirements
+NFR-01 Performance: Refresh candidate lists for a trial with 100,000 patients in <= 2 hours.
+NFR-02 Availability: 99.5% uptime for coordinator worklists.
+NFR-03 Scalability: Support 40 active trials and 2 million patient records.
+NFR-04 Security: Protect PHI with role-based access and full audit logs.
+NFR-05 Recoverability: RPO <= 30 minutes and RTO <= 4 hours.
+NFR-06 Explainability: Every match must cite criteria and patient facts used.
+
+## Constraints
+- Team: Cross-functional product squad with 5-8 engineers, QA, security, and part-time domain experts.
+- Timeline: MVP target in 18 weeks; production launch target in 22 weeks.
+- Budget: Implementation must fit an annualized run-rate approved by the business sponsor.
+- Technology: Prefer organization-approved cloud, identity, observability, and RAG tooling.
+- Compliance: HIPAA, GxP validation expectations, 21 CFR Part 11, IRB recruitment rules requirements must be traceable before launch.
+
+## Risks
+- RISK-01 (HIGH): LLM criteria extraction could miss exclusions - Mitigation: Require human approval of extracted criteria and locked versions.
+- RISK-02 (HIGH): EHR data quality can reduce recall - Mitigation: Profile missingness and flag low-confidence matches.
+- RISK-03 (MEDIUM): Part 11 expectations may expand validation scope - Mitigation: Engage QA validation lead in Sprint 1.
+
+## Acceptance Criteria
+- FR-01 through FR-04 pass integration tests using representative synthetic and historical sample data.
+- All NFRs have automated or operational validation evidence before go-live.
+- Security review confirms encryption, access control, audit logging, and data-retention behavior.
+- Business owner signs off on pilot KPI dashboard and exception workflow.
+
+## Success Criteria Post Launch
+- Reduce chart-screening effort by 50% for pilot oncology trials.
+- Identify candidate patients with >= 85% recall against coordinator-reviewed baselines.
+- Respect consent and site-specific recruitment rules.

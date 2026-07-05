@@ -42,6 +42,7 @@ import re
 
 from src.core.logger import get_logger
 from src.core.models import (
+    AlignmentMemo,
     BRDSection,
     OrchestratorOutput,
 )
@@ -296,3 +297,148 @@ class OrchestratorAgent:
                 "compliance",
             )
         )
+
+    def arbitrate_drafts(self, state) -> AlignmentMemo:
+        """
+        Engineering Manager arbitration over Pass 1 drafts to resolve consistency conflicts proactively.
+        """
+        import json
+
+        from src.agents.base_agent import _current_model_family, add_cost, add_tokens, settings
+        from src.core.models import AlignmentDirective, AlignmentMemo
+        from src.core.pricing import calculate_cost
+        from src.core.providers import complete_with_fallback, map_model
+
+        # Compile drafts summaries
+        drafts = {}
+        if state.draft_arch_output:
+            drafts["solution_architect"] = {
+                "pattern": state.draft_arch_output.pattern,
+                "components": [
+                    {"name": c.name, "technology": c.technology, "responsibility": c.responsibility}
+                    for c in state.draft_arch_output.components
+                ],
+            }
+        if state.draft_stack_output:
+            drafts["tech_stack_recommender"] = {
+                "recommended_option": state.draft_stack_output.recommended_option,
+                "options": [o.name for o in state.draft_stack_output.options],
+            }
+        if state.draft_poc_output:
+            drafts["poc_planner"] = {
+                "requires_tech_stack_revision": state.draft_poc_output.requires_tech_stack_revision,
+                "tech_stack_veto_reason": state.draft_poc_output.tech_stack_veto_reason,
+                "poc_duration_weeks": state.draft_poc_output.duration_weeks,
+            }
+        if state.draft_plan_output:
+            drafts["engineering_plan_generator"] = {
+                "phases": [{"name": p.name, "duration_weeks": p.duration_weeks} for p in state.draft_plan_output.phases]
+            }
+        if state.draft_schedule_output:
+            drafts["schedule_estimator"] = {
+                "total_duration_days": state.draft_schedule_output.total_effort_days,
+                "sprints_count": len(state.draft_schedule_output.sprints),
+            }
+
+        drafts_json = json.dumps(drafts, indent=2)
+
+        brd_sections_json = json.dumps(
+            [{"section_name": s.section_name, "content": s.content} for s in state.brd_sections], indent=2
+        )
+
+        system_prompt = (
+            "You are the Engineering Manager (EM) supervising a team of 5 specialized agents:\n"
+            "- solution_architect\n"
+            "- tech_stack_recommender\n"
+            "- poc_planner\n"
+            "- engineering_plan_generator\n"
+            "- schedule_estimator\n\n"
+            "You have received their first-draft outputs for the BRD. Your job is to analyze these drafts "
+            "for inconsistencies, contradictions, and timing mismatches, and issue a binding Alignment Memo "
+            "directing specialists on how to adjust their outputs in Pass 2.\n\n"
+            "Core Consistency Rules to enforce:\n"
+            "1. Tech Stack Compatibility: Recommending a technology stack (e.g. FastAPI/PostgreSQL) that contradicts "
+            "or does not align with the Architect's designed components (e.g. Node.js microservices) is a major conflict.\n"
+            "2. PoC duration vs Phase 1 duration: The PoC validation duration must not exceed the duration of Phase 1 "
+            "of the engineering plan.\n"
+            "3. Plan vs Schedule Effort: Mismatch between target plan effort/sprints vs estimator total days.\n"
+            "4. Resource Constraints: Sprints/durations must align with team sizes and buffer constraints.\n"
+            "5. Monolith vs Microservices component count rules.\n\n"
+            "For any detected conflict, issue specific instructions ('directives') to the targeted agents "
+            "specifying how they must adapt their design in Pass 2. Return the results in the requested JSON format.\n"
+        )
+
+        schema_desc = (
+            "{\n"
+            '  "directives": [\n'
+            "    {\n"
+            '      "agent_name": "solution_architect | tech_stack_recommender | poc_planner | engineering_plan_generator | schedule_estimator",\n'
+            '      "directive": "concrete instructions on what to change/adopt to resolve conflict",\n'
+            '      "reasoning": "why this change is required for consistency",\n'
+            '      "evidence": "BRD quote/evidence justifying decision"\n'
+            "    }\n"
+            "  ],\n"
+            '  "overall_strategy": "high-level alignment strategy description"\n'
+            "}"
+        )
+
+        user_prompt = (
+            f"BRD SECTIONS (your ground truth):\n{brd_sections_json}\n\n"
+            f"SPECIALIST PASS 1 DRAFTS:\n{drafts_json}\n\n"
+            f"Output ONLY valid JSON following this schema:\n{schema_desc}"
+        )
+
+        family = _current_model_family()
+        model = settings.openai_model
+        content, prompt_tokens, completion_tokens, final_family = complete_with_fallback(
+            model_family=family,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            model=model,
+            temperature=0.1,
+            response_format={"type": "json_object"},
+        )
+
+        # Track tokens & cost
+        mapped_model = map_model(final_family, model)
+        add_tokens(prompt_tokens, completion_tokens, state.run_id)
+        cost = calculate_cost(final_family, mapped_model, prompt_tokens, completion_tokens)
+        add_cost(cost, state.run_id)
+
+        try:
+            data = json.loads(content)
+            directives_list = []
+            for d in data.get("directives", []):
+                canonical_agents = [
+                    "solution_architect",
+                    "tech_stack_recommender",
+                    "poc_planner",
+                    "engineering_plan_generator",
+                    "schedule_estimator",
+                ]
+                agent = d.get("agent_name", "")
+                if agent not in canonical_agents:
+                    mapped = None
+                    for ca in canonical_agents:
+                        if ca in agent or agent in ca:
+                            mapped = ca
+                            break
+                    if mapped:
+                        agent = mapped
+                    else:
+                        continue
+
+                directives_list.append(
+                    AlignmentDirective(
+                        agent_name=agent,
+                        directive=d.get("directive", ""),
+                        reasoning=d.get("reasoning", ""),
+                        evidence=d.get("evidence", ""),
+                    )
+                )
+            return AlignmentMemo(directives=directives_list, overall_strategy=data.get("overall_strategy", ""))
+        except Exception as e:
+            log.error(f"[{state.run_id}] Failed to parse AlignmentMemo: {e}. Raw content: {content}")
+            return AlignmentMemo()

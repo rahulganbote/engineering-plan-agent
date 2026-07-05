@@ -61,7 +61,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
       });
 
       setHasSubmitted(true);
-      toast.success(`Pipeline successfully ${decision}!`, {
+      toast.success(`The Plan is successfully ${decision}!`, {
         icon: <ThumbsUp className="text-success" />
       });
       if (onDecisionSubmitted) {

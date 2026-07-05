@@ -1,0 +1,92 @@
+# System Architecture
+# Project: Marketplace Seller Onboarding and Compliance
+# Domain: Ecommerce | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: solution_architect
+run_id: 06_ecommerce_marketplace_seller_onboarding_architecture
+citations: [arch_patterns_chunk_1, Solution_Architect_Template_chunk_0, org_engineering_standards_chunk_1]
+confidence_score: 0.86
+assumptions:
+  - Enterprise SSO, secrets management, centralized logs, and CI/CD are available.
+  - Dependent systems expose approved sandbox APIs.
+flagged_ambiguities:
+  - Final deployment region and data residency constraints require confirmation.
+
+## Pattern Selection
+pattern: Workflow-centric service with external verification adapters
+pattern_justification: |
+  Onboarding is a stateful workflow with external vendor waits and analyst reviews; a simple CRUD app was rejected because it would not handle retries, SLAs, or evidence capture cleanly. Team size is assumed to be 5-8 engineers, which is enough for clear component ownership without creating unnecessary platform overhead. The primary NFR driver is Seller dashboard actions respond in <= 2 seconds P95. The architecture respects compliance constraints for KYC/KYB, sanctions screening, marketplace product policy, SOC 2.
+
+## Components
+components:
+  - name: Seller Workflow API
+    responsibility: Manages application state and dashboard actions.
+    technology: Java Spring Boot + Camunda
+    interfaces: [REST, BPMN jobs]
+  - name: Verification Adapter
+    responsibility: Orchestrates KYC, tax, sanctions, and bank checks.
+    technology: TypeScript Node.js
+    interfaces: [REST, webhooks]
+  - name: Catalog Readiness Service
+    responsibility: Validates listing attributes and restricted categories.
+    technology: Python FastAPI
+    interfaces: [REST, rules files]
+  - name: Evidence Store
+    responsibility: Stores documents, decisions, and policy versions.
+    technology: PostgreSQL + S3
+    interfaces: [SQL, object API]
+
+## Data Flow
+data_flow:
+  - "1. User or upstream system submits data for Marketplace Seller Onboarding and Compliance."
+  - "2. Entry service validates identity, schema, and consent or policy constraints."
+  - "3. Processing components enrich, score, or route the request using Seller profiles, business documents, tax IDs, bank verification status, catalog submissions, review decisions."
+  - "4. Workflow/API layer presents results to Marketplace sellers, compliance analysts, category managers and records audit evidence."
+  - "5. Failure path: integration failures are queued, retried, and shown with actionable status."
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01 Performance: Seller dashboard actions respond in <= 2 seconds P95."
+    architecture_decision: "Workflow-centric service with external verification adapters with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_1
+  - nfr: "NFR-02 Availability: 99.9% uptime for seller onboarding workflows."
+    architecture_decision: "Workflow-centric service with external verification adapters with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_2
+  - nfr: "NFR-03 Scalability: Support 10,000 concurrent seller applications during campaigns."
+    architecture_decision: "Workflow-centric service with external verification adapters with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_3
+  - nfr: "NFR-04 Security: Encrypt business documents and restrict analyst access by case assignment."
+    architecture_decision: "Workflow-centric service with external verification adapters with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_4
+  - nfr: "NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 1 hour."
+    architecture_decision: "Workflow-centric service with external verification adapters with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_5
+  - nfr: "NFR-06 Auditability: Every automated and manual decision must include evidence and policy version."
+    architecture_decision: "Workflow-centric service with external verification adapters with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_6
+
+## Deployment Model
+deployment_model: Managed cloud deployment with private networking, centralized identity, encrypted data stores, and monitored CI/CD promotion.
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    U[Users and Upstream Systems] --> G[API Gateway and Identity]
+    G --> C1
+    C1[Seller Workflow API] --> C2
+    C2[Verification Adapter] --> C3
+    C3[Catalog Readiness Service] --> C4
+    C4[Evidence Store] --> C1
+    C1 --> A[Audit and Observability]
+    C2 --> A
+    C3 --> A
+
+## Architecture Decision Checklist
+- Pattern justified against team size and NFRs: Y
+- External dependencies listed with fallback behavior: Y
+- Data flow covers happy path and primary failure mode: Y
+- Every BRD NFR has a corresponding nfr_mapping entry: Y
+- Security controls specified: Y
+- Observability covered: Y
+- Mermaid diagram included: Y

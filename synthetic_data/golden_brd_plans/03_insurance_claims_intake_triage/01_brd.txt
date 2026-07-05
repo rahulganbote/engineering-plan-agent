@@ -1,0 +1,79 @@
+# Business Requirements Document
+# Project: AI-Assisted Property Claim Intake and Triage
+# Domain: Insurance Claims | Synthetic Golden Dataset | Version: 1.0
+
+## Background and Business Context
+Digitize first notice of loss and triage property claims using document extraction, photo metadata, and policy coverage rules.
+
+Current state: Manual FNOL processing averages 36 hours before adjuster assignment, creating leakage and poor customer experience after weather events.
+
+Primary users: Policyholders, claims adjusters, claim supervisors.
+
+## Objectives
+1. Reduce average FNOL-to-assignment time from 36 hours to under 2 hours.
+2. Auto-classify simple claims with >= 90% precision.
+3. Prioritize severe claims and vulnerable customers for human review.
+4. Maintain claim-file auditability for regulatory review.
+
+## Stakeholders
+- Product Owner: Claims Product Manager
+- Technical Lead: Engineering Manager, Claims Platforms
+- Business Sponsor: SVP Claims Transformation
+- Primary Users: Policyholders, claims adjusters, claim supervisors
+- Compliance / Security: NAIC model audit expectations, state claims handling rules, SOC 2 control owners
+- External: Vendors and platform teams for Policy admin API, claims core system, document storage, geocoding/weather API, email/SMS notification
+
+## Scope Boundaries
+In Scope:
+- Web and mobile FNOL intake with document and image upload.
+- OCR and metadata extraction for loss descriptions, receipts, and photos.
+- Coverage and severity triage rules.
+- Claim assignment API integration.
+
+Out of Scope:
+- Automated settlement offers.
+- Fraud investigation case management.
+- Replacement of the policy administration system.
+
+## Functional Requirements
+FR-01: The system shall provide Web and mobile FNOL intake with document and image upload.
+FR-02: The system shall integrate with Policy admin API, claims core system, document storage, geocoding/weather API, email/SMS notification.
+FR-03: The system shall manage data assets including Policy coverage, FNOL forms, uploaded photos, loss location, weather-event data, adjuster queues.
+FR-04: The system shall enforce compliance controls for NAIC model audit expectations, state claims handling rules, SOC 2.
+FR-05: The system shall expose role-based workflows for primary users.
+FR-06: The system shall record decision provenance, user actions, and system-generated outputs.
+FR-07: The system shall provide operational dashboards for throughput, failures, and business KPIs.
+FR-08: The system shall support export or downstream handoff for approved outputs.
+FR-09: The system shall handle partial integration failures with retry, queueing, and user-visible status.
+FR-10: The system shall support audit review by exporting evidence for selected records.
+
+## Non-Functional Requirements
+NFR-01 Performance: Submit FNOL and receive triage result in <= 5 seconds P95 excluding upload time.
+NFR-02 Availability: 99.9% uptime and disaster-event surge mode within 30 minutes.
+NFR-03 Scalability: Handle 10x normal claim volume during catastrophe events.
+NFR-04 Security: Encrypt documents and restrict claim file access by role and region.
+NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 2 hours.
+NFR-06 Observability: Expose queue depth, OCR confidence, and triage decision traces.
+
+## Constraints
+- Team: Cross-functional product squad with 5-8 engineers, QA, security, and part-time domain experts.
+- Timeline: MVP target in 16 weeks; production launch target in 20 weeks.
+- Budget: Implementation must fit an annualized run-rate approved by the business sponsor.
+- Technology: Prefer organization-approved cloud, identity, observability, and RAG tooling.
+- Compliance: NAIC model audit expectations, state claims handling rules, SOC 2 requirements must be traceable before launch.
+
+## Risks
+- RISK-01 (HIGH): OCR quality may be poor for damaged documents - Mitigation: Use confidence thresholds and human review fallback.
+- RISK-02 (HIGH): Catastrophe surge can overload assignment queues - Mitigation: Implement backpressure and priority routing.
+- RISK-03 (MEDIUM): Coverage rules vary by state - Mitigation: Externalize state-specific rules and legal review.
+
+## Acceptance Criteria
+- FR-01 through FR-04 pass integration tests using representative synthetic and historical sample data.
+- All NFRs have automated or operational validation evidence before go-live.
+- Security review confirms encryption, access control, audit logging, and data-retention behavior.
+- Business owner signs off on pilot KPI dashboard and exception workflow.
+
+## Success Criteria Post Launch
+- Reduce average FNOL-to-assignment time from 36 hours to under 2 hours.
+- Auto-classify simple claims with >= 90% precision.
+- Prioritize severe claims and vulnerable customers for human review.

@@ -27,7 +27,8 @@ Rules:
 3. success_criteria must be measurable with metric, target_value, and measurement_method.
 4. duration_weeks must be realistic and conservative.
 5. Flag ambiguous requirements instead of guessing silently.
-6. Output ONLY valid JSON - no markdown fences, no explanation."""
+6. Evaluate the tech stack recommended by the Tech Stack agent and the components designed by the Architect. If there are severe alignment issues, high integration risks, or if the stack is unviable for the PoC/hypothesis, set "requires_tech_stack_revision" to true and provide a detailed "tech_stack_veto_reason" (string). Otherwise, set "requires_tech_stack_revision" to false and "tech_stack_veto_reason" to null.
+7. Output ONLY valid JSON - no markdown fences, no explanation."""
 
 SCHEMA = """{
   "poc_hypothesis": "string",
@@ -43,6 +44,8 @@ SCHEMA = """{
   ],
   "team_size": integer,
   "risk_if_poc_fails": "string",
+  "requires_tech_stack_revision": boolean,
+  "tech_stack_veto_reason": "string|null",
   "confidence_score": 0.0,
   "assumptions": ["string"],
   "flagged_ambiguities": ["string"]
@@ -65,7 +68,14 @@ class PoCPlannerAgent(BaseAgent):
             source_types=["brd", "plan_template"],
         )
 
-        raw = self._generate(brd_text, context_str, citation_ids, feedback)
+        raw = self._generate(
+            brd_text,
+            context_str,
+            citation_ids,
+            feedback,
+            state.arch_output,
+            state.stack_output,
+        )
         output = self._parse(raw, state.run_id, citation_ids)
 
         self.log_run(
@@ -91,13 +101,35 @@ class PoCPlannerAgent(BaseAgent):
         context_str: str,
         citation_ids: list[str],
         feedback: str,
+        arch_output,
+        stack_output,
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
+
+        arch_summary = ""
+        if arch_output:
+            arch_summary = (
+                f"ARCHITECTURE COMPONENTS DESIGNED:\n"
+                f"- Pattern: {arch_output.pattern}\n"
+                f"- Components:\n"
+                + "\n".join(f"  * {c.name} ({c.technology}): {c.responsibility}" for c in arch_output.components)
+            )
+
+        stack_summary = ""
+        if stack_output:
+            stack_summary = (
+                f"RECOMMENDED TECH STACK:\n"
+                f"- Recommended Option: {stack_output.recommended_option}\n"
+                f"- Rationale: {stack_output.recommendation_rationale}\n"
+            )
+
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
                 f"{feedback_block}"
+                f"{arch_summary}\n\n"
+                f"{stack_summary}\n\n"
                 f"AVAILABLE CITATION IDs:\n{cites}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 f"BRD:\n{brd_text}\n\n"
@@ -141,6 +173,10 @@ class PoCPlannerAgent(BaseAgent):
                     "risk_if_poc_fails",
                     "Revisit architecture, timeline, or vendor assumptions before full implementation.",
                 ),
+                requires_tech_stack_revision=bool(d.get("requires_tech_stack_revision", False)),
+                tech_stack_veto_reason=d.get("tech_stack_veto_reason")
+                if d.get("requires_tech_stack_revision")
+                else None,
             )
             from src.agents.confidence import compute_poc_confidence
 

@@ -1,0 +1,79 @@
+# Business Requirements Document
+# Project: Small Business Cash-Flow Forecasting Portal
+# Domain: Online Banking | Synthetic Golden Dataset | Version: 1.0
+
+## Background and Business Context
+Provide small-business customers with short-term cash-flow forecasts grounded in account history, invoices, and scheduled payments.
+
+Current state: Business customers rely on manual spreadsheets and call relationship managers for liquidity guidance, increasing support cost and churn risk.
+
+Primary users: Small-business owners, relationship managers, treasury support.
+
+## Objectives
+1. Deliver 13-week cash-flow forecasts with >= 85% directional accuracy for pilot customers.
+2. Reduce relationship-manager forecast-preparation time from 2 hours to 15 minutes.
+3. Surface explainable drivers behind projected shortfalls.
+4. Support exportable board-ready forecast summaries.
+
+## Stakeholders
+- Product Owner: Product Owner, Business Digital Banking
+- Technical Lead: Principal Engineer, Financial Insights
+- Business Sponsor: Head of Small Business Banking
+- Primary Users: Small-business owners, relationship managers, treasury support
+- Compliance / Security: GLBA, SOC 2, consent-management policy control owners
+- External: Vendors and platform teams for Open banking aggregation API, core deposit API, invoice import, CRM, PDF export service
+
+## Scope Boundaries
+In Scope:
+- Consent-based ingestion of account transactions, invoices, and scheduled bill payments.
+- Forecast engine with recurring transaction detection and scenario adjustments.
+- Relationship-manager review workflow.
+- PDF and CSV forecast exports.
+
+Out of Scope:
+- Loan origination decisions.
+- Automated cash transfers.
+- External accounting package write-back.
+
+## Functional Requirements
+FR-01: The system shall provide Consent-based ingestion of account transactions, invoices, and scheduled bill payments.
+FR-02: The system shall integrate with Open banking aggregation API, core deposit API, invoice import, CRM, PDF export service.
+FR-03: The system shall manage data assets including Account balances, transaction history, invoice due dates, scheduled payments, user-entered scenarios.
+FR-04: The system shall enforce compliance controls for GLBA, SOC 2, consent-management policy.
+FR-05: The system shall expose role-based workflows for primary users.
+FR-06: The system shall record decision provenance, user actions, and system-generated outputs.
+FR-07: The system shall provide operational dashboards for throughput, failures, and business KPIs.
+FR-08: The system shall support export or downstream handoff for approved outputs.
+FR-09: The system shall handle partial integration failures with retry, queueing, and user-visible status.
+FR-10: The system shall support audit review by exporting evidence for selected records.
+
+## Non-Functional Requirements
+NFR-01 Performance: Generate forecasts for a customer with 24 months of history in <= 8 seconds P95.
+NFR-02 Availability: 99.9% uptime during business banking hours.
+NFR-03 Scalability: Support 25,000 business customers and 500 relationship managers.
+NFR-04 Security: Tokenize account identifiers and isolate customer data by tenant.
+NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 1 hour.
+NFR-06 Maintainability: Forecast feature weights configurable without deployment.
+
+## Constraints
+- Team: Cross-functional product squad with 5-8 engineers, QA, security, and part-time domain experts.
+- Timeline: MVP target in 12 weeks; production launch target in 16 weeks.
+- Budget: Implementation must fit an annualized run-rate approved by the business sponsor.
+- Technology: Prefer organization-approved cloud, identity, observability, and RAG tooling.
+- Compliance: GLBA, SOC 2, consent-management policy requirements must be traceable before launch.
+
+## Risks
+- RISK-01 (HIGH): Forecast accuracy may vary by industry seasonality - Mitigation: Segment pilot by industry and measure accuracy separately.
+- RISK-02 (MEDIUM): Customer consent revocation can create partial data gaps - Mitigation: Design forecast confidence bands and data freshness warnings.
+- RISK-03 (MEDIUM): PDF exports may be treated as financial advice - Mitigation: Legal review and disclaimers in every export.
+
+## Acceptance Criteria
+- FR-01 through FR-04 pass integration tests using representative synthetic and historical sample data.
+- All NFRs have automated or operational validation evidence before go-live.
+- Security review confirms encryption, access control, audit logging, and data-retention behavior.
+- Business owner signs off on pilot KPI dashboard and exception workflow.
+
+## Success Criteria Post Launch
+- Deliver 13-week cash-flow forecasts with >= 85% directional accuracy for pilot customers.
+- Reduce relationship-manager forecast-preparation time from 2 hours to 15 minutes.
+- Surface explainable drivers behind projected shortfalls.

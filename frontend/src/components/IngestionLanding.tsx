@@ -181,15 +181,15 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     {
       id: 'orchestrator',
       label: 'Orchestrator',
-      desc: 'Parses the BRD sections, evaluates structure completeness, and splits tasks for specialists.',
+      desc: 'Parses the BRD sections, evaluates structure completeness, and splits tasks for 5 specialists Agents.',
       icon: <Cpu size={20} className="text-ai-spark" />,
       color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
       activeColor: 'ring-ai-spark/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]',
     },
     {
       id: 'specialists',
-      label: '5 Specialists Agents  ',
-      desc: 'Parallel agents: Plan Generator, Schedule Estimator, Solution Architect, PoC Engineer, and Tech Stack Matcher.',
+      label: '5 Specialist Agents',
+      desc: 'Parallel 2-Pass Alignment: (1) All specialists run concurrently to draft plans. (2) Orchestrator reviews and issues an alignment memo. (3) Specialists run concurrently again to coordinate and refine final plans.',
       icon: <Sparkles size={20} className="text-ai-spark" />,
       color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
       activeColor: 'ring-ai-spark/50 shadow-[0_0_15px_rgba(139,92,246,0.3)]',
@@ -205,7 +205,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
     {
       id: 'critic',
       label: 'Critic Reviewer - Evaluation',
-      desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades the outputs on 4 quality dimensions (1.0 - 5.0 score) and initiates revision loops if thresholds are not met (Green badge requires all dimensions passing and overall >= 4.0).',
+      desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades outputs on 4 quality dimensions (1.0-5.0 score) and triggers revisions if needed. Green badge requires all dimensions passing, overall >= 4.0, and zero unresolved warnings (otherwise capped at Amber).',
       icon: <GitPullRequest size={20} className="text-warning" />,
       color: 'border-warning/30 text-warning bg-warning/10',
       activeColor: 'ring-warning/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]',

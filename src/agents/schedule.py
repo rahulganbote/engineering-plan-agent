@@ -148,11 +148,29 @@ class ScheduleEstimatorAgent(BaseAgent):
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
+
+        poc_summary = "No PoC planned."
+        if state.poc_output:
+            poc_summary = (
+                f"- Hypothesis: {state.poc_output.poc_hypothesis}\n"
+                f"- Duration: {state.poc_output.duration_weeks} weeks\n"
+                f"- Team Size: {state.poc_output.team_size} engineer(s)"
+            )
+
+        stack_summary = "No stack recommended."
+        if state.stack_output:
+            stack_summary = (
+                f"- Recommended Stack: {state.stack_output.recommended_option}\n"
+                f"- Options Considered: {[o.name for o in state.stack_output.options]}"
+            )
+
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
                 f"{feedback_block}"
                 f"PLAN SUMMARY:\n{self._plan_summary(plan_output)}\n\n"
+                f"UPSTREAM POC DETAILS:\n{poc_summary}\n\n"
+                f"RECOMMENDED TECH STACK:\n{stack_summary}\n\n"
                 f"AVAILABLE CHUNK IDs (pick closest for comparable_projects):\n{cites}\n\n"
                 f"HISTORICAL TIMELINES (knowledge base):\n{context_str}\n\n"
                 f"BRD:\n{self._brd_text(state)}\n\n"

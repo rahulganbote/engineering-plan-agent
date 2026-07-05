@@ -20,7 +20,6 @@ Hub-and-spoke invariants:
 from __future__ import annotations
 
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Literal
 
 from langgraph.graph import END, StateGraph
@@ -72,10 +71,50 @@ def _dump(ps: PipelineState, state: dict) -> dict:
     return d
 
 
+def _get_other_drafts_summary(ps: PipelineState, target_agent: str) -> str:
+    lines = []
+    if target_agent != "solution_architect" and ps.draft_arch_output:
+        lines.append(
+            f"- Solution Architect Draft: Pattern={ps.draft_arch_output.pattern}, Components={[{c.name: c.technology} for c in ps.draft_arch_output.components]}"
+        )
+    if target_agent != "tech_stack_recommender" and ps.draft_stack_output:
+        lines.append(f"- Tech Stack Draft: Recommended={ps.draft_stack_output.recommended_option}")
+    if target_agent != "poc_planner" and ps.draft_poc_output:
+        lines.append(
+            f"- PoC Planner Draft: Duration={ps.draft_poc_output.duration_weeks}w, Requires Stack Revision={ps.draft_poc_output.requires_tech_stack_revision}"
+        )
+    if target_agent != "engineering_plan_generator" and ps.draft_plan_output:
+        lines.append(
+            f"- Plan Generator Draft: Duration={sum(p.duration_weeks for p in ps.draft_plan_output.phases)}w, Phases={[{p.name: p.duration_weeks} for p in ps.draft_plan_output.phases]}"
+        )
+    if target_agent != "schedule_estimator" and ps.draft_schedule_output:
+        lines.append(f"- Schedule Estimator Draft: Sprints={len(ps.draft_schedule_output.sprints)}")
+    return "\n".join(lines)
+
+
 def _feedback_for(ps: PipelineState, agent_name: str) -> str:
-    if not ps.critic_output or not ps.critic_output.agent_feedback:
-        return ""
-    return ps.critic_output.agent_feedback.get(agent_name, "")
+    parts = []
+    # If in Pass 2 and we have an alignment memo, add directives
+    if ps.pass_number == 2 and ps.alignment_memo:
+        for d in ps.alignment_memo.directives:
+            if d.agent_name == agent_name:
+                parts.append(
+                    f"ORCHESTRATOR EM ALIGNMENT DIRECTIVE (Pass 2):\n"
+                    f"You must align your output to satisfy the following directive:\n"
+                    f"- Action: {d.directive}\n"
+                    f"- Reasoning: {d.reasoning}\n"
+                    f"- BRD Evidence: {d.evidence or '(none)'}\n\n"
+                    f"Also, review the drafts of the other agents from Pass 1 for coordination:\n"
+                    f"{_get_other_drafts_summary(ps, agent_name)}"
+                )
+
+    # Standard Critic revision feedback
+    if ps.critic_output and ps.critic_output.agent_feedback:
+        base = ps.critic_output.agent_feedback.get(agent_name, "")
+        if base:
+            parts.append(f"CRITIC REVISION FEEDBACK:\n{base}")
+
+    return "\n\n".join(parts)
 
 
 def _safe_emit(event_type: str, **fields) -> None:
@@ -188,125 +227,154 @@ def node_orchestrator_hub(state: dict) -> dict:
     return _dump(ps, state)
 
 
-def node_dispatch_specialists(state: dict) -> dict:
-    """
-    Orchestrator fan-out.
-    Runs all specialists on first pass; during revisions runs only agents
-    selected by Critic feedback and consistency findings.
-    """
-    ps = _ps(state)
-    targets = state.get("_revision_targets") or ALL_SPECIALIST_AGENTS.copy()
-    log.info(f"[{ps.run_id}] NODE dispatch_specialists | rev={ps.revision_count} targets={targets}")
+def _run_specialists_in_parallel(ps: PipelineState, target_agents: list[str]) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
 
+    log.info(f"[{ps.run_id}] Dispatching {len(target_agents)} specialists in parallel: {target_agents}")
+
+    with ThreadPoolExecutor(max_workers=len(target_agents)) as executor:
+        futures = {executor.submit(_run_agent, agent_name, ps): agent_name for agent_name in target_agents}
+        results = {}
+        for f in futures:
+            agent_name = futures[f]
+            try:
+                results[agent_name] = f.result()
+            except Exception as e:
+                log.error(f"[{ps.run_id}] Parallel specialist {agent_name} failed: {e}")
+                raise
+        return results
+
+
+def node_pass1_drafting(state: dict) -> dict:
+    """Pass 1: Generate initial draft options in parallel."""
+    ps = _ps(state)
     if ps.pipeline_status == "error":
         return _dump(ps, state)
 
+    log.info(f"[{ps.run_id}] NODE pass1_drafting starting")
     _set_status(ps, PipelineStatus.SPECIALIST_EXECUTING)
-    max_workers = min(len(targets), len(ALL_SPECIALIST_AGENTS)) or 1
 
-    # ── Phase 9 - Bulkhead: per-agent timeout at the executor ───────────────
-    # One stuck specialist cannot block the whole pipeline. Any future that
-    # doesn't return within settings.agent_timeout_sec is cancelled; its agent
-    # output stays None, which the Critic's FM-3 cap catches downstream.
-    from concurrent.futures import TimeoutError as _BulkheadTimeout
+    ps.pass_number = 1
 
-    # Per-family bulkhead budget. Anthropic's Claude is genuinely slower than
-    # GPT-4o for the same verbose JSON outputs (~3-5× in observed runs), so we
-    # give it a bigger budget when the run is configured for anthropic. OpenAI
-    # keeps the tighter 90s budget because retries that exceed that almost
-    # always indicate genuine quota/network problems, not slow generation.
-    _family = (getattr(ps, "model_family", "openai") or "openai").lower()
-    _default_budget = float(getattr(settings, "agent_timeout_sec", 120))
-    if _family == "anthropic":
-        _bulkhead_budget = max(_default_budget, float(getattr(settings, "anthropic_agent_timeout_sec", 240)))
-    else:
-        _bulkhead_budget = _default_budget
-
-    # Explicit executor lifecycle (NOT `with`) so we can return immediately on
-    # bulkhead trip. A `with` block would call shutdown(wait=True) on __exit__,
-    # which joins all running threads - defeating the point of the bulkhead.
-    executor = ThreadPoolExecutor(max_workers=max_workers)
-    bulkhead_tripped = False
     try:
-        futures = {executor.submit(_run_agent, agent_name, ps): agent_name for agent_name in targets}
-        try:
-            for future in as_completed(futures, timeout=_bulkhead_budget):
-                agent_name = futures[future]
-                field_name = AGENT_OUTPUT_FIELDS[agent_name]
-                try:
-                    output = future.result(timeout=0)
-                    setattr(ps, field_name, output)
-                    log.info(f"[{ps.run_id}] Orchestrator received {agent_name}")
-                except Exception as e:
-                    log.error(f"[{ps.run_id}] {agent_name} error: {e}")
-                    # Surface the real cause to ps.errors so the UI / aggregate
-                    # phase sees it instead of just "Missing specialist outputs".
-                    err_msg = str(e).strip() or type(e).__name__
-                    ps.errors.append(f"{agent_name}: {err_msg[:280]}")
-        except _BulkheadTimeout:
-            # Bulkhead trip: at least one specialist exceeded the budget.
-            # Cancel everything still pending and proceed with what we have.
-            bulkhead_tripped = True
-            for fut, agent_name in futures.items():
-                if not fut.done():
-                    fut.cancel()
-                    log.warning(
-                        f"[{ps.run_id}] {agent_name} bulkhead timeout after {_bulkhead_budget}s - proceeding without it"
-                    )
-                    ps.errors.append(f"{agent_name}: bulkhead timeout ({_bulkhead_budget}s)")
-                    try:
-                        from src.core.events import emit as _evt
+        # Run all 5 specialists in parallel
+        results = _run_specialists_in_parallel(ps, ALL_SPECIALIST_AGENTS)
 
-                        _evt("bulkhead_timeout", agent=agent_name, timeout_sec=_bulkhead_budget)
-                    except Exception:
-                        pass
-    finally:
-        # On bulkhead trip → return immediately; orphan threads finish in the
-        # background but do NOT block this function's return.
-        # On normal completion → wait for any stragglers (there shouldn't be any).
-        # Trade-off: orphan thread keeps consuming any in-flight OpenAI/Pinecone
-        # request until it completes. Acceptable because (a) the SDK timeout still
-        # caps it via @resilient, (b) its result is discarded, (c) wall-clock
-        # containment is the bulkhead's primary contract.
-        executor.shutdown(wait=not bulkhead_tripped, cancel_futures=True)
+        # Save drafts to PipelineState
+        ps.draft_arch_output = results.get("solution_architect")
+        ps.draft_stack_output = results.get("tech_stack_recommender")
+        ps.draft_poc_output = results.get("poc_planner")
+        ps.draft_plan_output = results.get("engineering_plan_generator")
+        ps.draft_schedule_output = results.get("schedule_estimator")
 
-    state["_last_dispatch_targets"] = targets
+        # Also populate standard outputs so downstream code doesn't crash during drafting
+        ps.arch_output = ps.draft_arch_output
+        ps.stack_output = ps.draft_stack_output
+        ps.poc_output = ps.draft_poc_output
+        ps.plan_output = ps.draft_plan_output
+        ps.schedule_output = ps.draft_schedule_output
+
+    except Exception as e:
+        log.error(f"[{ps.run_id}] pass1_drafting execution failed: {e}")
+        ps.errors.append(f"pass1_drafting: {str(e)[:280]}")
+        _set_status(ps, PipelineStatus.ERROR)
+
     return _dump(ps, state)
 
 
-def node_aggregate_outputs(state: dict) -> dict:
-    """
-    Orchestrator fan-in.
-    Validates all required specialist outputs are present before Critic review.
-    Pydantic contract validation has already happened when each agent returned.
-    """
+def node_arbitrate(state: dict) -> dict:
+    """Orchestrator arbitrates the drafts to generate the Alignment Memo."""
     ps = _ps(state)
-    log.info(f"[{ps.run_id}] NODE aggregate_outputs | rev={ps.revision_count}")
-
-    if ps.errors:
-        _set_status(ps, PipelineStatus.ERROR)
+    if ps.pipeline_status == "error":
         return _dump(ps, state)
 
-    missing = [agent_name for agent_name, field_name in AGENT_OUTPUT_FIELDS.items() if getattr(ps, field_name) is None]
-    if missing:
-        _set_status(ps, PipelineStatus.ERROR)
-        ps.errors.append(f"Missing specialist outputs before Critic: {missing}")
+    log.info(f"[{ps.run_id}] NODE arbitrate starting")
+    _safe_emit("agent_start", agent="orchestrator")
+
+    try:
+        memo = OrchestratorAgent().arbitrate_drafts(ps)
+        ps.alignment_memo = memo
+        _safe_emit("orchestrator_reconciled", directive_count=len(memo.directives))
+        log.info(f"[{ps.run_id}] NODE arbitrate complete. Issued {len(memo.directives)} directives.")
+    except Exception as e:
+        log.error(f"[{ps.run_id}] Orchestrator arbitration failed, falling back: {e}")
+        from src.core.models import AlignmentMemo
+
+        ps.alignment_memo = AlignmentMemo()
+
+    _safe_emit("agent_complete", agent="orchestrator")
+    return _dump(ps, state)
+
+
+def node_pass2_alignment(state: dict) -> dict:
+    """Pass 2: Specialists refine and align their outputs using the Alignment Memo."""
+    ps = _ps(state)
+    if ps.pipeline_status == "error":
         return _dump(ps, state)
 
-    _set_status(ps, PipelineStatus.EVALUATING)
-    log.info(
-        f"[{ps.run_id}] Aggregated outputs | "
-        f"plan={ps.plan_output is not None} schedule={ps.schedule_output is not None} "
-        f"arch={ps.arch_output is not None} poc={ps.poc_output is not None} "
-        f"stack={ps.stack_output is not None}"
-    )
+    log.info(f"[{ps.run_id}] NODE pass2_alignment starting")
+    _set_status(ps, PipelineStatus.SPECIALIST_EXECUTING)
+
+    ps.pass_number = 2
+
+    # Rerun targeted revision agents
+    targets = state.get("_revision_targets", ALL_SPECIALIST_AGENTS)
+    if not targets:
+        targets = ALL_SPECIALIST_AGENTS
+
+    try:
+        results = _run_specialists_in_parallel(ps, targets)
+
+        # Save or update final outputs
+        if "solution_architect" in results:
+            ps.arch_output = results.get("solution_architect")
+        if "tech_stack_recommender" in results:
+            ps.stack_output = results.get("tech_stack_recommender")
+        if "poc_planner" in results:
+            ps.poc_output = results.get("poc_planner")
+        if "engineering_plan_generator" in results:
+            ps.plan_output = results.get("engineering_plan_generator")
+        if "schedule_estimator" in results:
+            ps.schedule_output = results.get("schedule_estimator")
+
+        # Apply Schedule Estimator effort scaling logic on final outputs
+        plan_output = ps.plan_output
+        output = ps.schedule_output
+        if plan_output and output:
+            team_size = sum(plan_output.team_composition.values())
+            min_effort = plan_output.total_duration_weeks * team_size * 5 * 0.70
+            if output.total_effort_days < min_effort:
+                log.info(
+                    f"[{ps.run_id}] Schedule sanity check: "
+                    f"raising total_effort_days from {output.total_effort_days} to {min_effort:.1f}"
+                )
+                sprints = output.sprints
+                sprint_sum = sum(s.effort_days for s in sprints)
+                if sprint_sum > 0:
+                    scale_factor = min_effort / sprint_sum
+                    for s in sprints:
+                        s.effort_days = round(s.effort_days * scale_factor, 1)
+                else:
+                    avg_effort = round(min_effort / len(sprints), 1) if sprints else 0
+                    for s in sprints:
+                        s.effort_days = avg_effort
+                output.total_effort_days = round(sum(s.effort_days for s in sprints), 1)
+
+    except Exception as e:
+        log.error(f"[{ps.run_id}] pass2_alignment execution failed: {e}")
+        ps.errors.append(f"pass2_alignment: {str(e)[:280]}")
+        _set_status(ps, PipelineStatus.ERROR)
+
     return _dump(ps, state)
 
 
 def node_critic(state: dict) -> dict:
-    """Send complete artifact bundle to the single shared Critic."""
+    """Send complete artifact bundle to the Critic."""
     ps = _ps(state)
     log.info(f"[{ps.run_id}] NODE critic | rev={ps.revision_count}")
+
+    if ps.pipeline_status == "error":
+        return _dump(ps, state)
 
     _set_status(ps, PipelineStatus.EVALUATING)
     _safe_emit("agent_start", agent="critic")
@@ -342,7 +410,7 @@ def node_critic(state: dict) -> dict:
 def node_decision_router(state: dict) -> dict:
     """
     Orchestrator Decision Router.
-    Green goes to HITL. Amber/Red revises targeted agents until max cycles.
+    Amber/Red revises targeted agents until max cycles; otherwise routes to HITL.
     """
     ps = _ps(state)
     log.info(f"[{ps.run_id}] NODE decision_router | rev={ps.revision_count}")
@@ -359,17 +427,12 @@ def node_decision_router(state: dict) -> dict:
     should_revise = ps.critic_output.requires_revision and ps.revision_count < MAX_REVISIONS
 
     if should_revise:
-        targets = _revision_targets(ps)
-        if not targets:
-            targets = ALL_SPECIALIST_AGENTS.copy()
-            log.warning(f"[{ps.run_id}] Critic requested revision but gave no targets; rerunning all specialists")
         ps.revision_count += 1
         _set_status(ps, PipelineStatus.REVISING)
-        state["_revision_targets"] = targets
-        log.info(f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS} | targets={targets}")
+        state["_reran_upstream"] = False
+        log.info(f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS}")
     else:
         _set_status(ps, PipelineStatus.AWAITING_HITL)
-        state["_revision_targets"] = []
         reason = "max_revisions" if ps.revision_count >= MAX_REVISIONS else "quality_gate"
         log.info(f"[{ps.run_id}] Routing to HITL | badge={ps.critic_output.badge.value} reason={reason}")
 
@@ -397,40 +460,41 @@ def node_error(state: dict) -> dict:
 
 def route_after_orchestrator(
     state: dict,
-) -> Literal["dispatch_specialists", "error_node"]:
+) -> Literal["node_pass1_drafting", "error_node"]:
     ps = _ps(state)
-    if ps.pipeline_status == "error" or ps.errors:
+    if ps.pipeline_status == "error":
         return "error_node"
-    return "dispatch_specialists"
-
-
-def route_after_aggregate(
-    state: dict,
-) -> Literal["critic", "error_node"]:
-    ps = _ps(state)
-    if ps.pipeline_status == "error" or ps.errors:
-        return "error_node"
-    return "critic"
+    return "node_pass1_drafting"
 
 
 def route_after_critic(
     state: dict,
 ) -> Literal["decision_router", "error_node"]:
     ps = _ps(state)
-    if ps.pipeline_status == "error" or ps.errors:
+    if ps.pipeline_status == "error":
         return "error_node"
     return "decision_router"
 
 
 def route_after_decision(
     state: dict,
-) -> Literal["dispatch_specialists", "await_hitl", "error_node"]:
+) -> Literal[
+    "node_pass2_alignment",
+    "await_hitl",
+    "error_node",
+]:
     ps = _ps(state)
-    if ps.pipeline_status == "error" or ps.errors:
+    if ps.pipeline_status == "error":
         return "error_node"
-    if ps.pipeline_status == "revising":
-        return "dispatch_specialists"
-    return "await_hitl"
+    if ps.pipeline_status != "revising":
+        return "await_hitl"
+
+    critic = ps.critic_output
+    if not critic or not critic.target_agents:
+        return "node_pass2_alignment"
+
+    state["_revision_targets"] = critic.target_agents
+    return "node_pass2_alignment"
 
 
 # ── Graph assembly ────────────────────────────────────────────────────────────
@@ -440,8 +504,9 @@ def build_graph() -> StateGraph:
     g = StateGraph(dict)
 
     g.add_node("orchestrator_hub", node_orchestrator_hub)
-    g.add_node("dispatch_specialists", node_dispatch_specialists)
-    g.add_node("aggregate_outputs", node_aggregate_outputs)
+    g.add_node("node_pass1_drafting", node_pass1_drafting)
+    g.add_node("node_arbitrate", node_arbitrate)
+    g.add_node("node_pass2_alignment", node_pass2_alignment)
     g.add_node("critic", node_critic)
     g.add_node("decision_router", node_decision_router)
     g.add_node("await_hitl", node_await_hitl)
@@ -453,19 +518,14 @@ def build_graph() -> StateGraph:
         "orchestrator_hub",
         route_after_orchestrator,
         {
-            "dispatch_specialists": "dispatch_specialists",
+            "node_pass1_drafting": "node_pass1_drafting",
             "error_node": "error_node",
         },
     )
-    g.add_edge("dispatch_specialists", "aggregate_outputs")
-    g.add_conditional_edges(
-        "aggregate_outputs",
-        route_after_aggregate,
-        {
-            "critic": "critic",
-            "error_node": "error_node",
-        },
-    )
+    g.add_edge("node_pass1_drafting", "node_arbitrate")
+    g.add_edge("node_arbitrate", "node_pass2_alignment")
+    g.add_edge("node_pass2_alignment", "critic")
+
     g.add_conditional_edges(
         "critic",
         route_after_critic,
@@ -478,7 +538,7 @@ def build_graph() -> StateGraph:
         "decision_router",
         route_after_decision,
         {
-            "dispatch_specialists": "dispatch_specialists",
+            "node_pass2_alignment": "node_pass2_alignment",
             "await_hitl": "await_hitl",
             "error_node": "error_node",
         },

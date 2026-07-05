@@ -34,6 +34,7 @@ export interface LogEvent {
   targets?: string[];
   seq?: number;
   ts?: number;
+  directive_count?: number;
 }
 
 export interface CriticDimension {
@@ -73,6 +74,15 @@ export interface ArtifactsState {
   stack_output?: unknown;
   brd_sections?: unknown;
   critic_output?: unknown;
+  errors?: string[];
+  warnings?: string[];
+  pass_number?: number;
+  alignment_memo?: any;
+  draft_plan_output?: unknown;
+  draft_schedule_output?: unknown;
+  draft_arch_output?: unknown;
+  draft_poc_output?: unknown;
+  draft_stack_output?: unknown;
 }
 
 interface ArtifactsResponse {
@@ -90,7 +100,15 @@ interface ArtifactsResponse {
   fallback_from?: string;
   fallback_to?: string;
   errors?: string[];
+  warnings?: string[];
   pipeline_status?: string;
+  pass_number?: number;
+  alignment_memo?: any;
+  draft_plan_output?: unknown;
+  draft_schedule_output?: unknown;
+  draft_arch_output?: unknown;
+  draft_poc_output?: unknown;
+  draft_stack_output?: unknown;
   critic_output?: {
     revision_number: number;
     overall_score: number;
@@ -395,6 +413,15 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           poc_output: data.poc_output || undefined,
           stack_output: data.stack_output || undefined,
           brd_sections: data.brd_sections || undefined,
+          errors: data.errors || undefined,
+          warnings: data.warnings || undefined,
+          pass_number: data.pass_number || undefined,
+          alignment_memo: data.alignment_memo || undefined,
+          draft_plan_output: data.draft_plan_output || undefined,
+          draft_schedule_output: data.draft_schedule_output || undefined,
+          draft_arch_output: data.draft_arch_output || undefined,
+          draft_poc_output: data.draft_poc_output || undefined,
+          draft_stack_output: data.draft_stack_output || undefined,
         });
       }
       // Pick up time + tokens from /artifacts response (works on refresh)

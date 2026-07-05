@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, FileJson, Cpu, MessageSquare, UserCheck, FileCheck, Check, Loader2, X } from 'lucide-react';
+import { Shield, FileJson, Cpu, MessageSquare, UserCheck, Check, Loader2, X } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type ApprovalResult, type LogEvent } from '../hooks/useSSE';
 import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
@@ -16,7 +16,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   pipelineStatus,
   completedAgents,
   artifacts,
-  criticOutput,
+  criticOutput: _criticOutput,
   approvalResult,
   logs,
 }) => {
@@ -51,7 +51,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return completedAgents.has('orchestrator') || hasBrdSections;
       },
       get isFailed() {
-        // If security failed, Orchestrator never ran and thus shouldn't be marked failed (should stay pending)
         const securityPassed = logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
         return pipelineStatus === PIPELINE_STATUS.ERROR && securityPassed && !this.isCompleted;
       },
@@ -61,17 +60,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     },
     {
       id: 3,
-      label: 'Specialist Agents',
-      description: '5 Parallel Spokes',
+      label: 'Specialists',
+      description: 'Drafting & Alignment',
       icon: Cpu,
       get isCompleted() {
-        return (
-          completedAgents.has('engineering_plan_generator') &&
-          completedAgents.has('schedule_estimator') &&
-          completedAgents.has('solution_architect') &&
-          completedAgents.has('poc_planner') &&
-          completedAgents.has('tech_stack_recommender')
-        ) || !!artifacts?.plan_output;
+        return ([PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus);
       },
       get isFailed() {
         const orchestratorCompleted = completedAgents.has('orchestrator') || hasBrdSections;
@@ -84,19 +77,13 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     {
       id: 4,
       label: 'Critic',
-      description: 'Review & Revision',
+      description: 'Review & Revision Gate',
       icon: MessageSquare,
       get isCompleted() {
-        return completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output;
+        return ([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus);
       },
       get isFailed() {
-        const specialistsCompleted = (
-          completedAgents.has('engineering_plan_generator') &&
-          completedAgents.has('schedule_estimator') &&
-          completedAgents.has('solution_architect') &&
-          completedAgents.has('poc_planner') &&
-          completedAgents.has('tech_stack_recommender')
-        ) || !!artifacts?.plan_output;
+        const specialistsCompleted = ([PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED] as PipelineStatus[]).includes(pipelineStatus);
         return pipelineStatus === PIPELINE_STATUS.ERROR && specialistsCompleted && !this.isCompleted;
       },
       get isActive() {
@@ -105,32 +92,12 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     },
     {
       id: 5,
-      label: 'HITL Gate',
-      description: 'Approval Paused',
+      label: 'Decision',
+      description: 'HITL / Final Export',
       icon: UserCheck,
       get isCompleted() {
         return (
           !!approvalResult ||
-          pipelineStatus === PIPELINE_STATUS.EXPORTED ||
-          pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED ||
-          pipelineStatus === PIPELINE_STATUS.REJECTED
-        );
-      },
-      get isFailed() {
-        const criticCompleted = completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output;
-        return pipelineStatus === PIPELINE_STATUS.ERROR && criticCompleted && !this.isCompleted;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL;
-      },
-    },
-    {
-      id: 6,
-      label: 'Decision',
-      description: 'Final Export',
-      icon: FileCheck,
-      get isCompleted() {
-        return (
           pipelineStatus === PIPELINE_STATUS.EXPORTED ||
           pipelineStatus === PIPELINE_STATUS.REJECTED
         );
@@ -139,68 +106,56 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED);
+        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED);
       },
     },
   ];
 
-  const getDetailedStatus = (agentKey: string): { status: 'pending' | 'running' | 'completed' | 'failed'; label: string } => {
+  const getDetailedStatus = (agentKey: string, pass: 1 | 2): { status: 'pending' | 'running' | 'completed' | 'failed'; label: string } => {
     const labels: Record<string, string> = {
-      security: 'Security & Injection Scan',
-      orchestrator: 'Orchestrator BRD Parser',
-      engineering_plan_generator: 'Engineering Plan Specialist',
-      solution_architect: 'Solution Architect Specialist',
-      schedule_estimator: 'Schedule & Estimator Specialist',
-      poc_planner: 'PoC & Spike Planner Specialist',
-      tech_stack_recommender: 'Tech Stack Specialist',
-      critic: 'Critic Reviewer & Revision Gate',
+      engineering_plan_generator: 'Plan',
+      solution_architect: 'Architect',
+      schedule_estimator: 'Schedule',
+      poc_planner: 'PoC',
+      tech_stack_recommender: 'Tech Stack',
     };
-
     const label = labels[agentKey] || agentKey;
 
-    if (agentKey === 'security') {
-      if (pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_start' || l.type === 'status')) {
-        return { status: 'failed', label };
-      }
-      if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
+    if (pass === 1) {
+      if ((artifacts?.pass_number && artifacts.pass_number > 1) || !!artifacts?.alignment_memo || ([PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED] as PipelineStatus[]).includes(pipelineStatus)) {
         return { status: 'completed', label };
+      }
+      if (artifacts?.pass_number === 1) {
+        if (completedAgents.has(agentKey)) {
+          return { status: 'completed', label };
+        }
+        const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
+        if (hasFailed) return { status: 'failed', label };
+        const hasStarted = logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
+        if (hasStarted) return { status: 'running', label };
+      }
+      return { status: 'pending', label };
+    } else {
+      if (([PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED] as PipelineStatus[]).includes(pipelineStatus)) {
+        return { status: 'completed', label };
+      }
+      if (artifacts?.pass_number === 2) {
+        // If there's an alignment memo, we can check if this agent was targeted to rerun
+        const isTarget = !artifacts.alignment_memo?.directives || 
+          logs.some(l => l.type === 'agent_start' && l.agent === agentKey && logs.indexOf(l) > logs.findIndex(el => el.type === 'orchestrator_reconciled'));
+        if (!isTarget) {
+          return { status: 'completed', label };
+        }
+        if (completedAgents.has(agentKey)) {
+          return { status: 'completed', label };
+        }
+        const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
+        if (hasFailed) return { status: 'failed', label };
+        const hasStarted = logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
+        if (hasStarted) return { status: 'running', label };
       }
       return { status: 'pending', label };
     }
-
-    if (completedAgents.has(agentKey)) {
-      return { status: 'completed', label };
-    }
-
-    if (agentKey === 'orchestrator') {
-      const anySpecialistActive = completedAgents.has('engineering_plan_generator') ||
-        logs.some(l => l.type === 'agent_start' && l.agent !== 'orchestrator');
-      if (anySpecialistActive || !!artifacts?.brd_sections || ([PIPELINE_STATUS.SPECIALIST_EXECUTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as PipelineStatus[]).includes(pipelineStatus)) {
-        return { status: 'completed', label };
-      }
-      if (pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED || pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator')) {
-        return { status: 'running', label };
-      }
-      return { status: 'pending', label };
-    }
-
-    if (agentKey === 'critic') {
-      if (completedAgents.has('critic') || !!criticOutput || !!artifacts?.critic_output) {
-        return { status: 'completed', label };
-      }
-      if (pipelineStatus === PIPELINE_STATUS.EVALUATING) {
-        return { status: 'running', label };
-      }
-      return { status: 'pending', label };
-    }
-
-    const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
-    if (hasFailed) return { status: 'failed', label };
-
-    const hasStarted = logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
-    if (hasStarted) return { status: 'running', label };
-
-    return { status: 'pending', label };
   };
 
   return (
@@ -283,41 +238,63 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               <span className={textLabelClasses}>{step.label}</span>
               <span className={descriptionClasses}>{step.description}</span>
 
-              {/* Specialist status stacked in parallel for Step 3 */}
+              {/* Specialist status nested for Step 3 (Specialists) */}
               {step.id === 3 && pipelineStatus !== 'idle' && (
-                <div className="mt-4 flex flex-col gap-1.5 w-full max-w-[140px] bg-background/40 p-2 rounded-lg border border-border/60 shadow-inner z-20 animate-scale-in">
-                  {[
-                    { key: 'engineering_plan_generator', shortLabel: 'Plan' },
-                    { key: 'solution_architect', shortLabel: 'Architect' },
-                    { key: 'schedule_estimator', shortLabel: 'Estimator' },
-                    { key: 'poc_planner', shortLabel: 'PoC' },
-                    { key: 'tech_stack_recommender', shortLabel: 'Tech Stack' },
-                  ].map(spec => {
-                    const { status } = getDetailedStatus(spec.key);
-                    let specCardClass = "flex items-center justify-between px-2 py-1 rounded border text-[9px] font-semibold transition-all duration-300 ";
-                    let statusIcon: React.ReactNode;
+                <div className="mt-4 flex flex-col gap-2 w-full max-w-[140px] z-20 animate-scale-in">
+                  <div className="flex flex-col gap-1.5 bg-background/40 p-2 rounded-lg border border-border/60 shadow-inner">
+                    {[
+                      { key: 'solution_architect', shortLabel: 'Architect' },
+                      { key: 'tech_stack_recommender', shortLabel: 'Tech Stack' },
+                      { key: 'poc_planner', shortLabel: 'PoC' },
+                      { key: 'engineering_plan_generator', shortLabel: 'Plan' },
+                      { key: 'schedule_estimator', shortLabel: 'Schedule' },
+                    ].map(spec => {
+                      const currentPass = (artifacts?.pass_number && artifacts.pass_number > 1) ? 2 : 1;
+                      const { status } = getDetailedStatus(spec.key, currentPass);
+                      let specCardClass = "flex items-center justify-between px-2 py-1 rounded border text-[9px] font-semibold transition-all duration-300 ";
+                      let statusIcon: React.ReactNode;
 
-                    if (status === 'completed') {
-                      specCardClass += "bg-success/20 border-success/40 text-success";
-                      statusIcon = <Check size={8} className="stroke-[3px] text-success shrink-0" />;
-                    } else if (status === 'running') {
-                      specCardClass += "bg-primary/10 border-primary/40 text-primary ring-1 ring-primary/10 animate-pulse";
-                      statusIcon = <Loader2 size={8} className="animate-spin text-primary shrink-0" />;
-                    } else if (status === 'failed') {
-                      specCardClass += "bg-danger/20 border-danger/40 text-danger";
-                      statusIcon = <X size={8} className="stroke-[3px] text-danger shrink-0" />;
-                    } else {
-                      specCardClass += "bg-card/40 border-border/40 text-muted-foreground";
-                      statusIcon = <div className="h-1 w-1 rounded-full bg-secondary shrink-0" />;
-                    }
+                      if (status === 'completed') {
+                        specCardClass += "bg-success/20 border-success/40 text-success";
+                        statusIcon = <Check size={8} className="stroke-[3px] text-success shrink-0" />;
+                      } else if (status === 'running') {
+                        specCardClass += "bg-primary/10 border-primary/40 text-primary ring-1 ring-primary/10 animate-pulse";
+                        statusIcon = <Loader2 size={8} className="animate-spin text-primary shrink-0" />;
+                      } else if (status === 'failed') {
+                        specCardClass += "bg-danger/20 border-danger/40 text-danger";
+                        statusIcon = <X size={8} className="stroke-[3px] text-danger shrink-0" />;
+                      } else {
+                        specCardClass += "bg-card/40 border-border/40 text-muted-foreground";
+                        statusIcon = <div className="h-1 w-1 rounded-full bg-secondary shrink-0" />;
+                      }
 
-                    return (
-                      <div key={spec.key} className={specCardClass} title={spec.key}>
-                        <span className="truncate pr-1 text-left">{spec.shortLabel}</span>
-                        {statusIcon}
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div key={spec.key} className={specCardClass} title={spec.key}>
+                          <span className="truncate pr-1 text-left">{spec.shortLabel}</span>
+                          {statusIcon}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Arbitration Reconciling status */}
+                  {artifacts?.pass_number === 1 && completedAgents.size >= 5 && !artifacts?.alignment_memo && (
+                    <div className="px-2 py-1 rounded bg-warning/15 border border-warning/35 text-[8px] text-warning font-semibold text-center animate-pulse">
+                      EM Reconciling Drafts...
+                    </div>
+                  )}
+
+                  {/* Alignment Memo indicator */}
+                  {artifacts?.alignment_memo && (
+                    <div className="px-2.5 py-1.5 rounded-lg border border-warning/30 bg-warning/10 text-[9px] text-warning-foreground font-semibold flex flex-col gap-1 text-center">
+                      <span>Pass 2: {artifacts.alignment_memo.directives?.length || 0} Directives</span>
+                      {artifacts.alignment_memo.overall_strategy && (
+                        <span className="text-[7.5px] opacity-80 line-clamp-2 italic font-normal text-warning-foreground">
+                          "{artifacts.alignment_memo.overall_strategy}"
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

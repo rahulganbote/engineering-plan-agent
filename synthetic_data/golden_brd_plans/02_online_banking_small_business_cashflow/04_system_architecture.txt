@@ -1,0 +1,92 @@
+# System Architecture
+# Project: Small Business Cash-Flow Forecasting Portal
+# Domain: Online Banking | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: solution_architect
+run_id: 02_online_banking_small_business_cashflow_architecture
+citations: [arch_patterns_chunk_1, Solution_Architect_Template_chunk_0, org_engineering_standards_chunk_1]
+confidence_score: 0.86
+assumptions:
+  - Enterprise SSO, secrets management, centralized logs, and CI/CD are available.
+  - Dependent systems expose approved sandbox APIs.
+flagged_ambiguities:
+  - Final deployment region and data residency constraints require confirmation.
+
+## Pattern Selection
+pattern: Modular monolith with async ingestion
+pattern_justification: |
+  A six-person product team can ship faster with one deployable while using async workers for data ingestion; microservices were rejected until usage and team boundaries justify them. Team size is assumed to be 5-8 engineers, which is enough for clear component ownership without creating unnecessary platform overhead. The primary NFR driver is Generate forecasts for a customer with 24 months of history in <= 8 seconds P95. The architecture respects compliance constraints for GLBA, SOC 2, consent-management policy.
+
+## Components
+components:
+  - name: Banking Portal API
+    responsibility: Serves forecast and scenario workflows.
+    technology: Python FastAPI
+    interfaces: [REST, OpenAPI]
+  - name: Ingestion Worker
+    responsibility: Imports transactions and invoices on consented schedules.
+    technology: Celery + Redis
+    interfaces: [REST, queue]
+  - name: Forecast Engine
+    responsibility: Builds recurring patterns and shortfall projections.
+    technology: Python scikit-learn + Prophet
+    interfaces: [Python module, job queue]
+  - name: Forecast Store
+    responsibility: Persists forecast versions and consent metadata.
+    technology: PostgreSQL 15
+    interfaces: [SQL, encrypted backups]
+
+## Data Flow
+data_flow:
+  - "1. User or upstream system submits data for Small Business Cash-Flow Forecasting Portal."
+  - "2. Entry service validates identity, schema, and consent or policy constraints."
+  - "3. Processing components enrich, score, or route the request using Account balances, transaction history, invoice due dates, scheduled payments, user-entered scenarios."
+  - "4. Workflow/API layer presents results to Small-business owners, relationship managers, treasury support and records audit evidence."
+  - "5. Failure path: integration failures are queued, retried, and shown with actionable status."
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01 Performance: Generate forecasts for a customer with 24 months of history in <= 8 seconds P95."
+    architecture_decision: "Modular monolith with async ingestion with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_1
+  - nfr: "NFR-02 Availability: 99.9% uptime during business banking hours."
+    architecture_decision: "Modular monolith with async ingestion with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_2
+  - nfr: "NFR-03 Scalability: Support 25,000 business customers and 500 relationship managers."
+    architecture_decision: "Modular monolith with async ingestion with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_3
+  - nfr: "NFR-04 Security: Tokenize account identifiers and isolate customer data by tenant."
+    architecture_decision: "Modular monolith with async ingestion with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_4
+  - nfr: "NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 1 hour."
+    architecture_decision: "Modular monolith with async ingestion with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_5
+  - nfr: "NFR-06 Maintainability: Forecast feature weights configurable without deployment."
+    architecture_decision: "Modular monolith with async ingestion with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_6
+
+## Deployment Model
+deployment_model: Managed cloud deployment with private networking, centralized identity, encrypted data stores, and monitored CI/CD promotion.
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    U[Users and Upstream Systems] --> G[API Gateway and Identity]
+    G --> C1
+    C1[Banking Portal API] --> C2
+    C2[Ingestion Worker] --> C3
+    C3[Forecast Engine] --> C4
+    C4[Forecast Store] --> C1
+    C1 --> A[Audit and Observability]
+    C2 --> A
+    C3 --> A
+
+## Architecture Decision Checklist
+- Pattern justified against team size and NFRs: Y
+- External dependencies listed with fallback behavior: Y
+- Data flow covers happy path and primary failure mode: Y
+- Every BRD NFR has a corresponding nfr_mapping entry: Y
+- Security controls specified: Y
+- Observability covered: Y
+- Mermaid diagram included: Y

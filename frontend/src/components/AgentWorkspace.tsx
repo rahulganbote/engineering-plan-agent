@@ -538,6 +538,60 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
+              {/* EM Alignment Directives Banner */}
+              {artifacts?.alignment_memo?.directives && artifacts.alignment_memo.directives.length > 0 && (
+                <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-start justify-between gap-4">
+                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
+                      <span>📢</span> Engineering Manager Alignment Directives (Pass 2)
+                    </h4>
+                  </div>
+                  {artifacts.alignment_memo.overall_strategy && (
+                    <p className="text-xs text-muted-foreground italic mb-2">
+                      Strategy: "{artifacts.alignment_memo.overall_strategy}"
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                    {artifacts.alignment_memo.directives.map((d: any, idx: number) => (
+                      <div key={idx} className="p-3 rounded-lg bg-background/50 border border-border/80 flex flex-col gap-1 text-xs">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-primary capitalize">
+                            {d.agent_name.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <p className="text-foreground leading-relaxed">
+                          <strong>Directive:</strong> {d.directive}
+                        </p>
+                        <p className="text-muted-foreground text-[11px] mt-1">
+                          <strong>Reasoning:</strong> {d.reasoning}
+                        </p>
+                        {d.evidence && (
+                          <p className="text-[10px] text-muted-foreground/80 italic mt-0.5 border-t border-border/40 pt-1">
+                            Quote: "{d.evidence}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Loop Warnings / Non-terminal Flagged Concerns Banner */}
+              {pipelineStatus !== PIPELINE_STATUS.ERROR && artifacts?.warnings && artifacts.warnings.length > 0 && (
+                <div className="bg-warning/20 border border-warning/45 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                  <div className="flex items-start justify-between gap-4">
+                    <h4 className="text-sm font-bold text-warning flex items-center gap-2">
+                      <span>⚠️</span> Design Loop Warning / Flagged Concern
+                    </h4>
+                  </div>
+                  {artifacts.warnings.map((warn, i) => (
+                    <p key={i} className="text-xs text-warning leading-relaxed font-semibold">
+                      {warn}
+                    </p>
+                  ))}
+                </div>
+              )}
+
               {/* Pipeline Error Alert Banner */}
               {pipelineStatus === PIPELINE_STATUS.ERROR && (
                 <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
@@ -680,7 +734,7 @@ export const AgentWorkspace: React.FC = () => {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all ${activeTab === tab
+                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all min-w-[110px] text-center ${activeTab === tab
                           ? 'bg-card text-foreground shadow-sm border border-border'
                           : 'text-muted-foreground hover:text-muted-foreground'
                           }`}

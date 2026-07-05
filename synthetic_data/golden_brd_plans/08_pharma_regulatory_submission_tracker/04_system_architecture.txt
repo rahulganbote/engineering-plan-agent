@@ -1,0 +1,92 @@
+# System Architecture
+# Project: Regulatory Submission Readiness Tracker
+# Domain: Pharmaceutical | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: solution_architect
+run_id: 08_pharma_regulatory_submission_tracker_architecture
+citations: [arch_patterns_chunk_1, Solution_Architect_Template_chunk_0, org_engineering_standards_chunk_1]
+confidence_score: 0.86
+assumptions:
+  - Enterprise SSO, secrets management, centralized logs, and CI/CD are available.
+  - Dependent systems expose approved sandbox APIs.
+flagged_ambiguities:
+  - Final deployment region and data residency constraints require confirmation.
+
+## Pattern Selection
+pattern: Workflow and reporting platform
+pattern_justification: |
+  Readiness tracking is workflow-heavy with reporting and audit requirements; a data lake-only approach was rejected because users need controlled state transitions and e-signature evidence. Team size is assumed to be 5-8 engineers, which is enough for clear component ownership without creating unnecessary platform overhead. The primary NFR driver is Dashboard loads readiness for 5,000 documents in <= 3 seconds P95. The architecture respects compliance constraints for 21 CFR Part 11, GxP validation, ICH eCTD conventions.
+
+## Components
+components:
+  - name: Submission Tracker API
+    responsibility: Manages submission plans and readiness states.
+    technology: C# .NET 8
+    interfaces: [REST, SQL]
+  - name: DMS Sync Worker
+    responsibility: Imports document metadata and status changes.
+    technology: Azure Functions
+    interfaces: [Vault API, queue]
+  - name: Dependency Rules Engine
+    responsibility: Evaluates market and module dependencies.
+    technology: NRules
+    interfaces: [In-process rules, SQL]
+  - name: Readiness Dashboard
+    responsibility: Shows module status, risks, and alerts.
+    technology: React + Power BI Embedded
+    interfaces: [REST, embedded reports]
+
+## Data Flow
+data_flow:
+  - "1. User or upstream system submits data for Regulatory Submission Readiness Tracker."
+  - "2. Entry service validates identity, schema, and consent or policy constraints."
+  - "3. Processing components enrich, score, or route the request using Submission plans, document metadata, QC status, approval evidence, market-specific dependencies."
+  - "4. Workflow/API layer presents results to Regulatory affairs managers, publishing specialists, quality reviewers and records audit evidence."
+  - "5. Failure path: integration failures are queued, retried, and shown with actionable status."
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01 Performance: Dashboard loads readiness for 5,000 documents in <= 3 seconds P95."
+    architecture_decision: "Workflow and reporting platform with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_1
+  - nfr: "NFR-02 Availability: 99.7% uptime during business hours across regions."
+    architecture_decision: "Workflow and reporting platform with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_2
+  - nfr: "NFR-03 Scalability: Support 300 active submissions and 50,000 tracked documents."
+    architecture_decision: "Workflow and reporting platform with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_3
+  - nfr: "NFR-04 Security: Enforce SSO, e-signature evidence, and immutable audit logs."
+    architecture_decision: "Workflow and reporting platform with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_4
+  - nfr: "NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 2 hours."
+    architecture_decision: "Workflow and reporting platform with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_5
+  - nfr: "NFR-06 Maintainability: Market-specific dependency rules configurable by regulatory operations."
+    architecture_decision: "Workflow and reporting platform with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_6
+
+## Deployment Model
+deployment_model: Managed cloud deployment with private networking, centralized identity, encrypted data stores, and monitored CI/CD promotion.
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    U[Users and Upstream Systems] --> G[API Gateway and Identity]
+    G --> C1
+    C1[Submission Tracker API] --> C2
+    C2[DMS Sync Worker] --> C3
+    C3[Dependency Rules Engine] --> C4
+    C4[Readiness Dashboard] --> C1
+    C1 --> A[Audit and Observability]
+    C2 --> A
+    C3 --> A
+
+## Architecture Decision Checklist
+- Pattern justified against team size and NFRs: Y
+- External dependencies listed with fallback behavior: Y
+- Data flow covers happy path and primary failure mode: Y
+- Every BRD NFR has a corresponding nfr_mapping entry: Y
+- Security controls specified: Y
+- Observability covered: Y
+- Mermaid diagram included: Y

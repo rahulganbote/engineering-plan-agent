@@ -100,7 +100,12 @@ SCHEMA = """{
 class SolutionArchitectAgent(BaseAgent):
     """Creates the architecture artifact as an independent specialist spoke."""
 
-    def run(self, state: PipelineState, feedback: str = "") -> ArchitectureOutput:
+    def run(
+        self,
+        state: PipelineState,
+        feedback: str = "",
+        poc_veto_reason: str | None = None,
+    ) -> ArchitectureOutput:
         start = self.start_timer()
         log.info(f"[{state.run_id}] SolutionArchitect start | revision={state.revision_count}")
 
@@ -130,7 +135,7 @@ class SolutionArchitectAgent(BaseAgent):
             if not web_results.used_fallback:
                 citation_ids = ["tavily_web_grounding"] + web_results.sources
 
-        raw = self._generate(brd_text, context_str, citation_ids, feedback)
+        raw = self._generate(brd_text, context_str, citation_ids, feedback, poc_veto_reason)
         output = self._parse(raw, state.run_id, citation_ids)
 
         # Render Mermaid → SVG via Kroki. Non-blocking: SVG stays None on failure,
@@ -163,13 +168,23 @@ class SolutionArchitectAgent(BaseAgent):
         context_str: str,
         citation_ids: list[str],
         feedback: str,
+        poc_veto_reason: str | None = None,
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
+        veto_block = (
+            f"\nPREVIOUS PoC VETO CONSTRAINT:\n"
+            f"The previous PoC validation rejected the technology stack / architecture design for the following reason:\n"
+            f"{poc_veto_reason}\n"
+            f"You MUST revise the architecture pattern and components to address this concern directly.\n"
+            if poc_veto_reason
+            else ""
+        )
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
                 f"{feedback_block}"
+                f"{veto_block}"
                 f"AVAILABLE CITATION IDs:\n{cites}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 f"BRD:\n{brd_text}\n\n"

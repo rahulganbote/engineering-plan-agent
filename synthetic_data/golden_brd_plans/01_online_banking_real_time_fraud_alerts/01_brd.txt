@@ -1,0 +1,79 @@
+# Business Requirements Document
+# Project: Real-Time Digital Banking Fraud Alerts
+# Domain: Online Banking | Synthetic Golden Dataset | Version: 1.0
+
+## Background and Business Context
+Detect risky digital banking activity and deliver customer-facing alerts before fraudulent transfers settle.
+
+Current state: ACH and instant-payment fraud losses increased 18% quarter over quarter, while analyst review queues miss the two-minute alert window.
+
+Primary users: Retail banking customers, fraud analysts, contact-center agents.
+
+## Objectives
+1. Reduce confirmed unauthorized digital transfer losses by 25% within two quarters.
+2. Notify customers of high-risk activity within 30 seconds at P95.
+3. Give analysts an explainable risk timeline with event provenance for every alert.
+4. Preserve FFIEC-aligned audit trails for all risk decisions and overrides.
+
+## Stakeholders
+- Product Owner: Product Manager, Fraud Operations
+- Technical Lead: Engineering Lead, Digital Channels
+- Business Sponsor: VP Digital Banking
+- Primary Users: Retail banking customers, fraud analysts, contact-center agents
+- Compliance / Security: FFIEC, GLBA, SOC 2, internal model-risk review control owners
+- External: Vendors and platform teams for Core banking API, identity provider, event stream, SMS gateway, mobile push service, case-management system
+
+## Scope Boundaries
+In Scope:
+- Event ingestion from online banking login, payee, ACH, wire, and Zelle-like transfer streams.
+- Risk scoring API with rules plus ML model feature lookup.
+- Customer notification through mobile push, SMS fallback, and secure inbox.
+- Analyst console API for alert disposition and false-positive tracking.
+
+Out of Scope:
+- Core banking ledger changes.
+- New customer authentication factors beyond existing MFA integrations.
+- International payment rails.
+
+## Functional Requirements
+FR-01: The system shall provide Event ingestion from online banking login, payee, ACH, wire, and Zelle-like transfer streams.
+FR-02: The system shall integrate with Core banking API, identity provider, event stream, SMS gateway, mobile push service, case-management system.
+FR-03: The system shall manage data assets including Digital session events, transfer metadata, device intelligence, customer contact preferences, analyst dispositions.
+FR-04: The system shall enforce compliance controls for FFIEC, GLBA, SOC 2, internal model-risk review.
+FR-05: The system shall expose role-based workflows for primary users.
+FR-06: The system shall record decision provenance, user actions, and system-generated outputs.
+FR-07: The system shall provide operational dashboards for throughput, failures, and business KPIs.
+FR-08: The system shall support export or downstream handoff for approved outputs.
+FR-09: The system shall handle partial integration failures with retry, queueing, and user-visible status.
+FR-10: The system shall support audit review by exporting evidence for selected records.
+
+## Non-Functional Requirements
+NFR-01 Performance: P95 risk decision latency <= 700 ms for 150 events per second.
+NFR-02 Availability: 99.95% monthly uptime for the scoring and notification path.
+NFR-03 Scalability: Scale to 3x Cyber Monday traffic without manual infrastructure changes.
+NFR-04 Security: Encrypt PII at rest and in transit; enforce least-privilege analyst access.
+NFR-05 Recoverability: RPO <= 5 minutes and RTO <= 30 minutes for alerting services.
+NFR-06 Observability: Trace every alert from event ingest to customer notification within 5 minutes.
+
+## Constraints
+- Team: Cross-functional product squad with 5-8 engineers, QA, security, and part-time domain experts.
+- Timeline: MVP target in 14 weeks; production launch target in 18 weeks.
+- Budget: Implementation must fit an annualized run-rate approved by the business sponsor.
+- Technology: Prefer organization-approved cloud, identity, observability, and RAG tooling.
+- Compliance: FFIEC, GLBA, SOC 2, internal model-risk review requirements must be traceable before launch.
+
+## Risks
+- RISK-01 (HIGH): False positives may erode customer trust - Mitigation: Tune thresholds with analyst feedback and customer friction metrics.
+- RISK-02 (HIGH): Payment stream schema changes can break scoring - Mitigation: Use contract tests and schema registry gates.
+- RISK-03 (MEDIUM): SMS provider throttling may delay alerts - Mitigation: Use push-first routing and multi-provider failover.
+
+## Acceptance Criteria
+- FR-01 through FR-04 pass integration tests using representative synthetic and historical sample data.
+- All NFRs have automated or operational validation evidence before go-live.
+- Security review confirms encryption, access control, audit logging, and data-retention behavior.
+- Business owner signs off on pilot KPI dashboard and exception workflow.
+
+## Success Criteria Post Launch
+- Reduce confirmed unauthorized digital transfer losses by 25% within two quarters.
+- Notify customers of high-risk activity within 30 seconds at P95.
+- Give analysts an explainable risk timeline with event provenance for every alert.

@@ -87,6 +87,10 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
         const payload = (log.payload || log) as LogEvent;
         return `[Token Engine] Usage update: ${payload.input?.toLocaleString() || 0} in / ${payload.output?.toLocaleString() || 0} out`;
       }
+      case 'orchestrator_reconciled': {
+        const count = log.directive_count || log.payload?.directive_count || 0;
+        return `[Orchestrator EM] Arbitration completed: Issued ${count} alignment directives for Pass 2 refinement.`;
+      }
       case 'artifacts_update':
         return `[Artifacts Engine] Shared state bundles updated.`;
       default: {

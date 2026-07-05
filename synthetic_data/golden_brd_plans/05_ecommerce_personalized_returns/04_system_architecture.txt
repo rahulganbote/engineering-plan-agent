@@ -1,0 +1,92 @@
+# System Architecture
+# Project: Personalized Returns and Exchange Experience
+# Domain: Ecommerce | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: solution_architect
+run_id: 05_ecommerce_personalized_returns_architecture
+citations: [arch_patterns_chunk_1, Solution_Architect_Template_chunk_0, org_engineering_standards_chunk_1]
+confidence_score: 0.86
+assumptions:
+  - Enterprise SSO, secrets management, centralized logs, and CI/CD are available.
+  - Dependent systems expose approved sandbox APIs.
+flagged_ambiguities:
+  - Final deployment region and data residency constraints require confirmation.
+
+## Pattern Selection
+pattern: API-first modular commerce service
+pattern_justification: |
+  The return experience needs fast synchronous APIs and policy-rule ownership; event-driven processing remains for warehouse notifications. A full microservice split was rejected for MVP speed. Team size is assumed to be 5-8 engineers, which is enough for clear component ownership without creating unnecessary platform overhead. The primary NFR driver is Return eligibility and recommendations respond in <= 1.5 seconds P95. The architecture respects compliance constraints for PCI scope avoidance, consumer refund laws, SOC 2.
+
+## Components
+components:
+  - name: Returns API
+    responsibility: Handles return initiation and eligibility checks.
+    technology: Kotlin Spring Boot
+    interfaces: [REST, OpenAPI]
+  - name: Policy Rules Module
+    responsibility: Evaluates return and exchange policies.
+    technology: Drools rules engine
+    interfaces: [In-process API, Git-backed rules]
+  - name: Recommendation Service
+    responsibility: Ranks exchange and store-credit offers.
+    technology: Python FastAPI + LightGBM
+    interfaces: [REST]
+  - name: Carrier Adapter
+    responsibility: Creates labels and tracks provider fallbacks.
+    technology: Node.js
+    interfaces: [REST, webhook]
+
+## Data Flow
+data_flow:
+  - "1. User or upstream system submits data for Personalized Returns and Exchange Experience."
+  - "2. Entry service validates identity, schema, and consent or policy constraints."
+  - "3. Processing components enrich, score, or route the request using Orders, product attributes, inventory, return reasons, customer preferences, carrier labels."
+  - "4. Workflow/API layer presents results to Shoppers, customer-service agents, warehouse returns team and records audit evidence."
+  - "5. Failure path: integration failures are queued, retried, and shown with actionable status."
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01 Performance: Return eligibility and recommendations respond in <= 1.5 seconds P95."
+    architecture_decision: "API-first modular commerce service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_1
+  - nfr: "NFR-02 Availability: 99.9% uptime during peak shopping windows."
+    architecture_decision: "API-first modular commerce service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_2
+  - nfr: "NFR-03 Scalability: Support 50,000 return sessions per hour during January peak."
+    architecture_decision: "API-first modular commerce service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_3
+  - nfr: "NFR-04 Security: Do not store payment card data; protect customer PII."
+    architecture_decision: "API-first modular commerce service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_4
+  - nfr: "NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 1 hour."
+    architecture_decision: "API-first modular commerce service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_5
+  - nfr: "NFR-06 Maintainability: Return policies editable by operations with approval workflow."
+    architecture_decision: "API-first modular commerce service with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_6
+
+## Deployment Model
+deployment_model: Managed cloud deployment with private networking, centralized identity, encrypted data stores, and monitored CI/CD promotion.
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    U[Users and Upstream Systems] --> G[API Gateway and Identity]
+    G --> C1
+    C1[Returns API] --> C2
+    C2[Policy Rules Module] --> C3
+    C3[Recommendation Service] --> C4
+    C4[Carrier Adapter] --> C1
+    C1 --> A[Audit and Observability]
+    C2 --> A
+    C3 --> A
+
+## Architecture Decision Checklist
+- Pattern justified against team size and NFRs: Y
+- External dependencies listed with fallback behavior: Y
+- Data flow covers happy path and primary failure mode: Y
+- Every BRD NFR has a corresponding nfr_mapping entry: Y
+- Security controls specified: Y
+- Observability covered: Y
+- Mermaid diagram included: Y

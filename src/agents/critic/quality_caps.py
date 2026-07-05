@@ -211,11 +211,17 @@ def is_actionable_bundle(state: PipelineState) -> bool:
     )
 
 
-def assign_badge(scores: dict, overall: float) -> QualityBadge:
+def assign_badge(scores: dict, overall: float, warnings: list[str] | None = None) -> QualityBadge:
     """
     Assign Green/Amber/Red quality badge based on dimension scores.
     """
     below = sum(1 for dim, threshold in THRESHOLDS.items() if scores.get(dim, 0) < threshold)
+    if warnings:
+        # Unresolved warnings/advisories force at least Amber regardless of overall score
+        if overall <= RED_THRESHOLD or below >= 2:
+            return QualityBadge.RED
+        return QualityBadge.AMBER
+
     if below >= 2 or overall <= RED_THRESHOLD:
         return QualityBadge.RED
     if below == 0 and overall >= GREEN_THRESHOLD:

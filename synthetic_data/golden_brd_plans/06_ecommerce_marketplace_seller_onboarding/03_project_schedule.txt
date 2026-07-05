@@ -1,0 +1,120 @@
+# Project Schedule
+# Project: Marketplace Seller Onboarding and Compliance
+# Domain: Ecommerce | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: schedule_estimator
+run_id: 06_ecommerce_marketplace_seller_onboarding_schedule
+citations: [project_timelines_chunk_3, Project_Schedule_Example1_PFRA_chunk_0]
+confidence_score: 0.80
+assumptions:
+  - Two-week sprint cadence.
+  - 790 total engineering effort days includes QA, DevOps, and compliance support.
+  - One sprint of contingency is absorbed across hardening and launch activities.
+flagged_ambiguities:
+  - Vendor onboarding lead times need confirmation.
+  - Exact number of pilot users is not specified.
+buffer_weeks: 1
+total_effort_days: 790
+critical_path:
+  - Data access and sandbox connectivity for Identity verification vendor, tax validation API, sanctions screening API, catalog service, seller portal, payout platform
+  - Core workflow and decision provenance implementation
+  - NFR validation for Seller dashboard actions respond in <= 2 seconds P95.
+  - Security and compliance signoff for KYC/KYB, sanctions screening, marketplace product policy, SOC 2
+  - Pilot business acceptance
+
+## Sprints
+### Sprint 1 - Weeks 1-2: Discovery, Architecture, and Data Profiling
+sprint: 1
+week_range: W1-W2
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Discovery, Architecture, and Data Profiling deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 2 - Weeks 3-4: Integration Foundations and Contract Tests
+sprint: 2
+week_range: W3-W4
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Integration Foundations and Contract Tests deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 3 - Weeks 5-6: Core Workflow and Data Model
+sprint: 3
+week_range: W5-W6
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Core Workflow and Data Model deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 4 - Weeks 7-8: Business Rules and Decision Provenance
+sprint: 4
+week_range: W7-W8
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Business Rules and Decision Provenance deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 5 - Weeks 9-10: User Workflow, Exports, and Notifications
+sprint: 5
+week_range: W9-W10
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - User Workflow, Exports, and Notifications deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 6 - Weeks 11-12: Security, Compliance, and Audit Evidence
+sprint: 6
+week_range: W11-W12
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Security, Compliance, and Audit Evidence deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 7 - Weeks 13-14: Performance, Recovery, and Operational Readiness
+sprint: 7
+week_range: W13-W14
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Performance, Recovery, and Operational Readiness deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 8 - Weeks 15-16: Pilot, Feedback, and Production Launch
+sprint: 8
+week_range: W15-W16
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Pilot, Feedback, and Production Launch deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+### Sprint 9 - Weeks 17-18: Stabilization and Handoff
+sprint: 9
+week_range: W17-W18
+effort_days: 87.8
+team_members: [Engineering Lead, Senior Engineer, Engineer, QA, Product Owner]
+deliverables:
+  - Stabilization and Handoff deliverable accepted by Product Owner
+  - Traceability updated for relevant BRD requirements
+  - Tests and operational evidence committed for completed scope
+
+## Comparable Project Lessons
+- Data and integration projects frequently slip when source contracts are not tested early.
+- Compliance-heavy workflows require evidence capture from the first sprint, not at the end.
+- Performance tests should use production-shaped data before pilot launch.

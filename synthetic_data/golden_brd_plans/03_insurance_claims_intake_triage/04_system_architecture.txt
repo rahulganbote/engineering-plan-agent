@@ -1,0 +1,92 @@
+# System Architecture
+# Project: AI-Assisted Property Claim Intake and Triage
+# Domain: Insurance Claims | Synthetic Golden Dataset | Version: 1.0
+
+## Output Contract Header
+agent_name: solution_architect
+run_id: 03_insurance_claims_intake_triage_architecture
+citations: [arch_patterns_chunk_1, Solution_Architect_Template_chunk_0, org_engineering_standards_chunk_1]
+confidence_score: 0.86
+assumptions:
+  - Enterprise SSO, secrets management, centralized logs, and CI/CD are available.
+  - Dependent systems expose approved sandbox APIs.
+flagged_ambiguities:
+  - Final deployment region and data residency constraints require confirmation.
+
+## Pattern Selection
+pattern: Event-driven workflow orchestration
+pattern_justification: |
+  Claim intake has long-running document and assignment steps; event orchestration handles retries and surge. A synchronous three-tier app was rejected because uploads and OCR would block user flows. Team size is assumed to be 5-8 engineers, which is enough for clear component ownership without creating unnecessary platform overhead. The primary NFR driver is Submit FNOL and receive triage result in <= 5 seconds P95 excluding upload time. The architecture respects compliance constraints for NAIC model audit expectations, state claims handling rules, SOC 2.
+
+## Components
+components:
+  - name: FNOL API
+    responsibility: Captures claim intake requests and upload metadata.
+    technology: Node.js NestJS
+    interfaces: [REST, presigned URLs]
+  - name: Document Intelligence Worker
+    responsibility: Extracts text and classifies claim documents.
+    technology: AWS Textract + Python
+    interfaces: [S3 events, queue]
+  - name: Triage Rules Service
+    responsibility: Combines policy, severity, and routing rules.
+    technology: Drools + Java Spring Boot
+    interfaces: [REST, rules repository]
+  - name: Claims Adapter
+    responsibility: Creates claim records and assignments in the core system.
+    technology: MuleSoft API
+    interfaces: [REST/SOAP]
+
+## Data Flow
+data_flow:
+  - "1. User or upstream system submits data for AI-Assisted Property Claim Intake and Triage."
+  - "2. Entry service validates identity, schema, and consent or policy constraints."
+  - "3. Processing components enrich, score, or route the request using Policy coverage, FNOL forms, uploaded photos, loss location, weather-event data, adjuster queues."
+  - "4. Workflow/API layer presents results to Policyholders, claims adjusters, claim supervisors and records audit evidence."
+  - "5. Failure path: integration failures are queued, retried, and shown with actionable status."
+
+## NFR Mappings
+nfr_mappings:
+  - nfr: "NFR-01 Performance: Submit FNOL and receive triage result in <= 5 seconds P95 excluding upload time."
+    architecture_decision: "Event-driven workflow orchestration with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_1
+  - nfr: "NFR-02 Availability: 99.9% uptime and disaster-event surge mode within 30 minutes."
+    architecture_decision: "Event-driven workflow orchestration with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_2
+  - nfr: "NFR-03 Scalability: Handle 10x normal claim volume during catastrophe events."
+    architecture_decision: "Event-driven workflow orchestration with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_3
+  - nfr: "NFR-04 Security: Encrypt documents and restrict claim file access by role and region."
+    architecture_decision: "Event-driven workflow orchestration with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_4
+  - nfr: "NFR-05 Recoverability: RPO <= 15 minutes and RTO <= 2 hours."
+    architecture_decision: "Event-driven workflow orchestration with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_5
+  - nfr: "NFR-06 Observability: Expose queue depth, OCR confidence, and triage decision traces."
+    architecture_decision: "Event-driven workflow orchestration with managed scaling, encrypted storage, role-based access, retries, and trace logging supports this requirement."
+    citation: arch_patterns_chunk_6
+
+## Deployment Model
+deployment_model: Managed cloud deployment with private networking, centralized identity, encrypted data stores, and monitored CI/CD promotion.
+
+## Architecture Diagram (Mermaid)
+mermaid_diagram: |
+  graph TD
+    U[Users and Upstream Systems] --> G[API Gateway and Identity]
+    G --> C1
+    C1[FNOL API] --> C2
+    C2[Document Intelligence Worker] --> C3
+    C3[Triage Rules Service] --> C4
+    C4[Claims Adapter] --> C1
+    C1 --> A[Audit and Observability]
+    C2 --> A
+    C3 --> A
+
+## Architecture Decision Checklist
+- Pattern justified against team size and NFRs: Y
+- External dependencies listed with fallback behavior: Y
+- Data flow covers happy path and primary failure mode: Y
+- Every BRD NFR has a corresponding nfr_mapping entry: Y
+- Security controls specified: Y
+- Observability covered: Y
+- Mermaid diagram included: Y

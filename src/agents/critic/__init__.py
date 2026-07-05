@@ -143,7 +143,7 @@ class CriticAgent:
                 )
 
         # Step 7: Assign quality badge
-        badge = self._assign_badge(scores, overall)
+        badge = self._assign_badge(scores, overall, state.warnings)
 
         # Step 8: Decide if revision is needed
         requires_revision = badge in (QualityBadge.RED, QualityBadge.AMBER) and state.revision_count < MAX_REVISIONS
@@ -259,8 +259,8 @@ class CriticAgent:
     ) -> dict[str, str]:
         return generate_revision_feedback(state, scores, hallucination_flags, consistency_issues)
 
-    def _assign_badge(self, scores: dict, overall: float) -> QualityBadge:
-        return assign_badge(scores, overall)
+    def _assign_badge(self, scores: dict, overall: float, warnings: list[str] | None = None) -> QualityBadge:
+        return assign_badge(scores, overall, warnings)
 
     def _detect_unciteed_tool_usage(self, state: PipelineState) -> list[HallucinationFlag]:
         return detect_unciteed_tool_usage(state)

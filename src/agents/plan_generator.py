@@ -102,19 +102,30 @@ class PlanGeneratorAgent(BaseAgent):
         )
         log.info(f"[{state.run_id}] PlanGenerator RAG | chunks={len(citation_ids)}")
 
+        # Construct PoC context constraint if it exists
+        poc_context = ""
+        if state.poc_output:
+            poc_context = (
+                f"\n\nPLANNING CONSTRAINT (Upstream PoC committed):\n"
+                f"- PoC Duration: {state.poc_output.duration_weeks} weeks\n"
+                f"- PoC Team Size: {state.poc_output.team_size} engineer(s)\n"
+                f"- PoC Hypothesis & Scope: {state.poc_output.poc_hypothesis}\n"
+                f"CRITICAL RULE: The duration of the first phase (e.g. Discovery/PoC Phase) in your plan MUST be at least equal to the PoC duration ({state.poc_output.duration_weeks} weeks) because the PoC must run first.\n"
+            )
+
         from src.agents.base_agent import _current_model_family
 
         _family = (_current_model_family() or "openai").lower()
 
         if _family == "anthropic":
             log.info(f"[{state.run_id}] PlanGenerator using optimized single-turn generation for Anthropic")
-            raw = self._generate_direct(brd_text, context_str, feedback, citation_ids)
+            raw = self._generate_direct(brd_text, context_str, feedback, citation_ids, poc_context)
         else:
             # ── Reflection Step 1: Draft ──────────────────────────────────────────
-            draft = self._draft(brd_text, context_str, feedback)
+            draft = self._draft(brd_text, context_str, feedback, poc_context)
 
             # ── Reflection Step 2+3: Critique + Final JSON ────────────────────────
-            raw = self._reflect_and_finalize(brd_text, draft, context_str, citation_ids)
+            raw = self._reflect_and_finalize(brd_text, draft, context_str, citation_ids, poc_context)
 
         # ── Parse + validate ──────────────────────────────────────────────────
         output = self._parse(raw, state.run_id, citation_ids)
@@ -140,12 +151,13 @@ class PlanGeneratorAgent(BaseAgent):
     def _brd_text(self, state: PipelineState) -> str:
         return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
 
-    def _draft(self, brd_text: str, context_str: str, feedback: str) -> str:
+    def _draft(self, brd_text: str, context_str: str, feedback: str, poc_context: str = "") -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         return self._call_llm_with_retry(
             system_prompt="You are a senior Engineering Manager. Draft an engineering plan.",
             user_prompt=(
                 f"{feedback_block}"
+                f"{poc_context}"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 f"BRD:\n{brd_text}\n\n"
                 "Write a draft engineering plan - phases, milestones with owners, risks, team."
@@ -158,6 +170,7 @@ class PlanGeneratorAgent(BaseAgent):
         draft: str,
         context_str: str,
         citation_ids: list[str],
+        poc_context: str = "",
     ) -> str:
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
@@ -165,6 +178,7 @@ class PlanGeneratorAgent(BaseAgent):
             user_prompt=(
                 f"DRAFT:\n{draft}\n\n"
                 f"AVAILABLE CITATION IDs (use for risk.citation):\n{cites}\n\n"
+                f"{poc_context}"
                 f"BRD:\n{brd_text}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
                 "Review the draft. Fix: missing owner_role, vague deliverables, "
@@ -174,7 +188,9 @@ class PlanGeneratorAgent(BaseAgent):
             response_format={"type": "json_object"},
         )
 
-    def _generate_direct(self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str]) -> str:
+    def _generate_direct(
+        self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str], poc_context: str = ""
+    ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
@@ -190,6 +206,7 @@ Rules:
 6. Output ONLY valid JSON - no markdown fences, no explanation""",
             user_prompt=(
                 f"{feedback_block}"
+                f"{poc_context}"
                 f"AVAILABLE CITATION IDs (use for risk.citation):\n{cites}\n\n"
                 f"BRD:\n{brd_text}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"

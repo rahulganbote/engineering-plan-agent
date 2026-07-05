@@ -53,7 +53,7 @@ SCHEMA = """{
 class TechStackAgent(BaseAgent):
     """Creates stack options as an independent specialist spoke."""
 
-    def run(self, state: PipelineState, feedback: str = "") -> TechStackOutput:
+    def run(self, state: PipelineState, feedback: str = "", poc_veto_reason: str | None = None) -> TechStackOutput:
         start = self.start_timer()
         log.info(f"[{state.run_id}] TechStack start | revision={state.revision_count}")
 
@@ -101,7 +101,34 @@ class TechStackAgent(BaseAgent):
             if not web_results.used_fallback:
                 citation_ids = ["tavily_web_grounding"] + web_results.sources
 
-        raw = self._generate(brd_text, context_str, citation_ids, feedback, github_signal)
+        arch_context = ""
+        if state.arch_output:
+            components_str = ", ".join(f"{c.name} ({c.technology})" for c in state.arch_output.components)
+            arch_context = (
+                f"\nCONFIRMED ARCHITECTURE (Architect just decided):\n"
+                f"- Pattern: {state.arch_output.pattern}\n"
+                f"- Components: {components_str}\n"
+                f"- Deployment Model: {state.arch_output.deployment_model}\n"
+                f"Your tech stack recommendations MUST be compatible with these architectural choices.\n"
+            )
+
+        veto_block = ""
+        if poc_veto_reason:
+            veto_block = (
+                f"\nPREVIOUS PoC VETO CONSTRAINT:\n{poc_veto_reason}\n"
+                f"Your previous tech stack was rejected. Propose a DIFFERENT stack "
+                f"that is compatible with the confirmed architecture above.\n"
+            )
+
+        raw = self._generate(
+            brd_text,
+            context_str,
+            citation_ids,
+            feedback,
+            github_signal,
+            arch_context=arch_context,
+            veto_block=veto_block,
+        )
         output = self._parse(raw, state.run_id, citation_ids)
 
         self.log_run(
@@ -128,6 +155,8 @@ class TechStackAgent(BaseAgent):
         citation_ids: list[str],
         feedback: str,
         github_signal: str,
+        arch_context: str = "",
+        veto_block: str = "",
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
@@ -135,6 +164,8 @@ class TechStackAgent(BaseAgent):
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
                 f"{feedback_block}"
+                f"{arch_context}"
+                f"{veto_block}"
                 f"AVAILABLE CITATION IDs:\n{cites}\n\n"
                 f"GITHUB API SIGNAL:\n{github_signal or 'Unavailable - use org standards and BRD constraints.'}\n\n"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"

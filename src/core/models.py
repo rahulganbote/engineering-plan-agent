@@ -363,6 +363,8 @@ class PoCOutput(AgentOutputBase):
     success_criteria: list[SuccessCriterion]
     team_size: int
     risk_if_poc_fails: str  # what happens to the project if PoC fails
+    requires_tech_stack_revision: bool = False
+    tech_stack_veto_reason: str | None = None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -490,6 +492,22 @@ class CriticOutput(BaseModel):
     requires_revision: bool
 
 
+class AlignmentDirective(BaseModel):
+    """Orchestrator's alignment directive for a specialist agent on Pass 2."""
+
+    agent_name: str
+    directive: str
+    reasoning: str
+    evidence: str = ""
+
+
+class AlignmentMemo(BaseModel):
+    """Binding alignment memo issued by the Orchestrator after Pass 1 drafts."""
+
+    directives: list[AlignmentDirective] = Field(default_factory=list)
+    overall_strategy: str = ""
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # LangGraph Pipeline State
 # ──────────────────────────────────────────────────────────────────────────────
@@ -538,6 +556,15 @@ class PipelineState(BaseModel):
     stack_output: TechStackOutput | None = None
     critic_output: CriticOutput | None = None
 
+    # ── Global 2-Pass Alignment fields ───────────────────────────────────────
+    pass_number: int = 1
+    alignment_memo: AlignmentMemo | None = None
+    draft_plan_output: EngineeringPlanOutput | None = None
+    draft_schedule_output: ScheduleOutput | None = None
+    draft_arch_output: ArchitectureOutput | None = None
+    draft_poc_output: PoCOutput | None = None
+    draft_stack_output: TechStackOutput | None = None
+
     # ── Control flow ──────────────────────────────────────────────────────────
     revision_count: int = 0
     hitl_decision: HITLDecision = HITLDecision.PENDING
@@ -553,6 +580,7 @@ class PipelineState(BaseModel):
     )
     pipeline_status: str = "initializing"
     errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
     # ── Autonomous tool-call tracking ────────────────────────────────────────
     # Records which external tools were invoked during this run. The Critic

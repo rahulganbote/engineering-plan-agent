@@ -1,0 +1,79 @@
+# Business Requirements Document
+# Project: eDiscovery Privilege Review Prioritization
+# Domain: Legal Technology | Synthetic Golden Dataset | Version: 1.0
+
+## Background and Business Context
+Prioritize potentially privileged documents for attorney review using metadata, communication graph signals, and explainable classification.
+
+Current state: Large matters require expensive linear review, and privileged documents risk accidental production when reviewer queues are overloaded.
+
+Primary users: Litigation counsel, eDiscovery analysts, outside counsel reviewers.
+
+## Objectives
+1. Prioritize top 20% of documents to capture >= 75% of privileged items.
+2. Reduce outside counsel first-pass review spend by 30%.
+3. Explain privilege signals without exposing unnecessary sensitive content.
+4. Maintain chain-of-custody and defensible audit records.
+
+## Stakeholders
+- Product Owner: eDiscovery Program Manager
+- Technical Lead: Engineering Manager, Legal Data
+- Business Sponsor: Deputy General Counsel, Litigation
+- Primary Users: Litigation counsel, eDiscovery analysts, outside counsel reviewers
+- Compliance / Security: Attorney-client privilege, legal hold chain-of-custody, SOC 2, GDPR where applicable control owners
+- External: Vendors and platform teams for Relativity or equivalent eDiscovery API, identity provider, matter-management system, secure audit store
+
+## Scope Boundaries
+In Scope:
+- Ingest review-set metadata and extracted text from eDiscovery platform.
+- Classify privilege likelihood using attorney/domain lists, keywords, and graph features.
+- Generate prioritized review batches with explanation codes.
+- Export reviewer decisions back to eDiscovery platform.
+
+Out of Scope:
+- Final privilege determination without attorney review.
+- Native file processing and OCR pipeline.
+- Legal hold collection tools.
+
+## Functional Requirements
+FR-01: The system shall provide Ingest review-set metadata and extracted text from eDiscovery platform.
+FR-02: The system shall integrate with Relativity or equivalent eDiscovery API, identity provider, matter-management system, secure audit store.
+FR-03: The system shall manage data assets including Email metadata, extracted text, custodian lists, attorney lists, reviewer decisions, matter metadata.
+FR-04: The system shall enforce compliance controls for Attorney-client privilege, legal hold chain-of-custody, SOC 2, GDPR where applicable.
+FR-05: The system shall expose role-based workflows for primary users.
+FR-06: The system shall record decision provenance, user actions, and system-generated outputs.
+FR-07: The system shall provide operational dashboards for throughput, failures, and business KPIs.
+FR-08: The system shall support export or downstream handoff for approved outputs.
+FR-09: The system shall handle partial integration failures with retry, queueing, and user-visible status.
+FR-10: The system shall support audit review by exporting evidence for selected records.
+
+## Non-Functional Requirements
+NFR-01 Performance: Score 1 million documents in <= 6 hours.
+NFR-02 Availability: 99.5% uptime for batch management and exports.
+NFR-03 Scalability: Support matters up to 25 million documents using partitioned batch processing.
+NFR-04 Security: Matter-level isolation and encrypted processing workspaces.
+NFR-05 Recoverability: RPO <= 30 minutes and rerunnable scoring batches.
+NFR-06 Defensibility: Retain model version, features, and reviewer action logs for every score.
+
+## Constraints
+- Team: Cross-functional product squad with 5-8 engineers, QA, security, and part-time domain experts.
+- Timeline: MVP target in 16 weeks; production launch target in 20 weeks.
+- Budget: Implementation must fit an annualized run-rate approved by the business sponsor.
+- Technology: Prefer organization-approved cloud, identity, observability, and RAG tooling.
+- Compliance: Attorney-client privilege, legal hold chain-of-custody, SOC 2, GDPR where applicable requirements must be traceable before launch.
+
+## Risks
+- RISK-01 (HIGH): False negatives could lead to privilege waiver - Mitigation: Use conservative thresholds and mandatory attorney review for low-confidence sets.
+- RISK-02 (HIGH): Matter data leakage across workspaces is unacceptable - Mitigation: Enforce strict tenant isolation and automated access tests.
+- RISK-03 (MEDIUM): Opposing counsel may challenge model defensibility - Mitigation: Log features, versions, thresholds, and validation reports.
+
+## Acceptance Criteria
+- FR-01 through FR-04 pass integration tests using representative synthetic and historical sample data.
+- All NFRs have automated or operational validation evidence before go-live.
+- Security review confirms encryption, access control, audit logging, and data-retention behavior.
+- Business owner signs off on pilot KPI dashboard and exception workflow.
+
+## Success Criteria Post Launch
+- Prioritize top 20% of documents to capture >= 75% of privileged items.
+- Reduce outside counsel first-pass review spend by 30%.
+- Explain privilege signals without exposing unnecessary sensitive content.
