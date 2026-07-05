@@ -443,9 +443,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           to: data.fallback_to || '',
         });
       }
-      if (data.pipeline_status === 'error') {
-        setPipelineStatus(PIPELINE_STATUS.ERROR);
-        setErrorMessage(cleanLlmErrorMessage(data.errors?.[0] || 'An unexpected error occurred.'));
+      if (data.pipeline_status) {
+        setPipelineStatus(data.pipeline_status as PipelineStatus);
+        if (data.pipeline_status === 'error') {
+          setErrorMessage(cleanLlmErrorMessage(data.errors?.[0] || 'An unexpected error occurred.'));
+        }
       }
 
       if (data.critic_output) {
