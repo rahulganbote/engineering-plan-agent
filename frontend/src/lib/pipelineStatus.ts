@@ -6,6 +6,7 @@ export const PIPELINE_STATUS = {
   EVALUATING: 'evaluating',
   REVISING: 'revising',
   AWAITING_HITL: 'awaiting_hitl',
+  EXPORTING: 'exporting',
   EXPORTED: 'exported',
   REJECTED: 'rejected',
   EXPORT_FAILED: 'export_failed',

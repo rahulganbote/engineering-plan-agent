@@ -1,6 +1,6 @@
 import React from 'react';
 import { Shield, FileJson, Cpu, MessageSquare, UserCheck, Check, Loader2, X } from 'lucide-react';
-import { type ArtifactsState, type CriticOutput, type ApprovalResult, type LogEvent } from '../hooks/useSSE';
+import { type ArtifactsState, type CriticOutput, type LogEvent } from '../hooks/useSSE';
 import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
 interface TimelineStepperProps {
@@ -8,7 +8,6 @@ interface TimelineStepperProps {
   completedAgents: Set<string>;
   artifacts: ArtifactsState | null;
   criticOutput: CriticOutput | null;
-  approvalResult: ApprovalResult | null;
   logs: LogEvent[];
 }
 
@@ -17,7 +16,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   completedAgents,
   artifacts,
   criticOutput: _criticOutput,
-  approvalResult,
   logs,
 }) => {
   const hasBrdSections = Array.isArray(artifacts?.brd_sections) && (artifacts.brd_sections as unknown[]).length > 0;
@@ -93,11 +91,21 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     {
       id: 5,
       label: 'Decision',
-      description: 'HITL / Final Export',
+      get description() {
+        if (pipelineStatus === PIPELINE_STATUS.EXPORTING) {
+          return 'Exporting plans...';
+        }
+        if (pipelineStatus === PIPELINE_STATUS.EXPORTED) {
+          return 'Exported successfully';
+        }
+        if (pipelineStatus === PIPELINE_STATUS.REJECTED) {
+          return 'Plan rejected';
+        }
+        return 'HITL / Final Export';
+      },
       icon: UserCheck,
       get isCompleted() {
         return (
-          !!approvalResult ||
           pipelineStatus === PIPELINE_STATUS.EXPORTED ||
           pipelineStatus === PIPELINE_STATUS.REJECTED
         );
@@ -106,7 +114,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED);
+        return !this.isCompleted && !this.isFailed && (
+          pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ||
+          pipelineStatus === PIPELINE_STATUS.EXPORTING
+        );
       },
     },
   ];

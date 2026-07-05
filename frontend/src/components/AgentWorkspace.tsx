@@ -600,7 +600,6 @@ export const AgentWorkspace: React.FC = () => {
                 completedAgents={completedAgents}
                 artifacts={artifacts}
                 criticOutput={criticOutput}
-                approvalResult={approvalResult}
                 logs={logs}
               />
 
