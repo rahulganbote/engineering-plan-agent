@@ -52,9 +52,10 @@
 11. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
 12. [Operational Metrics & SLOs](#operational-metrics--slos)
 13. [Production Considerations & Risk Registry](#production-considerations--risk-registry)
-14. [Quick Start](#quick-start)
-15. [Project Layout (Brief)](#project-layout-brief)
-16. [License & Author](#license--author)
+14. [Lessons Learned](#lessons-learned)
+15. [Quick Start](#quick-start)
+16. [Project Layout (Brief)](#project-layout-brief)
+17. [License & Author](#license--author)
 
 
 ---
@@ -276,6 +277,28 @@ High-priority operational considerations and mitigations for production readines
 | **PII leak via Tavily Search** | Med | Med | Regex redact + section slice searches (avoids sending full BRD). | **Deploy LLM-based Layer 5 privacy filter pre-network query.** |
 | **Jira connection drops** | Low | Med | Graceful degradation: marks Jira status as `"skipped"` / `"local_fallback"`. | **Implement background job queue with automated retry-loops.** |
 | **LLM judge bias (Critic)** | Med | Low | Deterministic cap rules overrides to catch false-greens. | **Expand and calibrate the golden dataset `eval/` on niche BRDs.** |
+
+---
+
+## Lessons Learned
+
+Building a production-grade multi-agent system surfaces unique operational challenges compared to simple proof-of-concept demos. Below are the key engineering takeaways:
+
+### System Reliability, Security & Observability
+* **Reliable execution over feature complexity:** Prioritizing core execution stability over non-essential features drives higher adoption. Hardening the Critic agent, evaluation frameworks, and the security layer produced a significantly more resilient architecture.
+* **Deterministic guardrails & compliance:** Large Language Models (LLMs) remain highly susceptible to prompt injection. Requesting agents to "cite sources" for grounding is insufficient; the Critic must actively and algorithmically verify that generated citations accurately map back to real vector database chunk keys.
+* **Telemetry from Day 1:** Agentic workflows frequently mask processing errors, causing pipelines to stall or degrade without throwing traditional exceptions. Integrating robust telemetry platforms like LangSmith from the project's inception is mandatory to maintain system trace visibility.
+* **Cost & token governance:** Full LangSmith tracing is reserved for high-signal executions, code releases, red-flagged runs, and evaluation regressions to manage costs. In contrast, routine production traffic is captured using lightweight, structured JSONL logs.
+
+### Data Strategy & Evaluation Frameworks
+* **Data strategy & golden datasets:** System output quality relies strictly on the accuracy of your validation data. Defining Pydantic data structures at the organizational level prevents systemic schema drift, and golden datasets must be strictly version-controlled.
+* **Overcoming optimistic LLM-as-a-Judge bias:** LLM judges inherently lean toward overly optimistic evaluations. Autonomous components require strict external wrappers rather than embedded prompts. To counteract this, the Critic is wrapped with three deterministic validation constraints—FM-1 (citation hallucination), FM-2 (uncited claims), and FM-3 (sentinel fallback)—that immediately override the LLM's self-assigned score.
+* **Responsible AI & human-in-the-loop (HITL):** Autonomous systems require an active enforcement mindset. Hallucination detection requires deterministic gates; no agent output exports to production without an explicit human-in-the-loop approval mechanism (e.g., Jira tickets are only generated post-human validation).
+
+### Architecture, Latency & Product Design
+* **Modular topology selection:** Agent extensibility is easily overlooked, and modifying your system topology late in development is highly disruptive. This pipeline was iterated across parallel, sequential phase-gated, and two-pass parallel with Orchestrator arbitration designs before identifying an architecture that converged successfully while remaining fully observable. Developers must prototype system topologies explicitly before writing underlying agent code blocks.
+* **Latency as a core product constraint:** While a 50-second processing time is objectively fast for complex artifact generation, end-users expect immediate system responsiveness. Shifting to a parallel dispatch architecture yielded the most significant performance improvement, optimizing sequential fan-out times from ~90 seconds down to ~26 seconds p50 (n=13, OpenAI).
+* **Conversational AI & HITL complexity:** Translating complex artifact summaries for voice assistant consumption requires highly structured prompt engineering and contextual boundaries. Development teams must allocate dedicated engineering cycles specifically for integrating voice-based human feedback loops.
 
 ---
 

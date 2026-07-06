@@ -7,24 +7,93 @@
  * of the app uses.
  *
  * Linkified "Principles" section points each rule of thumb at the matching
- * section in the public demo README, so the page doubles as a navigable index
+ * section in the public repo README, so the page doubles as a navigable index
  * into the engineering reasoning.
  */
-import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle, GraduationCap, Database, Activity } from "lucide-react";
 import { ThemePicker } from "./ThemePicker";
 
-const DEMO_REPO_URL = "https://github.com/rahulganbote/engineering-plan-agent-demo";
+const PUBLIC_REPO_URL = "https://github.com/rahulganbote/engineering-plan-agent";
+
+const LESSONS: Array<{
+  category: string;
+  icon: typeof GraduationCap;
+  color: string;
+  items: Array<{ headline: string; body: string }>;
+}> = [
+  {
+    category: "System Reliability, Security & Observability",
+    icon: ShieldCheck,
+    color: "text-success",
+    items: [
+      {
+        headline: "Reliable AI over complexity.",
+        body: "Fewer bells and whistles and more reliable execution leads to higher adoption. Hardening the Critic, evaluation methods, and the security layer produced a far more reliable system.",
+      },
+      {
+        headline: "Guardrails & compliance.",
+        body: "LLMs are susceptible to prompt injection. Asking agents to \"cite sources\" for grounding is not enough; the Critic must actively verify that citations map back to real vector chunk keys.",
+      },
+      {
+        headline: "Telemetry from Day 1.",
+        body: "Silent failures are common in production Agent systems. Telemetry like LangSmith is mandatory from the beginning because you cannot debug or fix what you cannot trace.",
+      },
+      {
+        headline: "Cost & token governance.",
+        body: "Full-scale LangSmith monitoring is expensive. A production architecture should sample traces for new releases or red-flagged runs, while letting local structured JSONL logs handle routine telemetry.",
+      },
+    ],
+  },
+  {
+    category: "Data Strategy & Evaluation Frameworks",
+    icon: Database,
+    color: "text-primary",
+    items: [
+      {
+        headline: "Data strategy & Golden datasets.",
+        body: "Requires thorough analysis of schemas and data consumed. Output quality is only as good as the Golden dataset. Defining Pydantic structures at the org level prevents schema drift, and golden datasets must be version-controlled.",
+      },
+      {
+        headline: "Overcoming optimistic LLM-as-Judge behavior.",
+        body: "LLM judges are optimistic by default. Autonomous components need guardrails wrapped around them, not embedded inside them (e.g., wrapping the Critic with deterministic rules like BERTScore).",
+      },
+      {
+        headline: "Responsible AI & HITL.",
+        body: "Autonomous agents require a mindset shift. Hallucination detection requires active enforcement — nothing exports without a Human-in-the-Loop approval gate (e.g., Jira tickets are created only upon explicit human approval).",
+      },
+    ],
+  },
+  {
+    category: "Architecture, Latency & Product Design",
+    icon: Activity,
+    color: "text-ai-spark",
+    items: [
+      {
+        headline: "Modular vs. functional design.",
+        body: "Extensibility is easily missed, and mid-project refactoring is expensive. Explicitly provide the \"Big Picture\" in the BRD and future roadmap, not just the task spec.",
+      },
+      {
+        headline: "Latency is a product experience.",
+        body: "A 50-second wait time is fast for complex generation, but users expect immediate feedback. Parallel dispatch yielded the biggest latency improvement (3× speedup) through orchestration optimization.",
+      },
+      {
+        headline: "Conversational AI & HITL complexity.",
+        body: "Getting voice assistants to interpret complex artifact summaries requires highly structured prompt context. Budget extra development cycles for integrating voice-based human feedback.",
+      },
+    ],
+  },
+];
 
 const PRINCIPLES: Array<{ headline: string; body: string; anchor: string }> = [
   {
     headline: "Start simple.",
     body: "Default to a single agent and earn every extra one. One task, one Agent, one goal. Use modular design, build for evaluation, and think about reliability from day one.",
-    anchor: "#challenges--lessons-learned",
+    anchor: "#lessons-learned",
   },
   {
     headline: "Clarity beats cleverness.",
     body: "Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.",
-    anchor: "#architectural-overview",
+    anchor: "#architecture-overview",
   },
   {
     headline: "Structure everything.",
@@ -34,7 +103,7 @@ const PRINCIPLES: Array<{ headline: string; body: string; anchor: string }> = [
   {
     headline: "Design for failure.",
     body: "Assume tools fail, agents disagree, and users are confused then show how your system survives.",
-    anchor: "#system-design--core-pillars",
+    anchor: "#production-considerations--risk-registry",
   },
   {
     headline: "Measure what matters.",
@@ -165,15 +234,15 @@ export const AboutPage: React.FC = () => {
 
           <div className="space-y-3 pt-2">
             <p className="text-sm leading-relaxed text-foreground">
-              The public demo repository below has detailed design documents, evaluation framework, and a mock pipeline anyone can run without API keys. The production prompts, RAG ingestion logic, production pipeline and integration logic stay in a private repository.
+              The full EM Copilot AI implementation is now available in the public repository below, including detailed design documents, the evaluation framework, production-grade pipeline code, RAG ingestion logic, prompts, and integration adapters. API keys, deployment secrets, and environment-specific configuration remain outside the repository.
             </p>
             <a
-              href={DEMO_REPO_URL}
+              href={PUBLIC_REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
             >
-              Browse Github public demo repo
+              Browse GitHub repo
               <ExternalLink size={14} />
             </a>
           </div>
@@ -198,7 +267,7 @@ export const AboutPage: React.FC = () => {
             {PRINCIPLES.map((p) => (
               <li key={p.headline} className="text-sm leading-relaxed space-y-0">
                 <a
-                  href={`${DEMO_REPO_URL}${p.anchor}`}
+                  href={`${PUBLIC_REPO_URL}${p.anchor}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-bold text-primary hover:underline block w-fit"

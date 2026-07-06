@@ -9,11 +9,11 @@ I'm Rahul Ganbote. My forte is taking a business need or a client goal, building
 
 Five rules of thumb that were followed while building EM Copilot, and that I bring into every system.
 
-- **[Start simple.](https://github.com/rahulganbote/engineering-plan-agent-demo#challenges--lessons-learned)** Default to a single agent and earn every extra one. One task, one Agent, one goal. Use modular design, build for evaluation, and think about reliability from day one.
-- **[Clarity beats cleverness.](https://github.com/rahulganbote/engineering-plan-agent-demo#architectural-overview)** Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.
-- **[Structure everything.](https://github.com/rahulganbote/engineering-plan-agent-demo#tech-stack-justification)** Plans, tool contracts, agent outputs, handoffs. If it's not structured, it's not production-ready.
-- **[Design for failure.](https://github.com/rahulganbote/engineering-plan-agent-demo#system-design--core-pillars)** Assume tools fail, agents disagree, and users are confused, then show how your system survives.
-- **[Measure what matters.](https://github.com/rahulganbote/engineering-plan-agent-demo#evaluation-framework)** Success rate, escalation quality, cost, latency, and trust.
+- **[Start simple.](https://github.com/rahulganbote/engineering-plan-agent#lessons-learned)** Default to a single agent and earn every extra one. One task, one Agent, one goal. Use modular design, build for evaluation, and think about reliability from day one.
+- **[Clarity beats cleverness.](https://github.com/rahulganbote/engineering-plan-agent#architecture-overview)** Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.
+- **[Structure everything.](https://github.com/rahulganbote/engineering-plan-agent#tech-stack-justification)** Plans, tool contracts, agent outputs, handoffs. If it's not structured, it's not production-ready.
+- **[Design for failure.](https://github.com/rahulganbote/engineering-plan-agent#production-considerations--risk-registry)** Assume tools fail, agents disagree, and users are confused, then show how your system survives.
+- **[Measure what matters.](https://github.com/rahulganbote/engineering-plan-agent#evaluation-framework)** Success rate, escalation quality, cost, latency, and trust.
 
 ---
 
@@ -39,8 +39,8 @@ Five rules of thumb that were followed while building EM Copilot, and that I bri
 
 EM Copilot is built with enterprise requirements in mind. 
 
-The public demo repository below has detailed design documents, evaluation framework, and a mock pipeline anyone can run without API keys. The production prompts, RAG ingestion logic, production pipeline and integration logic stay in a private repository.
-[Browse Github public demo repo](https://github.com/rahulganbote/engineering-plan-agent-demo)
+The full EM Copilot AI implementation is now available in the public repository below, including detailed design documents, the evaluation framework, production-grade pipeline code, RAG ingestion logic, prompts, and integration adapters. API keys, deployment secrets, and environment-specific configuration remain outside the repository..
+[Browse Github public repo](https://github.com/rahulganbote/engineering-plan-agent)
 
 ---
 
