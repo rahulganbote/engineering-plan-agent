@@ -4,7 +4,7 @@
 
 ---
 
-Every Engineering Manager I've worked with knows the rhythm.
+Every Software Engineering team I've worked with knows the rhythm.
 
 A Business Requirements Document lands in your inbox on Monday - fifteen pages of stakeholder hopes - and the next two or three days disappear. You read it. You draft a plan. You sketch an architecture. You estimate effort. You look at past projects for tech-stack patterns. You convene the team for a scoping session. Two or three EMs handed the same BRD produce three different plans, because the output depends on who's drafting under what pressure on what day.
 
@@ -53,17 +53,20 @@ The pipeline runs in four conceptual stages.
 
 **1. Ingestion.** The BRD passes through a deterministic seven-check security layer: file format and size, word-count minimum, regex pattern matching for 15 known LLM injection strings, a semantic injection scan via GPT-4o-mini (catches multi-paragraph prompt injections that regex misses), PII redaction (SSN, credit cards, emails → `[REDACTED]`), and a completeness check that confirms the document actually contains Objectives, Requirements, Constraints, Risks, and NFRs. No raw BRD text ever leaves the pipeline; only a SHA-256 hash is logged.
 
-**2. Orchestrator dispatch.** The Orchestrator parses the BRD into sections and dispatches them to five specialist agents that run in parallel through a `ThreadPoolExecutor`. This concurrency is what cuts wall-clock time from ~2.5 minutes (sequential) to ~50 seconds. The specialists:
+**2. Orchestrator dispatch (Two-Pass Loop).** The Orchestrator runs the specialists in two distinct phases:
+- **Pass 1 (Drafting):** Fans out to all five specialists in parallel using a `ThreadPoolExecutor` to generate initial drafts. This concurrency is what cuts wall-clock time from ~2.5 minutes (sequential) to under a minute.
+- **Arbitration & Pass 2 (Alignment):** The Orchestrator evaluates the drafts. If alignment conflicts are found, it schedules a targeted Pass 2 rerun *only* on the violating specialists using custom directives, reusing the other drafts to save cost and latency. If consistency checks pass with 0 conflicts, the LLM arbitration and Pass 2 rerun are bypassed entirely.
 
+The specialists:
 - **Plan Generator** - reflection-based, with a self-critique pass
-- **Schedule Estimator** - references historical project timelines from RAG
-- **Solution Architect** - generates the Mermaid diagram and architectural rationale
-- **PoC Planner** - defines a focused proof of concept with measurable criteria
+- **Schedule Estimator** - references historical project timelines from RAG and applies effort-scaling sanity checks
+- **Solution Architect** - generates the Mermaid SVG diagram and architectural rationale
+- **PoC Planner** - defines a focused proof-of-concept scope with measurable criteria
 - **Tech Stack Recommender** - uses RAG and (when available) GitHub API velocity signals
 
 Each specialist returns a Pydantic-typed output with required citations. An untyped or uncited output fails the contract - the schema enforces groundedness at the type system level.
 
-**3. Aggregation and Critic.** A Fan-In Aggregator collects all five outputs and packages the combined state. A single **Critic Agent** then audits the *aggregate*, not each piece in isolation. That's the second crucial design decision.
+**3. Aggregation and Critic.** A Fan-In Aggregator collects all aligned outputs and packages the combined state. A single **Critic Agent** then audits the *aggregate*, not each piece in isolation. That's the second crucial design decision.
 
 **4. HITL and exports.** Approved artifacts flow to Jira (Epic via MCP), Google Sheets (full run + Plan/Schedule/Stack tabs), and a ReportLab PDF. Rejections log to Sheets as an audit row. Pipeline errors fire a Slack alert and log an error row.
 
@@ -119,7 +122,7 @@ Each of these was a thirty-minute discovery. None of them is in the documentatio
 
 Every approval flows through a **HITL gate**. I deliberately kept this strict: nothing exports until a human says yes.
 
-The gate supports two paths. The first is the obvious one - Approve/Reject buttons in the Streamlit UI, with a rating slider and a notes field. The second is more interesting: an **ElevenLabs conversational voice agent** is embedded in the page, primed at conversation start with a **compact briefing of the generated artifacts** passed via dynamic variables. The EM can ask "What's the total duration?" or "Why this tech stack?" - the agent answers from the briefing, then accepts a verbal "approve with rating five" command that fires a webhook to the `/approve` endpoint.
+The gate supports two paths. The first is the obvious one - Approve/Reject buttons in the React UI, with a rating slider and a notes field. The second is more interesting: an **ElevenLabs conversational voice agent** is embedded in the page, primed at conversation start with a **compact briefing of the generated artifacts** passed via dynamic variables. The EM can ask "What's the total duration?" or "Why this tech stack?" - the agent answers from the briefing, then accepts a verbal "approve with rating five" command that fires a webhook to the `/approve` endpoint.
 
 The artifact briefing was a late addition. Initially the voice agent could only approve - it knew nothing about *what* it was being asked to approve, which was useless. The fix was small: build a 1500-character plain-text summary of the generated artifacts (critic verdict, plan phases, top risks, schedule numbers, architecture pattern, PoC hypothesis, recommended stack) and hand it to the widget as an `{{artifact_brief}}` dynamic variable. The agent's system prompt references it, and suddenly voice goes from gimmick to legitimately useful. The EM can *interrogate the plan* in natural language before committing.
 
@@ -224,4 +227,4 @@ If you build something similar - especially around Critic design, MCP integratio
 
 ---
 
-*Rahul Ganbote builds backend systems and applied AI/ML solutions. Built EM-Copilot to assist Engineering Managers and Technical Program Managers.*
+*I, Rahul Ganbote, built EM-Copilot to assist Engineering Managers and Technical Program Managers.*

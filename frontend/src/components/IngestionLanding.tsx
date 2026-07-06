@@ -11,7 +11,10 @@ interface IngestionLandingProps {
   onLogin: () => void;
 }
 
-export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
+export const IngestionLanding: React.FC<IngestionLandingProps> = ({
+  selectedFile,
+  isAuthenticated,
+}) => {
   const [activeNode, setActiveNode] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{
@@ -233,15 +236,20 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
       {/* Welcome & Subtitle Section */}
       <div className="space-y-1.5">
         <h2 className="text-base font-semibold tracking-tight text-foreground">
-          Transform BRDs into Implementation Plans in Minutes
+          Transform a BRD into Implementation Plans in Minutes
         </h2>
         <p className="text-xs text-muted-foreground max-w-3xl">
           EM Copilot is a multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package presented to you for review. Upon approval, it pushes the artifacts into Jira.
         </p>
-        {/* Runtime hint moved next to the Generate Engineering Plan button in
-            the sidebar - that's the action surface where this anticipation
-            actually matters for the user. */}
       </div>
+
+      {/* Welcome Callout for logged in, pre-upload state */}
+      {isAuthenticated && !selectedFile && (
+        <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary font-medium animate-in fade-in slide-in-from-top-1 duration-200">
+          <span className="text-sm">💡</span>
+          <span><strong>Next Step:</strong> Drag and drop a BRD file on the left to start your automated engineering run.</span>
+        </div>
+      )}
 
       {/* System Architecture Diagram - full width, compact above-the-fold layout */}
       <div className="rounded-xl border border-border bg-card/60 p-3.5 space-y-2 shadow-md">
@@ -398,21 +406,21 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = () => {
                   <marker id="purple-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8B5CF6" />
                   </marker>
-                  <marker id="red-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444" />
+                  <marker id="gray-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B" />
                   </marker>
                   <marker id="orange-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#F59E0B" />
                   </marker>
                 </defs>
 
-                {/* Security -> Orchestrator vertical line */}
+                {/* Security -> Orchestrator vertical line - neutral slate gray to blend into flow */}
                 <path
                   d={`M ${coords.secX},${coords.secY1} L ${coords.secX},${coords.secY2 - 2}`}
                   fill="none"
-                  stroke="#EF4444"
+                  stroke="#64748B"
                   strokeWidth="2"
-                  markerEnd="url(#red-arrow)"
+                  markerEnd="url(#gray-arrow)"
                 />
 
                 {/* Orchestrator -> Specialists vertical line */}

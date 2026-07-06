@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAuth } from '../context/AuthContext';
@@ -97,6 +97,7 @@ export const AgentWorkspace: React.FC = () => {
   } = useWorkspace();
 
   const [startupError, setStartupError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
@@ -226,15 +227,36 @@ export const AgentWorkspace: React.FC = () => {
               <div className="text-sm font-semibold text-foreground truncate">{user?.name || user?.email}</div>
             </div>
           ) : (
-            <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
-              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
-              <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, ensures seamless performance, and helps us maintain a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
-              <button
-                onClick={login}
-                className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded font-bold text-xs transition duration-155"
-              >
-                Sign in with Google
-              </button>
+            <div className="space-y-4">
+              <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
+                <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, ensures seamless performance, and helps us maintain a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
+                <button
+                  onClick={login}
+                  className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded font-bold text-xs transition duration-155"
+                >
+                  Sign in with Google
+                </button>
+              </div>
+
+              {/* Added checklist list to balance visual weight on the landing page */}
+              <div className="bg-secondary/40 border border-border/50 rounded-lg p-4 space-y-3">
+                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-foreground">What you can do:</h4>
+                <ul className="text-xs text-muted-foreground space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-success font-bold shrink-0">✓</span>
+                    <span><strong>Upload complex BRDs</strong> (PDF, DOCX, or TXT)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success font-bold shrink-0">✓</span>
+                    <span><strong>Audit agent reasoning</strong> step-by-step with timeline metrics</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success font-bold shrink-0">✓</span>
+                    <span><strong>Sync approved plans</strong> directly into Jira and Google Sheets</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -288,24 +310,28 @@ export const AgentWorkspace: React.FC = () => {
           {isAuthenticated && (
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Upload BRD</h3>
-              <p className="text-xs text-muted-foreground">Drop a PDF, DOCX, or TXT BRD</p>
 
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileChange}
+                // Clear value on every click so re-selecting the same file after
+                // clearing it (or after the picker is cancelled) reliably fires
+                // the change event. Without this, <input type="file"> silently
+                // no-ops when the browser thinks the value hasn't changed.
+                onClick={(e) => {
+                  e.stopPropagation(); // Avoid event bubbling loop to dropzone
+                  (e.target as HTMLInputElement).value = '';
+                }}
+                accept=".pdf,.docx,.txt"
+                className="hidden"
+              />
               <div
+                onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleFileDrop}
                 className="border-2 border-dashed border-border rounded-lg p-6 bg-background hover:bg-card/60 hover:border-primary/50 transition cursor-pointer text-center relative"
               >
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  // Clear value on every click so re-selecting the same file after
-                  // clearing it (or after the picker is cancelled) reliably fires
-                  // the change event. Without this, <input type="file"> silently
-                  // no-ops when the browser thinks the value hasn't changed.
-                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                  accept=".pdf,.docx,.txt"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
                 <Upload className="mx-auto text-primary mb-2" size={24} />
                 <p className="text-xs font-semibold text-primary">Drag and drop file here</p>
                 <p className="text-[10px] text-muted-foreground mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
@@ -333,14 +359,17 @@ export const AgentWorkspace: React.FC = () => {
           {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
             <div>
-              <div className="relative group/btn w-full">
+              <div 
+                className="relative group/btn w-full"
+                title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
+              >
                 <button
                   onClick={triggerPipeline}
                   disabled={!selectedFile || !!runId || isStartingPipeline}
                   className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
                     ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                     : selectedFile
-                      ? 'bg-primary hover:bg-primary/95 text-primary-foreground shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
+                      ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
                       : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                     }`}
                 >
@@ -364,7 +393,7 @@ export const AgentWorkspace: React.FC = () => {
               {/* Runtime expectation - sits with the action surface so the user
                   knows what to expect at the moment they're about to commit. */}
               {!runId && (
-                <div className="mt-2 flex items-start gap-2 text-[11px] text-muted-foreground">
+                <div className="mt-3 flex items-start gap-2 text-[11px] text-muted-foreground">
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0 mt-1" />
                   <span>Anticipate <strong className="text-foreground">60s &ndash; 120s</strong> total run time per BRD. Runtime varies based on the size and complexity of the BRD.</span>
                 </div>
@@ -387,13 +416,12 @@ export const AgentWorkspace: React.FC = () => {
             </div>
           )}
 
-          {/* Current Run Panel */}
           {runId && (
             <div className="border-t border-border pt-4 space-y-2">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Run</h4>
               <div className="flex items-center gap-1.5">
-                <div className="flex-1 bg-background p-2 rounded font-mono text-[10px] text-foreground border border-border break-all select-all">
-                  {runId}
+                <div className="flex-1 bg-background p-2 rounded font-sans text-[10px] text-foreground border border-border truncate" title={runId}>
+                  Run #{runId.slice(0, 5)}: {selectedFile ? selectedFile.name : 'BRD Pipeline'}
                 </div>
                 <button
                   onClick={() => {
@@ -500,7 +528,7 @@ export const AgentWorkspace: React.FC = () => {
           </div>
         </header>
         {/* Scrollable Workstation Body */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-12 space-y-8">
           {!runId ? (
             <div className="space-y-6">
               {startupError && (
@@ -528,12 +556,12 @@ export const AgentWorkspace: React.FC = () => {
             <>
               {/* Fallback Active Alert Banner */}
               {fallbackActive && (
-                <div className="bg-warning/20 border-l-4 border-warning p-4 rounded shadow-sm text-xs text-warning flex items-center justify-between animate-fade-in">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">⚠️</span>
+                <div className="bg-warning/20 border-l-4 border-warning py-2 px-4 rounded-lg shadow-sm text-[11px] text-warning flex items-center justify-between animate-fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm select-none">⚠️</span>
                     <div>
-                      <h4 className="font-bold text-warning">Automatic LLM Provider Fallback Triggered</h4>
-                      <p className="text-warning/80">
+                      <h4 className="font-bold text-warning text-xs">Automatic LLM Provider Fallback Triggered</h4>
+                      <p className="text-warning/80 mt-0.5 text-[11px] leading-snug">
                         The primary <strong>{fallbackActive.from.toUpperCase()}</strong> provider limits were reached or key expired. Switched to <strong>{fallbackActive.to.toUpperCase()}</strong> successfully to complete execution.
                       </p>
                     </div>
@@ -581,19 +609,25 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* HITL Awaiting Alert Banner */}
               {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && !approvalResult && (
-                <div className="bg-warning/20 border-l-4 border-warning p-4 rounded shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">⏸️</span>
+                <div className="bg-warning/20 border-l-4 border-warning py-2 px-4 rounded-lg shadow-sm flex items-center justify-between animate-fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm select-none">⏸️</span>
                     <div>
-                      <h4 className="text-sm font-bold text-warning">Action Required: Review the Artifacts. Approval needed to push plan into Jira.</h4>
+                      <h4 className="text-xs font-bold text-warning leading-snug">Action Required: Review the Artifacts. Approval needed to push plan into Jira.</h4>
                     </div>
                   </div>
-                  <a
-                    href="#decision-gate"
-                    className="px-4 py-2 bg-warning hover:bg-warning text-white font-semibold text-xs rounded transition shadow-sm shrink-0"
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const element = document.getElementById('decision-gate');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                    className="px-3 py-1 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-[11px] rounded transition shadow hover:shadow-md shrink-0 cursor-pointer"
                   >
-                    👇 Scroll to Decision Gate
-                  </a>
+                    Scroll to Decision Gate
+                  </button>
                 </div>
               )}
 
@@ -608,18 +642,18 @@ export const AgentWorkspace: React.FC = () => {
 
 
               {/* Performance Metrics Summary */}
-              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border">
+              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border my-4">
                 <div>
-                  <strong>Evaluation Score:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-success font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
+                  <strong>Evaluation Score:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
                 </div>
                 <div>
-                  <strong>Total Processing Time:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-success font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
+                  <strong>Total Processing Time:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Tokens used:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-success font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
+                  <strong>Tokens used:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Cost Spent:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-success font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
+                  <strong>Cost Spent:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
                 </div>
               </div>
 
@@ -811,52 +845,87 @@ export const AgentWorkspace: React.FC = () => {
                 <div className="border-t border-border pt-8">
                   <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
                     <div className="flex items-center justify-between border-b border-border pb-3">
-                      <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Export Results</h3>
+                      <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? (
+                          <span className="text-success animate-scale-in text-base">✅</span>
+                        ) : pipelineStatus === PIPELINE_STATUS.REJECTED ? (
+                          <span className="text-danger animate-scale-in text-base">❌</span>
+                        ) : (
+                          <span className="text-warning animate-scale-in text-base">⚠️</span>
+                        )}
+                        <span>Export Results</span>
+                      </h3>
                       <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === PIPELINE_STATUS.EXPORTED
                         ? 'bg-success/20 border border-success/40 text-success'
                         : pipelineStatus === PIPELINE_STATUS.REJECTED
                           ? 'bg-danger/20 border border-danger/40 text-danger'
                           : 'bg-warning/20 border border-warning/40 text-warning'
                         }`}>
-                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? '✗ Plan Rejected' : '⚠ Export Failed'}
+                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Plan Rejected' : 'Export Failed'}
                       </span>
                     </div>
 
-                    <div className="space-y-4">
+                    {pipelineStatus === PIPELINE_STATUS.REJECTED && (
+                      <p className="text-xs text-danger font-semibold bg-danger/10 border border-danger/20 p-3.5 rounded-lg animate-fade-in leading-relaxed">
+                        The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
                       {/* Google Sheets Status Box */}
                       {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
-                        <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
-                          <div className="text-xs font-bold text-success">
-                            Artifacts exported to Google Sheets
-                          </div>
-                          <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            {approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes."}
+                        <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 animate-fade-in h-full ${
+                          pipelineStatus === PIPELINE_STATUS.REJECTED
+                            ? 'bg-secondary/25 border border-border'
+                            : 'bg-success/15 border border-success/30'
+                        }`}>
+                          <div className="space-y-2">
+                            <div className={`text-xs font-bold ${
+                              pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'
+                            }`}>
+                              {pipelineStatus === PIPELINE_STATUS.REJECTED
+                                ? 'Rejection recorded in Google Sheets'
+                                : 'Artifacts exported to Google Sheets'}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground leading-relaxed">
+                              {pipelineStatus === PIPELINE_STATUS.REJECTED
+                                ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
+                                : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
+                            </div>
                           </div>
                           <a
                             href={approvalResult.sheet_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded font-bold text-xs transition duration-150 shadow-sm"
+                            className={`flex items-center justify-center w-fit px-4 py-2 bg-transparent border rounded font-bold text-xs transition duration-150 shadow-sm ${
+                              pipelineStatus === PIPELINE_STATUS.REJECTED
+                                ? 'border-muted-foreground/30 text-muted-foreground hover:bg-secondary/50'
+                                : 'border-primary text-primary hover:bg-primary/10'
+                            }`}
                           >
                             Open Google Sheet
                           </a>
                         </div>
                       ) : approvalResult?.export_status === 'local_fallback' ? (
-                        <div className="p-4 bg-warning/15 border border-warning/30 rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-warning">
-                            Artifacts saved to local fallback CSV
-                          </div>
-                          <div className="text-[11px] text-muted-foreground leading-relaxed">
-                            {approvalResult?.export_detail || "Google Sheets integration is not configured - local CSV backup exported instead."}
+                        <div className="p-4 bg-warning/15 border border-warning/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
+                          <div>
+                            <div className="text-xs font-bold text-warning">
+                              Artifacts saved to local fallback CSV
+                            </div>
+                            <div className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                              {approvalResult?.export_detail || "Google Sheets integration is not configured - local CSV backup exported instead."}
+                            </div>
                           </div>
                         </div>
                       ) : approvalResult?.export_status === 'failed' ? (
-                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg space-y-2 animate-fade-in">
-                          <div className="text-xs font-bold text-danger">
-                            Google Sheets export failed
-                          </div>
-                          <div className="text-[11px] text-danger leading-relaxed font-mono">
-                            {approvalResult?.export_detail || "Failed to push decision. Google Sheets export failed."}
+                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
+                          <div>
+                            <div className="text-xs font-bold text-danger">
+                              Google Sheets export failed
+                            </div>
+                            <div className="text-[11px] text-danger leading-relaxed font-mono mt-1">
+                              {approvalResult?.export_detail || "Failed to push decision. Google Sheets export failed."}
+                            </div>
                           </div>
                         </div>
                       ) : null}
@@ -864,49 +933,69 @@ export const AgentWorkspace: React.FC = () => {
                       {/* Jira Status Box */}
                       {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
                         approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
-                          <div className="p-4 bg-success/15 border border-success/30 rounded-lg space-y-3 animate-fade-in">
-                            <div className="text-xs font-bold text-success">
-                              Pushed to Jira: {approvalResult.jira_issue_key}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground leading-relaxed">
-                              {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
+                          <div className="p-4 bg-success/15 border border-success/30 rounded-lg flex flex-col justify-between gap-3 animate-fade-in h-full">
+                            <div className="space-y-2">
+                              <div className="text-xs font-bold text-success flex items-center gap-1.5">
+                                <span>Pushed to Jira:</span>
+                                {approvalResult.jira_issue_key && (
+                                  <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success-foreground">{approvalResult.jira_issue_key}</code>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
+                              </div>
+                              {/* Mini-metadata row showing generated title or scope summary */}
+                              <div className="text-[10px] text-muted-foreground bg-background/50 border border-border/40 p-2 rounded flex flex-col gap-1">
+                                <div>
+                                  <span className="font-bold text-foreground">Summary:</span> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan
+                                </div>
+                                <div>
+                                  <span className="font-bold text-foreground">Scope:</span> Multi-agent cross-functional deliverables & milestones exported
+                                </div>
+                              </div>
                             </div>
                             <a
                               href={approvalResult.jira_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-block px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded font-bold text-xs transition duration-150 shadow-sm"
+                              className="flex items-center justify-center w-fit px-4 py-2 bg-transparent border border-primary text-primary hover:bg-primary/10 rounded font-bold text-xs transition duration-150 shadow-sm"
                             >
                               Open Jira issue {approvalResult.jira_issue_key}
                             </a>
                           </div>
                         ) : approvalResult?.jira_status === 'skipped' ? (
-                          <div className="p-4 bg-card border border-border rounded-lg space-y-1 animate-fade-in">
-                            <div className="text-xs font-bold text-muted-foreground">
-                              Jira push skipped
-                            </div>
-                            <div className="text-[11px] text-muted-foreground leading-relaxed">
-                              {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
+                          <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
+                            <div>
+                              <div className="text-xs font-bold text-muted-foreground">
+                                Jira push skipped
+                              </div>
+                              <div className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                                {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
+                              </div>
                             </div>
                           </div>
                         ) : approvalResult?.jira_status === 'failed' ? (
-                          <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg space-y-2 animate-fade-in">
-                            <div className="text-xs font-bold text-danger">
-                              Jira push failed
-                            </div>
-                            <div className="text-[11px] text-danger leading-relaxed font-mono">
-                              {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
+                          <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
+                            <div>
+                              <div className="text-xs font-bold text-danger">
+                                Jira push failed
+                              </div>
+                              <div className="text-[11px] text-danger leading-relaxed font-mono mt-1">
+                                {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
+                              </div>
                             </div>
                           </div>
                         ) : (
                           /* Fallback when backend didn't include any jira_status
                              (e.g. Jira credentials not configured on this deploy). */
-                          <IntegrationNotConfigured
-                            title="Jira push not available"
-                            envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
-                            description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
-                            docsAnchor="#L59-L65"
-                          />
+                          <div className="h-full flex flex-col justify-between">
+                            <IntegrationNotConfigured
+                              title="Jira push not available"
+                              envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
+                              description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
+                              docsAnchor="#L59-L65"
+                            />
+                          </div>
                         )
                       )}
                     </div>

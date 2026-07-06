@@ -102,12 +102,12 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     },
     {
       id: 3,
-      label: 'Specialists Pass 1',
+      label: 'Specialists Drafting',
       get description() {
         if (pipelineStatus === PIPELINE_STATUS.DRAFTING) {
           return 'Drafting plans...';
         }
-        return 'Drafting (Pass 1)';
+        return 'Blueprint Generation';
       },
       icon: Cpu,
       get isCompleted() {
@@ -167,7 +167,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     },
     {
       id: 5,
-      label: 'Specialists Pass 2',
+      label: 'Specialists Alignment',
       get description() {
         if (pipelineStatus === PIPELINE_STATUS.ALIGNING || pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING) {
           return 'Aligning plans...';
@@ -175,7 +175,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         if (pipelineStatus === PIPELINE_STATUS.REVISING) {
           return 'Revising plans...';
         }
-        return 'Alignment (Pass 2)';
+        return 'Enforcing Standards';
       },
       icon: Cpu,
       get isCompleted() {
@@ -374,9 +374,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         </div>
       </div>
 
-      <div className="relative flex items-start justify-between w-full">
-        {/* Connecting progress line */}
-        <div className="absolute left-0 right-0 top-6 h-0.5 bg-secondary -z-0" />
+      {/* Increased mt-16 to leave enough space for the headers above */}
+      <div className="relative flex items-start justify-between w-full mt-16">
+        {/* Connecting progress line - sits behind nodes (z-0) and top-6 matches the node circle centers */}
+        <div className="absolute left-0 right-0 top-6 h-0.5 bg-secondary z-0" />
 
         {steps.map((step, idx) => {
           const StepIcon = step.icon;
@@ -385,37 +386,50 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           const isActive = step.isActive;
 
           // Compute style tokens
-          let iconContainerClasses = "w-12 h-12 rounded-full flex items-center justify-center border-2 z-15 transition-all duration-300 ";
-          let textLabelClasses = "text-xs font-bold mt-2 transition-colors duration-300 ";
-          const descriptionClasses = "text-[10px] text-muted-foreground truncate hidden md:block ";
+          let iconContainerClasses = "w-12 h-12 rounded-full flex items-center justify-center border-2 z-10 transition-all duration-300 ";
+          let textLabelClasses = "text-xs font-bold transition-colors duration-300 ";
+          const descriptionClasses = "text-[9px] md:text-[10px] text-slate-600 dark:text-slate-400 font-medium hidden md:block text-center ";
 
           if (isCompleted) {
-            iconContainerClasses += "bg-success/80 border-success text-success shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+            iconContainerClasses += "bg-success border-success text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]";
             textLabelClasses += "text-success";
           } else if (isFailed) {
-            iconContainerClasses += "bg-danger/20 border-danger text-danger shadow-[0_0_15px_rgba(239,68,68,0.2)]";
+            iconContainerClasses += "bg-danger border-danger text-white shadow-[0_0_15px_rgba(239,68,68,0.2)]";
             textLabelClasses += "text-danger";
           } else if (isActive) {
-            iconContainerClasses += "bg-primary/10 border-primary text-primary ring-4 ring-primary/30 animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]";
-            textLabelClasses += "text-primary font-extrabold";
+            if (step.id === 7 && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
+              iconContainerClasses += "bg-card border-warning text-warning ring-4 ring-warning/30 animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.4)]";
+              textLabelClasses += "text-warning font-extrabold";
+            } else {
+              iconContainerClasses += "bg-card border-primary text-primary ring-4 ring-primary/30 animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]";
+              textLabelClasses += "text-primary font-extrabold";
+            }
           } else {
-            iconContainerClasses += "bg-background border-border text-muted-foreground";
+            iconContainerClasses += "bg-card border-border text-muted-foreground";
             textLabelClasses += "text-muted-foreground";
           }
 
           return (
             <div key={step.id} className="flex flex-col items-center flex-1 relative z-10">
-              {/* Line connector segment highlight */}
-              {idx > 0 && (
+              {/* Line connector segment highlight - starts at center of current step and goes to next step (prevents overlapping issues on checkmarks) */}
+              {idx < steps.length - 1 && (
                 <div
-                  className={`absolute left-[-50%] right-[50%] top-6 h-0.5 -z-10 transition-all duration-500 ${
-                    steps[idx - 1].isCompleted
+                  className={`absolute left-[50%] right-[-50%] top-6 h-0.5 z-0 transition-all duration-500 ${
+                    step.isCompleted
                       ? 'bg-gradient-to-r from-success to-primary'
-                      : steps[idx - 1].isFailed
+                      : step.isFailed
                       ? 'bg-gradient-to-r from-danger to-secondary'
                       : 'bg-secondary'
                   }`}
                 />
+              )}
+
+              {/* Odd-numbered step header: absolute-positioned above the circle */}
+              {step.id % 2 !== 0 && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center text-center h-12 justify-end w-[130px] md:w-[150px]">
+                  <span className={`${textLabelClasses} leading-tight block text-center`}>{step.label}</span>
+                  <span className={`${descriptionClasses} leading-tight mt-0.5 block text-center`}>{step.description}</span>
+                </div>
               )}
 
               <div className={iconContainerClasses}>
@@ -429,12 +443,18 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   <StepIcon size={18} />
                 )}
               </div>
-              <span className={textLabelClasses}>{step.label}</span>
-              <span className={descriptionClasses}>{step.description}</span>
+
+              {/* Even-numbered step header: flows naturally in vertical stack below the circle */}
+              {step.id % 2 === 0 && (
+                <div className="mt-3 flex flex-col items-center text-center w-[130px] md:w-[150px] z-10">
+                  <span className={`${textLabelClasses} leading-tight block text-center`}>{step.label}</span>
+                  <span className={`${descriptionClasses} leading-tight mt-0.5 block text-center`}>{step.description}</span>
+                </div>
+              )}
 
               {/* Specialist status nested for Step 3 (Pass 1) and Step 5 (Pass 2) */}
               {(step.id === 3 || step.id === 5) && pipelineStatus !== 'idle' && (
-                <div className="mt-4 flex flex-col gap-2 w-full max-w-[140px] z-20 animate-scale-in">
+                <div className={`mt-4 flex flex-col gap-2 w-full max-w-[140px] z-20 animate-scale-in transition-all duration-300 ${isCompleted ? 'opacity-40 hover:opacity-100' : ''}`}>
                   <div className="flex flex-col gap-1.5 bg-background/40 p-2 rounded-lg border border-border/60 shadow-inner">
                     {[
                       { key: 'solution_architect', shortLabel: 'Architect' },
@@ -475,7 +495,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 
               {/* Arbitration indicator under step 4 */}
               {step.id === 4 && (
-                <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in">
+                <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in" title={artifacts?.alignment_memo?.overall_strategy || 'Pass 2 Directives'}>
                   {pipelineStatus === PIPELINE_STATUS.ARBITRATING && (
                     <div className="px-2 py-1 rounded bg-warning/15 border border-warning/35 text-[8px] text-warning font-semibold text-center animate-pulse">
                       EM Reconciling Drafts...

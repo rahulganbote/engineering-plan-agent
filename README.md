@@ -10,9 +10,9 @@
 [![Anthropic](https://img.shields.io/badge/Multi--Provider-OpenAI%20%2B%20Anthropic-D97757)](https://www.anthropic.com)
 [![Tavily](https://img.shields.io/badge/Search-Tavily-orange)](https://tavily.com)
 
-> EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon HITL (Human in the Loop) approval, it pushes the artifacts into Jira. 
+> EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon HITL (Human in the Loop) approval, it pushes the artifacts into Jira. Artifacts are also downloadable as PDF.
 
-🔗 **Live:** [emcopilot.ai](https://emcopilot.ai) 
+🔗 **Live:** [emcopilot.ai](https://emcopilot.ai)    
 🔗 **Loom walkthrough:** *(coming soon)*
 
 ---
@@ -47,13 +47,14 @@
 6. [Evaluation Framework](#evaluation-framework)
 7. [Rate Limiter and Security](#rate-limiter-and-security)
 8. [Screenshots of Demo](#screenshots-of-demo)
-9. [Multi-Provider Strategy](#multi-provider-strategy)
-10. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
-11. [Operational Metrics & SLOs](#operational-metrics--slos)
-12. [Production Considerations & Risk Registry](#production-considerations--risk-registry)
-13. [Quick Start](#quick-start)
-14. [Project Layout (Brief)](#project-layout-brief)
-15. [License & Author](#license--author)
+9. [Observability & Telemetry](#observability--telemetry)
+10. [Multi-Provider Strategy](#multi-provider-strategy)
+11. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
+12. [Operational Metrics & SLOs](#operational-metrics--slos)
+13. [Production Considerations & Risk Registry](#production-considerations--risk-registry)
+14. [Quick Start](#quick-start)
+15. [Project Layout (Brief)](#project-layout-brief)
+16. [License & Author](#license--author)
 
 
 ---
@@ -103,6 +104,17 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
              ▼                     ▼                    ▼             ▼                ▼
              └─────────────────────└────────────────────┘─────────────└────────────────┘
                                                │
+        ┌──────────────────────────────────────┴──────────────────────────────────────┐
+        │                  INTERACTION & INTEGRATION LAYER                            │
+        │                                                                             │
+        │  [L1 In-Memory / L2 Redis Cache] ◄──► [Resilience / LLM / RAG / Search]     │
+        │                                                                             │
+        │  External Tool & API Calls:                                                 │
+        │    - Web Search (Tavily Search API for live knowledge retrieval)            │
+        │    - Vector DB (Pinecone semantic RAG retrieval for org templates)          │
+        │    - LLM Providers (OpenAI GPT-4o / Anthropic Claude 3.5 Sonnet)            │
+        └──────────────────────────────────────┬──────────────────────────────────────┘
+                                               │
                                                ▼
                                      Orchestrator (Pass 2)
                                   (Arbitration & Alignment)
@@ -128,11 +140,12 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
                       (Only flagged Specialists)       (Approve & Export / Reject)
 ```
 
-Three architectural patterns matter more than the rest:
+Four architectural patterns matter more than the rest:
 
 * **Two-Pass Targeted Alignment Loop**: Rather than chaining agents sequentially, the pipeline splits into two distinct passes. Pass 1 drafts all deliverables concurrently. If the EM submits custom directives during **Arbitration**, Pass 2 performs a targeted rerun *only* on the violating specialists, reusing the other drafts to save cost and latency.
 * **Targeted Critic Self-Correction**: After alignment, the Critic evaluates final outputs. If dimension scores fall below threshold limits, up to 2 self-correction cycles are triggered, rerunning only the flagged agents.
 * **Deterministic Quality Caps over LLM-Judge**: LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating to guarantee audit quality.
+* **L1/L2 Caching & External Tool Boundaries**: To optimize costs and latency, all external LLM calls, semantic Pinecone search queries, and external Tavily web lookups are intercepted by a unified caching layer (L1 in-process memory with thread-safe TTL/LRU, or L2 Redis Cache). Cache hits bypass network boundaries and external rate-limiters completely.
 
 The full architecture diagram with security boundaries, observability events, and integration channels lives at [docs/Design.md](./docs/Design.md).
 
@@ -152,7 +165,8 @@ The full architecture diagram with security boundaries, observability events, an
 | **Tool Integration** | Model Context Protocol (MCP) | Standardized Agent-to-Tool transport; the Jira Epic push runs through an `mcp-atlassian` server spawned over stdio |
 | **Resilience Primitives** | Custom `src/core/resilience.py` (mirrors Hystrix / Polly / resilience4j) | Small surface area, no external dependency; per-instance state with frozen `CallPolicy` |
 | **Cache Backends** | `InMemoryCache` / `RedisCache` / `TieredCache` / `SemanticBackend` (Pinecone) | Pluggable `CacheBackend` Protocol - chosen at runtime via `init_default_backend_from_env()` |
-| **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`; surfaced into Streamlit SSE stream |
+| **Event Bus** | Lightweight `src/core/events.py` emitter | Best-effort event fan-out for `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`; surfaced into React SSE stream |
+| **Observability** | LangSmith | Real-time execution tracing, latency tracking, token consumption monitoring, and cost dashboards from Day 1 |
 
 ---
 
@@ -188,10 +202,18 @@ Five-method evaluation suite (`eval/run_eval.py`):
 ## Rate Limiter and Security
 The API enforces rate limits to prevent runaway LLM costs and protect against abuse. Powered by `slowapi`, the `/run-pipeline` endpoint applies dual limits per user (`x/day` and `y/week`). Limits are keyed by the authenticated user's email and return a standard `429 Too Many Requests` response with a configurable `Retry-After` header (defaulting to 3600 seconds). Additionally, a hard budget cap of `$2.00` per run (`MAX_PIPELINE_RUN_BUDGET_USD`) is enforced to immediately abort any run exceeding this financial threshold. These parameters can be customized in production via environment variables.
 
+## Screenshots of Demo
+A full gallery of the operational React UI workspace, stepper progress runs, and LangSmith observability dashboards is available in [docs/screenshots/README.md](docs/screenshots/README.md).
+
 ---
 
-## Screenshots of Demo
-** TO-DO: Update screenshots from new UI in the [screenshots/README.md](docs/screenshots/README.md) **   
+## Observability & Telemetry
+
+Observability is a core production requirement implemented from Day 1. Every agent invocation, Pinecone RAG query, external web search, and Critic revision cycle is fully instrumented:
+
+*   **LangSmith Tracing**: Deep tracing of all LangGraph nodes and execution paths. Inspect input/output payloads, debug token consumption per agent, and isolate network delays or model failures instantly.
+*   **Token & Cost Accounting**: Granular logging of prompt and response tokens per LLM call, enabling real-time cost calculation based on model-family pricing tables.
+*   **Custom Observability Bus**: A lightweight event bus (`src/core/events.py`) emits structured event telemetry (e.g. `cache_hit`, `cache_miss`, `retry`, `breaker_open`, `bulkhead_timeout`) in a thread-safe, non-blocking manner. Surfaced directly into the client’s Server-Sent Events (SSE) progress stream.
 
 ---
 
