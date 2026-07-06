@@ -17,9 +17,8 @@ import { ArchitectureTab } from './ArchitectureTab';
 import { PoCTab } from './PoCTab';
 import { TechStackTab } from './TechStackTab';
 import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2, Plus } from 'lucide-react';
-import { generateVoiceBrief } from '../lib/voiceBrief';
-import { VoiceWidgetFAB } from './VoiceWidgetFAB';
 import { ThemePicker } from './ThemePicker';
+import { generateVoiceBrief } from '../lib/voiceBrief';
 import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 import FeedbackModal from './FeedbackModal';
 
@@ -467,11 +466,15 @@ export const AgentWorkspace: React.FC = () => {
             <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent AI Software Engineering Planning System</p>
           </div>
           {elevenlabsAgentId && runId && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
-            <VoiceWidgetFAB
-              agentId={elevenlabsAgentId}
-              runId={runId}
-              voiceBrief={generateVoiceBrief(artifacts, criticOutput, runId)}
-              apiBaseUrl={apiBaseUrl}
+            <elevenlabs-convai
+              agent-id={elevenlabsAgentId}
+              variant="compact"
+              dynamic-variables={JSON.stringify({
+                run_id: runId,
+                api_base_url: apiBaseUrl,
+                artifact_brief: generateVoiceBrief(artifacts, criticOutput, runId),
+                voice_brief: generateVoiceBrief(artifacts, criticOutput, runId),
+              })}
             />
           )}
           <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
@@ -620,6 +623,62 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               </div>
 
+              {/* Critic Scoring Cards */}
+              {criticOutput && (
+                <ErrorBoundary fallback={
+                  <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-danger font-bold text-sm uppercase tracking-wider">
+                      <ShieldAlert size={16} />
+                      <span>Critic Component Failure</span>
+                    </div>
+                    <p className="text-xs text-danger/80 leading-relaxed">
+                      An error occurred while rendering the Critic scorecards. The rest of the workspace remains active.
+                    </p>
+                  </div>
+                }>
+                  <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-4">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
+                        <div className="text-xs text-muted-foreground">
+                          Final Score: <strong className="text-success font-bold">{criticOutput.overallScore.toFixed(2)}/5.0</strong>  |  Total Revision(s): <strong className="text-success font-bold">{criticOutput.revisionNumber}</strong>
+                        </div>
+                      </div>
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
+                        ? 'bg-success/20 text-success border border-success/40'
+                        : criticOutput.badge === 'amber'
+                          ? 'bg-warning/50 text-warning border border-warning/50'
+                          : 'bg-danger/50 text-danger border border-danger/50'
+                        }`}>
+                        {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
+                      </span>
+                    </div>
+
+                    {/* Metrics row */}
+                    <div className="flex flex-wrap md:flex-nowrap gap-x-4 gap-y-2 items-center justify-between text-xs text-muted-foreground pt-2">
+                      {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
+                        const data = criticOutput.dimensions[metric];
+                        if (!data) return null;
+                        return (
+                          <div key={metric} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <strong className="capitalize">{metric}:</strong>
+                            <code className={`bg-background border border-border px-1.5 py-0.5 rounded font-mono font-bold text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
+                              {data.score.toFixed(2)}
+                            </code>
+                            <span className={`text-[11px] font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
+                              {data.passed ? '✓' : '✗'}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground font-medium">
+                              ({data.threshold === 5 ? '=' : '≥'}{data.threshold})
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </ErrorBoundary>
+              )}
+
               {/* EM Alignment Directives Banner */}
               {artifacts?.alignment_memo && (
                 <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
@@ -665,59 +724,6 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* Critic Scoring Cards */}
-              {criticOutput && (
-                <ErrorBoundary fallback={
-                  <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
-                    <div className="flex items-center gap-2 text-danger font-bold text-sm uppercase tracking-wider">
-                      <ShieldAlert size={16} />
-                      <span>Critic Component Failure</span>
-                    </div>
-                    <p className="text-xs text-danger/80 leading-relaxed">
-                      An error occurred while rendering the Critic scorecards. The rest of the workspace remains active.
-                    </p>
-                  </div>
-                }>
-                  <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
-                    <div className="flex items-center justify-between border-b border-border/60 pb-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
-                        <div className="text-xs text-muted-foreground">
-                          Final Score: <strong className="text-foreground">{criticOutput.overallScore.toFixed(2)}/5.0</strong>  |  Total Revision(s): <strong className="text-foreground">{criticOutput.revisionNumber}</strong>
-                        </div>
-                      </div>
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
-                        ? 'bg-success/20 text-success border border-success/40'
-                        : criticOutput.badge === 'amber'
-                          ? 'bg-warning/50 text-warning border border-warning/50'
-                          : 'bg-danger/50 text-danger border border-danger/50'
-                        }`}>
-                        {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
-                      </span>
-                    </div>
-
-                    {/* Metrics row */}
-                    <div className="flex flex-wrap md:flex-nowrap gap-x-4 gap-y-2 items-center justify-between text-xs text-muted-foreground pt-2">
-                      {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
-                        const data = criticOutput.dimensions[metric];
-                        if (!data) return null;
-                        return (
-                          <div key={metric} className="flex items-center gap-1.5 whitespace-nowrap">
-                            <strong className="capitalize">{metric}:</strong>
-                            <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-foreground font-semibold text-[11px]">
-                              {data.score.toFixed(2)}
-                            </code>
-                            <span className={`text-[11px] font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
-                              {data.passed ? `✓ (≥${data.threshold})` : `✗ (≥${data.threshold})`}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </ErrorBoundary>
-              )}
-
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (
                 <div className="space-y-4">
@@ -737,14 +743,14 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
 
                   {/* Tabs list */}
-                  <div className="flex bg-background p-1 rounded-lg border border-border w-full md:w-fit overflow-x-auto scrollbar-none whitespace-nowrap">
+                  <div className="flex bg-background p-1 rounded-lg border border-border w-full overflow-x-auto scrollbar-none whitespace-nowrap">
                     {(['plan', 'schedule', 'arch', 'poc', 'stack'] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all min-w-[110px] text-center ${activeTab === tab
-                          ? 'bg-card text-foreground shadow-sm border border-border'
-                          : 'text-muted-foreground hover:text-muted-foreground'
+                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 ${activeTab === tab
+                          ? 'bg-card text-primary shadow-sm border border-primary font-extrabold'
+                          : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
                           }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
@@ -815,15 +821,6 @@ export const AgentWorkspace: React.FC = () => {
                         {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? '✗ Plan Rejected' : '⚠ Export Failed'}
                       </span>
                     </div>
-
-                    {pipelineStatus === PIPELINE_STATUS.REJECTED && (
-                      <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-lg space-y-1 font-semibold">
-                        <div className="text-xs font-bold uppercase tracking-wider">Re-evaluation Required</div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          This plan was rejected by the manager. Review the feedback logs and adjust details before starting a new run.
-                        </p>
-                      </div>
-                    )}
 
                     <div className="space-y-4">
                       {/* Google Sheets Status Box */}

@@ -35,6 +35,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [submittingDecision, setSubmittingDecision] = useState<'approved' | 'rejected' | null>(null);
 
   const handleSubmit = async (decision: 'approved' | 'rejected') => {
     if (decision === 'rejected' && !notes.trim()) {
@@ -44,8 +45,9 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
       return;
     }
 
+    setSubmittingDecision(decision);
     setIsSubmitting(true);
-    toast.info("Recording decision and exporting artifacts...", { duration: 1500 });
+    toast.info("Recording decision...", { duration: 1500 });
     
     try {
       const data = await apiFetch<ApprovalResponse>(`${apiBaseUrl}/approve/${runId}`, {
@@ -168,7 +170,11 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
       {isSubmitting && (
         <div className="flex items-center gap-3 text-xs text-muted-foreground justify-start pt-4 border-t border-border/60 animate-pulse">
           <Loader2 className="animate-spin text-primary shrink-0" size={16} />
-          <span>Recording decision · Pushing to Jira, writing to Google Sheets...</span>
+          {submittingDecision === 'rejected' ? (
+            <span>Recording rejection · Writing audit log to Google Sheets...</span>
+          ) : (
+            <span>Recording approval · Pushing to Jira, writing to Google Sheets...</span>
+          )}
         </div>
       )}
     </div>

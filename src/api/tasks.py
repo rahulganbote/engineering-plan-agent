@@ -177,9 +177,9 @@ async def _run_export_handlers_background(
     export_mode: str | None = None
     export_detail: str | None = None
     jira_url: str | None = None
-    jira_status: str | None = None
-    jira_mode: str | None = None
-    jira_detail: str | None = None
+    jira_status: str | None = "skipped" if decision == HITLDecision.REJECTED else None
+    jira_mode: str | None = "skipped" if decision == HITLDecision.REJECTED else None
+    jira_detail: str | None = "Skipped (Plan Rejected)" if decision == HITLDecision.REJECTED else None
     jira_issue_key: str | None = None
 
     try:
@@ -192,25 +192,37 @@ async def _run_export_handlers_background(
         registry_decision = "approve" if decision == HITLDecision.APPROVED else "reject"
         export_results: dict = {}
 
-        for handler_name, handler_fn in get_handlers_for_decision(registry_decision):
+        import asyncio
+
+        async def run_handler(h_name, h_fn):
             try:
                 import inspect as _inspect
 
-                sig = _inspect.signature(handler_fn)
+                sig = _inspect.signature(h_fn)
                 kwargs = {}
                 if "email" in sig.parameters:
                     kwargs["email"] = email
 
-                if _inspect.iscoroutinefunction(handler_fn):
-                    result = await handler_fn(state, **kwargs)
+                if _inspect.iscoroutinefunction(h_fn):
+                    res = await h_fn(state, **kwargs)
                 else:
-                    result = handler_fn(state, **kwargs)
-                export_results[handler_name] = result
-                log.info(f"[{run_id}] export handler '{handler_name}' ok | {result.get('mode', '?')}")
+                    res = await asyncio.to_thread(h_fn, state, **kwargs)
+                log.info(f"[{run_id}] export handler '{h_name}' ok | {res.get('mode', '?')}")
+                return h_name, res
             except Exception as e:
                 err = f"{type(e).__name__}: {str(e)[:200]}"
-                export_results[handler_name] = {"mode": "failed", "error": err}
-                log.error(f"[{run_id}] export handler '{handler_name}' failed | {err}")
+                log.error(f"[{run_id}] export handler '{h_name}' failed | {err}")
+                return h_name, {"mode": "failed", "error": err}
+
+        tasks = [run_handler(name, fn) for name, fn in get_handlers_for_decision(registry_decision)]
+        if tasks:
+            completed_results = await asyncio.gather(*tasks, return_exceptions=True)
+            for item in completed_results:
+                if isinstance(item, Exception):
+                    log.error(f"[{run_id}] gather item raised uncaught exception: {item}")
+                    continue
+                h_name, res = item
+                export_results[h_name] = res
 
         # ── Unpack sheets result ───────────────────────────────────────────
         sheets_result = export_results.get("sheets", {})

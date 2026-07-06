@@ -137,3 +137,34 @@ def test_parallel_executor_threads():
 
         assert "solution_architect" in results
         assert results["solution_architect"] == mock_arch_out
+
+
+def test_arbitration_skipped_on_zero_conflicts():
+    """Verify that node_arbitrate skips LLM arbitration when check_cross_agent_consistency finds no issues."""
+    from src.agents.pipeline import node_arbitrate
+    from src.core.models import PipelineState
+
+    state_obj = PipelineState(
+        run_id="test-run-skip", brd_raw_hash="hash", brd_name="test.txt", pipeline_status="arbitrating"
+    )
+    state_dict = state_obj.model_dump()
+    state_dict["_brd_text"] = "Dummy BRD"
+
+    with (
+        patch("src.agents.critic.consistency_rules.check_cross_agent_consistency") as mock_check,
+        patch("src.agents.orchestrator.OrchestratorAgent.arbitrate_drafts") as mock_arbitrate,
+    ):
+        # Scenario: 0 conflicts
+        mock_check.return_value = []
+
+        res = node_arbitrate(state_dict)
+
+        # Verify arbitrate_drafts LLM call was bypassed
+        mock_arbitrate.assert_not_called()
+
+        # Verify alignment memo is set to empty directives list
+        memo = res.get("alignment_memo")
+        assert memo is not None
+        assert memo["directives"] == []
+        # Verify revision targets are empty
+        assert res.get("_revision_targets") == []

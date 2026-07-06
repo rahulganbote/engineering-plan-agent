@@ -50,7 +50,7 @@
 9. [Multi-Provider Strategy](#multi-provider-strategy)
 10. [Decisions Journal & Trade-offs](#decisions-journal--trade-offs)
 11. [Operational Metrics & SLOs](#operational-metrics--slos)
-12. [Known Limitations & Risk Register](#known-limitations--risk-register)
+12. [Production Considerations & Risk Registry](#production-considerations--risk-registry)
 13. [Quick Start](#quick-start)
 14. [Project Layout (Brief)](#project-layout-brief)
 15. [License & Author](#license--author)
@@ -81,32 +81,58 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
 
 ---
 
-## Architecture
+## Architecture Overview
 
 ```
-User uploads BRD ──► Security validation (7 checks) ──► Orchestrator parses sections
-                                                              │
-                                                              ▼
-                                           5 specialist agents run in parallel
-                                     Plan · Schedule · Architecture · PoC · Tech Stack
-                                                              │
-                                                              ▼
-                        Critic scores the bundle against LLM validation + deterministic caps
-                                                              │
-                                            score ≥ threshold? ── no ──► targeted revision (≤2 cycles)
-                                                              │ yes
-                                                              ▼
-                                          HITL approval - button or voice
-                                                              │
-                                       Approved ──► Sheets + Jira Epic + Pinecone re-ingest
-                                       Rejected ──► Audit row only
+                         ┌─────────────────────────────────────────────────┐
+                         │         SECURITY VALIDATION LAYER               │
+ BRD Upload ──► FastAPI──►│  File check → Parse → Injection Guard (regex)   │
+  (React SPA)    POST     │  → Injection Guard (LLM) → PII Redact → BRD ✓   │
+             run-pipeline └─────────────────────────────────────────────────┘
+                                               │ validated BRD text
+                                               ▼
+                                     Orchestrator (Pass 1)
+                                  (Fan-out initial drafting)
+                                               │
+                                               ▼
+             ┌─────────────────────────────────────────────────────────────────────────┐
+             │ Parallel dispatch  │                     │             │                │
+             ▼                    ▼                     ▼             ▼                ▼
+      Plan Draft       Schedule Draft       Architect Draft       PoC Draft       Stack Draft
+             │                     │                    │             │                │
+             ▼                     ▼                    ▼             ▼                ▼
+             └─────────────────────└────────────────────┘─────────────└────────────────┘
+                                               │
+                                               ▼
+                                     Orchestrator (Pass 2)
+                                  (Arbitration & Alignment)
+                                               │
+                       ┌───────────────────────┴───────────────────────┐
+                       │  Are EM alignment directives present?         │
+                       ▼ yes                                           ▼ no
+              ↻ Targeted Alignment Rerun                           (skip rerun)
+              (Only violating Specialists)                             │
+                       │                                               │
+                       └───────────────────────┬───────────────────────┘
+                                               │
+                                               ▼
+                                          Critic Agent
+                                (LLM-judge + FM-1/2/3 quality caps)
+                                               │
+                                ┌──────────────┴──────────────┐
+                                ▼                             ▼
+                       [Score < Threshold]            [Quality Passed]
+                        & [Revision < 2]                      │
+                               │                              ▼
+                      ↻ Targeted Self-Revision               HITL Decision Gate
+                      (Only flagged Specialists)       (Approve & Export / Reject)
 ```
 
 Three architectural patterns matter more than the rest:
 
-- **Hub-and-spoke parallel dispatch.** The Orchestrator fans out to 5 specialists concurrently - ~3× faster than sequential chaining, and each specialist's failure stays isolated to its bulkhead.
-- **Targeted revision loop.** When the Critic flags issues, only the affected specialists re-run. Cost-aware self-correction; capped at 2 revisions so a bad input never burns 10× the expected cost.
-- **Deterministic quality caps over LLM-judge.** LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating.
+* **Two-Pass Targeted Alignment Loop**: Rather than chaining agents sequentially, the pipeline splits into two distinct passes. Pass 1 drafts all deliverables concurrently. If the EM submits custom directives during **Arbitration**, Pass 2 performs a targeted rerun *only* on the violating specialists, reusing the other drafts to save cost and latency.
+* **Targeted Critic Self-Correction**: After alignment, the Critic evaluates final outputs. If dimension scores fall below threshold limits, up to 2 self-correction cycles are triggered, rerunning only the flagged agents.
+* **Deterministic Quality Caps over LLM-Judge**: LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating to guarantee audit quality.
 
 The full architecture diagram with security boundaries, observability events, and integration channels lives at [docs/Design.md](./docs/Design.md).
 
@@ -187,24 +213,14 @@ To prevent single-provider vendor lock-in and mitigate outages, rate-limiting, o
 
 ## Decisions Journal & Trade-offs
 
-A condensed log of the larger trade-offs. SDM/TPM hiring managers should spend more time on this section than any other.
-
-*The initial UI was a Streamlit prototype (still on the [`main`](https://github.com/rahulganbote/engineering-plan-agent/tree/main) branch as a reference deploy). Migrated to React UI in v2; rationale documented in [ADR 0001](./docs/ADR/0001-react-migration.md).*
+A consolidated log of core architectural compromises. Detailed records are maintained under [docs/ADR/](./docs/ADR/).
 
 | Decision | Alternatives | Why | Trade-off |
 |---|---|---|---|
-| **LangGraph** for state | LCEL chain; raw asyncio | Native cycles for Critic loop; LangSmith node visibility | Heavier dep; LangChain lock-in |
-| **Multi-provider failover** (OpenAI ↔ Anthropic) | Single provider | Production needs provider redundancy; forces clean `LLMProvider` abstraction | Per-family timeouts + two cost tables |
-| **`--max-instances=1`** on Cloud Run | Redis from day 1 | Shipped voice approval in days vs weeks; explicit migration path documented | Linear scaling ceiling until Redis lands |
-| **Async `/approve` + SSE `exports_finalized`** | Sync approve with full payload | ElevenLabs voice tools time out at 20s; sync was 504-ing | UI must listen for SSE event to hydrate URLs |
-| **Three tool patterns** - REST / `@tool` / MCP | One pattern for all | Each tool has different latency/auth/coupling; right pattern per tool keeps blast radius small | 3 patterns to maintain instead of 1 |
-| **Privacy boundary** on Tavily queries | Send BRD slice directly | Tavily is third-party; raw BRD risks PII leak | Slightly fuzzier search; Critic downweights `trust_level=low` |
-| **Idempotent `/approve` + structured 409** | Plain 400 on retry | Voice agents double-fire; UI races with voice; clients retry on timeout | One more state branch (4 dedicated tests) |
-| **Per-tenant `_run_owner` map** | OAuth check on every endpoint | OAuth alone doesn't cover voice-webhook path; one helper enforces both auth modes | Per-process; migrates with `_runs` to Redis |
-| **Hard $2.00 per-run budget ceiling** | Soft warning in logs | Silent overrun can burn 10× expected; `BudgetBreachedError` halts at earliest catchable point | May abort a legitimate large BRD - accepted as visible error vs silent burn |
-| **Voice-callback bearer auth** (`VOICE_WEBHOOK_SECRET`) | mTLS; signed JWT; IP allowlist | Lowest-friction pattern ElevenLabs supports natively; one rotation point | No zero-downtime rotation today |
-| **Critic deterministic caps** (FM-1/2/3) | Trust LLM-judge scores | LLM judges are systematically optimistic; deterministic overrides catch ~5% false-greens | Some strong runs capped at Amber - better than false-green |
-| **Defensive `ApprovalRequest` validators** | Reject malformed input with 422 | Voice LLMs emit verb forms, nested params, float ratings; normalize at the model boundary | More pre-validation surface (5 dedicated tests) |
+| **LangGraph state** | LCEL chains; raw asyncio | Native support for loop cycles (Pass 1 ↔ arbitration ↔ Pass 2 ↔ Critic revision) and node observability. | Heavier runtime dependency; lock-in to LangChain ecosystem. |
+| **Multi-provider failover** | Single LLM provider | Production redundancy (OpenAI ↔ Anthropic failover) to handle provider-side outages. | Two separate prompt layouts and budget cost-tables to maintain. |
+| **Async `/approve` + SSE** | Synchronous approve endpoint | External tool calls (Jira/Sheets) and ElevenLabs voice tasks easily exceed the 20s API timeout threshold. | UI must listen for the final SSE event to hydrate export links. |
+| **Hard $2.00 per-run budget** | Soft warning logs | Prevents runaway LLM loops or excessively large uploads from consuming billing budgets. | Aborts legitimate very large BRDs; accepted as visible error over budget leak. |
 
 ---
 
@@ -227,28 +243,17 @@ What I would commit to in a sprint plan if this graduated to a team-owned servic
 
 ---
 
-## Known Limitations & Risk Register
+## Production Considerations & Risk Registry
 
-What could go wrong with what I *did* build, what I do about it today, and what I would do next.
+High-priority operational considerations and mitigations for production readiness.
 
-L = Likelihood · I = Impact (Low / Medium / High)
-
-| Risk | L | I | Current Mitigation | Owner / Next Step |
+| Consideration | Likelihood | Impact | Current Mitigation | Next Step |
 |---|---|---|---|---|
-| LLM provider rate-limit | M | H | Multi-provider failover; UI banner surfaces swap | Add `provider_fallback_rate` SLI |
-| **In-memory `_runs` + `_run_owner` lost on restart** | M | M | Pin `--max-instances=1`; "Clear Plan & Reset" path | **Migrate both maps to Upstash Redis *atomically*** |
-| **Aggregate-budget overrun** (N runs × $2 cap) | L → M | M | Per-run $2 cap limits single-input damage | **Per-user/day rate limit + global kill-switch + Slack alarm** |
-| Tavily monthly budget exhausted | L | L | Atomic counter degrades to "unavailable" pre-429 | Upstash atomic counter on multi-instance |
-| GitHub repo-name hallucination | L | M | Hard `GITHUB_ALLOWLIST` checked pre-network | Locked by test |
-| Prompt injection via Tavily snippet | M | M | Regex scan + `security_drop`; downweights low trust_level sources | LLM-based Layer 5 scan at higher traffic |
-| ElevenLabs double-fires `/approve` | H | L | Symmetric idempotency: 200 no-op / 409 conflict | Locked by 4 unit tests |
-| Voice webhook secret leak | L | H | Secret in GCP Secret Manager; bearer check per call | Dual-secret list for zero-downtime rotation |
-| Cross-tenant access via stolen cookie | L | H | HttpOnly + HTTPS + SessionMiddleware + owner check | Short cookie TTL + CSRF tokens on writes |
-| Critic over-optimistic on niche-tech BRDs | M | L | FM-1/2/3 caps; Tavily fallback on RAG miss | Expand calibration set each `eval/` run |
-| Background export crashes mid-flight | L | M | Status → `export_failed`; Clear & Reset path | `/approve/{run_id}/retry-export` with partial replay |
-| Cloud Run cold start | M | L | `--min-instances=0` for cost; 5–10s start | Flip to `min-instances=1` on first complaint |
-
-The two **bold** rows are highest-priority follow-ups - compounding risk if/when the project graduates beyond single-instance demo.
+| **Local state loss on restart** | Med | Med | Single-instance constraint (`--max-instances=1`) on Cloud Run. | **Migrate `_runs` and `_run_owner` maps to Upstash Redis.** |
+| **API billing overruns** | Med | Med | Hard $2.00 budget ceiling per run. | **Implement daily global budget caps and per-user rate limits.** |
+| **PII leak via Tavily Search** | Med | Med | Regex redact + section slice searches (avoids sending full BRD). | **Deploy LLM-based Layer 5 privacy filter pre-network query.** |
+| **Jira connection drops** | Low | Med | Graceful degradation: marks Jira status as `"skipped"` / `"local_fallback"`. | **Implement background job queue with automated retry-loops.** |
+| **LLM judge bias (Critic)** | Med | Low | Deterministic cap rules overrides to catch false-greens. | **Expand and calibrate the golden dataset `eval/` on niche BRDs.** |
 
 ---
 

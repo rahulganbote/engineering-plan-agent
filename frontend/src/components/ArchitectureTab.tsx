@@ -74,6 +74,16 @@ export const ArchitectureTab: React.FC<ArchitectureTabProps> = ({ architectureDa
 
   return (
     <div className="space-y-8 animate-fade-in text-foreground">
+      {/* Diagrams Renderer Canvas */}
+      {(arch.diagram_svg || arch.diagram_mermaid) && (
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/60 pb-2">System Architecture Blueprint</h3>
+          <MermaidRenderer diagramSvg={arch.diagram_svg} diagramMermaid={arch.diagram_mermaid} />
+
+          {/* Mermaid source accordion hidden in Workspace per UX request. */}
+        </div>
+      )}
+
       {/* Overview Block */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-background border border-border p-6 rounded-xl shadow-inner">
         <div>
@@ -91,16 +101,6 @@ export const ArchitectureTab: React.FC<ArchitectureTabProps> = ({ architectureDa
           </div>
         )}
       </div>
-
-      {/* Diagrams Renderer Canvas */}
-      {(arch.diagram_svg || arch.diagram_mermaid) && (
-        <div className="space-y-4">
-          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/60 pb-2">System Architecture Blueprint</h3>
-          <MermaidRenderer diagramSvg={arch.diagram_svg} diagramMermaid={arch.diagram_mermaid} />
-
-          {/* Mermaid source accordion hidden in Workspace per UX request. */}
-        </div>
-      )}
 
       {/* Components List */}
       {arch.components && arch.components.length > 0 && (

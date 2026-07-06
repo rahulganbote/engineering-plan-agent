@@ -96,7 +96,7 @@ async def stream_status(run_id: str, request: Request):
                 sent += 1
 
             state = _runs.get(run_id)
-            if state and state.pipeline_status in ("exported", "export_failed", "awaiting_hitl"):
+            if state and state.pipeline_status in ("exported", "export_failed"):
                 if state.pipeline_status != last_yielded_status:
                     yield f"data: {json.dumps({'type': 'status', 'status': state.pipeline_status, 'run_id': run_id})}\n\n"
                     last_yielded_status = state.pipeline_status
