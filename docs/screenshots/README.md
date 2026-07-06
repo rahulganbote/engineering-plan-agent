@@ -60,26 +60,32 @@ Live screenshots from the deployed EM Copilot system at [emcopilot.ai](https://e
 
 ---
 
+### 10 - Output Delivery: Jira Epic Ticket
+![Jira Epic ticket created](./10-jira-epic-created.png)
+*The generated Engineering Plan, Critic score, component patterns, and cross-functional deliverables are pushed to Jira as a structured Epic ticket (via Atlassian MCP server integration).*
+
+---
+
 ## Observability & Telemetry
 
-### 10 - LangSmith Node-by-Node Execution Trace
-![LangSmith trace - node execution](./04-langsmith-trace-nodes.png)
-*Detailed call graphs in LangSmith capture exact latencies and outputs at every node transition: `orchestrator_hub` $\rightarrow$ concurrent specialists dispatch $\rightarrow$ aggregation $\rightarrow$ Critic audit.*
+### 11 - LangSmith Node-by-Node Trace Graph
+![LangSmith trace - overall node graph](./11-langsmith-trace-overall.png)
+*An end-to-end execution trace in LangSmith, visualizing node latencies and inputs/outputs through `orchestrator_hub`, Specialists Drafting, Arbitration, Specialists Alignment, and the Critic loop.*
 
 ---
 
-### 11 - LangSmith Multi-Agent Tracing Workspace
-![LangSmith tracing list](./05-langsmith-tracing-list.png)
-*The LangSmith project board showing run tracking, execution parameters, and model payload diagnostics.*
+### 12 - LangSmith Completion Node details
+![LangSmith node details - Anthropic Completion](./12-langsmith-prompt-completion.png)
+*Granular prompt logging and LLM raw outputs capture the strict system prompts and instructions directed to the Anthropic models.*
 
 ---
 
-### 12 - Latency & Reliability Monitoring
+### 13 - Latency & Reliability Monitoring
 ![LangSmith monitoring - latency and error rate](./06-langsmith-monitoring.png)
 *Real-time performance metrics tracking P50/P99 latency curves and system error rates.*
 
 ---
 
-### 13 - Financial Cost & Token Volume Dashboard
+### 14 - Financial Cost & Token Volume Dashboard
 ![LangSmith cost and tokens](./07-langsmith-cost-tokens.png)
 *Cost tracking dashboards auditing token usage volumes and precise billing metrics.*
