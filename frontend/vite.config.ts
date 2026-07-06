@@ -11,6 +11,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  
+  // Configure build bundle parameters
+  build: {
+    // Raises threshold warning from 500kB to 1000kB to pass large icons cleanly
+    chunkSizeWarningLimit: 1000,
+  },
+
   // Move Vite's pre-bundling cache OUT of node_modules/.vite/ - OneDrive holds
   // a sync-lock on files inside synced folders and Vite's unlink-then-rewrite
   // pattern fails with EPERM. ~/.cache/em-copilot-vite is outside OneDrive,

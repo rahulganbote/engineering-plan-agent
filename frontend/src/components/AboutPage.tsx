@@ -10,104 +10,35 @@
  * section in the public repo README, so the page doubles as a navigable index
  * into the engineering reasoning.
  */
-import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle, GraduationCap, Database, Activity } from "lucide-react";
+import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle } from "lucide-react";
 import { ThemePicker } from "./ThemePicker";
 
 const PUBLIC_REPO_URL = "https://github.com/rahulganbote/engineering-plan-agent";
 
-const LESSONS: Array<{
-  category: string;
-  icon: typeof GraduationCap;
-  color: string;
-  items: Array<{ headline: string; body: string }>;
-}> = [
-  {
-    category: "System Reliability, Security & Observability",
-    icon: ShieldCheck,
-    color: "text-success",
-    items: [
-      {
-        headline: "Reliable AI over complexity.",
-        body: "Fewer bells and whistles and more reliable execution leads to higher adoption. Hardening the Critic, evaluation methods, and the security layer produced a far more reliable system.",
-      },
-      {
-        headline: "Guardrails & compliance.",
-        body: "LLMs are susceptible to prompt injection. Asking agents to \"cite sources\" for grounding is not enough; the Critic must actively verify that citations map back to real vector chunk keys.",
-      },
-      {
-        headline: "Telemetry from Day 1.",
-        body: "Silent failures are common in production Agent systems. Telemetry like LangSmith is mandatory from the beginning because you cannot debug or fix what you cannot trace.",
-      },
-      {
-        headline: "Cost & token governance.",
-        body: "Full-scale LangSmith monitoring is expensive. A production architecture should sample traces for new releases or red-flagged runs, while letting local structured JSONL logs handle routine telemetry.",
-      },
-    ],
-  },
-  {
-    category: "Data Strategy & Evaluation Frameworks",
-    icon: Database,
-    color: "text-primary",
-    items: [
-      {
-        headline: "Data strategy & Golden datasets.",
-        body: "Requires thorough analysis of schemas and data consumed. Output quality is only as good as the Golden dataset. Defining Pydantic structures at the org level prevents schema drift, and golden datasets must be version-controlled.",
-      },
-      {
-        headline: "Overcoming optimistic LLM-as-Judge behavior.",
-        body: "LLM judges are optimistic by default. Autonomous components need guardrails wrapped around them, not embedded inside them (e.g., wrapping the Critic with deterministic rules like BERTScore).",
-      },
-      {
-        headline: "Responsible AI & HITL.",
-        body: "Autonomous agents require a mindset shift. Hallucination detection requires active enforcement — nothing exports without a Human-in-the-Loop approval gate (e.g., Jira tickets are created only upon explicit human approval).",
-      },
-    ],
-  },
-  {
-    category: "Architecture, Latency & Product Design",
-    icon: Activity,
-    color: "text-ai-spark",
-    items: [
-      {
-        headline: "Modular vs. functional design.",
-        body: "Extensibility is easily missed, and mid-project refactoring is expensive. Explicitly provide the \"Big Picture\" in the BRD and future roadmap, not just the task spec.",
-      },
-      {
-        headline: "Latency is a product experience.",
-        body: "A 50-second wait time is fast for complex generation, but users expect immediate feedback. Parallel dispatch yielded the biggest latency improvement (3× speedup) through orchestration optimization.",
-      },
-      {
-        headline: "Conversational AI & HITL complexity.",
-        body: "Getting voice assistants to interpret complex artifact summaries requires highly structured prompt context. Budget extra development cycles for integrating voice-based human feedback.",
-      },
-    ],
-  },
-];
-
 const PRINCIPLES: Array<{ headline: string; body: string; anchor: string }> = [
   {
     headline: "Start simple.",
-    body: "Default to a single agent and earn every extra one. One task, one Agent, one goal. Use modular design, build for evaluation, and think about reliability from day one.",
+    body: "Default to a single agent and earn every additional layer. One task, one agent, one goal. Leverage modular design, prioritize validation testing, and architect for reliability from day one.",
     anchor: "#lessons-learned",
   },
   {
     headline: "Clarity beats cleverness.",
-    body: "Router, Planner/Executor, Multi-Agent, Reflection, Human Escalation are well-worn patterns for a reason; reach for them before inventing.",
+    body: "Routers, Planners, Multi-Agent systems, Reflection loops, and Human Escalation pathways are proven patterns for a reason; implement established architectures before inventing custom ones.",
     anchor: "#architecture-overview",
   },
   {
     headline: "Structure everything.",
-    body: "Plans, tool contracts, agent outputs, handoffs. If it's not structured, it's not production-ready.",
+    body: "Enforce rigid structures on planning payloads, tool contracts, agent outputs, and inter-node handoffs. Unstructured data is not production-ready.",
     anchor: "#tech-stack-justification",
   },
   {
     headline: "Design for failure.",
-    body: "Assume tools fail, agents disagree, and users are confused then show how your system survives.",
+    body: "Assume tools fail, agents disagree, and users experience confusion; explicitly engineer how the core pipeline mitigates and survives these exceptions.",
     anchor: "#production-considerations--risk-registry",
   },
   {
     headline: "Measure what matters.",
-    body: "Success rate, escalation quality, cost, latency, and trust.",
+    body: "Continuously track execution success rates, human escalation quality, end-to-end token costs, operational latency profiles, and overall system trust scores.",
     anchor: "#evaluation-framework",
   },
 ];
