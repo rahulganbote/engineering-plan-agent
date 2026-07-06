@@ -24,68 +24,62 @@ Live screenshots from the deployed EM Copilot system at [emcopilot.ai](https://e
 
 ---
 
-### 04 - Pipeline execution: Specialists Alignment
+### 04 - Pipeline execution: Specialists Drafting
+![Pipeline execution: Specialists Drafting](./04-pipeline-run-in-progress.png)
+*During initial execution, the multi-agent system runs concurrent Specialists Drafting. The UI timeline stepper blinks blue on the active stage and displays the progress status of each specialist agent in real time.*
+
+---
+
+### 05 - Pipeline execution: Specialists Alignment
 ![Pass 2 alignment in progress](./05-pipeline-pass2-aligning.png)
-*During execution, if custom EM directives are found during arbitration, the Orchestrator runs Specialists Alignment in parallel. The UI timeline stepper blinks blue on the active stage and displays the number of directives being aligned.*
+*During subsequent alignment execution, if custom EM directives are found during arbitration, the Orchestrator runs Specialists Alignment in parallel. The UI timeline stepper blinks blue on the active stage and displays the directives being aligned.*
 
 ---
 
-### 05 - Execution Complete (Decision Notification)
+### 06 - Execution Complete (Decision Notification)
 ![Execution complete awaiting decision](./06-pipeline-complete-awaiting-decision.png)
-*When all agents and Critic assessments finish, an amber status banner alerts the EM that action is required. The timeline stepper lights up green through all stages, displaying final execution statistics: 129 seconds processing time, a Critic score of **4.55 / 5.0**, and exact input/output token counts.*
+*When all agents and Critic assessments finish, a slim Action Required banner alerts the EM that action is required. The timeline stepper lights up green through all stages, displaying final execution statistics: 193 seconds processing time, a Critic score of **4.55 / 5.0**, and exact input/output token counts.*
 
 ---
 
-### 06 - Scroll-to-Decision Gate Panel
+### 07 - Scroll-to-Decision Gate Panel
 ![Decision gate controls](./07-decision-gate-active.png)
-*Clicking the banner scrolls the EM directly to the Decision Gate panel. The reviewer's role is prefilled, and the EM can assign a numeric rating (1-5), insert mandatory review notes if rejecting, and submit the final approval.*
+*Clicking the banner scrolls the EM directly to the Decision Gate panel. The reviewer's role is prefilled, and the EM can assign a numeric rating (1-5), insert review notes, and submit final approval or rejection.*
 
 ---
 
-### 07 - Output Delivery: Plan Details
+### 08 - Output Delivery: Plan Details
 ![Engineering plan deliverables](./09-plan-tab-deliverables.png)
-*The generated **Plan** tab outlines the project duration (14 weeks), calculated confidence percentage (67%), full cross-functional team composition count, and sprint-by-sprint phases/milestones.*
+*The generated **Plan** tab outlines the project duration, calculated confidence percentage, full cross-functional team composition count, and sprint-by-sprint phases/milestones.*
 
 ---
 
-### 08 - Output Delivery: Architecture Blueprint SVG
+### 09 - Output Delivery: Architecture Blueprint SVG
 ![Architecture tab rendered SVG](./08-architecture-blueprint-svg.png)
-*Under the **Architecture** tab, the system displays the Kroki-rendered system blueprint SVG mapping the components (Mobile App, API Gateway, UserService, PaymentService, PostgreSQL, Redis L2 cache, Event Bus, and Notification/Fraud specialist services).*
+*Under the **Architecture** tab, the system displays the Kroki-rendered system blueprint SVG mapping all microservices and database instances.*
 
 ---
 
-### 09 - Interactive Voice Review (HITL ElevenLabs)
-![HITL voice gate - ElevenLabs](./03-hitl-voice-elevenlabs.png)
-*As an alternative to buttons, EMs can click the ElevenLabs voice widget to talk directly to a voice assistant. The assistant is primed with an inline briefing of the draft, allowing natural language interrogation (e.g., "Why did you recommend this database?") and voice-based approval commands.*
+## Observability & Telemetry
 
----
-
-## Observability, Fallbacks & Telemetry
-
-### 10 - Provider-Aware Fallback Execution
-![Active run in progress with fallback banner](./04-pipeline-run-in-progress.png)
-*If the primary model family (such as Anthropic Claude 4.5) hits rate limits or key limits mid-run, the pipeline's provider-fallback handler immediately switches to OpenAI to successfully complete the execution without failing the run, alerting the user via a persistent warning banner.*
-
----
-
-### 11 - LangSmith Node-by-Node Execution Trace
+### 10 - LangSmith Node-by-Node Execution Trace
 ![LangSmith trace - node execution](./04-langsmith-trace-nodes.png)
 *Detailed call graphs in LangSmith capture exact latencies and outputs at every node transition: `orchestrator_hub` $\rightarrow$ concurrent specialists dispatch $\rightarrow$ aggregation $\rightarrow$ Critic audit.*
 
 ---
 
-### 12 - LangSmith Multi-Agent Tracing Workspace
+### 11 - LangSmith Multi-Agent Tracing Workspace
 ![LangSmith tracing list](./05-langsmith-tracing-list.png)
 *The LangSmith project board showing run tracking, execution parameters, and model payload diagnostics.*
 
 ---
 
-### 13 - Latency & Reliability Monitoring
+### 12 - Latency & Reliability Monitoring
 ![LangSmith monitoring - latency and error rate](./06-langsmith-monitoring.png)
 *Real-time performance metrics tracking P50/P99 latency curves and system error rates.*
 
 ---
 
-### 14 - Financial Cost & Token Volume Dashboard
+### 13 - Financial Cost & Token Volume Dashboard
 ![LangSmith cost and tokens](./07-langsmith-cost-tokens.png)
 *Cost tracking dashboards auditing token usage volumes and precise billing metrics.*

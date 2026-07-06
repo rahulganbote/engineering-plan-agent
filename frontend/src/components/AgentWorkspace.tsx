@@ -230,7 +230,7 @@ export const AgentWorkspace: React.FC = () => {
             <div className="space-y-4">
               <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
                 <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
-                <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, ensures seamless performance, and helps us maintain a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
+                <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, and helps us maintain EM Copilot as a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
                 <button
                   onClick={login}
                   className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded font-bold text-xs transition duration-155"
@@ -249,11 +249,11 @@ export const AgentWorkspace: React.FC = () => {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-success font-bold shrink-0">✓</span>
-                    <span><strong>Audit agent reasoning</strong> step-by-step with timeline metrics</span>
+                    <span>Observe Agentic Pipeline run and <strong>Review Engineering Plan Artifacts</strong> with confidence score</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-success font-bold shrink-0">✓</span>
-                    <span><strong>Sync approved plans</strong> directly into Jira and Google Sheets</span>
+                    <span><strong>Download or Sync approved Engineering Plan</strong> directly into Jira Epic</span>
                   </li>
                 </ul>
               </div>
