@@ -4,7 +4,7 @@ from typing import Protocol, cast
 import anthropic
 import openai
 from langsmith import traceable
-from langsmith.wrappers import wrap_openai
+from langsmith.wrappers import wrap_anthropic, wrap_openai
 
 from src.core.config import settings
 
@@ -61,7 +61,7 @@ class AnthropicProvider:
         if not settings.anthropic_api_key:
             raise ValueError("Anthropic API key is not configured. Please set ANTHROPIC_API_KEY.")
 
-        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        client = wrap_anthropic(anthropic.Anthropic(api_key=settings.anthropic_api_key))
 
         # Extract system message if present
         system_msg = ""
