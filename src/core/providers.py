@@ -4,7 +4,15 @@ from typing import Protocol, cast
 import anthropic
 import openai
 from langsmith import traceable
-from langsmith.wrappers import wrap_anthropic, wrap_openai
+from langsmith.wrappers import wrap_openai
+
+try:
+    from langsmith.wrappers import wrap_anthropic
+except ImportError:
+    # Fallback for environments running older langsmith SDK versions (e.g. CI runner)
+    def wrap_anthropic(client):
+        return client
+
 
 from src.core.config import settings
 
