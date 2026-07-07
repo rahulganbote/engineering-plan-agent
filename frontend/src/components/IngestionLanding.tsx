@@ -239,7 +239,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           Transform a BRD into Implementation Plans in Minutes
         </h2>
         <p className="text-xs text-muted-foreground max-w-3xl">
-          EM Copilot is a multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package presented to you for review. Upon approval, it pushes the artifacts into Jira.
+          EM Copilot is a multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package. It uses RAG for grounding every plan directly in your organization's custom architectural patterns and approved tech stack. Artifacts are then presented to you for review. Upon approval, it pushes the artifacts into Jira.
         </p>
       </div>
 

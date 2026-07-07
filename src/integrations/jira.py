@@ -405,6 +405,30 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             )
         )
 
+    # ── Alignment Directives ───────────────────────────────────────────
+    memo = state.alignment_memo
+    if memo:
+        blocks.append(_heading(3, "Engineering Manager Alignment Directives"))
+        if memo.overall_strategy:
+            blocks.append(
+                _paragraph(
+                    _text("Overall Strategy: ", bold=True),
+                    _text(memo.overall_strategy),
+                )
+            )
+        if memo.directives:
+            directive_items = []
+            for d in memo.directives:
+                agent_display = d.agent_name.replace("_", " ").title()
+                item_str = f"{agent_display}: Directive: {d.directive} (Reasoning: {d.reasoning}"
+                if d.evidence:
+                    item_str += f', Evidence: "{d.evidence}"'
+                item_str += ")"
+                directive_items.append(item_str)
+            blocks.append(_bullet_list(directive_items))
+        else:
+            blocks.append(_paragraph(_text("All Pass 1 drafts aligned — no arbitration needed.")))
+
     # ── Architecture (with Mermaid code block) ───────────────────────────────
     arch = state.arch_output
     if arch:

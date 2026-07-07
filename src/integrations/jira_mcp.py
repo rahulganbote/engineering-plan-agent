@@ -367,6 +367,25 @@ def _build_markdown_description(state: PipelineState) -> str:
             lines.append(f"* {name}: {dim.score:.2f} (threshold {dim.threshold:.2f}, {verdict})")
         lines.append("")
 
+    memo = state.alignment_memo
+    if memo:
+        lines.append("h3. Engineering Manager Alignment Directives")
+        if memo.overall_strategy:
+            lines.append(f"*Overall Strategy:* {memo.overall_strategy}")
+            lines.append("")
+        if memo.directives:
+            for d in memo.directives:
+                agent_display = d.agent_name.replace("_", " ").title()
+                lines.append(f"* *{agent_display}*:")
+                lines.append(f"** *Directive:* {d.directive}")
+                lines.append(f"** *Reasoning:* {d.reasoning}")
+                if d.evidence:
+                    lines.append(f"** *Evidence:* {d.evidence}")
+            lines.append("")
+        else:
+            lines.append("All Pass 1 drafts aligned — no arbitration needed.")
+            lines.append("")
+
     if arch:
         lines.append("h3. Architecture")
         lines.append(f"*Pattern:* {arch.pattern}")

@@ -107,7 +107,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         if (pipelineStatus === PIPELINE_STATUS.DRAFTING) {
           return 'Drafting plans...';
         }
-        return 'Blueprint Generation';
+        return 'First Draft Generation';
       },
       icon: Cpu,
       get isCompleted() {
@@ -175,7 +175,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         if (pipelineStatus === PIPELINE_STATUS.REVISING) {
           return 'Revising plans...';
         }
-        return 'Enforcing Standards';
+        return 'Finalized Plan';
       },
       icon: Cpu,
       get isCompleted() {
@@ -216,7 +216,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         if (revisionCount > 0) {
           return `🔄 Revision ${revisionCount} done`;
         }
-        return 'Review & quality check';
+        return 'Evaluation & Quality Score';
       },
       icon: MessageSquare,
       get isCompleted() {
@@ -503,7 +503,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   )}
                   {(artifacts?.alignment_memo || logs.some(l => l.type === 'orchestrator_reconciled')) && (
                     <div className="px-2.5 py-1.5 rounded-lg border border-warning/30 bg-warning/10 text-[9px] text-warning-foreground font-semibold flex flex-col gap-1 text-center">
-                      <span>Pass 2: {artifacts?.alignment_memo?.directives?.length || logs.find(l => l.type === 'orchestrator_reconciled')?.directive_count || 0} Directives</span>
+                      <span>Strategy: {artifacts?.alignment_memo?.directives?.length || logs.find(l => l.type === 'orchestrator_reconciled')?.directive_count || 0} Directives</span>
                       {artifacts?.alignment_memo?.overall_strategy && (
                         <span className="text-[7.5px] opacity-80 line-clamp-2 italic font-normal text-warning-foreground">
                           "{artifacts.alignment_memo.overall_strategy}"

@@ -141,6 +141,7 @@ def build_artifacts_pdf(state: PipelineState) -> bytes:
 
     _add_header(story, styles, state)
     _add_critic(story, styles, state)
+    _add_alignment_directives(story, styles, state)
     _add_plan(story, styles, state)
     _add_schedule(story, styles, state)
     _add_architecture(story, styles, state)
@@ -267,11 +268,40 @@ def _add_critic(story, styles, state: PipelineState) -> None:
     story.append(Spacer(1, 6))
 
 
+def _add_alignment_directives(story, styles, state: PipelineState) -> None:
+    memo = state.alignment_memo
+    if not memo:
+        return
+    story.append(Paragraph("2. Engineering Manager Alignment Directives", styles["H2"]))
+    if memo.overall_strategy:
+        story.append(Paragraph(f"<b>Overall Strategy:</b> {memo.overall_strategy}", styles["BodyText"]))
+        story.append(Spacer(1, 4))
+
+    if memo.directives:
+        rows = [["Agent", "Directive", "Reasoning", "Evidence"]]
+        for d in memo.directives:
+            agent_display = d.agent_name.replace("_", " ").title()
+            rows.append(
+                [
+                    Paragraph(f"<b>{agent_display}</b>", styles["Small"]),
+                    Paragraph(d.directive or "", styles["Small"]),
+                    Paragraph(d.reasoning or "", styles["Small"]),
+                    Paragraph(d.evidence or "", styles["Small"]),
+                ]
+            )
+        tbl = Table(rows, colWidths=[1.3 * inch, 2.1 * inch, 2.1 * inch, 1.5 * inch])
+        tbl.setStyle(_DEFAULT_TABLE_STYLE)
+        story.append(tbl)
+    else:
+        story.append(Paragraph("All Pass 1 drafts aligned — no arbitration needed.", styles["BodyText"]))
+    story.append(Spacer(1, 6))
+
+
 def _add_plan(story, styles, state: PipelineState) -> None:
     plan = state.plan_output
     if not plan:
         return
-    story.append(Paragraph("2. Engineering Plan", styles["H2"]))
+    story.append(Paragraph("3. Engineering Plan", styles["H2"]))
     team = ", ".join(f"{r} × {n}" for r, n in (plan.team_composition or {}).items())
     story.append(
         Paragraph(
@@ -334,7 +364,7 @@ def _add_schedule(story, styles, state: PipelineState) -> None:
     sched = state.schedule_output
     if not sched:
         return
-    story.append(Paragraph("3. Schedule", styles["H2"]))
+    story.append(Paragraph("4. Schedule", styles["H2"]))
     story.append(
         Paragraph(
             f"<b>Total effort:</b> {sched.total_effort_days:.1f} days  ·  "
@@ -373,7 +403,7 @@ def _add_architecture(story, styles, state: PipelineState) -> None:
     arch = state.arch_output
     if not arch:
         return
-    story.append(Paragraph("4. Architecture", styles["H2"]))
+    story.append(Paragraph("5. Architecture", styles["H2"]))
     story.append(
         Paragraph(
             f"<b>Pattern:</b> {arch.pattern}  ·  <b>Deployment:</b> {arch.deployment_model}",
@@ -437,7 +467,7 @@ def _add_poc(story, styles, state: PipelineState) -> None:
     poc = state.poc_output
     if not poc:
         return
-    story.append(Paragraph("5. Proof of Concept", styles["H2"]))
+    story.append(Paragraph("6. Proof of Concept", styles["H2"]))
     story.append(Paragraph(f"<b>Hypothesis:</b> {poc.poc_hypothesis}", styles["BodyText"]))
     story.append(
         Paragraph(
@@ -475,7 +505,7 @@ def _add_tech_stack(story, styles, state: PipelineState) -> None:
     stack = state.stack_output
     if not stack:
         return
-    story.append(Paragraph("6. Tech Stack Recommendation", styles["H2"]))
+    story.append(Paragraph("7. Tech Stack Recommendation", styles["H2"]))
     story.append(
         Paragraph(
             f"<b>Recommended:</b> {stack.recommended_option}",
