@@ -122,9 +122,16 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+secret_key = _os.environ.get("SESSION_SECRET_KEY")
+if _os.environ.get("K_SERVICE") and not secret_key:
+    raise ValueError("SESSION_SECRET_KEY environment variable is required in production (Cloud Run).")
+
+if not secret_key:
+    secret_key = "em-copilot-secret-key-32-chars-long!"
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key=_os.environ.get("SESSION_SECRET_KEY", "em-copilot-secret-key-32-chars-long!"),
+    secret_key=secret_key,
     session_cookie="em_copilot_session",
 )
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, FileJson, Cpu, MessageSquare, UserCheck, Check, Loader2, X } from 'lucide-react';
+import { Shield, FileJson, Cpu, MessageSquare, UserCheck, Check, Loader2, X, Pause } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type LogEvent } from '../hooks/useSSE';
 import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
@@ -138,9 +138,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       label: 'Arbitration',
       get description() {
         if (pipelineStatus === PIPELINE_STATUS.ARBITRATING) {
-          return 'EM Reconciling drafts...';
+          return 'Reconciling agent drafts...';
         }
-        return 'EM Review';
+        return 'Conflict Resolution';
       },
       icon: MessageSquare,
       get isCompleted() {
@@ -158,11 +158,12 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         ).includes(pipelineStatus) || logs.some(l => l.type === 'orchestrator_reconciled');
       },
       get isFailed() {
-        const pass1Completed = this.isCompleted || logs.some(l => l.type === 'orchestrator_reconciled');
-        return pipelineStatus === PIPELINE_STATUS.ERROR && !pass1Completed && !this.isCompleted;
+        // Cleaned up the redundant `!this.isCompleted` checks
+        const pass1Completed = this.isCompleted;
+        return pipelineStatus === PIPELINE_STATUS.ERROR && !pass1Completed;
       },
       get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.ARBITRATING);
+        return pipelineStatus === PIPELINE_STATUS.ARBITRATING;
       },
     },
     {
@@ -438,7 +439,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 ) : isFailed ? (
                   <X size={20} className="stroke-[3px] animate-scale-in text-danger" />
                 ) : isActive ? (
-                  <Loader2 size={20} className="animate-spin text-primary" />
+                  step.id === 7 && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? (
+                    <Pause size={20} className="animate-pulse text-warning" />
+                  ) : (
+                    <Loader2 size={20} className="animate-spin text-primary" />
+                  )
                 ) : (
                   <StepIcon size={18} />
                 )}
@@ -467,13 +472,25 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                       const { status } = getDetailedStatus(spec.key, pass);
                       let specCardClass = "flex items-center justify-between px-2 py-1 rounded border text-[9px] font-semibold transition-all duration-300 ";
                       let statusIcon: React.ReactNode;
+                      let delayStyle: React.CSSProperties = {};
+
+                      if (status === 'running') {
+                        const idx = [
+                          'solution_architect',
+                          'tech_stack_recommender',
+                          'poc_planner',
+                          'engineering_plan_generator',
+                          'schedule_estimator',
+                        ].indexOf(spec.key);
+                        delayStyle = { animationDelay: `${idx * 150}ms` };
+                      }
 
                       if (status === 'completed') {
-                        specCardClass += "bg-success/20 border-success/40 text-success";
-                        statusIcon = <Check size={8} className="stroke-[3px] text-success shrink-0" />;
+                        specCardClass += "bg-success/15 border-success/30 text-[#15803d] dark:text-[#4ade80] font-extrabold";
+                        statusIcon = <Check size={8} className="stroke-[3px] text-[#15803d] dark:text-[#4ade80] shrink-0" />;
                       } else if (status === 'running') {
                         specCardClass += "bg-primary/10 border-primary/40 text-primary ring-1 ring-primary/10 animate-pulse";
-                        statusIcon = <Loader2 size={8} className="animate-spin text-primary shrink-0" />;
+                        statusIcon = <Loader2 size={8} style={delayStyle} className="animate-spin text-primary shrink-0" />;
                       } else if (status === 'failed') {
                         specCardClass += "bg-danger/20 border-danger/40 text-danger";
                         statusIcon = <X size={8} className="stroke-[3px] text-danger shrink-0" />;
@@ -483,7 +500,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                       }
 
                       return (
-                        <div key={spec.key} className={specCardClass} title={spec.key}>
+                        <div key={spec.key} style={delayStyle} className={specCardClass} title={spec.key}>
                           <span className="truncate pr-1 text-left">{spec.shortLabel}</span>
                           {statusIcon}
                         </div>

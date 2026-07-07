@@ -37,9 +37,15 @@ async def trigger_pipeline(
     file: UploadFile = File(..., description="BRD document (PDF, DOCX, or TXT)"),
     model_family: str = Form("openai", description="Model family to run: openai, anthropic, llama, mistral"),
     enable_fallback: bool = Form(True, description="Enable automatic provider fallback if primary fails"),
+    consent_accepted: bool = Form(False, description="Confirm acceptance of Terms and Privacy Policy"),
 ):
     """BRD upload → Security validation → Agent pipeline → Artifacts."""
     user_email = get_current_user_email(request)
+
+    if not consent_accepted:
+        raise HTTPException(
+            status_code=400, detail="You must accept the Terms of Service and Privacy Policy to upload documents."
+        )
 
     if model_family.lower() not in ("openai", "anthropic"):
         raise HTTPException(
@@ -49,6 +55,25 @@ async def trigger_pipeline(
     content = await file.read()
 
     brd_hash = hashlib.sha256(content).hexdigest()
+
+    # Log user consent acceptance to logs/consent.jsonl
+    import datetime
+    from pathlib import Path
+
+    consent_dir = Path("logs")
+    consent_dir.mkdir(exist_ok=True)
+    consent_file = consent_dir / "consent.jsonl"
+
+    consent_record = {
+        "email": user_email,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "brd_hash": brd_hash,
+        "terms_version": "2026-07-01",
+    }
+
+    with open(consent_file, "a", encoding="utf-8") as f:
+        f.write(json.dumps(consent_record) + "\n")
+
     run_id = f"{brd_hash[:8]}-{uuid.uuid4().hex[:4]}"
 
     _run_owner[run_id] = user_email

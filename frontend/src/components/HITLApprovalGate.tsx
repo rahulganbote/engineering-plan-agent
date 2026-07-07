@@ -112,7 +112,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
             value={reviewer} 
             onChange={(e) => setReviewer(e.target.value)}
             disabled={isSubmitting || hasSubmitted}
-            className="w-full bg-background border border-border px-3 py-2 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-foreground"
+            className="w-full bg-background border border-border px-3 py-2 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none text-foreground font-medium placeholder:text-muted-foreground/50"
           />
         </div>
         <div>
@@ -140,7 +140,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           disabled={isSubmitting || hasSubmitted}
-          className="w-full bg-background border border-border px-3 py-2 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none h-20 text-foreground"
+          className="w-full bg-background border border-border px-3 py-2 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none h-20 text-foreground placeholder:text-muted-foreground/50"
         />
       </div>
 

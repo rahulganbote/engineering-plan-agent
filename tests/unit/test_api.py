@@ -544,10 +544,10 @@ def test_run_pipeline_endpoint_latency_and_background_task(client):
 
         start_time = time.time()
 
-        # Send request with mock file
+        # Send request with mock file and consent accepted
         response = client.post(
             "/run-pipeline",
-            data={"model_family": "openai", "enable_fallback": True},
+            data={"model_family": "openai", "enable_fallback": True, "consent_accepted": True},
             files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
         )
 
@@ -563,3 +563,14 @@ def test_run_pipeline_endpoint_latency_and_background_task(client):
         args, kwargs = mock_task.call_args
         assert args[1] == hashlib.sha256(b"Mock BRD contents").hexdigest()
         assert args[2] == data["run_id"]
+
+
+def test_run_pipeline_without_consent_raises_400(client):
+    """Assert POST /run-pipeline fails with 400 Bad Request if consent is not accepted."""
+    response = client.post(
+        "/run-pipeline",
+        data={"model_family": "openai", "enable_fallback": True, "consent_accepted": False},
+        files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+    )
+    assert response.status_code == 400
+    assert "accept the Terms of Service and Privacy Policy" in response.json()["detail"]

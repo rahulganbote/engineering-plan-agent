@@ -21,6 +21,7 @@ import { ThemePicker } from './ThemePicker';
 import { generateVoiceBrief } from '../lib/voiceBrief';
 import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 import FeedbackModal from './FeedbackModal';
+import ConsentModal from './ConsentModal';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -51,6 +52,7 @@ export const AgentWorkspace: React.FC = () => {
   const [isStartingPipeline, setIsStartingPipeline] = useState(false);
   const [modelFamily, setModelFamily] = useState('openai');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
 
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
@@ -98,6 +100,7 @@ export const AgentWorkspace: React.FC = () => {
 
   const [startupError, setStartupError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const exportResultsRef = useRef<HTMLDivElement | null>(null);
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
@@ -117,6 +120,20 @@ export const AgentWorkspace: React.FC = () => {
       }
     );
   }, [fallbackActive]);
+
+  // Scroll to Export Results banner once export completes or run is rejected
+  useEffect(() => {
+    if (
+      pipelineStatus === PIPELINE_STATUS.EXPORTED ||
+      pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED ||
+      pipelineStatus === PIPELINE_STATUS.REJECTED
+    ) {
+      const timer = setTimeout(() => {
+        exportResultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [pipelineStatus]);
 
   // Shared reset - clears run state and returns the UI to the empty landing.
   // Used by the sidebar Clear Plan & Reset button, the error-banner "Clear &
@@ -170,13 +187,20 @@ export const AgentWorkspace: React.FC = () => {
     }
   };
 
-  const triggerPipeline = async () => {
+  const triggerPipeline = async (bypassConsentCheck = false) => {
     if (!selectedFile) return;
+
+    if (!bypassConsentCheck && sessionStorage.getItem("em_copilot_consent_accepted") !== "true") {
+      setIsConsentModalOpen(true);
+      return;
+    }
+
     setIsStartingPipeline(true);
     setStartupError(null);
     const form = new FormData();
     form.append("file", selectedFile);
     form.append("model_family", modelFamily);
+    form.append("consent_accepted", "true");
     try {
       const data = await apiFetch<{ run_id: string }>(`${apiBaseUrl}/run-pipeline`, {
         method: "POST",
@@ -309,7 +333,9 @@ export const AgentWorkspace: React.FC = () => {
           {/* Upload BRD Section */}
           {isAuthenticated && (
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Upload BRD</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Upload BRD</h3>
+              </div>
 
               <input
                 ref={fileInputRef}
@@ -364,7 +390,7 @@ export const AgentWorkspace: React.FC = () => {
                 title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
               >
                 <button
-                  onClick={triggerPipeline}
+                  onClick={() => triggerPipeline()}
                   disabled={!selectedFile || !!runId || isStartingPipeline}
                   className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
                     ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
@@ -443,8 +469,20 @@ export const AgentWorkspace: React.FC = () => {
                 Status: <span className="font-semibold text-success capitalize">{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
-                onClick={handleReset}
-                className="w-full py-1.5 border border-destructive bg-destructive/10 hover:bg-destructive/40 rounded text-xs font-semibold text-destructive hover:text-destructive transition shadow-[0_0_10px_rgba(244,63,94,0.05)]"
+                onClick={() => {
+                  if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
+                    if (!window.confirm("Are you sure you want to clear this generated plan? This action cannot be undone.")) {
+                      return;
+                    }
+                  }
+                  handleReset();
+                }}
+                disabled={CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED}
+                className={`w-full py-1.5 rounded text-xs font-semibold transition ${
+                  (CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED)
+                    ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                    : 'border border-destructive bg-destructive/10 hover:bg-destructive/40 text-destructive hover:text-destructive shadow-[0_0_10px_rgba(244,63,94,0.05)]'
+                }`}
               >
                 Clear Plan & Reset
               </button>
@@ -485,7 +523,7 @@ export const AgentWorkspace: React.FC = () => {
             cleanly at narrow viewports (e.g. devtools open) without overflowing
             into the IngestionLanding hero below. items-start keeps the controls
             (Theme picker, API status) pinned to the top-right of the title block. */}
-        <header className="min-h-16 border-b border-border px-4 md:px-8 py-3 gap-4 flex flex-col sm:flex-row sm:items-start justify-between bg-card shrink-0 shadow-sm relative">
+        <header className="min-h-16 border-b border-border px-6 pt-4 pb-5 gap-4 flex flex-col sm:flex-row sm:items-start justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
               <span className="text-primary">EM Copilot</span>
@@ -528,7 +566,7 @@ export const AgentWorkspace: React.FC = () => {
           </div>
         </header>
         {/* Scrollable Workstation Body */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-12 space-y-8">
+        <div className="flex-1 overflow-y-auto p-6 pb-12 space-y-8">
           {!runId ? (
             <div className="space-y-6">
               {startupError && (
@@ -644,16 +682,16 @@ export const AgentWorkspace: React.FC = () => {
               {/* Performance Metrics Summary */}
               <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border my-4">
                 <div>
-                  <strong>Evaluation Score:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
+                  <strong>Evaluation Score:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[70px] bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
                 </div>
                 <div>
-                  <strong>Total Processing Time:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
+                  <strong>Total Processing Time:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[50px] bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Tokens used:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
+                  <strong>Tokens used:</strong> <code className={`inline-flex items-center justify-center text-center bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
                 </div>
                 <div>
-                  <strong>Cost Spent:</strong> <code className={`bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
+                  <strong>Cost Spent:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[75px] bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
                 </div>
               </div>
 
@@ -842,7 +880,7 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Export Status / Final Decision Section */}
               {(pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED) && (
-                <div className="border-t border-border pt-8">
+                <div ref={exportResultsRef} className="border-t border-border pt-8">
                   <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
@@ -867,7 +905,7 @@ export const AgentWorkspace: React.FC = () => {
 
                     {pipelineStatus === PIPELINE_STATUS.REJECTED && (
                       <p className="text-xs text-danger font-semibold bg-danger/10 border border-danger/20 p-3.5 rounded-lg animate-fade-in leading-relaxed">
-                        The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
+                        Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
                       </p>
                     )}
 
@@ -891,6 +929,16 @@ export const AgentWorkspace: React.FC = () => {
                               {pipelineStatus === PIPELINE_STATUS.REJECTED
                                 ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
                                 : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
+                            </div>
+
+                            {/* Mini-metadata row showing target document details for alignment symmetry */}
+                            <div className="text-[10px] text-muted-foreground bg-background/50 border border-border/40 p-2 rounded flex flex-col gap-1 mt-2">
+                              <div>
+                                <span className="font-bold text-foreground">Target spreadsheet:</span> EM Copilot Runs Log
+                              </div>
+                              <div>
+                                <span className="font-bold text-foreground">Data logged:</span> Run summary, EM score, notes, and timestamp
+                              </div>
                             </div>
                           </div>
                           <a
@@ -1056,8 +1104,13 @@ export const AgentWorkspace: React.FC = () => {
             it stays visible at all times (matches Claude.ai / ChatGPT pattern).
             Moved here from the header subtitle, where it was undermining the
             product's perceived reliability by appearing alongside the title. */}
-        <footer className="px-8 py-2 border-t border-border bg-card text-center text-[10px] text-foreground/65 shrink-0">
-          Disclaimer: AI generated plans are starting points. Professional review and validation required before implementation.
+        <footer className="px-8 py-2 border-t border-border bg-card text-[10px] text-foreground/65 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span><b>Disclaimer</b>: AI generated plans are starting points. Professional review and validation required before implementation.</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <a href="#/privacy" className="hover:text-primary transition font-semibold">Privacy Policy</a>
+            <span>•</span>
+            <a href="#/terms" className="hover:text-primary transition font-semibold">Terms of Service</a>
+          </div>
         </footer>
       </main>
 
@@ -1066,6 +1119,16 @@ export const AgentWorkspace: React.FC = () => {
         onClose={() => setIsFeedbackOpen(false)}
         runId={runId}
         apiBaseUrl={apiBaseUrl}
+      />
+
+      <ConsentModal
+        isOpen={isConsentModalOpen}
+        onClose={() => setIsConsentModalOpen(false)}
+        onAccept={() => {
+          setIsConsentModalOpen(false);
+          sessionStorage.setItem("em_copilot_consent_accepted", "true");
+          triggerPipeline(true);
+        }}
       />
     </div>
   );

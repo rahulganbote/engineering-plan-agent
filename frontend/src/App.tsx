@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext';
 import { WorkspaceProvider } from './context/WorkspaceContext';
 import { AgentWorkspace } from './components/AgentWorkspace';
 import { AboutPage } from './components/AboutPage';
+import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
+import { TermsOfServicePage } from './components/TermsOfServicePage';
 import { Toaster } from 'sonner';
 import { ThemeProvider, useTheme } from './hooks/useTheme';
 
@@ -34,13 +36,24 @@ function useHashRoute(): string {
 
 function App() {
   const hash = useHashRoute();
-  const isAbout = hash === '#/about';
+  const path = window.location.pathname;
+  const isAbout = hash === '#/about' || path === '/about' || path.endsWith('/about');
+  const isPrivacy = hash === '#/privacy' || path === '/privacy' || path.endsWith('/privacy');
+  const isTerms = hash === '#/terms' || path === '/terms' || path.endsWith('/terms');
 
   return (
     <ThemeProvider>
       <AuthProvider>
         <WorkspaceProvider>
-          {isAbout ? <AboutPage /> : <AgentWorkspace />}
+          {isAbout ? (
+            <AboutPage />
+          ) : isPrivacy ? (
+            <PrivacyPolicyPage />
+          ) : isTerms ? (
+            <TermsOfServicePage />
+          ) : (
+            <AgentWorkspace />
+          )}
           <ThemedToaster />
         </WorkspaceProvider>
       </AuthProvider>

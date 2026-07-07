@@ -232,7 +232,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
   ];
 
   return (
-    <div className="space-y-3 max-w-6xl mx-auto py-2">
+    <div className="space-y-3 w-full py-2">
       {/* Welcome & Subtitle Section */}
       <div className="space-y-1.5">
         <h2 className="text-base font-semibold tracking-tight text-foreground">
