@@ -139,6 +139,12 @@ async def hitl_approve(
     if not resolved_email:
         resolved_email = fastapi_request.session.get("auth_email") or ""
 
+    # Fallback to run owner if session is absent (e.g. for external voice agent webhooks)
+    if not resolved_email:
+        from src.api.state import _run_owner
+
+        resolved_email = _run_owner.get(run_id) or ""
+
     if not resolved_email:
         from src.security.google_auth import is_configured
 

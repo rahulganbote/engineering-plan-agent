@@ -55,6 +55,7 @@ SECRETS=(
   "REDIS_URL"                  # Upstash Redis (us-east-2 / Ohio); enables L2 cache
   "TAVILY_API_KEY"
   "GITHUB_TOKEN"
+  "SESSION_SECRET_KEY"
 )
 
 echo "Verifying secrets and granting permissions..."
@@ -102,7 +103,8 @@ ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,\
 SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,\
 REDIS_URL=REDIS_URL:latest,\
 TAVILY_API_KEY=TAVILY_API_KEY:latest,\
-GITHUB_TOKEN=GITHUB_TOKEN:latest \
+GITHUB_TOKEN=GITHUB_TOKEN:latest,\
+SESSION_SECRET_KEY=SESSION_SECRET_KEY:latest \
   --update-env-vars=\
 ANTHROPIC_DEFAULT_MODEL="${ANTHROPIC_DEFAULT_MODEL:-claude-sonnet-4-5}",\
 ANTHROPIC_MINI_MODEL="${ANTHROPIC_MINI_MODEL:-claude-haiku-4-5}",\

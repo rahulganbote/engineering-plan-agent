@@ -94,7 +94,11 @@ def test_approve_email_local_dev_fallback(mock_run):
 
 def test_approve_email_voice_agent_fallback(mock_run):
     """Scenario 4: email empty, session empty, oauth IS configured, voice reviewer -> voice-agent@example.com."""
+    from src.api.state import _run_owner
     from src.core.config import settings
+
+    if mock_run in _run_owner:
+        del _run_owner[mock_run]
 
     with patch("src.api.main._run_export_handlers_background") as mock_export:
         with patch("src.security.google_auth.is_configured", return_value=True):
@@ -113,6 +117,32 @@ def test_approve_email_voice_agent_fallback(mock_run):
                 )
                 assert response.status_code == 200
                 mock_export.assert_called_once_with(mock_run, HITLDecision.APPROVED, "voice-agent@example.com")
+
+
+def test_approve_email_voice_agent_resolves_owner(mock_run):
+    """Scenario 6: voice reviewer, but run owner is defined -> resolves to run owner's email."""
+    from src.api.state import _run_owner
+    from src.core.config import settings
+
+    _run_owner[mock_run] = "owner-user@example.com"
+
+    with patch("src.api.main._run_export_handlers_background") as mock_export:
+        with patch("src.security.google_auth.is_configured", return_value=True):
+            with patch.object(settings, "voice_webhook_secret", "test-secret"):
+                client = TestClient(app)
+                response = client.post(
+                    f"/approve/{mock_run}",
+                    headers={"Authorization": "Bearer test-secret"},
+                    json={
+                        "decision": "approved",
+                        "reviewer": "ElevenLabs Voice Agent",
+                        "notes": "looks good",
+                        "em_rating": 4,
+                        "email": "",
+                    },
+                )
+                assert response.status_code == 200
+                mock_export.assert_called_once_with(mock_run, HITLDecision.APPROVED, "owner-user@example.com")
 
 
 def test_approve_email_anonymous_fallback(mock_run):

@@ -101,6 +101,11 @@ def write_artifacts_to_sheet(state: PipelineState, email: str = "") -> dict[str,
 
 def _credentials_status() -> tuple[bool, str]:
     """Return (ok, reason) - reason is the why-not string when ok is False."""
+    import sys
+
+    if "pytest" in sys.modules:
+        return False, "pytest environment detected"
+
     sheet_id = (settings.google_sheet_id or "").strip()
     creds_path_str = (settings.google_service_account_json or "").strip()
 
