@@ -713,18 +713,82 @@ export const AgentWorkspace: React.FC = () => {
                       <div className="space-y-1">
                         <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
                         <div className="text-xs text-muted-foreground">
-                          Final Score: <strong className="text-success font-bold">{criticOutput.overallScore.toFixed(2)}/5.0</strong>  |  Total Revision(s): <strong className="text-success font-bold">{criticOutput.revisionNumber}</strong>
+                          Final Score:{' '}
+                          <strong
+                            className={
+                              criticOutput.badge === 'green'
+                                ? 'text-success font-bold'
+                                : criticOutput.badge === 'amber'
+                                ? 'text-warning font-bold'
+                                : 'text-danger font-bold'
+                            }
+                          >
+                            {criticOutput.overallScore.toFixed(2)}/5.0
+                          </strong>{' '}
+                          <span className="text-[11px] text-muted-foreground">
+                            (Target: &ge;4.00 for Green)
+                          </span>{' '}
+                          | Total Revision(s):{' '}
+                          <strong className="text-foreground font-bold">
+                            {criticOutput.revisionNumber}
+                          </strong>
                         </div>
                       </div>
-                      <span className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider ${criticOutput.badge === 'green'
-                        ? 'bg-success/20 text-success border border-success/40'
-                        : criticOutput.badge === 'amber'
-                          ? 'bg-warning/50 text-warning border border-warning/50'
-                          : 'bg-danger/50 text-danger border border-danger/50'
-                        }`}>
-                        {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
+                      <span
+                        title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass. Amber is awarded if the score falls below 4.00, if any metrics failed, or if safety/quality safeguards were applied."
+                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider cursor-help transition ${
+                          criticOutput.badge === 'green'
+                            ? 'bg-success/20 text-success border border-success/40'
+                            : criticOutput.badge === 'amber'
+                            ? 'bg-warning/50 text-warning border border-warning/50'
+                            : 'bg-danger/50 text-danger border border-danger/50'
+                        }`}
+                      >
+                        {criticOutput.badge === 'green'
+                          ? '🟢 GREEN'
+                          : criticOutput.badge === 'amber'
+                          ? '🟡 AMBER'
+                          : '🔴 RED'}
                       </span>
                     </div>
+
+                    {/* Quality Safeguard / Cap Reasons alerts (stacked) */}
+                    {criticOutput.capReasons && criticOutput.capReasons.length > 0 && (
+                      <div className="space-y-2 pb-2 animate-fade-in">
+                        {criticOutput.capReasons.map((reason, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between text-xs px-3.5 py-2.5 rounded-lg border border-warning/30 bg-warning/5 text-warning font-medium leading-relaxed"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-extrabold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
+                                {reason.mechanism}
+                              </span>
+                              <span>
+                                <strong>{reason.verb} by Quality Safeguard:</strong> {reason.detail}
+                              </span>
+                              {reason.agentsInvolved && reason.agentsInvolved.length > 0 && (
+                                <div className="flex items-center gap-1 ml-1">
+                                  {reason.agentsInvolved.map((agent) => (
+                                    <button
+                                      key={agent}
+                                      onClick={() => setActiveTab(agent as any)}
+                                      className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 border border-warning/20 text-warning hover:bg-warning/20 cursor-pointer font-bold uppercase transition-colors"
+                                      title={`View ${agent} agent work`}
+                                    >
+                                      {agent}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-mono text-[11px] font-bold whitespace-nowrap ml-4">
+                              {reason.before.toFixed(2)} &rarr; {reason.after.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Metrics row */}
                     <div className="flex flex-wrap md:flex-nowrap gap-x-4 gap-y-2 items-center justify-between text-xs text-muted-foreground pt-2">
