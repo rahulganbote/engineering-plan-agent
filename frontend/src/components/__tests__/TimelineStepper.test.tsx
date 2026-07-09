@@ -21,7 +21,7 @@ describe('TimelineStepper', () => {
   it('shows all 7 business-focused stage labels', () => {
     render(<TimelineStepper {...baseProps} />);
     // 7 steps: Security, Orchestrator, Specialists Drafting, Arbitration, Specialists Alignment, Critic, Decision
-    expect(screen.getByText('Security')).toBeInTheDocument();
+    expect(screen.getByText('Security Validation')).toBeInTheDocument();
     expect(screen.getByText('Orchestrator')).toBeInTheDocument();
     expect(screen.getByText('Specialists Drafting')).toBeInTheDocument();
     expect(screen.getByText('Arbitration')).toBeInTheDocument();

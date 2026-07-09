@@ -24,8 +24,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   const steps = [
     {
       id: 1,
-      label: 'Security',
-      description: 'Security & PII Check',
+      label: 'Security Validation',
+      description: 'Format, Security & PII Check',
       icon: Shield,
       get isCompleted() {
         if (pipelineStatus === PIPELINE_STATUS.ERROR) {
@@ -158,9 +158,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         ).includes(pipelineStatus) || logs.some(l => l.type === 'orchestrator_reconciled');
       },
       get isFailed() {
-        // Cleaned up the redundant `!this.isCompleted` checks
         const pass1Completed = this.isCompleted;
-        return pipelineStatus === PIPELINE_STATUS.ERROR && !pass1Completed;
+        const draftingCompleted = (
+          completedAgents.has('engineering_plan_generator') &&
+          completedAgents.has('schedule_estimator') &&
+          completedAgents.has('solution_architect') &&
+          completedAgents.has('poc_planner') &&
+          completedAgents.has('tech_stack_recommender')
+        ) || logs.some(l => l.type === 'orchestrator_reconciled');
+        return pipelineStatus === PIPELINE_STATUS.ERROR && draftingCompleted && !pass1Completed;
       },
       get isActive() {
         return pipelineStatus === PIPELINE_STATUS.ARBITRATING;
