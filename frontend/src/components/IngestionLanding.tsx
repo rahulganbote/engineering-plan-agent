@@ -247,7 +247,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
       {isAuthenticated && !selectedFile && (
         <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary font-medium animate-in fade-in slide-in-from-top-1 duration-200">
           <span className="text-sm">💡</span>
-          <span><strong>Next Step:</strong> Drag and drop a BRD file anywhere on the page to start your automated engineering run. (Note: This application is a demo of a production-grade Agentic AI system).</span>
+<span><strong>Next Step:</strong> Drag and drop a BRD file on the left to generate your engineering plan. (A demonstration of a production-grade Agentic AI system.)</span>
         </div>
       )}
 

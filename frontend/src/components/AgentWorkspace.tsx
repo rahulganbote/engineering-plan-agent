@@ -333,8 +333,8 @@ export const AgentWorkspace: React.FC = () => {
           {/* Upload BRD Section */}
           {isAuthenticated && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Upload BRD</h3>
+              <div className="flex items-center justify-center">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center">Upload BRD</h3>
               </div>
 
               <input
