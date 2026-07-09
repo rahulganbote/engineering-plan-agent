@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -452,6 +453,19 @@ class HallucinationFlag(BaseModel):
     supporting_chunk_id: str | None = None
 
 
+class ScoreCapReason(BaseModel):
+    """
+    Structured reason explaining why the overall score was capped or reduced.
+    """
+
+    mechanism: Literal["FM-1", "FM-2", "FM-3"]
+    verb: Literal["Reduced", "Capped"]
+    detail: str
+    before: float
+    after: float
+    agents_involved: list[str] = Field(default_factory=list)
+
+
 class CriticOutput(BaseModel):
     """
     Output of the Critic agent - scores all 5 specialist agents collectively.
@@ -490,6 +504,7 @@ class CriticOutput(BaseModel):
     # Per-agent revision instructions sent back through the loop
     agent_feedback: dict[str, str] = Field(default_factory=dict)
     requires_revision: bool
+    cap_reasons: list[ScoreCapReason] = Field(default_factory=list)
 
 
 class AlignmentDirective(BaseModel):

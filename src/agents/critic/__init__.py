@@ -32,10 +32,26 @@ from src.core.models import (
     PipelineState,
     QualityBadge,
     RiskLevel,
+    ScoreCapReason,
 )
 
 log = get_logger(__name__)
 MAX_REVISIONS = settings.max_critic_revisions
+
+AGENT_SHORT_NAMES = {
+    # Full names
+    "engineering_plan_generator": "plan",
+    "schedule_estimator": "schedule",
+    "solution_architect": "arch",
+    "poc_planner": "poc",
+    "tech_stack_recommender": "stack",
+    # Short names / key mappings
+    "plan": "plan",
+    "schedule": "schedule",
+    "architect": "arch",
+    "poc": "poc",
+    "stack": "stack",
+}
 
 
 class CriticAgent:
@@ -89,6 +105,28 @@ class CriticAgent:
         # Penalty: each unsupported claim reduces score by 0.3
         overall = max(0.0, raw_overall - (unsupported * 0.3))
 
+        cap_reasons: list[ScoreCapReason] = []
+        if unsupported > 0:
+            agents_involved = sorted(
+                list(
+                    set(
+                        AGENT_SHORT_NAMES.get(f.agent, f.agent)
+                        for f in hallucination_flags
+                        if f.status == "unsupported"
+                    )
+                )
+            )
+            cap_reasons.append(
+                ScoreCapReason(
+                    mechanism="FM-1",
+                    verb="Reduced",
+                    detail=f"{unsupported} unsupported claim{'s' if unsupported > 1 else ''}",
+                    before=round(raw_overall, 2),
+                    after=round(overall, 2),
+                    agents_involved=agents_involved,
+                )
+            )
+
         # FM-2: Force Amber if any agent had no RAG hits (no_rag_hits failure mode)
         no_rag_agents = [
             agent_name
@@ -106,7 +144,21 @@ class CriticAgent:
             log.warning(
                 f"[{state.run_id}] no_rag_hits failure mode - forcing Amber badge | agents_without_rag={no_rag_agents}"
             )
+            pre_fm2_overall = overall
             overall = min(overall, 3.9)  # cap below GREEN_THRESHOLD (4.0) to force Amber
+
+            if overall < pre_fm2_overall:
+                agents_involved = [AGENT_SHORT_NAMES.get(a, a) for a in no_rag_agents]
+                cap_reasons.append(
+                    ScoreCapReason(
+                        mechanism="FM-2",
+                        verb="Capped",
+                        detail=f"{', '.join(AGENT_SHORT_NAMES.get(a, a) for a in no_rag_agents)} had zero RAG hits",
+                        before=round(pre_fm2_overall, 2),
+                        after=round(overall, 2),
+                        agents_involved=agents_involved,
+                    )
+                )
 
         # FM-3: Force Amber if any agent self-reported confidence ≤ 0.3.
         low_confidence_agents = []
@@ -128,7 +180,24 @@ class CriticAgent:
                 f"[{state.run_id}] low confidence - forcing Amber badge | "
                 f"agents={[(a, round(c, 2)) for a, c in low_confidence_agents]}"
             )
+            pre_fm3_overall = overall
             overall = min(overall, 3.9)  # cap below GREEN_THRESHOLD (4.0) to force Amber
+
+            if overall < pre_fm3_overall:
+                agents_involved = [AGENT_SHORT_NAMES.get(a, a) for a, c in low_confidence_agents]
+                cap_reasons.append(
+                    ScoreCapReason(
+                        mechanism="FM-3",
+                        verb="Capped",
+                        detail=", ".join(
+                            f"{AGENT_SHORT_NAMES.get(a, a)} self-reported conf={c:.2f}"
+                            for a, c in low_confidence_agents
+                        ),
+                        before=round(pre_fm3_overall, 2),
+                        after=round(overall, 2),
+                        agents_involved=agents_involved,
+                    )
+                )
             for agent_name, conf in low_confidence_agents:
                 consistency_issues.append(
                     ConsistencyIssue(
@@ -208,6 +277,7 @@ class CriticAgent:
             hallucination_flags=hallucination_flags,
             agent_feedback=agent_feedback,
             requires_revision=requires_revision,
+            cap_reasons=cap_reasons,
         )
 
     # ── Backward Compatibility Method Wrappers ───────────────────────────────────

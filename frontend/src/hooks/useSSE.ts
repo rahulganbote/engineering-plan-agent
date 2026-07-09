@@ -43,11 +43,21 @@ export interface CriticDimension {
   passed: boolean;
 }
 
+export interface ScoreCapReason {
+  mechanism: 'FM-1' | 'FM-2' | 'FM-3';
+  verb: 'Reduced' | 'Capped';
+  detail: string;
+  before: number;
+  after: number;
+  agentsInvolved?: string[];
+}
+
 export interface CriticOutput {
   revisionNumber: number;
   overallScore: number;
   badge: 'green' | 'amber' | 'red';
   dimensions: Record<string, CriticDimension>;
+  capReasons?: ScoreCapReason[];
 }
 
 export interface ApprovalResult {
@@ -118,6 +128,8 @@ interface ArtifactsResponse {
     completeness?: CriticDimension;
     consistency?: CriticDimension;
     actionability?: CriticDimension;
+    cap_reasons?: any[];
+    capReasons?: any[];
   };
   export?: {
     sheet_url?: string | null;
@@ -132,6 +144,18 @@ interface ArtifactsResponse {
       detail?: string | null;
     };
   };
+}
+
+export function parseCapReasons(raw: any[] | undefined): ScoreCapReason[] {
+  if (!raw) return [];
+  return raw.map((r: any) => ({
+    mechanism: r.mechanism,
+    verb: r.verb,
+    detail: r.detail,
+    before: r.before ?? r.raw_overall ?? r.rawOverall,
+    after: r.after ?? r.final_overall ?? r.finalOverall,
+    agentsInvolved: r.agents_involved ?? r.agentsInvolved ?? [],
+  }));
 }
 
 export const useSSE = (runId: string | null, apiBaseUrl: string) => {
@@ -255,6 +279,8 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
         case 'critic_complete': {
           const criticPayload = (data.payload || data) as Record<string, unknown>;
           const parseDimension = (val: unknown) => val as CriticDimension;
+          const capReasonsRaw = (criticPayload.cap_reasons ?? criticPayload.capReasons) as any[] | undefined;
+          const capReasons = parseCapReasons(capReasonsRaw);
           setCriticOutput({
             revisionNumber: (criticPayload.revision_number ?? criticPayload.revisionNumber) as number,
             overallScore: (criticPayload.overall_score ?? criticPayload.overallScore) as number,
@@ -265,6 +291,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
               consistency: parseDimension(criticPayload.consistency),
               actionability: parseDimension(criticPayload.actionability),
             }) as Record<string, CriticDimension>,
+            capReasons,
           });
           break;
         }
@@ -451,6 +478,8 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       }
 
       if (data.critic_output) {
+        const capReasonsRaw = (data.critic_output.cap_reasons ?? data.critic_output.capReasons) as any[] | undefined;
+        const capReasons = parseCapReasons(capReasonsRaw);
         setCriticOutput({
           revisionNumber: data.critic_output.revision_number,
           overallScore: data.critic_output.overall_score,
@@ -461,6 +490,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
             consistency: data.critic_output.consistency!,
             actionability: data.critic_output.actionability!,
           },
+          capReasons,
         });
       }
 
