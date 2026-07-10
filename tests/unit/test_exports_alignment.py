@@ -85,7 +85,7 @@ def test_jira_mcp_markdown_export():
     # 1. With memo and directives
     state = _create_mock_state(alignment_memo=memo)
     desc = _build_markdown_description(state)
-    assert "Engineering Manager Alignment Directives" in desc
+    assert "EM Copilot AI Plan Alignment Notes" in desc
     assert "Global database strategy" in desc
     assert "Solution Architect" in desc
     assert "Use standard PostgreSQL" in desc
@@ -100,7 +100,7 @@ def test_jira_mcp_markdown_export():
     # 3. With null memo
     state_null = _create_mock_state(alignment_memo=None)
     desc_null = _build_markdown_description(state_null)
-    assert "Engineering Manager Alignment Directives" not in desc_null
+    assert "EM Copilot AI Plan Alignment Notes" not in desc_null
 
 
 def test_jira_rest_adf_export():
@@ -128,7 +128,7 @@ def test_jira_rest_adf_export():
 
     for block in adf["content"]:
         if block.get("type") == "heading" and block.get("content"):
-            if "Engineering Manager Alignment Directives" in block["content"][0].get("text", ""):
+            if "EM Copilot AI Plan Alignment Notes" in block["content"][0].get("text", ""):
                 found_heading = True
         elif block.get("type") == "paragraph" and block.get("content"):
             text_runs = [run.get("text", "") for run in block["content"]]
@@ -164,4 +164,4 @@ def test_jira_rest_adf_export():
     adf_null = _build_adf_description(state_null)
     for block in adf_null["content"]:
         if block.get("type") == "heading" and block.get("content"):
-            assert "Engineering Manager Alignment Directives" not in block["content"][0].get("text", "")
+            assert "EM Copilot AI Plan Alignment Notes" not in block["content"][0].get("text", "")

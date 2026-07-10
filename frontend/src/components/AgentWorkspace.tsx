@@ -22,6 +22,7 @@ import { generateVoiceBrief } from '../lib/voiceBrief';
 import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 import FeedbackModal from './FeedbackModal';
 import ConsentModal from './ConsentModal';
+import { type AlignmentDirective } from '../hooks/useSSE';
 
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -42,7 +43,102 @@ declare global {
 }
 /* eslint-enable @typescript-eslint/no-namespace */
 
+type TabId = 'plan' | 'schedule' | 'arch' | 'poc' | 'stack';
 
+interface AgentMetadata {
+  icon: string;
+  name: string;
+  tab: TabId;
+}
+
+const AGENT_META: Record<string, AgentMetadata> = {
+  engineering_plan_generator: { icon: '📝', name: 'Engineering Plan Generator', tab: 'plan' },
+  schedule_estimator: { icon: '📊', name: 'Schedule Estimator', tab: 'schedule' },
+  solution_architect: { icon: '🏗️', name: 'Solution Architect', tab: 'arch' },
+  poc_planner: { icon: '⏱️', name: 'PoC Planner', tab: 'poc' },
+  tech_stack_recommender: { icon: '💻', name: 'Tech Stack Recommender', tab: 'stack' },
+  plan: { icon: '📝', name: 'Engineering Plan Generator', tab: 'plan' },
+  schedule: { icon: '📊', name: 'Schedule Estimator', tab: 'schedule' },
+  arch: { icon: '🏗️', name: 'Solution Architect', tab: 'arch' },
+  poc: { icon: '⏱️', name: 'PoC Planner', tab: 'poc' },
+  stack: { icon: '💻', name: 'Tech Stack Recommender', tab: 'stack' },
+};
+
+const getAgentMeta = (agentName: string): AgentMetadata => {
+  const normalized = agentName.toLowerCase().replace(/_/g, '_');
+  if (AGENT_META[normalized]) {
+    return AGENT_META[normalized];
+  }
+  for (const key of Object.keys(AGENT_META)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return AGENT_META[key];
+    }
+  }
+  return {
+    icon: '🤖',
+    name: agentName.replace(/_/g, ' '),
+    tab: 'plan',
+  };
+};
+
+interface DirectiveCardProps {
+  d: AlignmentDirective;
+  setActiveTab: (tab: TabId) => void;
+}
+
+const DirectiveCard: React.FC<DirectiveCardProps> = ({ d, setActiveTab }) => {
+  const [expanded, setExpanded] = useState(false);
+  const meta = getAgentMeta(d.agent_name);
+
+  return (
+    <div className="p-4 rounded-lg bg-background/50 border border-border/80 flex flex-col gap-2.5 text-xs transition-all duration-200 shadow-sm hover:shadow">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 font-bold text-primary capitalize text-[13px]">
+          <span>{meta.icon}</span>
+          <span>{meta.name}</span>
+        </div>
+        {meta.tab && (
+          <button
+            onClick={() => setActiveTab(meta.tab)}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 cursor-pointer font-semibold uppercase transition-colors"
+            title={`View ${meta.name} details`}
+          >
+            View Tab
+          </button>
+        )}
+      </div>
+      
+      <p className="text-foreground leading-relaxed font-bold">
+        {d.directive}
+      </p>
+
+      <div className="mt-1">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1.5 text-[11px] font-semibold text-primary hover:text-primary-hover transition-colors focus:outline-none cursor-pointer"
+        >
+          <span className="text-[10px] transform transition-transform duration-200 block" style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+            ▶
+          </span>
+          <span>{expanded ? 'Hide reasoning & agent evidence' : 'Show reasoning & agent evidence'}</span>
+        </button>
+
+        {expanded && (
+          <div className="mt-2.5 pl-3 border-l-2 border-primary/20 space-y-2 text-muted-foreground animate-fade-in">
+            <p className="text-[11px] leading-relaxed">
+              <strong>Reasoning:</strong> {d.reasoning}
+            </p>
+            {d.evidence && (
+              <p className="text-[10px] italic leading-relaxed bg-muted/40 p-2 rounded border border-border/30">
+                <strong>Quote:</strong> "{d.evidence}"
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const AgentWorkspace: React.FC = () => {
   const { user, loading, login, logout, isAuthenticated } = useAuth();
@@ -101,6 +197,7 @@ export const AgentWorkspace: React.FC = () => {
   const [startupError, setStartupError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
@@ -169,6 +266,15 @@ export const AgentWorkspace: React.FC = () => {
   };
 
   const [activeTab, setActiveTab] = useState<'plan' | 'schedule' | 'arch' | 'poc' | 'stack'>('plan');
+
+  const navigateToTab = (tab: 'plan' | 'schedule' | 'arch' | 'poc' | 'stack') => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  };
 
 
 
@@ -711,7 +817,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
                     <div className="flex items-center justify-between border-b border-border/60 pb-4">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Critic - Quality Assessment</h3>
+                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Independent Critic Score</h3>
                         <div className="text-xs text-muted-foreground">
                           Final Score:{' '}
                           <strong
@@ -772,7 +878,7 @@ export const AgentWorkspace: React.FC = () => {
                                   {reason.agentsInvolved.map((agent) => (
                                     <button
                                       key={agent}
-                                      onClick={() => setActiveTab(agent as any)}
+                                      onClick={() => navigateToTab(agent as any)}
                                       className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 border border-warning/20 text-warning hover:bg-warning/20 cursor-pointer font-bold uppercase transition-colors"
                                       title={`View ${agent} agent work`}
                                     >
@@ -819,37 +925,14 @@ export const AgentWorkspace: React.FC = () => {
               {artifacts?.alignment_memo && (
                 <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
                   <div className="flex items-start justify-between gap-4">
-                    <h4 className="text-sm font-bold text-primary flex items-center gap-2">
-                     Engineering Manager Alignment Directives
+                    <h4 className="text-xs sm:text-sm md:text-base font-bold text-primary flex items-center gap-2">
+                     How the EM Copilot AI Aligned Your Plan
                     </h4>
                   </div>
-                  {artifacts.alignment_memo.overall_strategy && (
-                    <div className="bg-primary/10 border-l-4 border-primary p-3.5 rounded-r-lg text-xs leading-relaxed text-foreground/90 font-medium mb-1">
-                      <span className="font-bold text-primary uppercase text-[10px] tracking-wider block mb-1">EM Overall Strategy</span>
-                      "{artifacts.alignment_memo.overall_strategy}"
-                    </div>
-                  )}
                   {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                      {artifacts.alignment_memo.directives.map((d: any, idx: number) => (
-                        <div key={idx} className="p-3 rounded-lg bg-background/50 border border-border/80 flex flex-col gap-1 text-xs">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-bold text-primary capitalize">
-                              {d.agent_name.replace(/_/g, ' ')}
-                            </span>
-                          </div>
-                          <p className="text-foreground leading-relaxed">
-                            <strong>Directive:</strong> {d.directive}
-                          </p>
-                          <p className="text-muted-foreground text-[11px] mt-1">
-                            <strong>Reasoning:</strong> {d.reasoning}
-                          </p>
-                          {d.evidence && (
-                            <p className="text-[10px] text-muted-foreground/80 italic mt-0.5 border-t border-border/40 pt-1">
-                              Quote: "{d.evidence}"
-                            </p>
-                          )}
-                        </div>
+                      {artifacts.alignment_memo.directives.map((d: AlignmentDirective, idx: number) => (
+                        <DirectiveCard key={idx} d={d} setActiveTab={navigateToTab} />
                       ))}
                     </div>
                   ) : (
@@ -879,7 +962,7 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
 
                   {/* Tabs list */}
-                  <div className="flex bg-background p-1 rounded-lg border border-border w-full overflow-x-auto scrollbar-none whitespace-nowrap">
+                  <div ref={tabsRef} className="flex bg-background p-1 rounded-lg border border-border w-full overflow-x-auto scrollbar-none whitespace-nowrap">
                     {(['plan', 'schedule', 'arch', 'poc', 'stack'] as const).map((tab) => (
                       <button
                         key={tab}

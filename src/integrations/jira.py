@@ -408,7 +408,7 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
     # ── Alignment Directives ───────────────────────────────────────────
     memo = state.alignment_memo
     if memo:
-        blocks.append(_heading(3, "Engineering Manager Alignment Directives"))
+        blocks.append(_heading(3, "EM Copilot AI Plan Alignment Notes"))
         if memo.overall_strategy:
             blocks.append(
                 _paragraph(

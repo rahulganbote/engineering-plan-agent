@@ -508,49 +508,49 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                     className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         {node.icon}
                         <div className="flex-1">
-                          <span className="text-xs font-extrabold">{node.label}</span>
+                          <span className="text-xs md:text-sm font-extrabold text-foreground/90">{node.label}</span>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 mt-1.5 border-t border-primary/20">
                             {/* Sub-cluster 1: Autonomous Tools */}
                             <div className="space-y-0.5">
-                              <div className="text-[9px] uppercase font-extrabold text-purple-500 tracking-wider flex items-center gap-1">
-                                <Bot size={10} />
+                              <div className="text-[10px] md:text-xs uppercase font-extrabold text-purple-500 tracking-wider flex items-center gap-1">
+                                <Bot size={12} />
                                 Autonomous
                               </div>
-                              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">
+                              <div className="flex flex-col gap-y-1 mt-1 text-[10px] md:text-xs text-muted-foreground">
                                 <span>🔍 Tavily Search</span>
                                 <span>💻 GitHub</span>
                               </div>
                             </div>
-
+ 
                             {/* Sub-cluster 2: Export on Approval */}
                             <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
-                              <div className="text-[9px] uppercase font-extrabold text-success tracking-wider flex items-center gap-1">
-                                <CheckSquare size={10} />
-                                Export On Approval
+                              <div className="text-[10px] md:text-xs uppercase font-extrabold text-success tracking-wider flex items-center gap-1">
+                                <CheckSquare size={12} />
+                                Export
                               </div>
-                              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">
+                              <div className="flex flex-col gap-y-1 mt-1 text-[10px] md:text-xs text-muted-foreground">
                                 <span>📋 Jira Epic</span>
                                 <span>📊 Google Sheets</span>
                               </div>
                             </div>
-
+ 
                             {/* Sub-cluster 3: Operations & Monitoring */}
                             <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
-                              <div className="text-[9px] uppercase font-extrabold text-warning tracking-wider flex items-center gap-1">
-                                <Bell size={10} />
+                              <div className="text-[10px] md:text-xs uppercase font-extrabold text-warning tracking-wider flex items-center gap-1">
+                                <Bell size={12} />
                                 Alerts
                               </div>
-                              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground">
+                              <div className="flex flex-col gap-y-1 mt-1 text-[10px] md:text-xs text-muted-foreground">
                                 <span>💬 Slack Alerts</span>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                      <Info size={12} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
+                      <Info size={14} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
                     </div>
                   </div>
 
