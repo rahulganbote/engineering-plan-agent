@@ -355,7 +355,7 @@ def _build_markdown_description(state: PipelineState) -> str:
     lines.append("")
 
     if critic:
-        lines.append("h3. Critic - Quality Assessment")
+        lines.append("h3. Independent Critic Score")
         lines.append(f"*Badge:* {critic.badge.value.upper()}  ·  *Overall:* {critic.overall_score:.2f} / 5.0")
         for name, dim in [
             ("Groundedness", critic.groundedness),
@@ -369,7 +369,7 @@ def _build_markdown_description(state: PipelineState) -> str:
 
     memo = state.alignment_memo
     if memo:
-        lines.append("h3. Engineering Manager Alignment Directives")
+        lines.append("h3. EM Copilot AI Plan Alignment Notes")
         if memo.overall_strategy:
             lines.append(f"*Overall Strategy:* {memo.overall_strategy}")
             lines.append("")

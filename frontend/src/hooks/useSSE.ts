@@ -73,6 +73,18 @@ export interface ApprovalResult {
   jira_detail?: string;
 }
 
+export interface AlignmentDirective {
+  agent_name: string;
+  directive: string;
+  reasoning: string;
+  evidence?: string;
+}
+
+export interface AlignmentMemo {
+  overall_strategy?: string;
+  directives: AlignmentDirective[];
+}
+
 // Backend returns these as Pydantic objects (structured), not strings.
 // Sprint 3 stopgap: store as `unknown`; let the UI render via JSON.stringify or
 // per-field accessors. Sprint 4 builds typed Plan/Schedule/Arch/PoC/Stack interfaces.
@@ -87,7 +99,7 @@ export interface ArtifactsState {
   errors?: string[];
   warnings?: string[];
   pass_number?: number;
-  alignment_memo?: any;
+  alignment_memo?: AlignmentMemo;
   draft_plan_output?: unknown;
   draft_schedule_output?: unknown;
   draft_arch_output?: unknown;
@@ -113,7 +125,7 @@ interface ArtifactsResponse {
   warnings?: string[];
   pipeline_status?: string;
   pass_number?: number;
-  alignment_memo?: any;
+  alignment_memo?: AlignmentMemo;
   draft_plan_output?: unknown;
   draft_schedule_output?: unknown;
   draft_arch_output?: unknown;

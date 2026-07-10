@@ -12,6 +12,16 @@
     <script>
       (function () {
         try {
+          // Dynamic favicon based on environment (local vs production/GCP)
+          var isLocal = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' || 
+                        window.location.hostname === '[::1]' || 
+                        window.location.port === '5173';
+          var faviconEl = document.querySelector('link[rel="icon"]');
+          if (faviconEl) {
+            faviconEl.setAttribute('href', isLocal ? '/favicon-dev.svg?v=1' : '/favicon.svg?v=2');
+          }
+
           var stored = localStorage.getItem('em-copilot-theme');
           var mode = stored || 'light';
           var isDark =
