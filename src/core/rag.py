@@ -143,6 +143,44 @@ def _get_index():
 
 # ── Embeddings ────────────────────────────────────────────────────────────────
 
+# In-process registry tracking which runs had an embedding fallback fire.
+# Used by the Critic (see FM-4) to detect degraded-grounding state without
+# creating a domain→API layering violation.
+#
+# Multi-instance note: this registry is per-process. If run A's embedding
+# fallback fires on Cloud Run instance #1, but the Critic step later executes
+# on instance #2 (e.g. after horizontal auto-scaling), the flag won't be
+# visible. Practical impact: FM-4 may under-count in rare cross-instance
+# scenarios. TODO: replicate via Redis event stream if this becomes noisy.
+import threading as _threading
+
+_FALLBACK_LOCK = _threading.Lock()
+_EMBEDDING_FALLBACK_RUNS: set[str] = set()
+_MAX_TRACKED_FALLBACK_RUNS = 10_000  # bound memory growth
+
+
+def _mark_embedding_fallback(run_id: str) -> None:
+    """Record that this run experienced an embedding fallback."""
+    if not run_id:
+        return
+    with _FALLBACK_LOCK:
+        _EMBEDDING_FALLBACK_RUNS.add(run_id)
+        # Best-effort bound; drops arbitrary entries when full.
+        if len(_EMBEDDING_FALLBACK_RUNS) > _MAX_TRACKED_FALLBACK_RUNS:
+            for _ in range(_MAX_TRACKED_FALLBACK_RUNS // 2):
+                _EMBEDDING_FALLBACK_RUNS.pop()
+
+
+def run_had_embedding_fallback(run_id: str) -> bool:
+    """
+    Check if a given run had an embedding fallback.
+    Used by CriticAgent (FM-4) to trigger a grounding-degraded cap.
+    """
+    if not run_id:
+        return False
+    with _FALLBACK_LOCK:
+        return run_id in _EMBEDDING_FALLBACK_RUNS
+
 
 def _embed_key(texts):
     # Cache by texts only - model + dims are part of the response but stable for the process
@@ -151,29 +189,57 @@ def _embed_key(texts):
 
 @cached(policy=CACHE_EMBEDDING, key_fn=_embed_key, name="rag.embed")
 @resilient(policy=EMBEDDING_POLICY, breaker=_EMBED_BREAKER, name="rag.embed")
-def _embed(texts: list[str]) -> list[list[float]]:
+def _embed_raw(texts: list[str]) -> list[list[float]]:
     """
-    Batch embed texts using OpenAI text-embedding-3-large.
-    Batching all chunks in one API call is more cost-efficient than
-    embedding individually (reduces API round trips).
+    Inner embed call. Raises on failure — do NOT catch here.
+
+    Rationale: this function is wrapped by @cached. If we catch and return
+    a fallback here, the cache will memoize the fallback value (see postmortem
+    for details). Errors must propagate past @cached.
     """
-    import openai
     from langsmith.wrappers import wrap_openai
     from openai import OpenAI
 
+    client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
+    response = client.embeddings.create(
+        model=settings.openai_embedding_model,
+        dimensions=settings.embedding_dimension,
+        input=texts,
+    )
+    return [item.embedding for item in response.data]
+
+
+def _embed(texts: list[str]) -> list[list[float]]:
+    """
+    Batch embed texts using OpenAI text-embedding-3-large.
+
+    On OpenAI limit / credential errors, falls back to zero-vectors so the
+    pipeline can complete rather than crash. Emits an event so the Critic
+    can degrade the badge to AMBER when embeddings were faked.
+    """
+    import openai
+
     try:
-        client = wrap_openai(OpenAI(api_key=settings.openai_api_key))
-        response = client.embeddings.create(
-            model=settings.openai_embedding_model,
-            dimensions=settings.embedding_dimension,
-            input=texts,
-        )
-        return [item.embedding for item in response.data]
+        return _embed_raw(texts)
     except (openai.RateLimitError, openai.AuthenticationError, openai.APIStatusError) as e:
         log.warning(
             f"OpenAI embedding failed with limit/credential error: {e}. "
-            f"Falling back to zero-vectors to prevent pipeline crash."
+            f"Falling back to zero-vectors — this run's grounding is degraded."
         )
+        # Mark the current run so the Critic can flip on FM-4 (see run_had_embedding_fallback).
+        try:
+            from src.agents.base_agent import _current_run_id
+
+            _mark_embedding_fallback(_current_run_id() or "")
+        except Exception:
+            pass  # domain-level tracking must never cascade
+        # Emit event for SSE stream / operators — best-effort.
+        try:
+            from src.core.events import emit
+
+            emit("embedding_fallback_used", provider="openai", reason=str(type(e).__name__))
+        except Exception:
+            pass  # observability must never cascade
         return [[0.0] * settings.embedding_dimension for _ in texts]
 
 

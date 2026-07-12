@@ -44,7 +44,7 @@ export interface CriticDimension {
 }
 
 export interface ScoreCapReason {
-  mechanism: 'FM-1' | 'FM-2' | 'FM-3';
+  mechanism: 'FM-1' | 'FM-2' | 'FM-3' | 'FM-4';
   verb: 'Reduced' | 'Capped';
   detail: string;
   before: number;

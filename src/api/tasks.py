@@ -388,6 +388,7 @@ async def _run_export_handlers_background(
                 "rejection_count": state.hitl_rejection_count,
             },
         )
+        _runs[run_id] = state
         log.info(
             f"[{run_id}] Background exports finalized | status={state.pipeline_status} sheet={bool(sheet_url)} jira={bool(jira_url)}"
         )

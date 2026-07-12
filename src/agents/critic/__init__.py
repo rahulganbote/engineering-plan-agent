@@ -211,6 +211,32 @@ class CriticAgent:
                     )
                 )
 
+        # FM-4: Check if the embedding fallback event fired for this run.
+        # Uses a domain-level tracker in src.core.rag to avoid Critic (domain)
+        # importing from src.api.state (API layer).
+        from src.core.rag import run_had_embedding_fallback
+
+        has_fallback_event = run_had_embedding_fallback(state.run_id)
+
+        if has_fallback_event:
+            log.warning(f"[{state.run_id}] OpenAI embedding fallback occurred - forcing Amber badge")
+            pre_fm4_overall = overall
+            overall = min(overall, 3.9)  # Cap below GREEN_THRESHOLD (4.0) to force Amber
+            if overall < pre_fm4_overall:
+                cap_reasons.append(
+                    ScoreCapReason(
+                        mechanism="FM-4",
+                        verb="Capped",
+                        detail="OpenAI embedding fallback used - grounding is degraded.",
+                        before=round(pre_fm4_overall, 2),
+                        after=round(overall, 2),
+                        agents_involved=["plan", "architect", "poc", "stack", "schedule"],
+                    )
+                )
+            warning_msg = "Embeddings unavailable — grounding is degraded."
+            if warning_msg not in state.warnings:
+                state.warnings.append(warning_msg)
+
         # Step 7: Assign quality badge
         badge = self._assign_badge(scores, overall, state.warnings)
 

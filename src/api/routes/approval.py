@@ -156,6 +156,8 @@ async def hitl_approve(
             else:
                 resolved_email = "anonymous@example.com"
 
+    _runs[run_id] = state
+
     # ── 4. Schedule heavyweight exports as a background task ─────────────────
     from src.api.main import _run_export_handlers_background
 

@@ -272,7 +272,7 @@ High-priority operational considerations and mitigations for production readines
 
 | Consideration | Likelihood | Impact | Current Mitigation | Next Step |
 |---|---|---|---|---|
-| **Local state loss on restart** | Med | Med | Single-instance constraint (`--max-instances=1`) on Cloud Run. | **Migrate `_runs` and `_run_owner` maps to Upstash Redis.** |
+| **Local state loss on restart** | Low | Low | State migrated to Upstash Redis (`state.py`), enabling safe horizontal scaling (`--max-instances=3`). | N/A (Mitigated) |
 | **API billing overruns** | Med | Med | Hard $2.00 budget ceiling per run. | **Implement daily global budget caps and per-user rate limits.** |
 | **PII leak via Tavily Search** | Med | Med | Regex redact + section slice searches (avoids sending full BRD). | **Deploy LLM-based Layer 5 privacy filter pre-network query.** |
 | **Jira connection drops** | Low | Med | Graceful degradation: marks Jira status as `"skipped"` / `"local_fallback"`. | **Implement background job queue with automated retry-loops.** |

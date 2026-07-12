@@ -195,6 +195,7 @@ export const AgentWorkspace: React.FC = () => {
   } = useWorkspace();
 
   const [startupError, setStartupError] = useState<string | null>(null);
+  const [confirmResetActive, setConfirmResetActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -231,6 +232,15 @@ export const AgentWorkspace: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [pipelineStatus]);
+
+  // Auto-reset confirmation state after 4 seconds of inactivity
+  useEffect(() => {
+    if (!confirmResetActive) return;
+    const timer = setTimeout(() => {
+      setConfirmResetActive(false);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [confirmResetActive]);
 
   // Shared reset - clears run state and returns the UI to the empty landing.
   // Used by the sidebar Clear Plan & Reset button, the error-banner "Clear &
@@ -575,22 +585,27 @@ export const AgentWorkspace: React.FC = () => {
                 Status: <span className="font-semibold text-success capitalize">{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : (pipelineStatus ? pipelineStatus.replace(/_/g, ' ') : "Starting...")}</span>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
-                    if (!window.confirm("Are you sure you want to clear this generated plan? This action cannot be undone.")) {
+                    if (!confirmResetActive) {
+                      setConfirmResetActive(true);
                       return;
                     }
                   }
                   handleReset();
+                  setConfirmResetActive(false);
                 }}
                 disabled={CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED}
                 className={`w-full py-1.5 rounded text-xs font-semibold transition ${
                   (CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED)
                     ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                    : 'border border-destructive bg-destructive/10 hover:bg-destructive/40 text-destructive hover:text-destructive shadow-[0_0_10px_rgba(244,63,94,0.05)]'
+                    : confirmResetActive
+                      ? 'border border-danger bg-danger text-white animate-pulse'
+                      : 'border border-destructive bg-destructive/10 hover:bg-destructive/40 text-destructive hover:text-destructive shadow-[0_0_10px_rgba(244,63,94,0.05)]'
                 }`}
               >
-                Clear Plan & Reset
+                {confirmResetActive ? "Confirm Reset? (Click again)" : "Clear Plan & Reset"}
               </button>
             </div>
           )}

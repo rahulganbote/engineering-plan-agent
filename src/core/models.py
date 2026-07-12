@@ -458,7 +458,7 @@ class ScoreCapReason(BaseModel):
     Structured reason explaining why the overall score was capped or reduced.
     """
 
-    mechanism: Literal["FM-1", "FM-2", "FM-3"]
+    mechanism: Literal["FM-1", "FM-2", "FM-3", "FM-4"]
     verb: Literal["Reduced", "Capped"]
     detail: str
     before: float
