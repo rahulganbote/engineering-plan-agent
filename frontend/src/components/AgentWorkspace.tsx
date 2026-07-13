@@ -149,6 +149,7 @@ export const AgentWorkspace: React.FC = () => {
   const [modelFamily, setModelFamily] = useState('openai');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
+  const [isExampleLoading, setIsExampleLoading] = useState(false);
 
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
@@ -338,6 +339,29 @@ export const AgentWorkspace: React.FC = () => {
     }
   };
 
+  const loadExampleBRD = async () => {
+    setIsExampleLoading(true);
+    setStartupError(null);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/example-brd`);
+      if (!response.ok) {
+        throw new Error(`Failed to load example BRD: ${response.statusText}`);
+      }
+      const data = await response.json();
+      const file = new File([data.content], data.filename, { type: 'text/plain' });
+      setSelectedFile(file);
+    } catch (e: unknown) {
+      console.error("Failed to load example BRD:", e);
+      if (e instanceof Error) {
+        setStartupError(e.message);
+      } else {
+        setStartupError("Failed to load example BRD template.");
+      }
+    } finally {
+      setIsExampleLoading(false);
+    }
+  };
+
   const handleDownloadPDF = () => {
     if (!runId) return;
     window.location.href = `${apiBaseUrl}/download/${runId}`;
@@ -417,7 +441,7 @@ export const AgentWorkspace: React.FC = () => {
                       "coming soon" for unimplemented providers). Hover-title surfaces
                       the reason so the user knows WHY an option is greyed out. */}
                   {[
-                    { key: 'openai', label: 'OpenAI (Default: gpt-4o)' },
+                    { key: 'openai', label: 'OpenAI (Default: GPT-4o)' },
                     { key: 'anthropic', label: 'Anthropic (Default: Claude 4.5 Sonnet)' },
                     { key: 'llama', label: 'Llama' },
                     { key: 'mistral', label: 'Mistral' },
@@ -477,9 +501,25 @@ export const AgentWorkspace: React.FC = () => {
                 <Upload className="mx-auto text-primary mb-2" size={24} />
                 <p className="text-xs font-semibold text-primary">Drag and drop file here</p>
                 <p className="text-[10px] text-muted-foreground mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
-                <button className="mt-3 px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 hover:border-primary/50 text-xs font-semibold transition-colors">
-                  Browse files
-                </button>
+                <div className="flex flex-col gap-2 mt-3 items-center justify-center">
+                  <button 
+                    type="button"
+                    className="w-full px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 hover:border-primary/50 text-xs font-semibold transition-colors"
+                  >
+                    Browse files
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      loadExampleBRD();
+                    }}
+                    disabled={isExampleLoading}
+                    className="w-full px-3 py-1.5 bg-muted/20 text-muted-foreground border border-border rounded hover:bg-muted/45 hover:text-foreground text-[10px] font-semibold transition-all disabled:opacity-50"
+                  >
+                    {isExampleLoading ? "Loading Example..." : "⚡ Try with example BRD"}
+                  </button>
+                </div>
               </div>
 
               {selectedFile && (
@@ -832,7 +872,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
                     <div className="flex items-center justify-between border-b border-border/60 pb-4">
                       <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Independent Critic Score</h3>
+                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Independent Critic Score</h3>
                         <div className="text-xs text-muted-foreground">
                           Final Score:{' '}
                           <strong
@@ -962,7 +1002,7 @@ export const AgentWorkspace: React.FC = () => {
               {artifacts && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-border pb-2">
-                    <h3 className="text-base font-bold text-foreground">Artifacts</h3>
+                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Artifacts</h3>
                     <button
                       onClick={handleDownloadPDF}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary text-foreground border border-border rounded text-xs font-bold transition shadow-sm"
@@ -972,7 +1012,7 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
 
                   {/* Disclaimer notice banner */}
-                  <div className="bg-background border border-border p-4 rounded-lg text-xs leading-relaxed text-muted-foreground">
+                  <div className="bg-background border border-border p-4 rounded-lg text-xs leading-relaxed text-foreground/75">
                     <span className="font-bold text-foreground uppercase">⚠️ Disclaimer:</span> It is a engineering planning assistant AI tool. Mandatory professional review and validation required before implementation.
                   </div>
 
@@ -1266,7 +1306,7 @@ export const AgentWorkspace: React.FC = () => {
             it stays visible at all times (matches Claude.ai / ChatGPT pattern).
             Moved here from the header subtitle, where it was undermining the
             product's perceived reliability by appearing alongside the title. */}
-        <footer className="px-8 py-2 border-t border-border bg-card text-[10px] text-foreground/65 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <footer className="px-8 py-2 border-t border-border bg-card text-[10px] text-[#666] dark:text-[#a3a3a3] font-medium shrink-0 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span><b>Disclaimer</b>: AI generated plans are starting points. Professional review and validation required before implementation.</span>
           <div className="flex items-center gap-3 shrink-0">
             <a href="#/privacy" className="hover:text-primary transition font-semibold">Privacy Policy</a>

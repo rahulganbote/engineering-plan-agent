@@ -362,7 +362,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   return (
     <div className="w-full bg-card border border-border rounded-xl p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Agentic Workflow Progress</h3>
+        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Agentic Workflow Progress</h3>
         <div className="flex items-center gap-2">
           {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && pipelineStatus !== PIPELINE_STATUS.ERROR && (
             <span className="flex h-2 w-2 relative">

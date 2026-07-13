@@ -79,7 +79,7 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
   return (
     <div id="decision-gate" className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl">
       <div className="flex items-center justify-between border-b border-border pb-3">
-        <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Decision Gate</h3>
+        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Decision Gate</h3>
         <span className="px-2.5 py-1 rounded bg-warning/20 border border-warning/40 text-[10px] font-extrabold text-warning uppercase tracking-wider">
           Awaiting Manager Action
         </span>

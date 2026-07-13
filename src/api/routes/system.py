@@ -102,3 +102,26 @@ async def submit_feedback(payload: FeedbackRequest, background_tasks: Background
     background_tasks.add_task(send_feedback_email, feedback_data)
 
     return {"status": "ok", "message": "Feedback submitted successfully"}
+
+
+@router.get("/api/example-brd")
+async def get_example_brd():
+    """
+    Returns the content of a golden template BRD to populate the upload area
+    for users who want to try the app without uploading their own file.
+    """
+    from pathlib import Path
+
+    brd_path = Path("eval/test_brd_simple.txt")
+    if not brd_path.exists():
+        # Fallback to general base template if golden doesn't exist
+        brd_path = Path("knowledge_base/Engineering_Plan_Template.txt")
+
+    if not brd_path.exists():
+        raise HTTPException(status_code=404, detail="Example BRD template not found")
+
+    try:
+        content = brd_path.read_text(encoding="utf-8")
+        return {"filename": "test_brd_simple.txt", "content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read example BRD: {e}")

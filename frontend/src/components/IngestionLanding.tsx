@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Cpu, GitPullRequest, Milestone, Sparkles, Info, Wrench, BookOpen, Bot, CheckSquare, Bell } from 'lucide-react';
+import { ShieldCheck, Cpu, GitPullRequest, Milestone, Sparkles, Info, Wrench, BookOpen, Bot, CheckSquare, Bell, Database } from 'lucide-react';
 
 interface IngestionLandingProps {
   selectedFile: File | null;
@@ -31,6 +31,8 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
     orchX: number; orchY1: number; orchY2: number;
     ragTopY: number;
     critX: number; critY1: number; critY2: number;
+    critLeft: number;
+    critMidY: number;
   } | null>(null);
 
   useEffect(() => {
@@ -58,8 +60,8 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         const x1 = (specRect.left + specRect.right) / 2 - containerRect.left;
         const y1 = specRect.bottom - containerRect.top;
 
-        // Manager connection: starts bottom-center of manager
-        const mx1 = (mgrRect.left + mgrRect.right) / 2 - containerRect.left;
+        // Manager connection: starts from the right portion of manager to prevent crowding at RAG drop
+        const mx1 = mgrRect.right - containerRect.left - 24;
         const my1 = mgrRect.bottom - containerRect.top;
 
         // Tools entry points: 25% and 75% of tool card width
@@ -93,12 +95,17 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         const critY1 = criticRect.bottom - containerRect.top;
         const critY2 = mgrRect.top - containerRect.top;
 
+        const critLeft = criticRect.left - containerRect.left;
+        const critMidY = (criticRect.top + criticRect.bottom) / 2 - containerRect.top;
+
         setCoords({
           x1, y1, x2, y2, mx1, my1, mx2, colLeft, colRight, specMidY, ragMidY, bottomSpaceY,
           secX, secY1, secY2,
           orchX, orchY1, orchY2,
           ragTopY,
-          critX, critY1, critY2
+          critX, critY1, critY2,
+          critLeft,
+          critMidY
         });
       }
     };
@@ -191,7 +198,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
     },
     {
       id: 'specialists',
-      label: '5 Specialist Agents',
+      label: '5 Specialist Agents (Parallel)',
       desc: 'Parallel 2-Pass Alignment: (1) All specialists run concurrently to draft plans. (2) Orchestrator reviews and issues an alignment memo. (3) Specialists run concurrently again to coordinate and refine final plans.',
       icon: <Sparkles size={20} className="text-ai-spark" />,
       color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
@@ -224,7 +231,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
     {
       id: 'tools',
       label: 'Tool Layer (MCP & APIs)',
-      desc: 'Provides Tavily web search, Slack alerts, GitHub pull requests, Pinecone store, and Atlassian Jira/Google Sheets export integrations.',
+      desc: 'Provides Tavily web search, Slack alerts, GitHub pull requests, Pinecone store, Upstash Redis long-term cache & state store, and Atlassian Jira/Google Sheets export integrations.',
       icon: <Wrench size={20} className="text-primary" />,
       color: 'border-primary/30 text-primary bg-primary/10',
       activeColor: 'ring-primary/50 shadow-[0_0_15px_rgba(79,70,229,0.3)]',
@@ -236,18 +243,18 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
       {/* Welcome & Subtitle Section */}
       <div className="space-y-1.5">
         <h2 className="text-base font-semibold tracking-tight text-foreground">
-          Transform a BRD into Implementation Plans in Minutes
+          Transform a BRD into an Engineering Plan in Minutes, grounded in RAG
         </h2>
         <p className="text-xs text-muted-foreground max-w-3xl">
-          EM Copilot is a multi-agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package. It uses RAG for grounding every plan directly in your organization's custom architectural patterns and approved tech stack. Artifacts are then presented to you for review. Upon approval, it pushes the artifacts into Jira.
+          EM Copilot transforms raw Business Requirements Documents into audit-ready engineering plans, grounded via RAG in your organization's own architectural patterns and approved tech stack. Artifacts are presented for review; on approval, pushed to Jira.
         </p>
       </div>
 
       {/* Welcome Callout for logged in, pre-upload state */}
       {isAuthenticated && !selectedFile && (
-        <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary font-medium animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="flex items-center gap-2 p-3 bg-[#f0f7ff] dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800/40 rounded-lg text-xs text-sky-800 dark:text-sky-300 font-medium animate-in fade-in slide-in-from-top-1 duration-200 mt-3.5 mb-5 shadow-sm">
           <span className="text-sm">💡</span>
-<span><strong>Next Step:</strong> Drag and drop a BRD file on the left to generate your engineering plan. (A demonstration of a production-grade Agentic AI system.)</span>
+          <span><strong>Next Step:</strong> Drag and drop a BRD file on the left to generate your engineering plan.</span>
         </div>
       )}
 
@@ -258,14 +265,14 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         </div>
 
         {/* Interactive Flow Visualizer - compact (tooltip replaces the old 96px detail box) */}
-        <div ref={containerRef} className="flex flex-col gap-3 bg-background/80 rounded-xl px-3.5 py-3 border border-border relative">
+        <div ref={containerRef} className="flex flex-col gap-3 bg-background/80 rounded-xl px-3.5 py-3 border border-border relative shadow-sm">
 
           {/* Top section: Columns and Center loop */}
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-12 lg:gap-16 items-center justify-center w-full">
             {/* Spoke layout - left column.
                 Includes RAG so it sits visually adjacent to Specialists (its
                 actual consumer). Order: Security → Orchestrator → Specialists → RAG. */}
-            <div className="flex flex-col gap-3 w-full md:w-5/12 z-10">
+            <div className="flex flex-col gap-5 w-full md:w-5/12 z-10">
               {pipelineNodes.slice(0, 4).map((node) => (
                 <div
                   key={node.id}
@@ -289,7 +296,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                         {node.icon}
                         <span className="text-xs font-bold">{node.label}</span>
                       </div>
-                      <Info size={12} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
+                      <Info size={12} className="text-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
                     </div>
                   </div>
 
@@ -315,7 +322,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             </div>
 
             {/* Central "State Loop" loop visualizer */}
-            <div className="flex flex-col md:flex-row items-center justify-center gap-2 shrink-0 my-2 md:my-0">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-2 shrink-0 my-2 md:my-0 relative -translate-y-6">
               {/* Left to Center connection */}
               <div className="flex flex-col md:flex-row items-center gap-1">
                 <div className="h-4 w-0.5 md:h-0.5 md:w-8 bg-gradient-to-b md:bg-gradient-to-r from-ai-spark to-primary" />
@@ -338,8 +345,8 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   <path d="M 50,90 L 56,96 L 56,84 Z" fill="currentColor" />
                 </svg>
 
-                <span className="text-xs font-bold px-4 py-2 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10">
-                  State Loop
+                <span className="text-[10px] font-bold px-3 py-1.5 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10 max-w-[110px] leading-tight">
+                  Revision & Alignment Loop
                 </span>
               </div>
 
@@ -353,7 +360,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             {/* Right column — review + approval lane.
                 RAG moved to left column adjacent to Specialists since that's
                 where it's actually queried (not by Critic/Manager). */}
-            <div className="flex flex-col gap-3 w-full md:w-5/12 z-10">
+             <div className="flex flex-col gap-5 w-full md:w-5/12 z-10">
               {pipelineNodes.filter(n => ['critic', 'manager'].includes(n.id)).map((node) => (
                 <div
                   key={node.id}
@@ -371,7 +378,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                         {node.icon}
                         <span className="text-xs font-bold">{node.label}</span>
                       </div>
-                      <Info size={12} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
+                      <Info size={12} className="text-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
                     </div>
                   </div>
 
@@ -396,7 +403,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           </div>
           {/* Dynamic SVG paths overlay drawing the physical connection lines */}
           {coords && (() => {
-            const mMidY = (coords.my1 + coords.y2) / 2;
+            const mMidY = coords.my1 + (coords.y2 - coords.my1) * 0.65;
             return (
               <svg className="absolute inset-0 w-full h-full pointer-events-none hidden md:block z-0" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -441,6 +448,33 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   markerEnd="url(#orange-arrow)"
                 />
 
+                {/* Critic -> RAG citation verification check line */}
+                {(() => {
+                  const startX = coords.critLeft + 15;
+                  const verticalX = coords.critLeft - 6;
+                  return (
+                    <>
+                      <path
+                        d={`M ${startX},${coords.critY1} L ${verticalX},${coords.critY1} L ${verticalX},${coords.ragMidY} L ${coords.colRight + 2},${coords.ragMidY}`}
+                        fill="none"
+                        stroke="#F59E0B"
+                        strokeWidth="2"
+                        strokeDasharray="4, 3"
+                        markerEnd="url(#orange-arrow)"
+                      />
+                      <text
+                        x={verticalX - 30}
+                        y={coords.ragMidY - 9}
+                        fill="#F59E0B"
+                        className="text-[9px] font-extrabold tracking-wider"
+                        textAnchor="end"
+                      >
+                        RAG Citation Verification
+                      </text>
+                    </>
+                  );
+                })()}
+
                 {/* Specialists -> RAG: straight vertical line between stacked cards */}
                 <path
                   d={`M ${coords.x1},${coords.y1} L ${coords.x1},${coords.ragTopY - 2}`}
@@ -466,7 +500,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   className="text-[9px] font-extrabold tracking-wider"
                   textAnchor="start"
                 >
-                  Autonomous Tool call
+                  Autonomous Tool Call
                 </text>
 
                 {/* Manager -> Tools: goes down, then horizontally, then down into Tools */}
@@ -485,7 +519,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   className="text-[9px] font-extrabold tracking-wider"
                   textAnchor="start"
                 >
-                  Tool call on Human Decision
+                  Tool Call on Human Decision
                 </text>
               </svg>
             );
@@ -505,14 +539,14 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
                 >
                   <div
-                    className={`p-2.5 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
+                    className={`py-4 px-4 rounded-lg border text-left cursor-help transition-all duration-200 ${node.color} ${activeNode === node.id ? node.activeColor : 'hover:border-border'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3 flex-1">
                         {node.icon}
                         <div className="flex-1">
                           <span className="text-xs md:text-sm font-extrabold text-foreground/90">{node.label}</span>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 mt-1.5 border-t border-primary/20">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2 mt-1.5 border-t border-primary/20">
                             {/* Sub-cluster 1: Autonomous Tools */}
                             <div className="space-y-0.5">
                               <div className="text-[10px] md:text-xs uppercase font-extrabold text-purple-500 tracking-wider flex items-center gap-1">
@@ -537,7 +571,18 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                               </div>
                             </div>
  
-                            {/* Sub-cluster 3: Operations & Monitoring */}
+                            {/* Sub-cluster 3: State & Cache */}
+                            <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
+                              <div className="text-[10px] md:text-xs uppercase font-extrabold text-indigo-500 tracking-wider flex items-center gap-1">
+                                <Database size={12} />
+                                State & Cache
+                              </div>
+                              <div className="flex flex-col gap-y-1 mt-1 text-[10px] md:text-xs text-muted-foreground">
+                                <span>💾 Upstash Redis</span>
+                              </div>
+                            </div>
+
+                            {/* Sub-cluster 4: Operations & Monitoring */}
                             <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
                               <div className="text-[10px] md:text-xs uppercase font-extrabold text-warning tracking-wider flex items-center gap-1">
                                 <Bell size={12} />
@@ -550,7 +595,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                           </div>
                         </div>
                       </div>
-                      <Info size={14} className="text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
+                      <Info size={14} className="text-foreground/60 group-hover:text-foreground transition-colors shrink-0 ml-2" />
                     </div>
                   </div>
 
