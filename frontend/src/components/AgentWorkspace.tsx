@@ -1095,7 +1095,7 @@ export const AgentWorkspace: React.FC = () => {
                     </div>
                     
                     <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
-                      Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure. This usually takes 5-8 seconds.
+                      Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure. This could take few seconds.
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] font-bold text-muted-foreground">
