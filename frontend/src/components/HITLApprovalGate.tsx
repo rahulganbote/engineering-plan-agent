@@ -159,10 +159,14 @@ export const HITLApprovalGate: React.FC<HITLApprovalGateProps> = ({ runId, onDec
           <button
             onClick={() => handleSubmit('approved')}
             disabled={isSubmitting || hasSubmitted}
-            className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-primary/30 transition flex items-center gap-2 text-xs font-bold"
+            className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white shadow-md hover:shadow-primary/30 transition flex items-center gap-2 text-xs font-bold disabled:opacity-50"
           >
-            <Check size={14} />
-            Approve & Export
+            {isSubmitting && submittingDecision === 'approved' ? (
+              <Loader2 className="animate-spin" size={14} />
+            ) : (
+              <Check size={14} />
+            )}
+            {isSubmitting && submittingDecision === 'approved' ? 'Exporting & Pushing to Jira...' : 'Approve & Export'}
           </button>
         </div>
       </div>

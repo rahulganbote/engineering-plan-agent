@@ -1080,6 +1080,42 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
+              {/* Exporting loading indicator section */}
+              {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
+                <div className="border-t border-border pt-8">
+                  <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-pulse">
+                    <div className="flex items-center justify-between border-b border-border pb-3">
+                      <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Loader2 className="animate-spin text-primary" size={16} />
+                        <span>Exporting & Syncing...</span>
+                      </h3>
+                      <span className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary">
+                        Syncing to Jira
+                      </span>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
+                      Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure. This usually takes 5-8 seconds.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] font-bold text-muted-foreground">
+                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
+                        <span className="text-success text-sm">✓</span>
+                        <span>Google Sheets Log</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
+                        <Loader2 className="animate-spin text-primary shrink-0" size={12} />
+                        <span>Creating Jira Epic</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
+                        <Loader2 className="animate-spin text-primary shrink-0" size={12} />
+                        <span>Pinecone Indexing</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Export Status / Final Decision Section */}
               {(pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED) && (
                 <div ref={exportResultsRef} className="border-t border-border pt-8">
