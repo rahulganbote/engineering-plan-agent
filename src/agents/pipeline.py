@@ -215,7 +215,7 @@ def node_orchestrator_hub(state: dict) -> dict:
 
     output, sections = OrchestratorAgent().run(brd_text, ps.run_id)
     ps.brd_sections = sections
-    _set_status(ps, PipelineStatus.SPECIALIST_EXECUTING if output.validation_passed else PipelineStatus.ERROR)
+    _set_status(ps, PipelineStatus.DRAFTING if output.validation_passed else PipelineStatus.ERROR)
     state["_routing_plan"] = output.routing_plan
     state["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
 

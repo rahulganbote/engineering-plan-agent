@@ -7,7 +7,7 @@ from src.agents.pipeline import (
 
 
 def test_route_after_orchestrator():
-    state = {"run_id": "test", "brd_raw_hash": "hash", "pipeline_status": "specialist_executing", "errors": []}
+    state = {"run_id": "test", "brd_raw_hash": "hash", "pipeline_status": "drafting", "errors": []}
     assert route_after_orchestrator(state) == "node_pass1_drafting"
 
 
