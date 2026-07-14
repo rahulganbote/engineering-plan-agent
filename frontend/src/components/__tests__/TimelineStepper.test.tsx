@@ -32,8 +32,31 @@ describe('TimelineStepper', () => {
 
   it('reflects completed orchestrator status visually', () => {
     const { container } = render(
-      <TimelineStepper {...baseProps} pipelineStatus={PIPELINE_STATUS.SPECIALIST_EXECUTING} completedAgents={new Set(['orchestrator'])} />
+      <TimelineStepper {...baseProps} pipelineStatus={PIPELINE_STATUS.ALIGNING} completedAgents={new Set(['orchestrator'])} />
     );
     expect(container).toBeTruthy();
+  });
+
+  it('asserts that every pipeline status activates exactly one step (or zero if idle/terminal)', () => {
+    const nonRunningStatuses: PipelineStatus[] = [
+      PIPELINE_STATUS.IDLE,
+      PIPELINE_STATUS.EXPORTED,
+      PIPELINE_STATUS.REJECTED,
+      PIPELINE_STATUS.EXPORT_FAILED,
+      PIPELINE_STATUS.ERROR,
+      PIPELINE_STATUS.CANCELED,
+    ];
+
+    Object.values(PIPELINE_STATUS).forEach((status) => {
+      const { container, unmount } = render(<TimelineStepper {...baseProps} pipelineStatus={status as PipelineStatus} />);
+      const activeCircles = container.querySelectorAll('.w-12.h-12.animate-pulse');
+
+      if (nonRunningStatuses.includes(status as PipelineStatus)) {
+        expect(activeCircles.length).toBe(0);
+      } else {
+        expect(activeCircles.length).toBe(1);
+      }
+      unmount();
+    });
   });
 });

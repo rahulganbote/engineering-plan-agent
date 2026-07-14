@@ -212,11 +212,17 @@ class CriticAgent:
                 )
 
         # FM-4: Check if the embedding fallback event fired for this run.
-        # Uses a domain-level tracker in src.core.rag to avoid Critic (domain)
-        # importing from src.api.state (API layer).
+        # Two signals, either indicating a fallback:
+        #   1. In-process registry (src.core.rag._EMBEDDING_FALLBACK_RUNS) —
+        #      fast, but per-instance. Sufficient for single-instance / dev.
+        #   2. state.embedding_fallback_triggered — persisted on PipelineState
+        #      by _embed() via _runs, so a fallback that fired on Cloud Run
+        #      instance A is visible to the Critic running on instance B.
         from src.core.rag import run_had_embedding_fallback
 
-        has_fallback_event = run_had_embedding_fallback(state.run_id)
+        has_fallback_event = run_had_embedding_fallback(state.run_id) or getattr(
+            state, "embedding_fallback_triggered", False
+        )
 
         if has_fallback_event:
             log.warning(f"[{state.run_id}] OpenAI embedding fallback occurred - forcing Amber badge")

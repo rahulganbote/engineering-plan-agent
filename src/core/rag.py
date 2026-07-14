@@ -227,10 +227,29 @@ def _embed(texts: list[str]) -> list[list[float]]:
             f"Falling back to zero-vectors — this run's grounding is degraded."
         )
         # Mark the current run so the Critic can flip on FM-4 (see run_had_embedding_fallback).
+        # The in-process registry is fast but per-instance. For multi-instance
+        # deployments (Cloud Run max-instances>1), we ALSO persist the flag onto
+        # the shared PipelineState in Redis via _runs so the Critic node — which
+        # may execute on a DIFFERENT instance — can still detect the fallback.
         try:
             from src.agents.base_agent import _current_run_id
 
-            _mark_embedding_fallback(_current_run_id() or "")
+            run_id = _current_run_id() or ""
+            _mark_embedding_fallback(run_id)
+            if run_id:
+                # Intentional layering-boundary crossing (core.rag → api.state).
+                # Comment kept here so future maintainers know it's deliberate —
+                # the alternative (event bus + subscriber) is over-engineered for
+                # a signal that fires once per rare failure.
+                try:
+                    from src.api.state import _runs
+
+                    _state_snap = _runs.get(run_id)
+                    if _state_snap is not None and not getattr(_state_snap, "embedding_fallback_triggered", False):
+                        _state_snap.embedding_fallback_triggered = True
+                        _runs[run_id] = _state_snap
+                except Exception:
+                    pass  # state-layer failure must not cascade back into RAG
         except Exception:
             pass  # domain-level tracking must never cascade
         # Emit event for SSE stream / operators — best-effort.

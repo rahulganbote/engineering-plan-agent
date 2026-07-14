@@ -146,7 +146,7 @@ export const AgentWorkspace: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [runIdCopied, setRunIdCopied] = useState(false);
   const [isStartingPipeline, setIsStartingPipeline] = useState(false);
-  const [modelFamily, setModelFamily] = useState('openai');
+  const [modelFamily, setModelFamily] = useState('anthropic');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isExampleLoading, setIsExampleLoading] = useState(false);
@@ -191,6 +191,7 @@ export const AgentWorkspace: React.FC = () => {
     setPipelineStatus,
     setApprovalResult,
     errorMessage,
+    longRunningWarning,
     fallbackActive,
     elevenlabsAgentId,
   } = useWorkspace();
@@ -449,7 +450,7 @@ export const AgentWorkspace: React.FC = () => {
                     // Default to "available" if we haven't received the providers
                     // payload yet - keeps the dropdown usable on first paint.
                     const p = providers[key];
-                    const isAvailable = p?.available ?? (key === 'openai');
+                    const isAvailable = p?.available ?? (key === 'openai' || key === 'anthropic');
                     const reason = p?.reason;
                     return (
                       <option
@@ -767,8 +768,19 @@ export const AgentWorkspace: React.FC = () => {
                   </div>
                 </div>
               )}
-
-
+              {longRunningWarning && (
+                <div className="bg-warning/20 border-l-4 border-warning py-3 px-4 rounded-lg shadow-sm flex items-center justify-between animate-pulse">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm select-none">⏳</span>
+                    <div>
+                      <h4 className="font-bold text-warning text-xs">Processing Update</h4>
+                      <p className="text-warning/80 mt-0.5 text-[11px] leading-snug">
+                        {longRunningWarning}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Loop Warnings / Non-terminal Flagged Concerns Banner */}
               {pipelineStatus !== PIPELINE_STATUS.ERROR && artifacts?.warnings && artifacts.warnings.length > 0 && (
@@ -1035,7 +1047,11 @@ export const AgentWorkspace: React.FC = () => {
                   {/* Tab Display Area */}
                   <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
                     <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
-                      {pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING ? (
+                      {([
+                        PIPELINE_STATUS.DRAFTING,
+                        PIPELINE_STATUS.ALIGNING,
+                        PIPELINE_STATUS.REVISING,
+                      ] as PipelineStatus[]).includes(pipelineStatus) ? (
                         <PlanSkeleton />
                       ) : (
                         <div>
@@ -1161,7 +1177,7 @@ export const AgentWorkspace: React.FC = () => {
                             }`}>
                               {pipelineStatus === PIPELINE_STATUS.REJECTED
                                 ? 'Rejection recorded in Google Sheets'
-                                : 'Artifacts exported to Google Sheets'}
+                                : 'Approval recorded in Google Sheets'}
                             </div>
                             <div className="text-[11px] text-muted-foreground leading-relaxed">
                               {pipelineStatus === PIPELINE_STATUS.REJECTED

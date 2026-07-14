@@ -132,8 +132,7 @@ def _set_status(ps: PipelineState, status: PipelineStatus) -> None:
 
     Idempotent: if the requested status equals the current one, this is a
     no-op. Several graph nodes legitimately set the same status back-to-back
-    (e.g. orchestrator hub sets `specialist_executing` at its exit, and
-    dispatch_specialists sets it again at its entry). Without this guard,
+    (e.g. dispatch_specialists sets the same status again at its entry). Without this guard,
     every same-status re-set would emit a duplicate pipeline_status SSE event
     and the console log would stutter on every transition.
 
@@ -207,6 +206,7 @@ def node_orchestrator_hub(state: dict) -> dict:
     log.info(f"[{ps.run_id}] NODE orchestrator_hub")
     _safe_emit("agent_start", agent="orchestrator")
     _set_status(ps, PipelineStatus.RUNNING)
+    _set_status(ps, PipelineStatus.ORCHESTRATOR_PARSING)
 
     if not brd_text:
         ps.errors.append("No BRD text provided")
@@ -436,6 +436,8 @@ def node_critic(state: dict) -> dict:
             }
         )
         _safe_emit("agent_complete", agent="critic")
+        if ps.revision_count > 0:
+            _safe_emit("revision_complete", revision=ps.revision_count)
         log.info(
             f"[{ps.run_id}] Critic score | overall={ps.critic_output.overall_score:.2f} "
             f"badge={ps.critic_output.badge.value} "
@@ -472,6 +474,8 @@ def node_decision_router(state: dict) -> dict:
     if should_revise:
         ps.revision_count += 1
         _set_status(ps, PipelineStatus.REVISING)
+        targets = ps.critic_output.target_agents if ps.critic_output else []
+        _safe_emit("revision_start", revision=ps.revision_count, targets=targets)
         state["_reran_upstream"] = False
         log.info(f"[{ps.run_id}] Revision cycle {ps.revision_count}/{MAX_REVISIONS}")
     else:

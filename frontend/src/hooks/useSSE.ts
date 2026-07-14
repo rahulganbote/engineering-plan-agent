@@ -180,17 +180,11 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
   const [criticOutput, setCriticOutput] = useState<CriticOutput | null>(null);
   const [approvalResult, setApprovalResult] = useState<ApprovalResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [longRunningWarning, setLongRunningWarning] = useState<string | null>(null);
   const [fallbackActive, setFallbackActive] = useState<{ from: string; to: string } | null>(null);
   const [prevRunId, setPrevRunId] = useState<string | null>(null);
 
   const seenSeqs = useRef<Set<number>>(new Set());
-
-  if (runId !== prevRunId) {
-    setPrevRunId(runId);
-    if (runId) {
-      setPipelineStatus(PIPELINE_STATUS.INITIALIZING);
-    }
-  }
 
   const clearRun = useCallback((newStatus: PipelineStatus = PIPELINE_STATUS.IDLE) => {
     setLogs([]);
@@ -202,9 +196,17 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     setCriticOutput(null);
     setApprovalResult(null);
     setErrorMessage(null);
+    setLongRunningWarning(null);
     setFallbackActive(null);
     seenSeqs.current.clear();
   }, []);
+
+  if (runId !== prevRunId) {
+    setPrevRunId(runId);
+    if (runId) {
+      clearRun(PIPELINE_STATUS.INITIALIZING);
+    }
+  }
 
   const completedAgents = useMemo(() => {
     const s = new Set<string>();
@@ -263,6 +265,10 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       setLogs((prev) => [...prev, data]);
 
       switch (data.type) {
+        case 'canceled': {
+          setPipelineStatus(PIPELINE_STATUS.CANCELED);
+          break;
+        }
         case 'status':
         case 'pipeline_status': {
           const status = data.status || (data.payload as Record<string, string>)?.status;
@@ -396,6 +402,10 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           clearInterval(tick);
           clearInterval(pollInterval);
           es.close();
+          break;
+        }
+        case 'long_running': {
+          setLongRunningWarning(data.message || 'This run is taking longer than expected.');
           break;
         }
       }
@@ -550,6 +560,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     setPipelineStatus,
     setApprovalResult,
     errorMessage,
+    longRunningWarning,
     fallbackActive,
   };
 };

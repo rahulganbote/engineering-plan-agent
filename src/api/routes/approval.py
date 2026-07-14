@@ -15,6 +15,7 @@ from src.api.state import _push_event, _run_export, _runs
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.models import HITLDecision
+from src.core.pipeline_status import PipelineStatus
 
 log = get_logger(__name__)
 router = APIRouter(tags=["approval"])
@@ -53,7 +54,12 @@ async def hitl_approve(
     # Idempotency on any post-decision state.
     # Covers voice-agent double-fires, UI/voice races, and client retries
     # on the green path of either approve or reject.
-    POST_DECISION_STATES = ("exporting", "exported", "rejected", "export_failed")
+    POST_DECISION_STATES = (
+        PipelineStatus.EXPORTING.value,
+        PipelineStatus.EXPORTED.value,
+        PipelineStatus.REJECTED.value,
+        PipelineStatus.EXPORT_FAILED.value,
+    )
     if state.pipeline_status in POST_DECISION_STATES and state.hitl_decision is not None:
         if state.hitl_decision == incoming_decision:
             # Same decision retry - return existing export payload so the caller
@@ -118,7 +124,7 @@ async def hitl_approve(
             )
 
     # ── 3. Transition to "exporting" so concurrent retries are rejected ──────
-    state.pipeline_status = "exporting"
+    state.pipeline_status = PipelineStatus.EXPORTING.value
 
     log.info(
         f"[{run_id}] HITL decision: {decision.value} by {request.reviewer} "

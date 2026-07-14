@@ -597,6 +597,14 @@ class PipelineState(BaseModel):
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
+    # ── FM-4 signal: embedding fallback occurred somewhere in this run ───────
+    # Set by src.core.rag._embed when OpenAI embeddings fail and we fall back
+    # to zero-vectors. Critic reads this to trigger FM-4 (grounding-degraded
+    # AMBER cap). Persisted on PipelineState so multi-instance deploys stay
+    # correct — the in-process `_EMBEDDING_FALLBACK_RUNS` registry in rag.py
+    # only sees fallbacks on the SAME Cloud Run instance where they occurred.
+    embedding_fallback_triggered: bool = False
+
     # ── Autonomous tool-call tracking ────────────────────────────────────────
     # Records which external tools were invoked during this run. The Critic
     # uses this to detect a specific class of hallucination: agent invokes a

@@ -21,6 +21,7 @@ interface WorkspaceContextType {
   setPipelineStatus: (status: PipelineStatus) => void;
   setApprovalResult: (result: ApprovalResult | null) => void;
   errorMessage: string | null;
+  longRunningWarning: string | null;
   fallbackActive: { from: string; to: string } | null;
   elevenlabsAgentId: string;
 }

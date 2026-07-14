@@ -113,20 +113,32 @@ async def stream_status(run_id: str, request: Request):
         timeout = settings.pipeline_timeout_sec
         elapsed = 0
         last_yielded_status: str | None = None
+        long_running_emitted = False
 
         while elapsed < timeout:
-            events = _run_events.get(run_id, [])
-            while sent < len(events):
-                yield f"data: {events[sent]}\n\n"
+            # Batched read: one LRANGE(sent, -1) per outer iteration returns
+            # every event we haven't yielded yet. Previously this loop did
+            # LLEN + LINDEX per event, giving 2N Redis roundtrips per second
+            # while streaming — under Upstash latency (~50-200ms/call) that
+            # was the dominant cost of the SSE endpoint. Slicing goes through
+            # RedisListHelper.__getitem__(slice) which issues a single LRANGE.
+            events_helper = _run_events.get(run_id, [])
+            # Unconditional slice — one LRANGE if Redis, one list-slice if local.
+            # Avoids an extra LLEN roundtrip that a truthiness check would trigger.
+            for ev in events_helper[sent:]:
+                yield f"data: {ev}\n\n"
                 sent += 1
 
             state = _runs.get(run_id)
-            if state and state.pipeline_status in ("exported", "export_failed"):
+            if state and state.pipeline_status in ("exported", "export_failed", "error", "canceled", "rejected"):
                 if state.pipeline_status != last_yielded_status:
                     yield f"data: {json.dumps({'type': 'status', 'status': state.pipeline_status, 'run_id': run_id})}\n\n"
                     last_yielded_status = state.pipeline_status
-                if state.pipeline_status in ("exported", "export_failed"):
-                    break
+                break
+
+            if elapsed >= timeout - 30 and not long_running_emitted:
+                yield f"data: {json.dumps({'type': 'long_running', 'run_id': run_id, 'message': 'This run is taking longer than expected — still working, will refresh automatically.'})}\n\n"
+                long_running_emitted = True
 
             await asyncio.sleep(1)
             elapsed += 1

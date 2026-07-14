@@ -49,10 +49,15 @@ _MAX_EVENTS_PER_RUN = 5000
 _REDIS_CLIENT: redis.Redis | None = None
 if REDIS_URL:
     try:
+        # Per-operation socket_timeout stays tight (1s) so a stuck Redis call
+        # doesn't hang the request path. But the INITIAL connect timeout is
+        # given 5s of headroom — Cloud Run cold starts + Upstash TLS handshake
+        # can push the first ping past 1s under load, causing spurious
+        # fallback-to-in-memory on healthy Redis instances.
         _REDIS_CLIENT = redis.from_url(
             REDIS_URL,
             socket_timeout=1.0,
-            socket_connect_timeout=1.0,
+            socket_connect_timeout=5.0,
         )
         _REDIS_CLIENT.ping()
         log.info("[state:redis] Connected to Upstash Redis (shared client for all state proxies)")
@@ -247,34 +252,53 @@ class RedisSubDictProxy:
 
 
 class LocalSubDictProxy:
-    """Helper mirroring RedisSubDictProxy for in-memory fallback."""
+    """
+    Helper mirroring RedisSubDictProxy for in-memory fallback.
+
+    Semantics parity note: `__contains__` and read-only `get` do NOT create
+    the key. Only `__setitem__` and `update` create the underlying entry.
+    This matches RedisSubDictProxy (hexists / hget are non-mutating).
+    """
 
     def __init__(self, local_dict: dict, key: str):
         self._local_dict = local_dict
         self._key = key
 
-    def _get_data(self) -> dict:
+    def _get_data_readonly(self) -> dict:
+        """Non-mutating read — returns empty dict if entry doesn't exist yet."""
+        return self._local_dict.get(self._key) or {}
+
+    def _get_data_mutating(self) -> dict:
+        """Lazy-create the entry so mutation can proceed."""
         if self._key not in self._local_dict:
             self._local_dict[self._key] = {}
         return self._local_dict[self._key]
 
+    # Kept for backward compat with any external caller that reached in here.
+    # Prefer the two specific accessors above.
+    def _get_data(self) -> dict:
+        return self._get_data_mutating()
+
     def __getitem__(self, item):
-        return self._get_data()[item]
+        data = self._get_data_readonly()
+        if item not in data:
+            raise KeyError(item)
+        return data[item]
 
     def __setitem__(self, item, value):
-        self._get_data()[item] = value
+        self._get_data_mutating()[item] = value
 
     def __contains__(self, item) -> bool:
-        return item in self._get_data()
+        return item in self._get_data_readonly()
 
     def get(self, item, default=None):
-        return self._get_data().get(item, default)
+        return self._get_data_readonly().get(item, default)
 
     def update(self, other: dict):
-        self._get_data().update(other)
+        self._get_data_mutating().update(other)
 
     def __len__(self) -> int:
-        return len(self._get_data())
+        return len(self._get_data_readonly())
 
     def __bool__(self) -> bool:
         return len(self) > 0
@@ -327,10 +351,13 @@ class RedisListProxy:
 
     def get(self, key: str, default=None):
         if self.redis:
-            full_k = self._full_key(key)
-            if not self.redis.exists(full_k):
-                return default
-            return RedisListHelper(self.redis, full_k)
+            # Always return a helper — no upfront EXISTS check. An LRANGE
+            # against a missing key returns `[]`, which is the same behavior
+            # a caller would get from a real empty list. Avoids an extra
+            # Redis roundtrip per `.get()` call (matters in SSE hot loops).
+            # The `default` argument is preserved for API compatibility but
+            # will only be returned in the in-memory fallback path.
+            return RedisListHelper(self.redis, self._full_key(key))
         return self.local_dict.get(key, default)
 
     def pop(self, key: str, default=None):

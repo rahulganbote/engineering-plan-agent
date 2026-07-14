@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     # ── Pipeline behaviour ────────────────────────────────────────────────────
     max_critic_revisions: int = 2
     max_agent_retries: int = 2
-    pipeline_timeout_sec: int = 300  # 5 min hard limit
+    pipeline_timeout_sec: int = 600  # 10 min hard limit
     agent_timeout_sec: int = 90  # Per-agent bulkhead - Phase 9
     anthropic_agent_timeout_sec: int = (
         180  # Anthropic is 3-5× slower than OpenAI; per-family override    # Per-agent bulkhead - Phase 9

@@ -69,14 +69,14 @@ class CallPolicy:
 from src.core.exceptions import QuotaExceededError
 
 OPENAI_POLICY = CallPolicy(
-    timeout_sec=40.0, max_attempts=3, backoff_min=1.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
+    timeout_sec=180.0, max_attempts=2, backoff_min=1.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
 )
 # Anthropic's Claude models routinely take 50-120s for verbose JSON outputs.
 # Giving each attempt 90s and using 2 attempts (vs OpenAI's 3) avoids the
 # 40s x 3 = 120s wall-clock loss that triggered the cascading bulkhead trip we
 # saw in runs 1c82f453-137b and 1c82f453-e588. Backoff is the same shape.
 ANTHROPIC_POLICY = CallPolicy(
-    timeout_sec=120.0, max_attempts=2, backoff_min=2.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
+    timeout_sec=180.0, max_attempts=2, backoff_min=2.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
 )
 PINECONE_POLICY = CallPolicy(
     timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,)
@@ -242,13 +242,31 @@ def resilient(
 
 
 def _run_with_timeout(fn, args, kwargs, timeout_sec: float):
-    """Hard wall-clock timeout via a single-shot worker thread."""
-    with ThreadPoolExecutor(max_workers=1) as ex:
+    """
+    Hard wall-clock timeout via a single-shot worker thread.
+
+    IMPORTANT: does NOT use `with ThreadPoolExecutor(...) as ex:` because that
+    idiom calls `shutdown(wait=True)` on exit, which BLOCKS waiting for the
+    worker to finish. If the worker is stuck inside a slow-but-not-yet-failed
+    SDK call (e.g. an OpenAI request that hasn't timed out at the socket
+    level), we'd block until the SDK gives up — completely defeating the
+    timeout. Instead, we manage the executor manually and shutdown(wait=False)
+    on timeout so the caller unblocks immediately. The stuck worker thread
+    will eventually complete on its own (via the underlying SDK's socket
+    timeout, if configured — see providers.py) and its result is discarded.
+    """
+    ex = ThreadPoolExecutor(max_workers=1, thread_name_prefix="resilient")
+    try:
         future = ex.submit(fn, *args, **kwargs)
         try:
             return future.result(timeout=timeout_sec)
         except FutureTimeout as e:
             raise TimeoutError(f"call exceeded {timeout_sec}s") from e
+    finally:
+        # wait=False: return immediately, don't block on stuck worker.
+        # cancel_futures=True: cancel any pending futures (there are none
+        # here since we only submit one, but harmless and explicit).
+        ex.shutdown(wait=False, cancel_futures=True)
 
 
 def _backoff(attempt: int, min_sec: float, max_sec: float, jitter: bool) -> float:

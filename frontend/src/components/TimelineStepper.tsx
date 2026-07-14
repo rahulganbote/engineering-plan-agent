@@ -20,6 +20,107 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 }) => {
   const hasBrdSections = Array.isArray(artifacts?.brd_sections) && (artifacts.brd_sections as unknown[]).length > 0;
 
+  // Centralized helper to compute step status
+  const getStepStatus = (stepId: number): { isCompleted: boolean; isActive: boolean; isFailed: boolean } => {
+    // 1. Check for terminal export failure (special case for Step 7)
+    if (stepId === 7 && pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED) {
+      return { isCompleted: false, isActive: false, isFailed: true };
+    }
+
+    // 2. Cancellation and Error Handling:
+    if (pipelineStatus === PIPELINE_STATUS.ERROR || pipelineStatus === PIPELINE_STATUS.CANCELED) {
+      const securityPassed = logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
+      const orchestratorCompleted = completedAgents.has('orchestrator') || hasBrdSections || logs.some(l => l.type === 'orchestrator_reconciled');
+      const draftingCompleted = (
+        completedAgents.has('engineering_plan_generator') &&
+        completedAgents.has('schedule_estimator') &&
+        completedAgents.has('solution_architect') &&
+        completedAgents.has('poc_planner') &&
+        completedAgents.has('tech_stack_recommender')
+      ) || logs.some(l => l.type === 'orchestrator_reconciled');
+      const arbitrationCompleted = logs.some(l => l.type === 'orchestrator_reconciled') || !!artifacts?.alignment_memo;
+      const alignmentCompleted = logs.some(l => l.type === 'agent_start' && l.agent === 'critic') || !!artifacts?.critic_output;
+      const criticCompleted = logs.some(l => l.type === 'agent_complete' && l.agent === 'critic') || !!artifacts?.critic_output;
+
+      if (stepId === 1) {
+        const completed = securityPassed;
+        return { isCompleted: completed, isActive: false, isFailed: !completed };
+      }
+      if (stepId === 2) {
+        const completed = orchestratorCompleted;
+        const failed = securityPassed && !completed;
+        return { isCompleted: completed, isActive: false, isFailed: failed };
+      }
+      if (stepId === 3) {
+        const completed = draftingCompleted;
+        const failed = orchestratorCompleted && !completed;
+        return { isCompleted: completed, isActive: false, isFailed: failed };
+      }
+      if (stepId === 4) {
+        const completed = arbitrationCompleted;
+        const failed = draftingCompleted && !completed;
+        return { isCompleted: completed, isActive: false, isFailed: failed };
+      }
+      if (stepId === 5) {
+        const completed = alignmentCompleted;
+        const failed = arbitrationCompleted && !completed;
+        return { isCompleted: completed, isActive: false, isFailed: failed };
+      }
+      if (stepId === 6) {
+        const completed = criticCompleted;
+        const failed = alignmentCompleted && !completed;
+        return { isCompleted: completed, isActive: false, isFailed: failed };
+      }
+      if (stepId === 7) {
+        return { isCompleted: false, isActive: false, isFailed: true };
+      }
+    }
+
+    // 3. Normal Execution Flow:
+    const activeStepId = (() => {
+      switch (pipelineStatus) {
+        case PIPELINE_STATUS.INITIALIZING:
+        case PIPELINE_STATUS.STARTED:
+        case PIPELINE_STATUS.SECURITY_CHECK:
+          return 1;
+        case PIPELINE_STATUS.RUNNING:
+        case PIPELINE_STATUS.ORCHESTRATOR_PARSING:
+          return 2;
+        case PIPELINE_STATUS.DRAFTING:
+          return 3;
+        case PIPELINE_STATUS.ARBITRATING:
+          return 4;
+        case PIPELINE_STATUS.ALIGNING:
+        case PIPELINE_STATUS.REVISING:
+          return 5;
+        case PIPELINE_STATUS.EVALUATING:
+          return 6;
+        case PIPELINE_STATUS.AWAITING_HITL:
+        case PIPELINE_STATUS.EXPORTING:
+          return 7;
+        default:
+          return 0; // idle or terminal
+      }
+    })();
+
+    const isActive = activeStepId === stepId;
+
+    const isCompleted = (() => {
+      if (pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.REJECTED) {
+        return true;
+      }
+      if (pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED) {
+        return stepId < 7;
+      }
+      if (pipelineStatus === PIPELINE_STATUS.REVISING) {
+        return stepId < 5 || stepId === 6;
+      }
+      return activeStepId > stepId;
+    })();
+
+    return { isCompleted, isActive, isFailed: false };
+  };
+
   // Define the steps
   const steps = [
     {
@@ -27,36 +128,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       label: 'Security Validation',
       description: 'Format, Security & PII Check',
       icon: Shield,
-      get isCompleted() {
-        if (pipelineStatus === PIPELINE_STATUS.ERROR) {
-          return logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
-        }
-        return (
-          [
-            PIPELINE_STATUS.RUNNING,
-            PIPELINE_STATUS.DRAFTING,
-            PIPELINE_STATUS.ARBITRATING,
-            PIPELINE_STATUS.ALIGNING,
-            PIPELINE_STATUS.SPECIALIST_EXECUTING,
-            PIPELINE_STATUS.EVALUATING,
-            PIPELINE_STATUS.REVISING,
-            PIPELINE_STATUS.AWAITING_HITL,
-            PIPELINE_STATUS.EXPORTING,
-            PIPELINE_STATUS.EXPORTED,
-            PIPELINE_STATUS.REJECTED
-          ] as PipelineStatus[]
-        ).includes(pipelineStatus) || completedAgents.has('orchestrator') || hasBrdSections;
-      },
-      get isFailed() {
-        return pipelineStatus === PIPELINE_STATUS.ERROR && !this.isCompleted;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && (
-          pipelineStatus === PIPELINE_STATUS.INITIALIZING ||
-          pipelineStatus === PIPELINE_STATUS.STARTED ||
-          pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK
-        );
-      },
+      get isCompleted() { return getStepStatus(1).isCompleted; },
+      get isFailed() { return getStepStatus(1).isFailed; },
+      get isActive() { return getStepStatus(1).isActive; },
     },
     {
       id: 2,
@@ -66,39 +140,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         if (hasReconciled) {
           return 'Arbitration Completed';
         }
-        if (pipelineStatus === PIPELINE_STATUS.RUNNING) {
+        if (pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING) {
           return 'Parsing BRD...';
         }
         return 'Parsing BRD';
       },
       icon: FileJson,
-      get isCompleted() {
-        return (
-          completedAgents.has('orchestrator') ||
-          hasBrdSections ||
-          (
-            [
-              PIPELINE_STATUS.DRAFTING,
-              PIPELINE_STATUS.ARBITRATING,
-              PIPELINE_STATUS.ALIGNING,
-              PIPELINE_STATUS.SPECIALIST_EXECUTING,
-              PIPELINE_STATUS.EVALUATING,
-              PIPELINE_STATUS.REVISING,
-              PIPELINE_STATUS.AWAITING_HITL,
-              PIPELINE_STATUS.EXPORTING,
-              PIPELINE_STATUS.EXPORTED,
-              PIPELINE_STATUS.REJECTED
-            ] as PipelineStatus[]
-          ).includes(pipelineStatus)
-        );
-      },
-      get isFailed() {
-        const securityPassed = logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
-        return pipelineStatus === PIPELINE_STATUS.ERROR && securityPassed && !this.isCompleted;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.RUNNING);
-      },
+      get isCompleted() { return getStepStatus(2).isCompleted; },
+      get isFailed() { return getStepStatus(2).isFailed; },
+      get isActive() { return getStepStatus(2).isActive; },
     },
     {
       id: 3,
@@ -110,28 +160,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return 'First Draft Generation';
       },
       icon: Cpu,
-      get isCompleted() {
-        return (
-          [
-            PIPELINE_STATUS.ARBITRATING,
-            PIPELINE_STATUS.ALIGNING,
-            PIPELINE_STATUS.SPECIALIST_EXECUTING,
-            PIPELINE_STATUS.EVALUATING,
-            PIPELINE_STATUS.REVISING,
-            PIPELINE_STATUS.AWAITING_HITL,
-            PIPELINE_STATUS.EXPORTING,
-            PIPELINE_STATUS.EXPORTED,
-            PIPELINE_STATUS.REJECTED
-          ] as PipelineStatus[]
-        ).includes(pipelineStatus);
-      },
-      get isFailed() {
-        const orchestratorCompleted = completedAgents.has('orchestrator') || hasBrdSections || logs.some(l => l.type === 'orchestrator_reconciled');
-        return pipelineStatus === PIPELINE_STATUS.ERROR && orchestratorCompleted && !this.isCompleted;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && (pipelineStatus === PIPELINE_STATUS.DRAFTING);
-      },
+      get isCompleted() { return getStepStatus(3).isCompleted; },
+      get isFailed() { return getStepStatus(3).isFailed; },
+      get isActive() { return getStepStatus(3).isActive; },
     },
     {
       id: 4,
@@ -143,40 +174,15 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return 'Conflict Resolution';
       },
       icon: MessageSquare,
-      get isCompleted() {
-        return (
-          [
-            PIPELINE_STATUS.ALIGNING,
-            PIPELINE_STATUS.SPECIALIST_EXECUTING,
-            PIPELINE_STATUS.EVALUATING,
-            PIPELINE_STATUS.REVISING,
-            PIPELINE_STATUS.AWAITING_HITL,
-            PIPELINE_STATUS.EXPORTING,
-            PIPELINE_STATUS.EXPORTED,
-            PIPELINE_STATUS.REJECTED
-          ] as PipelineStatus[]
-        ).includes(pipelineStatus) || logs.some(l => l.type === 'orchestrator_reconciled');
-      },
-      get isFailed() {
-        const pass1Completed = this.isCompleted;
-        const draftingCompleted = (
-          completedAgents.has('engineering_plan_generator') &&
-          completedAgents.has('schedule_estimator') &&
-          completedAgents.has('solution_architect') &&
-          completedAgents.has('poc_planner') &&
-          completedAgents.has('tech_stack_recommender')
-        ) || logs.some(l => l.type === 'orchestrator_reconciled');
-        return pipelineStatus === PIPELINE_STATUS.ERROR && draftingCompleted && !pass1Completed;
-      },
-      get isActive() {
-        return pipelineStatus === PIPELINE_STATUS.ARBITRATING;
-      },
+      get isCompleted() { return getStepStatus(4).isCompleted; },
+      get isFailed() { return getStepStatus(4).isFailed; },
+      get isActive() { return getStepStatus(4).isActive; },
     },
     {
       id: 5,
       label: 'Specialists Alignment',
       get description() {
-        if (pipelineStatus === PIPELINE_STATUS.ALIGNING || pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING) {
+        if (pipelineStatus === PIPELINE_STATUS.ALIGNING) {
           return 'Aligning plans...';
         }
         if (pipelineStatus === PIPELINE_STATUS.REVISING) {
@@ -185,29 +191,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return 'Finalized Plan';
       },
       icon: Cpu,
-      get isCompleted() {
-        return (
-          [
-            PIPELINE_STATUS.EVALUATING,
-            PIPELINE_STATUS.REVISING,
-            PIPELINE_STATUS.AWAITING_HITL,
-            PIPELINE_STATUS.EXPORTING,
-            PIPELINE_STATUS.EXPORTED,
-            PIPELINE_STATUS.REJECTED
-          ] as PipelineStatus[]
-        ).includes(pipelineStatus);
-      },
-      get isFailed() {
-        const arbitrationCompleted = logs.some(l => l.type === 'orchestrator_reconciled');
-        return pipelineStatus === PIPELINE_STATUS.ERROR && arbitrationCompleted && !this.isCompleted;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && (
-          pipelineStatus === PIPELINE_STATUS.ALIGNING ||
-          pipelineStatus === PIPELINE_STATUS.SPECIALIST_EXECUTING ||
-          pipelineStatus === PIPELINE_STATUS.REVISING
-        );
-      },
+      get isCompleted() { return getStepStatus(5).isCompleted; },
+      get isFailed() { return getStepStatus(5).isFailed; },
+      get isActive() { return getStepStatus(5).isActive; },
     },
     {
       id: 6,
@@ -226,34 +212,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return 'Evaluation & Quality Score';
       },
       icon: MessageSquare,
-      get isCompleted() {
-        return (
-          [
-            PIPELINE_STATUS.AWAITING_HITL,
-            PIPELINE_STATUS.EXPORTING,
-            PIPELINE_STATUS.EXPORTED,
-            PIPELINE_STATUS.REJECTED
-          ] as PipelineStatus[]
-        ).includes(pipelineStatus);
-      },
-      get isFailed() {
-        const specialistsCompleted = (
-          [
-            PIPELINE_STATUS.EVALUATING,
-            PIPELINE_STATUS.REVISING,
-            PIPELINE_STATUS.AWAITING_HITL,
-            PIPELINE_STATUS.EXPORTING,
-            PIPELINE_STATUS.EXPORTED
-          ] as PipelineStatus[]
-        ).includes(pipelineStatus);
-        return pipelineStatus === PIPELINE_STATUS.ERROR && specialistsCompleted && !this.isCompleted;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && (
-          pipelineStatus === PIPELINE_STATUS.EVALUATING ||
-          pipelineStatus === PIPELINE_STATUS.REVISING
-        );
-      },
+      get isCompleted() { return getStepStatus(6).isCompleted; },
+      get isFailed() { return getStepStatus(6).isFailed; },
+      get isActive() { return getStepStatus(6).isActive; },
     },
     {
       id: 7,
@@ -277,21 +238,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         return 'Final decision & export';
       },
       icon: UserCheck,
-      get isCompleted() {
-        return (
-          pipelineStatus === PIPELINE_STATUS.EXPORTED ||
-          pipelineStatus === PIPELINE_STATUS.REJECTED
-        );
-      },
-      get isFailed() {
-        return pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED;
-      },
-      get isActive() {
-        return !this.isCompleted && !this.isFailed && (
-          pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ||
-          pipelineStatus === PIPELINE_STATUS.EXPORTING
-        );
-      },
+      get isCompleted() { return getStepStatus(7).isCompleted; },
+      get isFailed() { return getStepStatus(7).isFailed; },
+      get isActive() { return getStepStatus(7).isActive; },
     },
   ];
 
@@ -324,7 +273,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         ([
           PIPELINE_STATUS.ARBITRATING,
           PIPELINE_STATUS.ALIGNING,
-          PIPELINE_STATUS.SPECIALIST_EXECUTING,
           PIPELINE_STATUS.EVALUATING,
           PIPELINE_STATUS.REVISING,
           PIPELINE_STATUS.AWAITING_HITL,
@@ -359,12 +307,14 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     }
   };
 
+  const canceledStepId = pipelineStatus === PIPELINE_STATUS.CANCELED ? (steps.find(s => !s.isCompleted)?.id || 1) : null;
+
   return (
     <div className="w-full bg-card border border-border rounded-xl p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Agentic Workflow Progress</h3>
         <div className="flex items-center gap-2">
-          {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && pipelineStatus !== PIPELINE_STATUS.ERROR && (
+          {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && pipelineStatus !== PIPELINE_STATUS.ERROR && pipelineStatus !== PIPELINE_STATUS.CANCELED && (
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -375,11 +325,19 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               pipelineStatus === PIPELINE_STATUS.ERROR ? 'text-danger' :
                 pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'text-success' :
                   pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'text-warning' :
-                    'text-primary'
+                    pipelineStatus === PIPELINE_STATUS.CANCELED ? 'text-slate-500' :
+                      'text-primary'
             }>{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
           </span>
         </div>
       </div>
+
+      {pipelineStatus === PIPELINE_STATUS.CANCELED && (
+        <div className="mb-4 p-3 bg-slate-500/10 border border-slate-500/20 rounded-lg text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between animate-scale-in">
+          <span>Run was aborted by the user.</span>
+          <span className="bg-slate-500/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">Canceled</span>
+        </div>
+      )}
 
       {/* Increased mt-16 to leave enough space for the headers above */}
       <div className="relative flex items-start justify-between w-full mt-16">
@@ -417,7 +375,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           }
 
           return (
-            <div key={step.id} className="flex flex-col items-center flex-1 relative z-10">
+            <div key={step.id} className={`flex flex-col items-center flex-1 relative z-10 transition-all duration-300 ${
+              pipelineStatus === PIPELINE_STATUS.CANCELED && !isCompleted ? 'opacity-40 grayscale-[50%]' : ''
+            }`}>
               {/* Line connector segment highlight - starts at center of current step and goes to next step (prevents overlapping issues on checkmarks) */}
               {idx < steps.length - 1 && (
                 <div
@@ -434,7 +394,14 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               {/* Odd-numbered step header: absolute-positioned above the circle */}
               {step.id % 2 !== 0 && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center text-center h-12 justify-end w-[130px] md:w-[150px]">
-                  <span className={`${textLabelClasses} leading-tight block text-center`}>{step.label}</span>
+                  <span className={`${textLabelClasses} leading-tight flex items-center justify-center gap-1`}>
+                    {step.label}
+                    {step.id === 5 && pipelineStatus === PIPELINE_STATUS.REVISING && (
+                      <span className="text-[9px] font-bold text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
+                        🔄 Revision {logs.filter(l => l.type === 'revision_start').length}/2
+                      </span>
+                    )}
+                  </span>
                   <span className={`${descriptionClasses} leading-tight mt-0.5 block text-center`}>{step.description}</span>
                 </div>
               )}
@@ -507,7 +474,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 
                       return (
                         <div key={spec.key} style={delayStyle} className={specCardClass} title={spec.key}>
-                          <span className="truncate pr-1 text-left">{spec.shortLabel}</span>
+                           <span className="truncate pr-1 text-left">{spec.shortLabel}</span>
                           {statusIcon}
                         </div>
                       );
@@ -537,14 +504,23 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 </div>
               )}
 
-              {/* Critic revision indicator under step 6 */}
-              {step.id === 6 && (
+              {/* Revision indicator under step 5 */}
+              {step.id === 5 && (
                 <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in">
                   {logs.filter(l => l.type === 'revision_start').length > 0 && (
                     <div className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-[8px] text-primary font-bold text-center animate-pulse">
-                      🔄 {logs.filter(l => l.type === 'revision_start').length} Revision(s) taken
+                      🔄 Revision {logs.filter(l => l.type === 'revision_start').length} of 2
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Cancellation badge/chip on the canceled step */}
+              {step.id === canceledStepId && (
+                <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in animate-pulse">
+                  <div className="px-2 py-1 rounded bg-slate-500/15 border border-slate-500/35 text-[8px] text-slate-500 dark:text-slate-400 font-extrabold text-center">
+                    🚫 Canceled at Step {step.id}
+                  </div>
                 </div>
               )}
             </div>
