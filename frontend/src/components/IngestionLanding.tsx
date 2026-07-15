@@ -61,7 +61,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         const y1 = specRect.bottom - containerRect.top;
 
         // Manager connection: starts from the right portion of manager to prevent crowding at RAG drop
-        const mx1 = mgrRect.right - containerRect.left - 24;
+        const mx1 = mgrRect.right - containerRect.left - 12;
         const my1 = mgrRect.bottom - containerRect.top;
 
         // Tools entry points: 25% and 75% of tool card width
@@ -403,7 +403,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           </div>
           {/* Dynamic SVG paths overlay drawing the physical connection lines */}
           {coords && (() => {
-            const mMidY = coords.my1 + (coords.y2 - coords.my1) * 0.65;
+            const mMidY = coords.my1 + (coords.y2 - coords.my1) * 0.80;
             return (
               <svg className="absolute inset-0 w-full h-full pointer-events-none hidden md:block z-0" xmlns="http://www.w3.org/2000/svg">
                 <defs>
@@ -463,11 +463,11 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                         markerEnd="url(#orange-arrow)"
                       />
                       <text
-                        x={verticalX - 30}
-                        y={coords.ragMidY - 9}
+                        x={(verticalX + coords.colRight) / 2}
+                        y={coords.ragMidY - 8}
                         fill="#F59E0B"
                         className="text-[9px] font-extrabold tracking-wider"
-                        textAnchor="end"
+                        textAnchor="middle"
                       >
                         RAG Citation Verification
                       </text>
@@ -513,11 +513,11 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   markerEnd="url(#green-arrow)"
                 />
                 <text
-                  x={coords.mx2 + 15}
+                  x={(coords.mx1 + coords.mx2) / 2}
                   y={mMidY + 14}
                   fill="#10B981"
                   className="text-[9px] font-extrabold tracking-wider"
-                  textAnchor="start"
+                  textAnchor="middle"
                 >
                   Tool Call on Human Decision
                 </text>
