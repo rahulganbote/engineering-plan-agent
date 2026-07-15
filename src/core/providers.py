@@ -41,9 +41,9 @@ class OpenAIProvider:
         temperature: float,
         response_format: dict[str, str] | None = None,
     ) -> tuple[str, int, int]:
-        # SDK-level timeout ensures a stuck HTTP call aborts at ~30s (well
-        # inside OPENAI_POLICY's 40s wall-clock budget in resilience.py).
-        client = wrap_openai(openai.OpenAI(api_key=settings.openai_api_key, timeout=60.0, max_retries=0))
+        # SDK-level timeout: 90s matches OPENAI_POLICY's 270s wall-clock
+        # budget (leaves headroom for retries).
+        client = wrap_openai(openai.OpenAI(api_key=settings.openai_api_key, timeout=90.0, max_retries=0))
         kwargs = {
             "model": model,
             "messages": messages,
@@ -71,11 +71,11 @@ class AnthropicProvider:
         if not settings.anthropic_api_key:
             raise ValueError("Anthropic API key is not configured. Please set ANTHROPIC_API_KEY.")
 
-        # SDK-level timeout: 60s matches ANTHROPIC_POLICY's 120s wall-clock
+        # SDK-level timeout: 120s matches ANTHROPIC_POLICY's 240s wall-clock
         # budget (leaves headroom for retries). Anthropic Sonnet is slower
         # than GPT-4o on high-token payloads, so this is set higher than
-        # the OpenAI equivalent (30s).
-        client = wrap_anthropic(anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=90.0, max_retries=0))
+        # the OpenAI equivalent (60s).
+        client = wrap_anthropic(anthropic.Anthropic(api_key=settings.anthropic_api_key, timeout=120.0, max_retries=0))
 
         # Extract system message if present
         system_msg = ""

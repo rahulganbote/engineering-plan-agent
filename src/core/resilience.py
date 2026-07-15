@@ -69,14 +69,14 @@ class CallPolicy:
 from src.core.exceptions import QuotaExceededError
 
 OPENAI_POLICY = CallPolicy(
-    timeout_sec=180.0, max_attempts=2, backoff_min=1.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
+    timeout_sec=270.0, max_attempts=2, backoff_min=1.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
 )
 # Anthropic's Claude models routinely take 50-120s for verbose JSON outputs.
-# Giving each attempt 90s and using 2 attempts (vs OpenAI's 3) avoids the
+# Giving each attempt 120s and using 2 attempts (vs OpenAI's 3) avoids the
 # 40s x 3 = 120s wall-clock loss that triggered the cascading bulkhead trip we
 # saw in runs 1c82f453-137b and 1c82f453-e588. Backoff is the same shape.
 ANTHROPIC_POLICY = CallPolicy(
-    timeout_sec=180.0, max_attempts=2, backoff_min=2.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
+    timeout_sec=270.0, max_attempts=2, backoff_min=2.0, backoff_max=8.0, do_not_retry=(QuotaExceededError,)
 )
 PINECONE_POLICY = CallPolicy(
     timeout_sec=10.0, max_attempts=2, backoff_min=0.5, backoff_max=2.0, do_not_retry=(QuotaExceededError,)

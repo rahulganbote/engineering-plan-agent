@@ -146,7 +146,7 @@ export const AgentWorkspace: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [runIdCopied, setRunIdCopied] = useState(false);
   const [isStartingPipeline, setIsStartingPipeline] = useState(false);
-  const [modelFamily, setModelFamily] = useState('anthropic');
+  const [modelFamily, setModelFamily] = useState('openai');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isExampleLoading, setIsExampleLoading] = useState(false);
