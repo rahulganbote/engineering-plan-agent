@@ -12,9 +12,10 @@
 
 | Variable | Value | Source | Purpose |
 |---|---|---|---|
-| `settings.pipeline_timeout_sec` | **300 s** (5 min) | `src/core/config.py:84` | Overall pipeline SLA target. **Observational, not enforced** - logger flags runs that exceed it as "⚠️ SLA breach" but no `signal.alarm` cancels the run. |
-| `settings.agent_timeout_sec` | **90 s** | `src/core/config.py:85` | Per-agent bulkhead budget (Phase 9). Hard cap enforced by `as_completed(timeout=...)` in the dispatcher. |
-| `_bulkhead_budget` | reads `agent_timeout_sec` | `src/agents/pipeline.py:148` | Actual `as_completed` value at dispatch. |
+| `settings.pipeline_timeout_sec` | **600 s** (10 min) | `src/core/config.py:105` | Overall pipeline SLA target. **Observational, not enforced** - logger flags runs that exceed it as "⚠️ SLA breach" but no `signal.alarm` cancels the run. |
+| `settings.agent_timeout_sec` | **90 s** | `src/core/config.py:106` | Per-agent bulkhead budget for OpenAI (Phase 9). Hard cap enforced by `as_completed(timeout=...)` in the dispatcher. |
+| `settings.anthropic_agent_timeout_sec` | **180 s** | `src/core/config.py:107` | Per-agent bulkhead budget for Anthropic (Phase 9). Hard cap enforced by `as_completed(timeout=...)` in the dispatcher. |
+| `_bulkhead_budget` | reads per-family `agent_timeout_sec` | `src/agents/pipeline.py:148` | Actual `as_completed` value at dispatch. |
 
 ---
 
@@ -25,15 +26,17 @@ class-level `RESILIENCE_POLICY` attribute (Phase 5 manifest pattern).
 
 | Policy | timeout_sec | max_attempts | backoff (min → max) | Jitter | Source |
 |---|---|---|---|---|---|
-| `OPENAI_POLICY` | **30.0** | 3 | 1.0 → 8.0 | ±50% | `resilience.py:66` |
-| `PINECONE_POLICY` | **10.0** | 2 | 0.5 → 2.0 | ±50% | `resilience.py:67` |
-| `EMBEDDING_POLICY` | **15.0** | 3 | 0.5 → 4.0 | ±50% | `resilience.py:68` |
-| `HTTP_POLICY` | **10.0** | 2 | 0.5 → 2.0 | ±50% | `resilience.py:69` |
-| `CallPolicy()` field defaults | 30.0 | 3 | 1.0 → 8.0 | True | `resilience.py:56` |
+| `OPENAI_POLICY` | **270.0** | 2 | 1.0 → 8.0 | ±50% | `resilience.py:71` |
+| `ANTHROPIC_POLICY` | **270.0** | 2 | 2.0 → 8.0 | ±50% | `resilience.py:78` |
+| `PINECONE_POLICY` | **10.0** | 2 | 0.5 → 2.0 | ±50% | `resilience.py:81` |
+| `EMBEDDING_POLICY` | **15.0** | 3 | 0.5 → 4.0 | ±50% | `resilience.py:84` |
+| `HTTP_POLICY` | **10.0** | 2 | 0.5 → 2.0 | ±50% | `resilience.py:87` |
+| `CallPolicy()` field defaults | 40.0 | 3 | 1.0 → 8.0 | True | `resilience.py:53` |
 
 **Worst-case per call** (all retries fire): `timeout_sec × max_attempts + Σ backoff`.
 
-- OpenAI: 30 × 3 + (1 + 2 + 4) ≈ **97 s**
+- OpenAI: 270 × 2 + 1 ≈ **541 s**
+- Anthropic: 270 × 2 + 2 ≈ **542 s**
 - Embedding: 15 × 3 + (0.5 + 1 + 2) ≈ **48.5 s**
 - Pinecone: 10 × 2 + 0.5 ≈ **20.5 s**
 
@@ -105,16 +108,16 @@ it, multiple per-call timeouts and retries compete for the budget.
 
 ```
 Pipeline run
-└── settings.pipeline_timeout_sec = 300 s   (observational only)
-    └── Bulkhead per specialist: settings.agent_timeout_sec = 90 s
+└── settings.pipeline_timeout_sec = 600 s   (observational only)
+    └── Bulkhead per specialist: OpenAI = 90 s, Anthropic = 180 s
         └── Inside each specialist (worst case if everything retries):
             ├── 1× Embedding query   ≈ 48 s    (EMBEDDING_POLICY × 3)
             ├── 1× Pinecone retrieve ≈ 21 s    (PINECONE_POLICY × 2)
-            ├── 1× LLM specialist    ≈ 97 s    (OPENAI_POLICY × 3)   ← exceeds budget!
+            ├── 1× LLM specialist    ≈ 540 s   (OPENAI_POLICY / ANTHROPIC_POLICY × 2)   ← exceeds bulkhead budget!
             └── (Architect only) Kroki ≈ 30 s  (KROKI_TIMEOUT × 2)
 
         Critic at the end:
-        └── 1× LLM judge call        ≈ 97 s    (OPENAI_POLICY × 3)
+        └── 1× LLM judge call        ≈ 540 s   (OPENAI_POLICY / ANTHROPIC_POLICY × 2)
 
 On HITL approval:
 ├── Sheets write     (gspread internal timeout)
@@ -125,27 +128,13 @@ On HITL approval:
 
 ### Notable interactions
 
-1. **OpenAI worst-case (~97 s) exceeds the bulkhead (90 s).** In practice
-   retries rarely fire - if you start seeing repeated `bulkhead_timeout` events
-   correlated with `retry` events on OPENAI_POLICY, either OpenAI is degraded
-   or you should bump `agent_timeout_sec` higher (or cut `max_attempts` to 2).
+1. **LLM worst-case exceeds the bulkhead.** In practice retries rarely fire - if you start seeing repeated `bulkhead_timeout` events correlated with `retry` events on policies, either the provider is degraded or you should bump bulkhead `agent_timeout_sec` higher (or cut `max_attempts` to 1).
 
-2. **Kroki + LLM in the Architect specialist.** A worst-case Architect run is
-   `LLM (97s) + Kroki (30s) = 127s` - would trip the bulkhead. In practice the
-   LLM completes in ~15-25 s and Kroki in ~1-2 s, so the typical run is well
-   under 30 s.
+2. **Kroki + LLM in the Architect specialist.** A worst-case Architect run is `LLM + Kroki` - would trip the bulkhead. In practice the LLM completes in ~15-25 s and Kroki in ~1-2 s, so the typical run is well under 30 s.
 
-3. **Cache hits skip all of the above.** `@cached` runs OUTSIDE `@resilient`,
-   so a hit pays zero retry / timeout / breaker cost. The Critic revision loop
-   benefits most: revision-2 prompts are highly similar to revision-1, so the
-   semantic cache catches them.
+3. **Cache hits skip all of the above.** `@cached` runs OUTSIDE `@resilient`, so a hit pays zero retry / timeout / breaker cost. The Critic revision loop benefits most: revision-2 prompts are highly similar to revision-1, so the semantic cache catches them.
 
-4. **`pipeline_timeout_sec = 300` is not enforced.** It's only used in the
-   logger for `✅ within SLA` vs `⚠️ SLA breach` messages. The actual upper
-   bound on a single run is the sum of all bulkheads. Worst case:
-   `5 specialists × 90 s + Critic × 90 s = 540 s` - beyond the SLA target.
-   If you want a hard pipeline-level cancel, wrap `run_pipeline()` in your
-   own `concurrent.futures` timeout.
+4. **`pipeline_timeout_sec = 600` is not enforced.** It's only used in the logger for `✅ within SLA` vs `⚠️ SLA breach` messages. The actual upper bound on a single run is the sum of all bulkheads. If you want a hard pipeline-level cancel, wrap `run_pipeline()` in your own `concurrent.futures` timeout.
 
 ---
 
