@@ -201,6 +201,7 @@ export const AgentWorkspace: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const hasShownToastForRunId = useRef<string | null>(null);
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
@@ -209,7 +210,20 @@ export const AgentWorkspace: React.FC = () => {
   // for the moment of the swap so they see it immediately.
   // Auto-dismisses after 6s; the banner stays as durable context.
   useEffect(() => {
-    if (!fallbackActive) return;
+    if (!fallbackActive || !runId) return;
+
+    // Don't show if we are in the post-decision/exporting/terminal phase
+    const POST_DECISION_STATES: string[] = [
+      PIPELINE_STATUS.EXPORTING,
+      PIPELINE_STATUS.EXPORTED,
+      PIPELINE_STATUS.REJECTED,
+      PIPELINE_STATUS.EXPORT_FAILED,
+    ];
+    if (POST_DECISION_STATES.includes(pipelineStatus)) return;
+
+    // Don't show if already shown for this runId
+    if (hasShownToastForRunId.current === runId) return;
+
     const fromName = fallbackActive.from.charAt(0).toUpperCase() + fallbackActive.from.slice(1);
     const toName = fallbackActive.to.charAt(0).toUpperCase() + fallbackActive.to.slice(1);
     toast.warning(
@@ -219,7 +233,9 @@ export const AgentWorkspace: React.FC = () => {
         description: 'Cost is computed against the active provider. See the banner above for full details.',
       }
     );
-  }, [fallbackActive]);
+
+    hasShownToastForRunId.current = runId;
+  }, [fallbackActive, runId, pipelineStatus]);
 
   // Scroll to Export Results banner once export completes or run is rejected
   useEffect(() => {
