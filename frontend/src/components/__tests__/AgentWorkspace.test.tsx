@@ -1,7 +1,6 @@
 import { render, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentWorkspace } from '../AgentWorkspace';
-import React from 'react';
 
 // Dynamic mock variables we can update within tests
 let mockPipelineStatus = 'running';
