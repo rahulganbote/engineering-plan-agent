@@ -685,7 +685,7 @@ export const AgentWorkspace: React.FC = () => {
             cleanly at narrow viewports (e.g. devtools open) without overflowing
             into the IngestionLanding hero below. items-start keeps the controls
             (Theme picker, API status) pinned to the top-right of the title block. */}
-        <header className="min-h-16 border-b border-border px-6 pt-4 pb-5 gap-4 flex flex-col sm:flex-row sm:items-start justify-between bg-card shrink-0 shadow-sm relative">
+        <header className="min-h-12 border-b border-border px-6 py-2.5 gap-4 flex flex-col sm:flex-row sm:items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
               <span className="text-primary">EM Copilot</span>
@@ -728,7 +728,7 @@ export const AgentWorkspace: React.FC = () => {
           </div>
         </header>
         {/* Scrollable Workstation Body */}
-        <div className="flex-1 overflow-y-auto p-6 pb-12 space-y-8">
+        <div className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
           {!runId ? (
             <div className="space-y-6">
               {startupError && (

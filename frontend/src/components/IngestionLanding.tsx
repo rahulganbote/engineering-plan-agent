@@ -190,7 +190,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
     },
     {
       id: 'orchestrator',
-      label: 'Orchestrator',
+      label: 'Orchestrator Agent',
       desc: 'Parses the BRD sections, evaluates structure completeness, and splits tasks for 5 specialists Agents.',
       icon: <Cpu size={20} className="text-ai-spark" />,
       color: 'border-ai-spark/30 text-ai-spark bg-ai-spark/10',
@@ -214,7 +214,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
     },
     {
       id: 'critic',
-      label: 'Critic Reviewer - Evaluation',
+      label: 'Critic Agent (Evaluation)',
       desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades outputs on 4 quality dimensions (1.0-5.0 score) and triggers revisions if needed. Green badge requires all dimensions passing, overall >= 4.0, and zero unresolved warnings (otherwise capped at Amber).',
       icon: <GitPullRequest size={20} className="text-warning" />,
       color: 'border-warning/30 text-warning bg-warning/10',
@@ -330,7 +330,12 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
               </div>
 
               {/* Circular Loop Graphic container */}
-              <div className="relative flex items-center justify-center w-32 h-24 shrink-0 select-none">
+              <div
+                className="relative flex items-center justify-center w-32 h-24 shrink-0 select-none group cursor-help"
+                onMouseEnter={() => setActiveNode('loop')}
+                onMouseLeave={() => setActiveNode(null)}
+                onClick={() => setActiveNode(activeNode === 'loop' ? null : 'loop')}
+              >
                 {/* Loop arrows (SVG) */}
                 <svg className="absolute inset-0 w-full h-full text-warning/45 dark:text-warning/35 animate-[spin_5s_linear_infinite]" viewBox="0 0 100 100" fill="none">
                   {/* Loop path */}
@@ -345,9 +350,28 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   <path d="M 50,90 L 56,96 L 56,84 Z" fill="currentColor" />
                 </svg>
 
-                <span className="text-[10px] font-bold px-3 py-1.5 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10 max-w-[110px] leading-tight">
-                  Revision & Alignment Loop
+                <span className="text-[10px] font-bold px-3 py-1.5 bg-card border border-border rounded-full text-muted-foreground text-center select-none font-mono shadow-sm z-10 max-w-[110px] leading-tight group-hover:border-warning/60 transition-colors">
+                  Alignment & Revision Loop
                 </span>
+
+                {activeNode === 'loop' && (
+                  <div
+                    role="tooltip"
+                    className="absolute z-30 left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 p-3
+                               bg-background border border-border rounded-lg shadow-2xl
+                               pointer-events-none animate-in fade-in zoom-in-95 duration-150 text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5 pb-1.5 border-b border-border">
+                      <span className="text-warning text-sm">🔄</span>
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">Revision & Alignment Loop</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      LangGraph StateGraph: cycles between specialist output, Orchestrator arbitration, Critic evaluation, and revision until quality gates pass.
+                    </p>
+                    {/* Tooltip arrow */}
+                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 -mt-1.5 rotate-45 bg-background border-r border-b border-border" />
+                  </div>
+                )}
               </div>
 
               {/* Center to Right connection */}
@@ -360,7 +384,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             {/* Right column — review + approval lane.
                 RAG moved to left column adjacent to Specialists since that's
                 where it's actually queried (not by Critic/Manager). */}
-             <div className="flex flex-col gap-5 w-full md:w-5/12 z-10">
+            <div className="flex flex-col gap-5 w-full md:w-5/12 z-10">
               {pipelineNodes.filter(n => ['critic', 'manager'].includes(n.id)).map((node) => (
                 <div
                   key={node.id}
@@ -526,7 +550,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           })()}
 
           {/* Bottom section: Tool Layer centered at the bottom */}
-          <div className="flex flex-col items-center w-full z-10 relative mt-2 pt-1.5 border-t border-border/40">
+          <div className="flex flex-col items-center w-full z-10 relative mt-2 pt-1.5 pb-8 border-t border-border/40">
             {/* Tool Layer Card centered at the bottom */}
             <div className="w-full md:w-8/12">
               {pipelineNodes.filter(n => n.id === 'tools').map((node) => (
@@ -558,7 +582,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                                 <span>💻 GitHub</span>
                               </div>
                             </div>
- 
+
                             {/* Sub-cluster 2: Export on Approval */}
                             <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
                               <div className="text-[10px] md:text-xs uppercase font-extrabold text-success tracking-wider flex items-center gap-1">
@@ -570,7 +594,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                                 <span>📊 Google Sheets</span>
                               </div>
                             </div>
- 
+
                             {/* Sub-cluster 3: State & Cache */}
                             <div className="space-y-0.5 md:border-l md:border-border/60 md:pl-3">
                               <div className="text-[10px] md:text-xs uppercase font-extrabold text-indigo-500 tracking-wider flex items-center gap-1">
