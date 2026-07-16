@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { 
-  Shield, Cpu, UserCheck, Check, Loader2, X, 
-  Database, Sparkles, Wrench, GitPullRequest, BookOpen, 
-  ChevronDown, ChevronUp, FileText, MessageSquare 
+import {
+  Shield, Cpu, UserCheck, Check, Loader2, X,
+  Sparkles, Wrench, GitPullRequest,
+  ChevronDown, ChevronUp, Upload, Database
 } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type LogEvent } from '../hooks/useSSE';
 import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
@@ -15,6 +15,7 @@ interface TimelineStepperProps {
   logs: LogEvent[];
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  title?: string;
 }
 
 export const TimelineStepper: React.FC<TimelineStepperProps> = ({
@@ -25,24 +26,60 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   logs,
   isCollapsed = false,
   onToggleCollapse,
+  title,
 }) => {
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [tooltipState, setTooltipState] = useState<{
+    id: string;
+    x: number;
+    y: number;
+    title: string;
+    desc: string;
+  } | null>(null);
 
-  // Helper to determine status of individual specialists in Pass 1 vs Pass 2
+  const handleMouseEnter = (nodeId: string, title: string, desc: string, event: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    setTooltipState({
+      id: nodeId,
+      x: rect.left - containerRect.left + rect.width / 2,
+      y: rect.top - containerRect.top - 8,
+      title,
+      desc
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTooltipState(null);
+  };
+
+  const getTooltipPosition = () => {
+    if (!tooltipState || !containerRef.current) return { left: 0, top: 0 };
+    const tooltipWidth = 256;
+    const containerWidth = containerRef.current.getBoundingClientRect().width;
+    const leftX = Math.max(
+      12 + tooltipWidth / 2,
+      Math.min(tooltipState.x, containerWidth - tooltipWidth / 2 - 12)
+    );
+    return {
+      left: `${leftX}px`,
+      top: `${tooltipState.y}px`
+    };
+  };
+
   const getDetailedStatus = (agentKey: string): 'pending' | 'running' | 'completed' | 'failed' => {
     if (pipelineStatus === PIPELINE_STATUS.IDLE) return 'pending';
 
-    // During active drafting, refer to Pass 1 logs
     if (pipelineStatus === PIPELINE_STATUS.DRAFTING) {
       if (completedAgents.has(agentKey)) return 'completed';
       const hasStarted = logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
       return hasStarted ? 'running' : 'pending';
     }
 
-    // During alignment/arbitration, check Pass 2 logs
     if (pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING) {
       const reconciledIdx = logs.findIndex(l => l.type === 'orchestrator_reconciled');
-      if (reconciledIdx === -1) return 'completed'; // completed Pass 1, waiting on arbitration
+      if (reconciledIdx === -1) return 'completed';
       const pass2Logs = logs.slice(reconciledIdx + 1);
       const hasCompleted = pass2Logs.some(l => l.type === 'agent_complete' && (l.agent === agentKey || l.payload?.agent === agentKey));
       if (hasCompleted) return 'completed';
@@ -50,46 +87,50 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       return hasStarted ? 'running' : 'pending';
     }
 
-    // Failures
     const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
     if (hasFailed) return 'failed';
 
-    // Terminal or post-alignment states are all completed
     return 'completed';
   };
 
-  // Node state descriptors
   const nodes = {
+    upload: {
+      label: 'BRD Ingestion',
+      desc: 'Ingests PDF, DOCX, or TXT Business Requirements Documents to initiate the planning pipeline.',
+      isActive: pipelineStatus === PIPELINE_STATUS.IDLE,
+      isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE,
+      isFailed: false,
+    },
     security: {
       label: 'Security Validator',
-      desc: 'Performs file size validation, prompt injection checks, and redacts PII patterns.',
+      desc: 'Performs file size check, BRD validity check, prompt injection assessment, and filters/redacts PII patterns.',
       isActive: pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK || pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED,
       isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.SECURITY_CHECK && pipelineStatus !== PIPELINE_STATUS.INITIALIZING && pipelineStatus !== PIPELINE_STATUS.STARTED,
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'security_complete'),
     },
     orchestrator: {
       label: 'Orchestrator Agent',
-      desc: 'Parses BRD structure, distributes tasks to specialists, and aligns plans in the 2nd pass.',
+      desc: 'Parses the BRD sections, evaluates structure completeness, and distributes tasks to 5 specialists Agents.',
       isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING || pipelineStatus === PIPELINE_STATUS.ARBITRATING,
       isCompleted: ([PIPELINE_STATUS.DRAFTING, PIPELINE_STATUS.ALIGNING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'orchestrator'),
     },
     critic: {
-      label: 'Critic Agent',
-      desc: 'Evaluates plan quality against organizational dimensions (groundedness, completeness).',
+      label: 'Critic Agent (Evaluation)',
+      desc: 'Five-method evaluation suite (BERTScore F1 >= 0.85). Grades outputs on 4 quality dimensions (1.0-5.0 score) and triggers revisions if needed. Green badge requires all dimensions passing, overall >= 4.0, and zero unresolved warnings (otherwise capped at Amber).',
       isActive: pipelineStatus === PIPELINE_STATUS.EVALUATING || pipelineStatus === PIPELINE_STATUS.REVISING,
       isCompleted: ([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'critic') && ([PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING] as string[]).includes(pipelineStatus),
     },
     hitl: {
-      label: 'HITL Decision Gate',
-      desc: 'Halts execution for manager review, allowing approval or revision loop feedback.',
+      label: 'Manager (HITL) Decision Gate',
+      desc: 'Pauses execution to obtain engineering manager approval before exporting to Google Sheets and Jira. Voice AI support (ElevenLabs) at Decision Gate.',
       isActive: pipelineStatus === PIPELINE_STATUS.AWAITING_HITL,
       isCompleted: ([PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED] as string[]).includes(pipelineStatus),
       isFailed: pipelineStatus === PIPELINE_STATUS.REJECTED,
     },
     export: {
-      label: 'Finalize & Export',
+      label: 'Finalize & Export Node',
       desc: 'Indexes the final plan in Pinecone and triggers Sheets + Jira integrations.',
       isActive: pipelineStatus === PIPELINE_STATUS.EXPORTING,
       isCompleted: pipelineStatus === PIPELINE_STATUS.EXPORTED,
@@ -100,8 +141,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   const getStyleClasses = (nodeState: { isActive: boolean; isCompleted: boolean; isFailed: boolean }, shape: 'circle' | 'diamond' | 'rect' = 'circle') => {
     let base = "transition-all duration-300 border-2 flex items-center justify-center text-xs font-bold shadow-md cursor-help ";
     if (shape === 'circle') base += "rounded-full w-12 h-12 ";
-    else if (shape === 'rect') base += "rounded-lg w-28 h-12 ";
-    else base += "w-11 h-11 "; // Diamond handled via rotated divs
+    else if (shape === 'rect') base += "rounded-full w-32 h-12 ";
+    else base += "w-11 h-11 ";
 
     if (nodeState.isCompleted) {
       return base + "bg-success border-success text-white shadow-success/20";
@@ -118,7 +159,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   const showRagLines = pipelineStatus === PIPELINE_STATUS.DRAFTING || pipelineStatus === PIPELINE_STATUS.ALIGNING;
   const isSyncing = pipelineStatus === PIPELINE_STATUS.EXPORTING || pipelineStatus === PIPELINE_STATUS.EXPORTED;
 
-  // Condensed / Collapsed mode layout
   if (isCollapsed) {
     let summaryText = 'System Idle';
     let statusColor = 'text-muted-foreground';
@@ -127,10 +167,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       summaryText = 'Awaiting Engineering Manager Decision';
       statusColor = 'text-warning font-extrabold animate-pulse';
     } else if (pipelineStatus === PIPELINE_STATUS.EXPORTING) {
-      summaryText = 'Syncing to Jira & Sheets...';
+      summaryText = 'Syncing to Jira...';
       statusColor = 'text-primary font-bold';
     } else if (pipelineStatus === PIPELINE_STATUS.EXPORTED) {
-      summaryText = 'Successfully Exported to Jira & Google Sheets';
+      summaryText = 'Successfully Exported to Jira';
       statusColor = 'text-success font-extrabold';
     } else if (pipelineStatus === PIPELINE_STATUS.REJECTED) {
       summaryText = 'Plan Rejected (Revision Loop Triggered)';
@@ -150,11 +190,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
             )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${
-              pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success' :
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success' :
               pipelineStatus === PIPELINE_STATUS.REJECTED || pipelineStatus === PIPELINE_STATUS.ERROR ? 'bg-danger' :
-              pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'bg-warning' : 'bg-primary'
-            }`}></span>
+                pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'bg-warning' : 'bg-primary'
+              }`}></span>
           </span>
           <span className="font-semibold text-foreground">
             Workflow: <span className={statusColor}>{summaryText}</span>
@@ -175,11 +214,13 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     );
   }
 
-  // Extended Mode Layout
   return (
-    <div className="w-full bg-card border border-border rounded-xl p-5 shadow-lg relative transition-all duration-300">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">Agentic Workflow Progress</h3>
+    <div
+      ref={containerRef}
+      className="w-full bg-card border border-border rounded-xl p-4 shadow-lg relative transition-all duration-300 select-none"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">{title || "Agentic Workflow Progress"}</h3>
         <div className="flex items-center gap-2">
           {onToggleCollapse && (
             <button
@@ -192,352 +233,469 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
         </div>
       </div>
 
-      {/* Main Flowchart Outer Container (Scrollable viewport on smaller screens) */}
-      <div className="w-full overflow-x-auto py-4">
-        <div className="relative w-[960px] h-[280px] mx-auto select-none">
-          
-          {/* Background Connector Lines Canvas */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <marker id="arrow-success" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10B981" />
-              </marker>
-              <marker id="arrow-danger" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444" />
-              </marker>
-              <marker id="arrow-primary" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6366F1" />
-              </marker>
-              <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94A3B8" />
-              </marker>
-            </defs>
+      <div className="w-full">
+        <svg
+          viewBox="0 15 920 375"
+          width="100%"
+          height="auto"
+          className="w-full h-auto max-w-full z-10 block"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <marker id="arrow-success" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10B981" />
+            </marker>
+            <marker id="arrow-danger" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444" />
+            </marker>
+            <marker id="arrow-primary" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6366F1" />
+            </marker>
+            <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94A3B8" />
+            </marker>
+            <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#F59E0B" />
+            </marker>
+          </defs>
 
-            {/* 1. Security -> Orchestrator Line */}
-            <path 
-              d="M 125,140 L 292,140" 
-              fill="none" 
-              stroke={nodes.security.isCompleted ? "#10B981" : (nodes.orchestrator.isActive ? "#6366F1" : "#94A3B8")} 
-              strokeWidth="2" 
-              markerEnd={`url(#${nodes.security.isCompleted ? 'arrow-success' : (nodes.orchestrator.isActive ? 'arrow-primary' : 'arrow-gray')})`}
-            />
+          {/* 1. Ingestion -> Security Line */}
+          <path
+            d="M 131,125 L 152,125"
+            fill="none"
+            stroke={nodes.upload.isCompleted ? "#10B981" : (nodes.upload.isActive ? "#6366F1" : "#94A3B8")}
+            strokeWidth="2"
+            markerEnd={`url(#${nodes.upload.isCompleted ? 'arrow-success' : (nodes.upload.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+          />
 
-            {/* 2. Orchestrator -> Satellite Specialists Spoke Lines */}
-            {[
-              { id: 'plan', x: 230, y: 50 },
-              { id: 'schedule', x: 470, y: 50 },
-              { id: 'poc', x: 230, y: 230 },
-              { id: 'stack', x: 470, y: 230 },
-              { id: 'arch', x: 350, y: 240 }
-            ].map(spoke => {
-              const specStatus = spoke.id === 'plan' ? getDetailedStatus('engineering_plan_generator') :
-                                 spoke.id === 'schedule' ? getDetailedStatus('schedule_estimator') :
-                                 spoke.id === 'poc' ? getDetailedStatus('poc_planner') :
-                                 spoke.id === 'stack' ? getDetailedStatus('tech_stack_recommender') :
-                                 getDetailedStatus('solution_architect');
-              
-              const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
-              const isActive = specStatus === 'running';
-              const isFail = specStatus === 'failed';
+          {/* 2. Security -> Orchestrator Line */}
+          <path
+            d="M 283,125 L 297,125"
+            fill="none"
+            stroke={nodes.security.isCompleted ? "#10B981" : (nodes.orchestrator.isActive ? "#6366F1" : "#94A3B8")}
+            strokeWidth="2"
+            markerEnd={`url(#${nodes.security.isCompleted ? 'arrow-success' : (nodes.orchestrator.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+          />
 
-              return (
-                <line 
-                  key={spoke.id}
-                  x1="350" y1="140" 
-                  x2={spoke.x} y2={spoke.y}
-                  stroke={isComp ? "#10B981" : (isFail ? "#EF4444" : (isActive ? "#6366F1" : "#94A3B8"))}
-                  strokeWidth="1.5"
-                  strokeDasharray={isActive ? "4, 2" : "none"}
-                  className={isActive ? "animate-[dash_1s_linear_infinite]" : ""}
-                />
-              );
-            })}
+          {/* 3. Orchestrator -> Satellite Specialists Spoke Lines */}
+          {[
+            { id: 'plan', x: 275, y: 55 },
+            { id: 'schedule', x: 450, y: 53 },
+            { id: 'poc', x: 250, y: 195 },
+            { id: 'stack', x: 485, y: 195 },
+            { id: 'arch', x: 365, y: 55 }
+          ].map(spoke => {
+            const specStatus = spoke.id === 'plan' ? getDetailedStatus('engineering_plan_generator') :
+              spoke.id === 'schedule' ? getDetailedStatus('schedule_estimator') :
+                spoke.id === 'poc' ? getDetailedStatus('poc_planner') :
+                  spoke.id === 'stack' ? getDetailedStatus('tech_stack_recommender') :
+                    getDetailedStatus('solution_architect');
 
-            {/* 3. Orchestrator -> Critic Line */}
-            <path 
-              d="M 400,140 L 582,140" 
-              fill="none" 
-              stroke={nodes.orchestrator.isCompleted ? "#10B981" : (nodes.critic.isActive ? "#6366F1" : "#94A3B8")} 
-              strokeWidth="2" 
-              markerEnd={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
-            />
+            const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
+            const isActive = specStatus === 'running';
+            const isFail = specStatus === 'failed';
 
-            {/* 4. Critic -> HITL Line */}
-            <path 
-              d="M 690,140 L 752,140" 
-              fill="none" 
-              stroke={nodes.critic.isCompleted ? "#10B981" : (nodes.hitl.isActive ? "#6366F1" : "#94A3B8")} 
-              strokeWidth="2" 
-              markerEnd={`url(#${nodes.critic.isCompleted ? 'arrow-success' : (nodes.hitl.isActive ? 'arrow-primary' : 'arrow-gray')})`}
-            />
+            return (
+              <line
+                key={spoke.id}
+                x1="365" y1="125"
+                x2={spoke.x} y2={spoke.y}
+                stroke={isComp ? "#10B981" : (isFail ? "#EF4444" : (isActive ? "#6366F1" : "#94A3B8"))}
+                strokeWidth="1.5"
+                strokeDasharray={isActive ? "4, 2" : "none"}
+                className={isActive ? "animate-[dash_1s_linear_infinite]" : ""}
+                markerEnd={`url(#${isComp ? 'arrow-success' : (isFail ? 'arrow-danger' : (isActive ? 'arrow-primary' : 'arrow-gray'))})`}
+              />
+            );
+          })}
 
-            {/* 5. HITL -> Export Line */}
-            <path 
-              d="M 820,140 L 862,140" 
-              fill="none" 
-              stroke={nodes.hitl.isCompleted ? "#10B981" : (nodes.hitl.isFailed ? "#EF4444" : (nodes.export.isActive ? "#6366F1" : "#94A3B8"))} 
-              strokeWidth="2" 
-              markerEnd={`url(#${nodes.hitl.isCompleted ? 'arrow-success' : (nodes.hitl.isFailed ? 'arrow-danger' : 'arrow-gray')})`}
-            />
+          {/* 4. Orchestrator -> Critic Line */}
+          <path
+            d="M 431,125 L 551,125"
+            fill="none"
+            stroke={nodes.orchestrator.isCompleted ? "#10B981" : (nodes.critic.isActive ? "#6366F1" : "#94A3B8")}
+            strokeWidth="2"
+            markerEnd={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+          />
 
-            {/* 6. Pinecone RAG dashed queries (Orange) */}
-            {showRagLines && (
-              <>
-                <path d="M 350,25 L 230,50" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 350,25 L 470,50" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 350,25 L 230,230" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 350,25 L 470,230" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 350,25 L 350,240" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-              </>
-            )}
+          {/* 5. Critic -> HITL Line */}
+          <path
+            d="M 684,125 L 708,125"
+            fill="none"
+            stroke={nodes.critic.isCompleted ? "#10B981" : (nodes.hitl.isActive ? "#6366F1" : "#94A3B8")}
+            strokeWidth="2"
+            markerEnd={`url(#${nodes.critic.isCompleted ? 'arrow-success' : (nodes.hitl.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+          />
 
-            {/* 7. Tool syncing lines (Green) */}
-            {isSyncing && (
-              <>
-                <path d="M 910,170 L 825,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 910,170 L 865,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 910,170 L 905,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-                <path d="M 910,170 L 945,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
-              </>
-            )}
-          </svg>
+          {/* 6. HITL -> Export Line */}
+          <path
+            d="M 768,125 L 791,125"
+            fill="none"
+            stroke={nodes.hitl.isCompleted ? "#10B981" : (nodes.hitl.isFailed ? "#EF4444" : (nodes.export.isActive ? "#6366F1" : "#94A3B8"))}
+            strokeWidth="2"
+            markerEnd={`url(#${nodes.hitl.isCompleted ? 'arrow-success' : (nodes.hitl.isFailed ? 'arrow-danger' : 'arrow-gray')})`}
+          />
+
+          {/* 7. Central Bi-directional RAG connection */}
+          <path
+            d="M 350,154 L 270,316"
+            stroke="#F59E0B"
+            strokeWidth="2.5"
+            strokeDasharray="4, 3"
+            fill="none"
+            className={showRagLines ? "animate-[dash_1.5s_linear_infinite]" : ""}
+            markerStart="url(#arrow-orange)"
+            markerEnd="url(#arrow-orange)"
+          />
+
+          {/* 8. Critic-to-RAG Citation Verification Line */}
+          <path
+            d="M 620,150 L 620,280 L 315,280 L 315,316"
+            fill="none"
+            stroke="#F59E0B"
+            strokeWidth="1.5"
+            strokeDasharray="3, 3"
+            className={pipelineStatus === PIPELINE_STATUS.EVALUATING || pipelineStatus === PIPELINE_STATUS.REVISING ? "animate-[dash_1.5s_linear_infinite]" : ""}
+            markerEnd="url(#arrow-orange)"
+          />
+
+          {/* 9. Orchestrator-to-Agent-Tools connection */}
+          <path
+            d="M 395,150 L 395,306"
+            stroke="#6366F1"
+            strokeWidth="1.5"
+            strokeDasharray="3, 3"
+            fill="none"
+            className={nodes.orchestrator.isActive ? "animate-[dash_1.5s_linear_infinite]" : ""}
+            markerEnd="url(#arrow-primary)"
+          />
+
+          {/* 10. Export to Tool syncing line */}
+          <path
+            d="M 855,150 L 855,306"
+            stroke={isSyncing ? "#10B981" : "#94A3B8"}
+            strokeWidth="1.5"
+            strokeDasharray="3, 3"
+            fill="none"
+            className={pipelineStatus === PIPELINE_STATUS.EXPORTING ? "animate-[dash_1.5s_linear_infinite]" : ""}
+            markerEnd={`url(#${isSyncing ? 'arrow-success' : 'arrow-gray'})`}
+          />
+
+          {/* BRD INGESTION UPLOAD */}
+          <foreignObject x="1" y="96" width="130" height="58">
+            <div
+              className="w-full h-full flex items-center justify-center relative"
+              onMouseEnter={(e) => handleMouseEnter('upload', nodes.upload.label, nodes.upload.desc, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className={getStyleClasses(nodes.upload, 'rect')}>
+                <Upload size={16} className="mr-2 shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] md:text-[11px] font-bold leading-tight">BRD Ingestion</span>
+                  <span className="text-[7.5px] opacity-75 leading-tight">Upload</span>
+                </div>
+              </div>
+            </div>
+          </foreignObject>
 
           {/* SECURITY VALIDATOR */}
-          <div 
-            className="absolute left-[15px] top-[110px] w-[110px] h-[60px] flex items-center justify-center z-10"
-            onMouseEnter={() => setActiveTooltip('security')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <div className={getStyleClasses(nodes.security, 'rect')}>
-              <Shield size={16} className="mr-1.5 shrink-0" />
-              <div className="flex flex-col text-left">
-                <span className="text-[10px] font-bold truncate leading-tight">Security</span>
-                <span className="text-[8px] opacity-75 truncate leading-tight">PII & Prompt validation</span>
+          <foreignObject x="153" y="96" width="130" height="58">
+            <div
+              className="w-full h-full flex items-center justify-center relative"
+              onMouseEnter={(e) => handleMouseEnter('security', nodes.security.label, nodes.security.desc, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className={getStyleClasses(nodes.security, 'rect')}>
+                <Shield size={16} className="mr-2 shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] md:text-[11px] font-bold leading-tight">Security</span>
+                  <span className="text-[7.5px] leading-tight">Validator</span>
+                </div>
               </div>
             </div>
-            {activeTooltip === 'security' && (
-              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                <p className="font-bold text-foreground mb-1">Security Validator</p>
-                {nodes.security.desc}
-              </div>
-            )}
-          </div>
+          </foreignObject>
 
           {/* ORCHESTRATOR HUB */}
-          <div 
-            className="absolute left-[300px] top-[105px] w-[100px] h-[70px] flex flex-col items-center justify-center z-20"
-            onMouseEnter={() => setActiveTooltip('orchestrator')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <div className={getStyleClasses(nodes.orchestrator, 'circle')}>
-              {nodes.orchestrator.isActive ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <Cpu size={20} />
-              )}
-            </div>
-            <span className={`text-[9px] font-extrabold mt-1 leading-none ${nodes.orchestrator.isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-              Orchestrator
-            </span>
-            {activeTooltip === 'orchestrator' && (
-              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                <p className="font-bold text-foreground mb-1">Orchestrator Agent</p>
-                {nodes.orchestrator.desc}
+          <foreignObject x="300" y="96" width="130" height="58">
+            <div
+              className="w-full h-full flex flex-col items-center justify-center relative"
+              onMouseEnter={(e) => handleMouseEnter('orchestrator', nodes.orchestrator.label, nodes.orchestrator.desc, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className={getStyleClasses(nodes.orchestrator, 'rect')}>
+                {nodes.orchestrator.isActive ? (
+                  <Loader2 size={16} className="animate-spin mr-2" />
+                ) : (
+                  <Cpu size={16} className="mr-2" />
+                )}
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] md:text-[11px] font-bold leading-tight">Orchestrator</span>
+                  <span className="text-[7.5px] leading-tight">Agent (Hub)</span>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          </foreignObject>
 
-          {/* RAG VECTOR DATABASE (Top Center) */}
-          <div 
-            className="absolute left-[335px] top-[5px] w-[30px] h-[30px] flex items-center justify-center z-10 cursor-help"
-            onMouseEnter={() => setActiveTooltip('rag')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <div className={`p-1.5 rounded bg-amber-500/10 border border-amber-500/40 text-amber-500 transition-colors ${showRagLines ? 'ring-2 ring-amber-500/30' : ''}`}>
-              <BookOpen size={16} />
-            </div>
-            {activeTooltip === 'rag' && (
-              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                <p className="font-bold text-foreground mb-1">RAG (Pinecone DB)</p>
-                Grounds plans dynamically in company engineering standards and approved frameworks.
+          {/* RAG VECTOR DB */}
+          <foreignObject x="215" y="320" width="130" height="36">
+            <div
+              className="w-full h-full flex items-center justify-center relative"
+              onMouseEnter={(e) => handleMouseEnter('rag', 'RAG (Vector DB)', 'Grounds plans dynamically in company engineering standards and approved frameworks.', e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className={`w-full h-full rounded-xl border flex items-center justify-center gap-1.5 px-3 transition-colors ${showRagLines ? 'bg-amber-500/20 border-amber-500 text-amber-600 ring-2 ring-amber-500/20 shadow-sm' : 'bg-amber-500/10 border-amber-500/40 text-amber-500'
+                }`}>
+                <Database size={16} className="shrink-0" />
+                <span className="text-[9px] font-extrabold uppercase tracking-wider">RAG (Pinecone)</span>
               </div>
-            )}
-          </div>
+            </div>
+          </foreignObject>
 
           {/* SATELLITE SPECIALISTS */}
           {[
-            { id: 'plan', key: 'engineering_plan_generator', label: 'Plan', left: '180px', top: '30px' },
-            { id: 'schedule', key: 'schedule_estimator', label: 'Schedule', left: '420px', top: '30px' },
-            { id: 'poc', key: 'poc_planner', label: 'PoC', left: '180px', top: '210px' },
-            { id: 'stack', key: 'tech_stack_recommender', label: 'Tech Stack', left: '420px', top: '210px' },
-            { id: 'arch', key: 'solution_architect', label: 'Architect', left: '300px', top: '220px' }
+            { id: 'plan', key: 'engineering_plan_generator', label: 'Plan Agent', x: 180, y: 15 },
+            { id: 'schedule', key: 'schedule_estimator', label: 'Schedule Agent', x: 445, y: 15 },
+            { id: 'poc', key: 'poc_planner', label: 'PoC Agent', x: 145, y: 195 },
+            { id: 'stack', key: 'tech_stack_recommender', label: 'Tech Stack Agent', x: 475, y: 195 },
+            { id: 'arch', key: 'solution_architect', label: 'Architect Agent', x: 300, y: 15, w: 130 }
           ].map(spec => {
             const specStatus = getDetailedStatus(spec.key);
             const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
             const isActive = specStatus === 'running';
             const isFail = specStatus === 'failed';
+            const width = spec.w || 110;
 
-            let nodeClass = "px-2 py-1 rounded-full border text-[9px] font-bold shadow-sm transition-all duration-300 w-[100px] h-[34px] flex items-center justify-center ";
+            let nodeClass = "px-2.5 py-1 rounded-full border shadow-sm transition-all duration-300 w-full h-[38px] flex items-center justify-center gap-1.5 ";
             if (isComp) nodeClass += "bg-success/15 border-success/35 text-success shadow-success/5";
             else if (isFail) nodeClass += "bg-danger/15 border-danger/35 text-danger shadow-danger/5";
             else if (isActive) nodeClass += "bg-primary/15 border-primary text-primary animate-pulse ring-2 ring-primary/20";
             else nodeClass += "bg-card border-border text-muted-foreground/80";
 
             return (
-              <div 
-                key={spec.id} 
-                className="absolute flex flex-col items-center justify-center z-10 cursor-help"
-                style={{ left: spec.left, top: spec.top }}
-                onMouseEnter={() => setActiveTooltip(spec.id)}
-                onMouseLeave={() => setActiveTooltip(null)}
-              >
-                <div className={nodeClass}>
-                  <Sparkles size={11} className={`mr-1 shrink-0 ${isActive ? 'text-primary' : (isComp ? 'text-success' : 'text-muted-foreground')}`} />
-                  <span className="truncate">{spec.label}</span>
-                </div>
-                {activeTooltip === spec.id && (
-                  <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                    <p className="font-bold text-foreground mb-1">{spec.label} Specialist</p>
-                    Autonomous drafting agent producing technical {spec.label.toLowerCase()} layouts.
+              <foreignObject key={spec.id} x={spec.x} y={spec.y} width={width} height="38">
+                <div
+                  className="w-full h-full flex flex-col items-center justify-center relative cursor-pointer"
+                  onMouseEnter={(e) => handleMouseEnter(spec.id, `${spec.label} Agent`, `Autonomous specialist agent producing technical ${spec.label.toLowerCase()} artifacts.`, e)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className={nodeClass}>
+                    <Sparkles size={11} className={`shrink-0 ${isActive ? 'text-primary' : (isComp ? 'text-success' : 'text-muted-foreground')}`} />
+                    <div className="flex flex-col items-start leading-tight">
+                      <span className="text-[10px] font-bold truncate">{spec.label}</span>
+                      <span className="text-[7px] opacity-70 uppercase tracking-wider">Agent</span>
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              </foreignObject>
             );
           })}
 
-          {/* REVISION LOOP INDICATOR (Middle connector line area) */}
-          <div className="absolute left-[475px] top-[102px] w-[50px] h-[50px] flex items-center justify-center z-20">
-            {pipelineStatus === PIPELINE_STATUS.REVISING ? (
-              <div className="flex flex-col items-center gap-0.5 animate-pulse bg-warning/10 border border-warning/30 rounded px-1.5 py-0.5 text-[8px] font-mono text-warning font-bold">
-                <Loader2 size={10} className="animate-spin text-warning" />
-                <span>Looping</span>
-              </div>
-            ) : logs.filter(l => l.type === 'revision_start').length > 0 ? (
-              <div className="bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5 text-[8px] font-mono text-primary font-bold">
-                Rev {logs.filter(l => l.type === 'revision_start').length}
-              </div>
-            ) : null}
-          </div>
+          {/* REVISION LOOP GAP */}
+          <foreignObject x="480" y="105" width="40" height="40">
+            <div
+              className="w-full h-full flex items-center justify-center cursor-help"
+              onMouseEnter={(e) => handleMouseEnter('loop', 'Revision & Alignment Loop', 'Cycles until quality gates pass.', e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              {(() => {
+                const isRevising = pipelineStatus === PIPELINE_STATUS.REVISING;
+                const revisionCount = logs.filter(l => l.type === 'revision_start').length;
+
+                if (isRevising) {
+                  return (
+                    <div className="w-8 h-8 rounded-full border border-warning/40 bg-warning/5 flex items-center justify-center shadow-sm animate-pulse text-warning">
+                      <span className="text-[12px] animate-spin">🔄</span>
+                    </div>
+                  );
+                }
+                if (revisionCount > 0) {
+                  return (
+                    <div className="w-8 h-8 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center shadow-sm text-primary text-[8.5px] font-extrabold font-mono">
+                      R{revisionCount}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="w-8 h-8 rounded-full border border-border bg-card flex items-center justify-center shadow-sm text-muted-foreground select-none hover:border-primary/40 transition-colors">
+                    <span className="text-[12px]">🔄</span>
+                  </div>
+                );
+              })()}
+            </div>
+          </foreignObject>
 
           {/* CRITIC EVALUATION NODE */}
-          <div 
-            className="absolute left-[580px] top-[105px] w-[100px] h-[70px] flex flex-col items-center justify-center z-20"
-            onMouseEnter={() => setActiveTooltip('critic')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <div className={getStyleClasses(nodes.critic, 'circle')}>
-              {nodes.critic.isActive ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <GitPullRequest size={18} />
-              )}
-            </div>
-            <span className={`text-[9px] font-extrabold mt-1 leading-none ${nodes.critic.isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-              Critic Agent
-            </span>
-            {activeTooltip === 'critic' && (
-              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                <p className="font-bold text-foreground mb-1">Critic Agent</p>
-                {nodes.critic.desc}
+          <foreignObject x="555" y="96" width="130" height="58">
+            <div
+              className="w-full h-full flex flex-col items-center justify-center relative cursor-help"
+              onMouseEnter={(e) => handleMouseEnter('critic', nodes.critic.label, nodes.critic.desc, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className={getStyleClasses(nodes.critic, 'rect')}>
+                {nodes.critic.isActive ? (
+                  <Loader2 size={16} className="animate-spin mr-2" />
+                ) : (
+                  <GitPullRequest size={16} className="mr-2" />
+                )}
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] md:text-[11px] font-bold leading-tight">Critic Agent</span>
+                  <span className="text-[7.5px] opacity-75 leading-tight">Evaluation</span>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          </foreignObject>
 
           {/* HITL DECISION DIAMOND */}
-          <div 
-            className="absolute left-[745px] top-[105px] w-[70px] h-[70px] flex flex-col items-center justify-center z-20"
-            onMouseEnter={() => setActiveTooltip('hitl')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <div className="relative w-12 h-12 flex items-center justify-center">
-              {/* Rotated outer shell */}
-              <div className={`absolute inset-0 rotate-45 border-2 rounded transition-all duration-300 ${
-                nodes.hitl.isCompleted ? 'bg-success border-success text-white shadow-success/15' :
-                nodes.hitl.isFailed ? 'bg-danger border-danger text-white shadow-danger/15' :
-                nodes.hitl.isActive ? 'bg-card border-warning ring-4 ring-warning/20 animate-pulse text-warning' :
-                'bg-card border-border text-muted-foreground'
-              }`} />
-              {/* Unrotated core content */}
-              <div className={`relative z-10 flex items-center justify-center ${
-                nodes.hitl.isCompleted || nodes.hitl.isFailed ? 'text-white' : (nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground')
-              }`}>
-                {nodes.hitl.isCompleted ? <Check size={18} className="stroke-[3px]" /> :
-                 nodes.hitl.isFailed ? <X size={18} className="stroke-[3px]" /> :
-                 <UserCheck size={18} />}
+          <foreignObject x="690" y="87" width="100" height="90">
+            <div
+              className="w-full h-full flex flex-col items-center justify-center relative cursor-help"
+              onMouseEnter={(e) => handleMouseEnter('hitl', nodes.hitl.label, nodes.hitl.desc, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className="relative w-12 h-12 flex items-center justify-center">
+                <div className={`absolute inset-0 rotate-45 border-2 rounded transition-all duration-300 ${nodes.hitl.isCompleted ? 'bg-success border-success text-white shadow-success/15' :
+                  nodes.hitl.isFailed ? 'bg-danger border-danger text-white shadow-danger/15' :
+                    nodes.hitl.isActive ? 'bg-card border-warning ring-4 ring-warning/20 animate-pulse text-warning' :
+                      'bg-card border-border text-muted-foreground'
+                  }`} />
+                <div className={`relative z-10 flex items-center justify-center ${nodes.hitl.isCompleted || nodes.hitl.isFailed ? 'text-white' : (nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground')
+                  }`}>
+                  {nodes.hitl.isCompleted ? <Check size={18} className="stroke-[3px]" /> :
+                    nodes.hitl.isFailed ? <X size={18} className="stroke-[3px]" /> :
+                      <UserCheck size={18} />}
+                </div>
               </div>
+              <span className={`text-[8.5px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground'}`}>
+                HITL Decision
+              </span>
             </div>
-            <span className={`text-[9px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground'}`}>
-              EM Decision
-            </span>
-            {activeTooltip === 'hitl' && (
-              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                <p className="font-bold text-foreground mb-1">Manager Decision Gate (HITL)</p>
-                {nodes.hitl.desc}
-              </div>
-            )}
-          </div>
+          </foreignObject>
 
           {/* EXPORTS TERMINAL NODE */}
-          <div 
-            className="absolute left-[850px] top-[110px] w-[100px] h-[60px] flex items-center justify-center z-10"
-            onMouseEnter={() => setActiveTooltip('export')}
-            onMouseLeave={() => setActiveTooltip(null)}
-          >
-            <div className={getStyleClasses(nodes.export, 'rect')}>
-              <Wrench size={15} className="mr-1.5 shrink-0" />
-              <div className="flex flex-col text-left">
-                <span className="text-[10px] font-bold truncate leading-tight">Export</span>
-                <span className="text-[8px] opacity-75 truncate leading-tight">
-                  {pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'Completed' : 'Sync outputs'}
-                </span>
+          <foreignObject x="790" y="96" width="130" height="58">
+            <div
+              className="w-full h-full flex items-center justify-center relative cursor-help"
+              onMouseEnter={(e) => handleMouseEnter('export', nodes.export.label, nodes.export.desc, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className={getStyleClasses(nodes.export, 'rect')}>
+                <Wrench size={16} className="mr-2 shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] md:text-[11px] font-bold leading-tight">Export</span>
+                  <span className="text-[7.5px] opacity-75 leading-tight">
+                    {pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'Completed' : 'Sync outputs'}
+                  </span>
+                </div>
               </div>
             </div>
-            {activeTooltip === 'export' && (
-              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                <p className="font-bold text-foreground mb-1">Finalize & Export Node</p>
-                {nodes.export.desc}
-              </div>
-            )}
-          </div>
+          </foreignObject>
 
-          {/* TOOL LAYER DESTINATIONS (Bottom Right) */}
-          {[
-            { id: 'sheet', icon: <FileText size={14} />, left: '810px', top: '210px', label: 'Sheets', color: 'text-success border-success/40 bg-success/10' },
-            { id: 'jira', icon: <Cpu size={14} />, left: '850px', top: '210px', label: 'Jira', color: 'text-sky-500 border-sky-500/40 bg-sky-500/10' },
-            { id: 'slack', icon: <MessageSquare size={14} />, left: '890px', top: '210px', label: 'Slack', color: 'text-indigo-500 border-indigo-500/40 bg-indigo-500/10' },
-            { id: 'db', icon: <Database size={14} />, left: '930px', top: '210px', label: 'Redis', color: 'text-purple-500 border-purple-500/40 bg-purple-500/10' }
-          ].map(tool => {
-            const active = pipelineStatus === PIPELINE_STATUS.EXPORTING;
-            const complete = pipelineStatus === PIPELINE_STATUS.EXPORTED;
+          {/* AGENT TOOLS & STATE */}
+          <foreignObject x="365" y="310" width="170" height="70">
+            {(() => {
+              const isToolActive = nodes.orchestrator.isActive;
+              const isToolComplete = nodes.orchestrator.isCompleted;
+              let toolBoxClass = "w-full h-full rounded-xl border p-1.5 px-2 pb-3 text-left cursor-help transition-all duration-200 bg-slate-50/95 dark:bg-slate-900/90 relative flex flex-col justify-between shadow-sm ";
+              if (isToolComplete) {
+                toolBoxClass += "border-success bg-success/5 shadow-success/10 ring-2 ring-success/10";
+              } else if (isToolActive) {
+                toolBoxClass += "border-primary animate-pulse shadow-primary/10 ring-2 ring-primary/10";
+              } else {
+                toolBoxClass += "border-border hover:border-primary/40";
+              }
 
-            let cardClass = `p-1.5 rounded border transition-all duration-300 cursor-help ${tool.color} `;
-            if (complete) cardClass += "ring-2 ring-success/30 border-success shadow-success/10 bg-success/20";
-            else if (active) cardClass += "animate-pulse ring-2 ring-primary/20";
-            else cardClass += "grayscale-[40%] opacity-60";
-
-            return (
-              <div 
-                key={tool.id} 
-                className="absolute flex items-center justify-center z-10"
-                style={{ left: tool.left, top: tool.top }}
-                onMouseEnter={() => setActiveTooltip(tool.id)}
-                onMouseLeave={() => setActiveTooltip(null)}
-              >
-                <div className={cardClass}>
-                  {tool.icon}
-                </div>
-                {activeTooltip === tool.id && (
-                  <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
-                    <p className="font-bold text-foreground mb-1">{tool.label} Integration</p>
-                    Pushes plan deliverables to organization-wide {tool.label} tools on HITL gate approval.
+              return (
+                <div
+                  className={toolBoxClass}
+                  onMouseEnter={(e) => handleMouseEnter('tools-agent', 'Agent Tools & State (MCP)', 'Provides Tavily web search, GitHub integration, cached via Upstash Redis.', e)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className="flex items-center justify-between border-b border-primary/15 pb-0.5 mb-0.5">
+                    <div className="flex items-center gap-1 text-primary">
+                      <Wrench size={13} className="shrink-0" />
+                      <span className="text-[9px] font-extrabold uppercase tracking-wide">Agent Tools & State</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                  <div className="grid grid-cols-2 gap-1 text-[8px] text-muted-foreground leading-snug">
+                    <div className="hover:text-primary transition-colors">
+                      <span className="font-extrabold text-ai-spark block mb-0.5 text-[7px] uppercase">Autonomous</span>
+                      <span>🔍 Tavily</span>
+                      <span className="block">💻 GitHub</span>
+                    </div>
+                    <div className="border-l border-border/60 pl-1 hover:text-indigo-500 transition-colors">
+                      <span className="font-extrabold text-indigo-500 block mb-0.5 text-[7px] uppercase">Cache</span>
+                      <span>💾 Upstash</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </foreignObject>
 
-        </div>
+          {/* DELIVERY & NOTIFICATION TARGETS */}
+          <foreignObject x="750" y="310" width="170" height="70">
+            {(() => {
+              const isToolActive = pipelineStatus === PIPELINE_STATUS.EXPORTING;
+              const isToolComplete = pipelineStatus === PIPELINE_STATUS.EXPORTED;
+              let toolBoxClass = "w-full h-full rounded-xl border p-1.5 px-2 pb-3 text-left cursor-help transition-all duration-200 bg-slate-50/95 dark:bg-slate-900/90 relative flex flex-col justify-between shadow-sm ";
+              if (isToolComplete) {
+                toolBoxClass += "border-success bg-success/5 shadow-success/10 ring-2 ring-success/10";
+              } else if (isToolActive) {
+                toolBoxClass += "border-primary animate-pulse shadow-primary/10 ring-2 ring-primary/10";
+              } else {
+                toolBoxClass += "border-border hover:border-primary/40";
+              }
+
+              return (
+                <div
+                  className={toolBoxClass}
+                  onMouseEnter={(e) => handleMouseEnter('tools-delivery', 'Delivery & Notification Targets', 'Syncs deliverables to Atlassian Jira and Google Sheets, alerts to Slack.', e)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className="flex items-center justify-between border-b border-primary/15 pb-0.5 mb-0.5">
+                    <div className="flex items-center gap-1 text-primary">
+                      <Wrench size={13} className="shrink-0" />
+                      <span className="text-[9px] font-extrabold uppercase tracking-wide">Delivery Targets</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[8px] text-muted-foreground leading-snug">
+                    <div className="hover:text-success transition-colors">
+                      <span className="font-extrabold text-success block mb-0.5 text-[7px] uppercase">EXPORT</span>
+                      <span>📋 Jira Epic</span>
+                      <span className="block">📊 Sheets</span>
+                    </div>
+                    <div className="border-l border-border/60 pl-1 hover:text-warning transition-colors">
+                      <span className="font-extrabold text-warning block mb-0.5 text-[7px] uppercase">Alerts</span>
+                      <span>💬 Slack</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </foreignObject>
+        </svg>
       </div>
+
+      {tooltipState && (
+        <div
+          className="absolute z-50 p-3 bg-background border border-border rounded-lg shadow-2xl text-[10px] text-muted-foreground leading-normal pointer-events-none transition-all duration-200 w-64 -translate-x-1/2 -translate-y-full animate-in fade-in zoom-in-95 duration-100"
+          style={getTooltipPosition()}
+        >
+          <div className="flex items-center gap-1.5 mb-1 pb-1 border-b border-border font-bold text-foreground uppercase tracking-wide">
+            {tooltipState.id === 'upload' && <Upload size={12} className="text-success" />}
+            {tooltipState.id === 'security' && <Shield size={12} className="text-danger" />}
+            {tooltipState.id === 'orchestrator' && <Cpu size={12} className="text-ai-spark" />}
+            {tooltipState.id === 'critic' && <GitPullRequest size={12} className="text-warning" />}
+            {tooltipState.id === 'hitl' && <UserCheck size={12} className="text-success" />}
+            {tooltipState.id === 'export' && <Wrench size={12} className="text-success" />}
+            {tooltipState.id === 'rag' && <Database size={12} className="text-amber-500" />}
+            {tooltipState.id === 'loop' && <Loader2 size={12} className="text-warning animate-spin" />}
+            {tooltipState.id.includes('tools') && <Wrench size={12} className="text-primary" />}
+            {tooltipState.title}
+          </div>
+          {tooltipState.desc}
+        </div>
+      )}
     </div>
   );
 };

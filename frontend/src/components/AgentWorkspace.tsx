@@ -1144,7 +1144,7 @@ export const AgentWorkspace: React.FC = () => {
                         <span>Exporting & Syncing...</span>
                       </h3>
                       <span className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary">
-                        Syncing to Jira
+                        Recording the decision
                       </span>
                     </div>
                     

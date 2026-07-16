@@ -37,22 +37,14 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
       )}
 
       {/* System Architecture Diagram - full width, compact above-the-fold layout */}
-      <div className="rounded-xl border border-border bg-card/60 p-3.5 space-y-2 shadow-md">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-sm font-bold text-foreground">System Architecture</h3>
-        </div>
-
-        {/* Embedded blueprint visualizer */}
-        <div className="bg-background/80 rounded-xl px-3.5 py-3 border border-border relative shadow-sm">
-          <TimelineStepper
-            pipelineStatus={PIPELINE_STATUS.IDLE}
-            completedAgents={new Set()}
-            artifacts={null}
-            criticOutput={null}
-            logs={[]}
-          />
-        </div>
-      </div>
+      <TimelineStepper
+        pipelineStatus={PIPELINE_STATUS.IDLE}
+        completedAgents={new Set()}
+        artifacts={null}
+        criticOutput={null}
+        logs={[]}
+        title="System Architecture"
+      />
     </div>
   );
 };
