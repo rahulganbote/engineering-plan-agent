@@ -82,7 +82,7 @@
   --color-accent:               oklch(0.28 0.018 257);
   --color-accent-foreground:    oklch(0.97 0.01 244);
 
-  --color-border:               oklch(0.28 0.018 257);
+  --color-border:               #2e3748;
   --color-input:                oklch(0.21 0.02 256);
   --color-ring:                 oklch(0.71 0.013 252);
 

@@ -890,10 +890,21 @@ export const AgentWorkspace: React.FC = () => {
               />
 
 
-              {/* Performance Metrics Summary */}
-              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border my-4">
-                <div>
-                  <strong>Evaluation Score:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[70px] bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
+              {/* Performance Metrics Summary Header Row */}
+              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-3 rounded-xl border border-border shadow-sm">
+                <div className="flex items-center gap-1.5">
+                  <strong>Evaluation Score:</strong> 
+                  <code className={`inline-flex items-center justify-center text-center min-w-[70px] bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>
+                    {criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}
+                  </code>
+                  {criticOutput && (
+                    <span 
+                      className="cursor-help text-muted-foreground hover:text-primary transition-colors text-[13px] ml-0.5"
+                      title="Calculation Formula:\n(Groundedness + Completeness + Consistency + Actionability) / 4"
+                    >
+                      ⓘ
+                    </span>
+                  )}
                 </div>
                 <div>
                   <strong>Total Processing Time:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[50px] bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
@@ -906,7 +917,7 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               </div>
 
-              {/* Critic Scoring Cards */}
+              {/* Critic Scoring Cards Box */}
               {criticOutput && (
                 <ErrorBoundary fallback={
                   <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
@@ -915,39 +926,34 @@ export const AgentWorkspace: React.FC = () => {
                       <span>Critic Component Failure</span>
                     </div>
                     <p className="text-xs text-danger/80 leading-relaxed">
-                      An error occurred while rendering the Critic scorecards. The rest of the workspace remains active.
+                      An error occurred while rendering the Critic scorecards.
                     </p>
                   </div>
                 }>
-                  <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
-                    <div className="flex items-center justify-between border-b border-border/60 pb-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Independent Critic Score</h3>
-                        <div className="text-xs text-muted-foreground">
-                          Final Score:{' '}
-                          <strong
-                            className={
-                              criticOutput.badge === 'green'
-                                ? 'text-success font-bold'
-                                : criticOutput.badge === 'amber'
-                                ? 'text-warning font-bold'
-                                : 'text-danger font-bold'
-                            }
-                          >
+                  <div className="space-y-4 border border-border rounded-xl p-5 bg-card shadow-md">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                      <div className="space-y-0.5">
+                        <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">Independent Critic Score</h3>
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
+                          <span>Final Score:</span>
+                          <strong className={criticOutput.badge === 'green' ? 'text-success font-extrabold' : criticOutput.badge === 'amber' ? 'text-warning font-extrabold' : 'text-danger font-extrabold'}>
                             {criticOutput.overallScore.toFixed(2)}/5.0
-                          </strong>{' '}
-                          <span className="text-[11px] text-muted-foreground">
-                            (Target: &ge;4.00 for Green)
-                          </span>{' '}
-                          | Total Revision(s):{' '}
-                          <strong className="text-foreground font-bold">
-                            {criticOutput.revisionNumber}
                           </strong>
+                          <span className="text-[11px] text-muted-foreground/80">
+                            (Target: &ge;4.00 for Green)
+                          </span>
+                          <span className="text-muted-foreground/40 px-1">•</span>
+                          <span>Revision(s):</span>
+                          <strong className="text-foreground font-bold">{criticOutput.revisionNumber}</strong>
                         </div>
+                        {/* Transparent Mathematical Formula Breakdown String */}
+                        <span className="text-[10px] text-muted-foreground/80 block font-mono mt-1 bg-background px-2 py-0.5 rounded border border-border/40 w-fit">
+                          Formula: ({criticOutput.dimensions.groundedness?.score.toFixed(2)} + {criticOutput.dimensions.completeness?.score.toFixed(2)} + {criticOutput.dimensions.consistency?.score.toFixed(2)} + {criticOutput.dimensions.actionability?.score.toFixed(2)}) ÷ 4 = {criticOutput.overallScore.toFixed(2)}
+                        </span>
                       </div>
                       <span
-                        title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass. Amber is awarded if the score falls below 4.00, if any metrics failed, or if safety/quality safeguards were applied."
-                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider cursor-help transition ${
+                        title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass."
+                        className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider cursor-help transition ${
                           criticOutput.badge === 'green'
                             ? 'bg-success/20 text-success border border-success/40'
                             : criticOutput.badge === 'amber'
@@ -955,45 +961,22 @@ export const AgentWorkspace: React.FC = () => {
                             : 'bg-danger/50 text-danger border border-danger/50'
                         }`}
                       >
-                        {criticOutput.badge === 'green'
-                          ? '🟢 GREEN'
-                          : criticOutput.badge === 'amber'
-                          ? '🟡 AMBER'
-                          : '🔴 RED'}
+                        {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
                       </span>
                     </div>
 
-                    {/* Quality Safeguard / Cap Reasons alerts (stacked) */}
+                    {/* Quality Cap Alert Module */}
                     {criticOutput.capReasons && criticOutput.capReasons.length > 0 && (
-                      <div className="space-y-2 pb-2 animate-fade-in">
+                      <div className="space-y-2 pb-1 animate-fade-in">
                         {criticOutput.capReasons.map((reason, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between text-xs px-3.5 py-2.5 rounded-lg border border-warning/30 bg-warning/5 text-warning font-medium leading-relaxed"
-                          >
+                          <div key={index} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-warning/30 bg-warning/5 text-warning font-medium leading-relaxed">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-extrabold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
+                              <span className="font-extrabold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
                                 {reason.mechanism}
                               </span>
-                              <span>
-                                <strong>{reason.verb} by Quality Safeguard:</strong> {reason.detail}
-                              </span>
-                              {reason.agentsInvolved && reason.agentsInvolved.length > 0 && (
-                                <div className="flex items-center gap-1 ml-1">
-                                  {reason.agentsInvolved.map((agent) => (
-                                    <button
-                                      key={agent}
-                                      onClick={() => navigateToTab(agent as any)}
-                                      className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 border border-warning/20 text-warning hover:bg-warning/20 cursor-pointer font-bold uppercase transition-colors"
-                                      title={`View ${agent} agent work`}
-                                    >
-                                      {agent}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
+                              <span><strong>{reason.verb} by Quality Safeguard:</strong> {reason.detail}</span>
                             </div>
-                            <span className="font-mono text-[11px] font-bold whitespace-nowrap ml-4">
+                            <span className="font-mono text-[10px] font-bold whitespace-nowrap ml-4">
                               {reason.before.toFixed(2)} &rarr; {reason.after.toFixed(2)}
                             </span>
                           </div>
@@ -1001,21 +984,21 @@ export const AgentWorkspace: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Metrics row */}
-                    <div className="flex flex-wrap md:flex-nowrap gap-x-4 gap-y-2 items-center justify-between text-xs text-muted-foreground pt-2">
+                    {/* Metrics Row */}
+                    <div className="flex flex-wrap md:flex-nowrap gap-4 items-center justify-between text-xs text-muted-foreground pt-1">
                       {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
                         const data = criticOutput.dimensions[metric];
                         if (!data) return null;
                         return (
-                          <div key={metric} className="flex items-center gap-1.5 whitespace-nowrap">
-                            <strong className="capitalize">{metric}:</strong>
-                            <code className={`bg-background border border-border px-1.5 py-0.5 rounded font-mono font-bold text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
+                          <div key={metric} className="flex items-center gap-1.5 bg-background/40 px-2 py-1 rounded-md border border-border/50 flex-1 justify-center">
+                            <strong className="capitalize text-foreground">{metric}:</strong>
+                            <code className={`font-mono font-bold text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.score.toFixed(2)}
                             </code>
-                            <span className={`text-[11px] font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
+                            <span className={`text-[11px] font-bold ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.passed ? '✓' : '✗'}
                             </span>
-                            <span className="text-[11px] text-muted-foreground font-medium">
+                            <span className="text-[10px] text-muted-foreground">
                               ({data.threshold === 5 ? '=' : '≥'}{data.threshold})
                             </span>
                           </div>
@@ -1026,22 +1009,36 @@ export const AgentWorkspace: React.FC = () => {
                 </ErrorBoundary>
               )}
 
-              {/* EM Alignment Directives Banner */}
+              {/* EM Alignment Directives Container Block */}
               {artifacts?.alignment_memo && (
-                <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
-                  <div className="flex items-start justify-between gap-4">
-                    <h4 className="text-xs sm:text-sm md:text-base font-bold text-primary flex items-center gap-2">
-                     How the EM Copilot AI Aligned Your Plan
+                <div className="flex flex-col items-stretch gap-4 bg-card p-5 rounded-xl border border-border my-2 shadow-md">
+                  
+                  {/* Clean Title Component Header */}
+                  <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                    <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <img
+                        src="/favicon.svg"
+                        alt="EM Copilot"
+                        className="h-3.5 w-3.5 object-contain select-none shrink-0"
+                      />
+                      Alignment Recommendations
                     </h4>
+                    {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 && (
+                      <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
+                        {artifacts.alignment_memo.directives.length} Directives Issued
+                      </span>
+                    )}
                   </div>
+
+                  {/* Directives Output Content Grid */}
                   {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {artifacts.alignment_memo.directives.map((d: AlignmentDirective, idx: number) => (
                         <DirectiveCard key={idx} d={d} setActiveTab={navigateToTab} />
                       ))}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold mt-1">
+                    <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold">
                       <span>🟢</span> All Pass 1 drafts aligned — no arbitration needed.
                     </div>
                   )}
@@ -1050,40 +1047,41 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-2">
-                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Artifacts</h3>
+                <div className="bg-card border border-border rounded-xl p-5 shadow-md space-y-4">
+                  
+                  {/* Clean, Bounded Module Action Header Row */}
+                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                    <div className="space-y-0.5">
+                      <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">Generated Artifacts</h3>
+                      <p className="text-[11px] text-muted-foreground">Review individual multi-agent operational planning deliverables</p>
+                    </div>
                     <button
                       onClick={handleDownloadPDF}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary text-foreground border border-border rounded text-xs font-bold transition shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-secondary/40 text-foreground border border-border rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"
                     >
                       <Download size={14} /> Download PDF
                     </button>
                   </div>
 
-                  {/* Disclaimer notice banner */}
-                  <div className="bg-background border border-border p-4 rounded-lg text-xs leading-relaxed text-foreground/75">
-                    <span className="font-bold text-foreground uppercase">⚠️ Disclaimer:</span> It is a engineering planning assistant AI tool. Mandatory professional review and validation required before implementation.
-                  </div>
-
-                  {/* Tabs list */}
-                  <div ref={tabsRef} className="flex bg-background p-1 rounded-lg border border-border w-full overflow-x-auto scrollbar-none whitespace-nowrap">
+                  {/* Integrated Navigation Tabs Ribbon Container */}
+                  <div ref={tabsRef} className="flex bg-background p-1 rounded-xl border border-border/80 w-full overflow-x-auto scrollbar-none whitespace-nowrap">
                     {(['plan', 'schedule', 'arch', 'poc', 'stack'] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 ${activeTab === tab
-                          ? 'bg-card text-primary shadow-sm border border-primary font-extrabold'
-                          : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
-                          }`}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 cursor-pointer ${
+                          activeTab === tab
+                            ? 'bg-card text-primary shadow-sm border border-border font-extrabold'
+                            : 'text-muted-foreground hover:text-foreground border border-transparent'
+                        }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
                       </button>
                     ))}
                   </div>
 
-                  {/* Tab Display Area */}
-                  <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
+                  {/* Tab Active Content Window Canvas */}
+                  <div className="bg-background/30 rounded-xl border border-border/60 p-5 min-h-[250px]">
                     <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
                       {([
                         PIPELINE_STATUS.DRAFTING,
@@ -1093,21 +1091,11 @@ export const AgentWorkspace: React.FC = () => {
                         <PlanSkeleton />
                       ) : (
                         <div>
-                          {activeTab === 'plan' && (
-                            <PlanTab planData={artifacts.plan_output} />
-                          )}
-                          {activeTab === 'schedule' && (
-                            <ScheduleTab scheduleData={artifacts.schedule_output} />
-                          )}
-                          {activeTab === 'arch' && (
-                            <ArchitectureTab architectureData={artifacts.arch_output} />
-                          )}
-                          {activeTab === 'poc' && (
-                            <PoCTab pocData={artifacts.poc_output} />
-                          )}
-                          {activeTab === 'stack' && (
-                            <TechStackTab techStackData={artifacts.stack_output} />
-                          )}
+                          {activeTab === 'plan' && <PlanTab planData={artifacts.plan_output} />}
+                          {activeTab === 'schedule' && <ScheduleTab scheduleData={artifacts.schedule_output} />}
+                          {activeTab === 'arch' && <ArchitectureTab architectureData={artifacts.arch_output} />}
+                          {activeTab === 'poc' && <PoCTab pocData={artifacts.poc_output} />}
+                          {activeTab === 'stack' && <TechStackTab techStackData={artifacts.stack_output} />}
                         </div>
                       )}
                     </ErrorBoundary>
@@ -1115,253 +1103,226 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* Decision Gate Section */}
-              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
-                <div className="border-t border-border pt-8">
-                  <ErrorBoundary fallback={
-                    <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
-                      <div className="flex items-center gap-2 text-danger font-bold text-sm uppercase tracking-wider">
-                        <ShieldAlert size={16} />
-                        <span>Decision Gate Component Failure</span>
-                      </div>
-                      <p className="text-xs text-danger/80 leading-relaxed">
-                        An error occurred while loading the Decision Gate. Please try refreshing or restarting the run.
-                      </p>
-                    </div>
-                  }>
-                    <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
-                  </ErrorBoundary>
-                </div>
-              )}
-
-              {/* Exporting loading indicator section */}
-              {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
-                <div className="border-t border-border pt-8">
-                  <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-pulse">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
-                      <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
-                        <Loader2 className="animate-spin text-primary" size={16} />
-                        <span>Exporting & Syncing...</span>
-                      </h3>
-                      <span className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary">
-                        Recording the decision
-                      </span>
-                    </div>
+              {/* ========================================== */}
+              {/* MASTER WORKFLOW GATE & DELIVERY PIPELINE */}
+              {/* ========================================== */}
+              {(([
+                PIPELINE_STATUS.AWAITING_HITL, 
+                PIPELINE_STATUS.EXPORTING, 
+                PIPELINE_STATUS.EXPORTED, 
+                PIPELINE_STATUS.EXPORT_FAILED, 
+                PIPELINE_STATUS.REJECTED
+              ] as string[]).includes(pipelineStatus)) && (
+                <div ref={exportResultsRef} className="border-t border-border pt-5 mt-4">
+                  <div className="max-w-4xl mx-auto p-5 bg-card border border-border rounded-xl shadow-lg transition-all duration-300">
                     
-                    <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
-                      Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure. This could take few seconds.
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] font-bold text-muted-foreground">
-                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
-                        <span className="text-success text-sm">✓</span>
-                        <span>Google Sheets Log</span>
-                      </div>
-                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
-                        <Loader2 className="animate-spin text-primary shrink-0" size={12} />
-                        <span>Creating Jira Epic</span>
-                      </div>
-                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
-                        <Loader2 className="animate-spin text-primary shrink-0" size={12} />
-                        <span>Pinecone Indexing</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Export Status / Final Decision Section */}
-              {(pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED) && (
-                <div ref={exportResultsRef} className="border-t border-border pt-8">
-                  <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
-                      <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
-                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? (
-                          <span className="text-success animate-scale-in text-base">✅</span>
-                        ) : pipelineStatus === PIPELINE_STATUS.REJECTED ? (
-                          <span className="text-danger animate-scale-in text-base">❌</span>
-                        ) : (
-                          <span className="text-warning animate-scale-in text-base">⚠️</span>
-                        )}
-                        <span>Export Results</span>
-                      </h3>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === PIPELINE_STATUS.EXPORTED
-                        ? 'bg-success/20 border border-success/40 text-success'
-                        : pipelineStatus === PIPELINE_STATUS.REJECTED
-                          ? 'bg-danger/20 border border-danger/40 text-danger'
-                          : 'bg-warning/20 border border-warning/40 text-warning'
+                   {/* 1. DYNAMIC SYSTEM ACTION STATE HEADER */}
+                    {pipelineStatus !== PIPELINE_STATUS.AWAITING_HITL && (
+                      <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+                        <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+                          {pipelineStatus === PIPELINE_STATUS.EXPORTING && <Loader2 className="animate-spin text-primary" size={14} />}
+                          {pipelineStatus === PIPELINE_STATUS.EXPORTED && <span className="text-success text-sm">✅</span>}
+                          {pipelineStatus === PIPELINE_STATUS.REJECTED && <span className="text-danger text-sm">❌</span>}
+                          {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
+                          
+                          <span>
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Exporting & Syncing Plan..."}
+                            {!( [PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
+                          </span>
+                        </h3>
+                        
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
+                          pipelineStatus === PIPELINE_STATUS.EXPORTING ? 'bg-primary/20 border-primary/30 text-primary animate-pulse' :
+                          pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success/20 border-success/40 text-success' :
+                          pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-danger/20 border-danger/40 text-danger' :
+                          'bg-warning/20 border-warning/40 text-warning'
                         }`}>
-                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Plan Rejected' : 'Export Failed'}
-                      </span>
-                    </div>
-
-                    {pipelineStatus === PIPELINE_STATUS.REJECTED && (
-                      <p className="text-xs text-danger font-semibold bg-danger/10 border border-danger/20 p-3.5 rounded-lg animate-fade-in leading-relaxed">
-                        Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
-                      </p>
+                          {pipelineStatus === PIPELINE_STATUS.EXPORTING && 'Syncing integrations'}
+                          {pipelineStatus === PIPELINE_STATUS.EXPORTED && '✓ Export Complete'}
+                          {pipelineStatus === PIPELINE_STATUS.REJECTED && 'Plan Rejected'}
+                          {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && 'Export Failed'}
+                        </span>
+                      </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                      {/* Google Sheets Status Box */}
-                      {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
-                        <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 animate-fade-in h-full ${
-                          pipelineStatus === PIPELINE_STATUS.REJECTED
-                            ? 'bg-secondary/25 border border-border'
-                            : 'bg-success/15 border border-success/30'
-                        }`}>
-                          <div className="space-y-2">
-                            <div className={`text-xs font-bold ${
-                              pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'
+                    {/* 2. STATE STEP A: INTERACTIVE HUMAN APPROVAL GATE */}
+                    {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
+                      <ErrorBoundary fallback={
+                        <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg space-y-2 text-xs text-danger">
+                          <div className="flex items-center gap-2 font-bold uppercase tracking-wider">
+                            <ShieldAlert size={14} />
+                            <span>Decision Gate Component Failure</span>
+                          </div>
+                          <p className="opacity-90">An error occurred while loading the Decision Gate. Please try refreshing.</p>
+                        </div>
+                      }>
+                        <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
+                      </ErrorBoundary>
+                    )}
+
+                    {/* 3. STATE STEP B: RUNTIME SYNCING SPINNER SUB-VIEW */}
+                    {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
+                      <div className="space-y-4 animate-pulse py-2">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] font-bold text-muted-foreground">
+                          <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <span className="text-success">✓</span>
+                            <span>Google Sheets Log</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <Loader2 className="animate-spin text-primary shrink-0" size={11} />
+                            <span>Creating Jira Epic</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <Loader2 className="animate-spin text-primary shrink-0" size={11} />
+                            <span>Pinecone Indexing</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4. STATE STEP C: TERMINAL AUDIT CARDS SUB-VIEW */}
+                    {(([PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.EXPORT_FAILED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus)) && (
+                      <div className="space-y-4 animate-fade-in">
+                        {pipelineStatus === PIPELINE_STATUS.REJECTED && (
+                          <p className="text-xs text-danger font-semibold bg-danger/5 border border-danger/20 p-3 rounded-lg leading-relaxed">
+                            Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
+                          </p>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                          {/* Google Sheets Integration Card */}
+                          {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
+                            <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 border ${
+                              pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-secondary/10 border-border' : 'bg-success/5 border-success/20'
                             }`}>
-                              {pipelineStatus === PIPELINE_STATUS.REJECTED
-                                ? 'Rejection recorded in Google Sheets'
-                                : 'Approval recorded in Google Sheets'}
+                              <div className="space-y-1.5">
+                                <div className={`text-xs font-bold ${pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'}`}>
+                                  {pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Rejection recorded' : 'Approval recorded'}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  {pipelineStatus === PIPELINE_STATUS.REJECTED
+                                    ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
+                                    : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
+                                </p>
+                                <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
+                                  <span><b>Spreadsheet:</b> EM Copilot Runs Log</span>
+                                  <span><b>Data Type:</b> Run metrics, EM score, notes</span>
+                                </div>
+                              </div>
+                              <a
+                                href={approvalResult.sheet_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center justify-center w-fit px-3 py-1.5 border rounded-lg font-bold text-[11px] transition shadow-sm ${
+                                  pipelineStatus === PIPELINE_STATUS.REJECTED
+                                    ? 'border-border text-muted-foreground hover:bg-secondary/30'
+                                    : 'border-primary text-primary hover:bg-primary/10'
+                                }`}
+                              >
+                                Open Google Sheet
+                              </a>
                             </div>
-                            <div className="text-[11px] text-muted-foreground leading-relaxed">
-                              {pipelineStatus === PIPELINE_STATUS.REJECTED
-                                ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
-                                : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
+                          ) : approvalResult?.export_status === 'local_fallback' ? (
+                            <div className="p-4 bg-warning/5 border border-warning/20 rounded-lg flex flex-col justify-between gap-1.5">
+                              <div>
+                                <div className="text-xs font-bold text-warning">Saved to Local Backup CSV</div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                                  {approvalResult?.export_detail || "Google Sheets integration not configured - backup CSV generated instead."}
+                                </p>
+                              </div>
                             </div>
+                          ) : approvalResult?.export_status === 'failed' ? (
+                            <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
+                              <div>
+                                <div className="text-xs font-bold text-danger">Sheets Export Failed</div>
+                                <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
+                                  {approvalResult?.export_detail || "Failed to push sheets record trace sync."}
+                                </p>
+                              </div>
+                            </div>
+                          ) : null}
 
-                            {/* Mini-metadata row showing target document details for alignment symmetry */}
-                            <div className="text-[10px] text-muted-foreground bg-background/50 border border-border/40 p-2 rounded flex flex-col gap-1 mt-2">
-                              <div>
-                                <span className="font-bold text-foreground">Target spreadsheet:</span> EM Copilot Runs Log
+                          {/* Jira Integration Card */}
+                          {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
+                            approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
+                              <div className="p-4 bg-success/5 border border-success/20 rounded-lg flex flex-col justify-between gap-3">
+                                <div className="space-y-1.5">
+                                  <div className="text-xs font-bold text-success flex items-center gap-1.5">
+                                    <span>Pushed to Jira:</span>
+                                    {approvalResult.jira_issue_key && (
+                                      <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success font-extrabold">{approvalResult.jira_issue_key}</code>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via Atlassian MCP.`}
+                                  </p>
+                                  <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
+                                    <span><b>Epic Title:</b> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan</span>
+                                    <span><b>Scope:</b> Multi-agent deliverables & milestones</span>
+                                  </div>
+                                </div>
+                                <a
+                                  href={approvalResult.jira_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center w-fit px-3 py-1.5 border border-primary text-primary hover:bg-primary/10 rounded-lg font-bold text-[11px] transition shadow-sm"
+                                >
+                                  Open Jira Issue
+                                </a>
                               </div>
-                              <div>
-                                <span className="font-bold text-foreground">Data logged:</span> Run summary, EM score, notes, and timestamp
+                            ) : approvalResult?.jira_status === 'skipped' ? (
+                              <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-1.5">
+                                <div>
+                                  <div className="text-xs font-bold text-muted-foreground">Jira Push Skipped</div>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                                    {approvalResult?.jira_detail || "Jira creation skipped for this run."}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <a
-                            href={approvalResult.sheet_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`flex items-center justify-center w-fit px-4 py-2 bg-transparent border rounded font-bold text-xs transition duration-150 shadow-sm ${
-                              pipelineStatus === PIPELINE_STATUS.REJECTED
-                                ? 'border-muted-foreground/30 text-muted-foreground hover:bg-secondary/50'
-                                : 'border-primary text-primary hover:bg-primary/10'
-                            }`}
+                            ) : approvalResult?.jira_status === 'failed' ? (
+                              <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
+                                <div>
+                                  <div className="text-xs font-bold text-danger">Jira Integration Failed</div>
+                                  <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
+                                    {approvalResult?.jira_detail || "Check server API log configurations."}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="h-full flex flex-col justify-between">
+                                <IntegrationNotConfigured
+                                  title="Jira integration inactive"
+                                  envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
+                                  description="Jira environment configurations missing. Integration disabled."
+                                  docsAnchor="#L59-L65"
+                                />
+                              </div>
+                            )
+                          )}
+                        </div>
+
+                        {/* DYNAMIC FORWARD PROGRESS CALL-TO-ACTION BUTTON */}
+                        <div className="border-t border-border pt-3.5 flex justify-end">
+                          <button
+                            onClick={handleReset}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition shadow-sm hover:shadow-primary/20 cursor-pointer"
                           >
-                            Open Google Sheet
-                          </a>
+                            <Plus size={13} />
+                            Start New Plan
+                          </button>
                         </div>
-                      ) : approvalResult?.export_status === 'local_fallback' ? (
-                        <div className="p-4 bg-warning/15 border border-warning/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                          <div>
-                            <div className="text-xs font-bold text-warning">
-                              Artifacts saved to local fallback CSV
-                            </div>
-                            <div className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                              {approvalResult?.export_detail || "Google Sheets integration is not configured - local CSV backup exported instead."}
-                            </div>
-                          </div>
-                        </div>
-                      ) : approvalResult?.export_status === 'failed' ? (
-                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                          <div>
-                            <div className="text-xs font-bold text-danger">
-                              Google Sheets export failed
-                            </div>
-                            <div className="text-[11px] text-danger leading-relaxed font-mono mt-1">
-                              {approvalResult?.export_detail || "Failed to push decision. Google Sheets export failed."}
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
+                      </div>
+                    )}
 
-                      {/* Jira Status Box */}
-                      {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
-                        approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
-                          <div className="p-4 bg-success/15 border border-success/30 rounded-lg flex flex-col justify-between gap-3 animate-fade-in h-full">
-                            <div className="space-y-2">
-                              <div className="text-xs font-bold text-success flex items-center gap-1.5">
-                                <span>Pushed to Jira:</span>
-                                {approvalResult.jira_issue_key && (
-                                  <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success-foreground">{approvalResult.jira_issue_key}</code>
-                                )}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground leading-relaxed">
-                                {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
-                              </div>
-                              {/* Mini-metadata row showing generated title or scope summary */}
-                              <div className="text-[10px] text-muted-foreground bg-background/50 border border-border/40 p-2 rounded flex flex-col gap-1">
-                                <div>
-                                  <span className="font-bold text-foreground">Summary:</span> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan
-                                </div>
-                                <div>
-                                  <span className="font-bold text-foreground">Scope:</span> Multi-agent cross-functional deliverables & milestones exported
-                                </div>
-                              </div>
-                            </div>
-                            <a
-                              href={approvalResult.jira_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center w-fit px-4 py-2 bg-transparent border border-primary text-primary hover:bg-primary/10 rounded font-bold text-xs transition duration-150 shadow-sm"
-                            >
-                              Open Jira issue {approvalResult.jira_issue_key}
-                            </a>
-                          </div>
-                        ) : approvalResult?.jira_status === 'skipped' ? (
-                          <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                            <div>
-                              <div className="text-xs font-bold text-muted-foreground">
-                                Jira push skipped
-                              </div>
-                              <div className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                                {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
-                              </div>
-                            </div>
-                          </div>
-                        ) : approvalResult?.jira_status === 'failed' ? (
-                          <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                            <div>
-                              <div className="text-xs font-bold text-danger">
-                                Jira push failed
-                              </div>
-                              <div className="text-[11px] text-danger leading-relaxed font-mono mt-1">
-                                {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          /* Fallback when backend didn't include any jira_status
-                             (e.g. Jira credentials not configured on this deploy). */
-                          <div className="h-full flex flex-col justify-between">
-                            <IntegrationNotConfigured
-                              title="Jira push not available"
-                              envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
-                              description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
-                              docsAnchor="#L59-L65"
-                            />
-                          </div>
-                        )
-                      )}
-                    </div>
-
-                    {/* Primary CTA - natural "what now?" path after terminal state.
-                        Same effect as the sidebar's destructive "Clear Plan & Reset"
-                        but framed as a forward action (indigo, not red) since the
-                        user has just finished a run, not aborting one mid-flight. */}
-                    <div className="border-t border-border pt-5 flex justify-end">
-                      <button
-                        onClick={handleReset}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
-                      >
-                        <Plus size={14} />
-                        Start New Plan
-                      </button>
-                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Tavily fallback hint - surfaces when the pipeline tried Tavily web
-                  grounding but the API key isn't configured on this deployment.
-                  The backend emits tool_call_degraded events into the SSE stream;
-                  useSSE pushes them into `logs`. We scan for a Tavily api_key_missing
-                  reason - if found, render the hint above Critic findings. */}
+
+              {/* Tavily fallback hint - surfaces when the pipeline tried Tavily web grounding */}
               {(() => {
                 const tavilyMissing = logs.some(
                   (l) =>
@@ -1372,20 +1333,24 @@ export const AgentWorkspace: React.FC = () => {
                       ((l.payload as Record<string, unknown> | undefined)?.reason === 'api_key_missing')),
                 );
                 return tavilyMissing ? (
-                  <IntegrationNotConfigured
-                    title="Web grounding fallback unavailable"
-                    envVars={['TAVILY_API_KEY']}
-                    description="The Architect or Tech Stack agent hit a RAG miss and would have used Tavily for live web grounding, but Tavily is not configured on this deployment. The pipeline continued with RAG-only context."
-                    docsAnchor="#L74-L78"
-                  />
+                  <div className="mt-4">
+                    <IntegrationNotConfigured
+                      title="Web grounding fallback unavailable"
+                      envVars={['TAVILY_API_KEY']}
+                      description="The Architect or Tech Stack agent hit a RAG miss and would have used Tavily for live web grounding, but Tavily is not configured on this deployment. The pipeline continued with RAG-only context."
+                      docsAnchor="#L74-L78"
+                    />
+                  </div>
                 ) : null;
               })()}
 
               {/* Critic findings - consistency issues + hallucination flags */}
-              <CriticFindings criticDetail={artifacts?.critic_output} />
+              <div className="mt-4">
+                <CriticFindings criticDetail={artifacts?.critic_output} />
+              </div>
 
-              {/* Live Log Console */}
-              <div className="border-t border-border pt-8">
+              {/* Live Log Console - Tightened Spacing Alignment */}
+              <div className="border-t border-border pt-4 mt-5">
                 <LogConsole logs={logs} />
               </div>
             </>
