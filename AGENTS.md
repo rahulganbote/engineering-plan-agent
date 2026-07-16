@@ -71,4 +71,47 @@ pytest tests/pipeline_test.py -k test_simple_brd_pipeline
 
 ---
 
+## 6. Git Commit Message Best Practices
+
+Writing clear Git commit messages ensures your project history remains clean, searchable, and easy for your team to navigate. Following industry standards transforms a chaotic history into a readable timeline.
+
+### The 7 Rules of a Great Commit Message
+The most universally accepted structure for Git commit messages follows the "50/72 rule":
+
+*   **Separate subject from body**: Place a single blank line between the summary and the description.
+*   **Limit the subject line**: Keep the first line under 50 characters whenever possible.
+*   **Capitalize the subject line**: Begin the summary with a capital letter.
+*   **No ending punctuation**: Do not finish the subject line with a period.
+*   **Use the imperative mood**: Write the subject as a command or instruction.
+*   **Wrap the body**: Restrict description lines to 72 characters to prevent visual stretching in terminal logs.
+*   **Explain what and why**: Focus the body on the motivation and logic, not how the code works.
+
+### The Imperative Mood
+Write your subject line in the present tense as if you are giving an order. A great trick is to complete this sentence: *"If applied, this commit will... [your message]"*.
+
+*   ❌ **Bad (Past Tense)**: `Added layout toggle`
+*   ❌ **Bad (Present Continuous)**: `Adding layout toggle`
+*   ✅ **Good (Imperative)**: `Add layout toggle`
+
+### Conventional Commits Specification
+Many modern teams enforce Conventional Commits. This structured format prefixes messages with a specific type to make them machine-readable and automate changelogs:
+`<type>(<optional scope>): <description>`
+
+Commonly accepted types include:
+*   `feat`: A new feature for the user.
+*   `fix`: A bug fix for the user.
+*   `docs`: Changes exclusively to documentation.
+*   `style`: Code formatting adjustments like spacing or semicolons.
+*   `refactor`: Rewriting production code without changing behavior.
+*   `test`: Adding or fixing test suites.
+*   `chore`: Build configurations, routine maintenance, or tool updates.
+
+*Note: When utilizing prefixes like `feat` or `fix`, standard practice dictates starting the type and description in lowercase.*
+
+### Commit Discipline Best Practices
+*   **Make atomic commits**: Keep commits single-purpose; do not mix a feature implementation and a distinct bug fix into one commit.
+*   **Commit early and often**: Save your progress continuously to isolate errors and simplify merge conflicts.
+
+---
+
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
