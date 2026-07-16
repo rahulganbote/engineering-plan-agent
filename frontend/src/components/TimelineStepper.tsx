@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Shield, Cpu, UserCheck, Check, Loader2, X,
-  Sparkles, Wrench, GitPullRequest,
+  Wrench, GitPullRequest,
   ChevronDown, ChevronUp, Upload, Database
 } from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type LogEvent } from '../hooks/useSSE';
@@ -71,24 +71,24 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   const getDetailedStatus = (agentKey: string): 'pending' | 'running' | 'completed' | 'failed' => {
     if (pipelineStatus === PIPELINE_STATUS.IDLE) return 'pending';
 
-    if (pipelineStatus === PIPELINE_STATUS.DRAFTING) {
+    // Include all parallel compilation processing states
+    const IS_PARALLEL_PHASE = [
+      PIPELINE_STATUS.DRAFTING,
+      PIPELINE_STATUS.ALIGNING,
+      PIPELINE_STATUS.ARBITRATING,
+      PIPELINE_STATUS.RUNNING
+    ].includes(pipelineStatus as any);
+
+    if (IS_PARALLEL_PHASE) {
       if (completedAgents.has(agentKey)) return 'completed';
-      const hasStarted = logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
-      return hasStarted ? 'running' : 'pending';
-    }
+      
+      // Check if any failures occurred
+      const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
+      if (hasFailed) return 'failed';
 
-    if (pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING) {
-      const reconciledIdx = logs.findIndex(l => l.type === 'orchestrator_reconciled');
-      if (reconciledIdx === -1) return 'completed';
-      const pass2Logs = logs.slice(reconciledIdx + 1);
-      const hasCompleted = pass2Logs.some(l => l.type === 'agent_complete' && (l.agent === agentKey || l.payload?.agent === agentKey));
-      if (hasCompleted) return 'completed';
-      const hasStarted = pass2Logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
-      return hasStarted ? 'running' : 'pending';
+      // Default to running during parallel steps so all 5 agents light up together
+      return 'running';
     }
-
-    const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
-    if (hasFailed) return 'failed';
 
     return 'completed';
   };
@@ -336,38 +336,45 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             markerEnd={`url(#${nodes.hitl.isCompleted ? 'arrow-success' : (nodes.hitl.isFailed ? 'arrow-danger' : 'arrow-gray')})`}
           />
 
-          {/* 7. Central Bi-directional RAG connection */}
-          <path
-            d="M 350,154 L 270,316"
-            stroke="#F59E0B"
-            strokeWidth="2.5"
-            strokeDasharray="4, 3"
-            fill="none"
-            className={showRagLines ? "animate-[dash_1.5s_linear_infinite]" : ""}
-            markerStart="url(#arrow-orange)"
-            markerEnd="url(#arrow-orange)"
-          />
+          {/* 7. Central One-way RAG connection */}
+          {(() => {
+            const isRagUsed = pipelineStatus !== PIPELINE_STATUS.IDLE && 
+              pipelineStatus !== PIPELINE_STATUS.SECURITY_CHECK && 
+              pipelineStatus !== PIPELINE_STATUS.INITIALIZING && 
+              pipelineStatus !== PIPELINE_STATUS.STARTED && 
+              pipelineStatus !== PIPELINE_STATUS.RUNNING && 
+              pipelineStatus !== PIPELINE_STATUS.ORCHESTRATOR_PARSING;
+            return (
+              <path
+                d="M 350,154 L 270,306"
+                stroke={isRagUsed ? "#10B981" : "#94A3B8"}
+                strokeWidth="2.5"
+                fill="none"
+                markerEnd={`url(#${isRagUsed ? 'arrow-success' : 'arrow-gray'})`}
+              />
+            );
+          })()}
 
           {/* 8. Critic-to-RAG Citation Verification Line */}
           <path
-            d="M 620,150 L 620,280 L 315,280 L 315,316"
+            d="M 620,150 L 620,280 L 315,280 L 315,306"
             fill="none"
-            stroke="#F59E0B"
+            stroke="#94A3B8"
             strokeWidth="1.5"
             strokeDasharray="3, 3"
             className={pipelineStatus === PIPELINE_STATUS.EVALUATING || pipelineStatus === PIPELINE_STATUS.REVISING ? "animate-[dash_1.5s_linear_infinite]" : ""}
-            markerEnd="url(#arrow-orange)"
+            markerEnd="url(#arrow-gray)"
           />
 
           {/* 9. Orchestrator-to-Agent-Tools connection */}
           <path
             d="M 395,150 L 395,306"
-            stroke="#6366F1"
+            stroke="#94A3B8"
             strokeWidth="1.5"
             strokeDasharray="3, 3"
             fill="none"
             className={nodes.orchestrator.isActive ? "animate-[dash_1.5s_linear_infinite]" : ""}
-            markerEnd="url(#arrow-primary)"
+            markerEnd="url(#arrow-gray)"
           />
 
           {/* 10. Export to Tool syncing line */}
@@ -437,27 +444,47 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           </foreignObject>
 
           {/* RAG VECTOR DB */}
-          <foreignObject x="215" y="320" width="130" height="36">
-            <div
-              className="w-full h-full flex items-center justify-center relative"
-              onMouseEnter={(e) => handleMouseEnter('rag', 'RAG (Vector DB)', 'Grounds plans dynamically in company engineering standards and approved frameworks.', e)}
-              onMouseLeave={handleMouseLeave}
-            >
-              <div className={`w-full h-full rounded-xl border flex items-center justify-center gap-1.5 px-3 transition-colors ${showRagLines ? 'bg-amber-500/20 border-amber-500 text-amber-600 ring-2 ring-amber-500/20 shadow-sm' : 'bg-amber-500/10 border-amber-500/40 text-amber-500'
-                }`}>
-                <Database size={16} className="shrink-0" />
-                <span className="text-[9px] font-extrabold uppercase tracking-wider">RAG (Pinecone)</span>
-              </div>
-            </div>
+          <foreignObject x="170" y="310" width="170" height="70">
+            {(() => {
+              const isRagActive = showRagLines;
+              let ragBoxClass = "w-full h-full rounded-xl border p-1.5 px-2 pb-3 text-left cursor-help transition-all duration-200 bg-slate-50/95 dark:bg-slate-900/90 relative flex flex-col justify-between shadow-sm ";
+              if (isRagActive) {
+                ragBoxClass += "border-primary animate-pulse shadow-primary/10 ring-2 ring-primary/10";
+              } else {
+                ragBoxClass += "border-border hover:border-primary/40";
+              }
+
+              return (
+                <div
+                  className={ragBoxClass}
+                  onMouseEnter={(e) => handleMouseEnter('rag', 'RAG (Vector DB)', 'Grounds plans dynamically in company engineering standards and approved frameworks.', e)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className="flex items-center justify-between border-b border-primary/15 pb-0.5 mb-0.5">
+                    <div className="flex items-center gap-1 text-primary">
+                      <Database size={13} className="shrink-0" />
+                      <span className="text-[9px] font-extrabold uppercase tracking-wide">RAG (Pinecone)</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 text-[8px] text-muted-foreground leading-snug">
+                    <div className="hover:text-primary transition-colors">
+                      <span className="font-extrabold text-ai-spark block mb-0.5 text-[7px] uppercase">Storage</span>
+                      <span>🌲 Pinecone Index</span>
+                      <span className="block">📚 Engineering Guidelines</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </foreignObject>
 
           {/* SATELLITE SPECIALISTS */}
           {[
-            { id: 'plan', key: 'engineering_plan_generator', label: 'Plan Agent', x: 180, y: 15 },
-            { id: 'schedule', key: 'schedule_estimator', label: 'Schedule Agent', x: 445, y: 15 },
-            { id: 'poc', key: 'poc_planner', label: 'PoC Agent', x: 145, y: 195 },
-            { id: 'stack', key: 'tech_stack_recommender', label: 'Tech Stack Agent', x: 475, y: 195 },
-            { id: 'arch', key: 'solution_architect', label: 'Architect Agent', x: 300, y: 15, w: 130 }
+            { id: 'plan', key: 'engineering_plan_generator', label: 'Plan Agent', emoji: '📝', x: 180, y: 15 },
+            { id: 'schedule', key: 'schedule_estimator', label: 'Schedule Agent', emoji: '📊', x: 445, y: 15 },
+            { id: 'poc', key: 'poc_planner', label: 'PoC Agent', emoji: '⏱️', x: 145, y: 195 },
+            { id: 'stack', key: 'tech_stack_recommender', label: 'Tech Stack Agent', emoji: '💻', x: 475, y: 195 },
+            { id: 'arch', key: 'solution_architect', label: 'Architect Agent', emoji: '🏗️', x: 300, y: 15, w: 130 }
           ].map(spec => {
             const specStatus = getDetailedStatus(spec.key);
             const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
@@ -479,7 +506,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   onMouseLeave={handleMouseLeave}
                 >
                   <div className={nodeClass}>
-                    <Sparkles size={11} className={`shrink-0 ${isActive ? 'text-primary' : (isComp ? 'text-success' : 'text-muted-foreground')}`} />
+                    {isActive ? (
+                      <Loader2 size={11} className="animate-spin shrink-0 text-primary" />
+                    ) : (
+                      <span className="text-[11px] select-none shrink-0">{spec.emoji}</span>
+                    )}
                     <div className="flex flex-col items-start leading-tight">
                       <span className="text-[10px] font-bold truncate">{spec.label}</span>
                       <span className="text-[7px] opacity-70 uppercase tracking-wider">Agent</span>
@@ -503,7 +534,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 
                 if (isRevising) {
                   return (
-                    <div className="w-8 h-8 rounded-full border border-warning/40 bg-warning/5 flex items-center justify-center shadow-sm animate-pulse text-warning">
+                    <div className="w-8 h-8 rounded-full border border-warning/40 bg-warning/5 flex items-center justify-center shadow-sm text-warning">
+                      {/* The spinner character is now safely isolated to active states */}
                       <span className="text-[12px] animate-spin">🔄</span>
                     </div>
                   );
@@ -546,26 +578,28 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
           </foreignObject>
 
           {/* HITL DECISION DIAMOND */}
-          <foreignObject x="690" y="87" width="100" height="90">
+          <foreignObject x="690" y="91" width="100" height="90">
             <div
               className="w-full h-full flex flex-col items-center justify-center relative cursor-help"
               onMouseEnter={(e) => handleMouseEnter('hitl', nodes.hitl.label, nodes.hitl.desc, e)}
               onMouseLeave={handleMouseLeave}
             >
               <div className="relative w-12 h-12 flex items-center justify-center">
-                <div className={`absolute inset-0 rotate-45 border-2 rounded transition-all duration-300 ${nodes.hitl.isCompleted ? 'bg-success border-success text-white shadow-success/15' :
+                <div className={`absolute inset-0 rotate-45 border-2 rounded transition-all duration-300 ${
+                  nodes.hitl.isCompleted ? 'bg-success border-success text-white shadow-success/15' :
                   nodes.hitl.isFailed ? 'bg-danger border-danger text-white shadow-danger/15' :
-                    nodes.hitl.isActive ? 'bg-card border-warning ring-4 ring-warning/20 animate-pulse text-warning' :
-                      'bg-card border-border text-muted-foreground'
-                  }`} />
-                <div className={`relative z-10 flex items-center justify-center ${nodes.hitl.isCompleted || nodes.hitl.isFailed ? 'text-white' : (nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground')
-                  }`}>
+                  nodes.hitl.isActive ? 'bg-card border-teal-500 ring-4 ring-teal-500/20 animate-pulse text-teal-600' :
+                  'bg-card border-border text-muted-foreground'
+                }`} />
+                <div className={`relative z-10 flex items-center justify-center ${
+                  nodes.hitl.isCompleted || nodes.hitl.isFailed ? 'text-white' : (nodes.hitl.isActive ? 'text-teal-600' : 'text-muted-foreground')
+                }`}>
                   {nodes.hitl.isCompleted ? <Check size={18} className="stroke-[3px]" /> :
                     nodes.hitl.isFailed ? <X size={18} className="stroke-[3px]" /> :
                       <UserCheck size={18} />}
                 </div>
               </div>
-              <span className={`text-[8.5px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground'}`}>
+              <span className={`text-[8.5px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground'}`}>
                 HITL Decision
               </span>
             </div>

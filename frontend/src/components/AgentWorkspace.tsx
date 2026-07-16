@@ -107,7 +107,7 @@ const DirectiveCard: React.FC<DirectiveCardProps> = ({ d, setActiveTab }) => {
           </button>
         )}
       </div>
-      
+
       <p className="text-foreground leading-relaxed font-bold">
         {d.directive}
       </p>
@@ -539,13 +539,13 @@ export const AgentWorkspace: React.FC = () => {
                 <p className="text-xs font-semibold text-primary">Drag and drop file here</p>
                 <p className="text-[10px] text-muted-foreground mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
                 <div className="flex flex-col gap-2 mt-3 items-center justify-center">
-                  <button 
+                  <button
                     type="button"
                     className="w-full px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 hover:border-primary/50 text-xs font-semibold transition-colors"
                   >
                     Browse files
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -578,7 +578,7 @@ export const AgentWorkspace: React.FC = () => {
           {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
             <div>
-              <div 
+              <div
                 className="relative group/btn w-full"
                 title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
               >
@@ -674,13 +674,12 @@ export const AgentWorkspace: React.FC = () => {
                   setConfirmResetActive(false);
                 }}
                 disabled={CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED}
-                className={`w-full py-1.5 rounded text-xs font-semibold transition ${
-                  (CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED)
+                className={`w-full py-1.5 rounded text-xs font-semibold transition ${(CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED)
                     ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                     : confirmResetActive
                       ? 'border border-danger bg-danger text-white animate-pulse'
                       : 'border border-destructive bg-destructive/10 hover:bg-destructive/40 text-destructive hover:text-destructive shadow-[0_0_10px_rgba(244,63,94,0.05)]'
-                }`}
+                  }`}
               >
                 {confirmResetActive ? "Confirm Reset? (Click again)" : "Clear Plan & Reset"}
               </button>
@@ -893,12 +892,12 @@ export const AgentWorkspace: React.FC = () => {
               {/* Performance Metrics Summary Header Row */}
               <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-3 rounded-xl border border-border shadow-sm">
                 <div className="flex items-center gap-1.5">
-                  <strong>Evaluation Score:</strong> 
+                  <strong>Evaluation Score:</strong>
                   <code className={`inline-flex items-center justify-center text-center min-w-[70px] bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>
                     {criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}
                   </code>
                   {criticOutput && (
-                    <span 
+                    <span
                       className="cursor-help text-muted-foreground hover:text-primary transition-colors text-[13px] ml-0.5"
                       title="Calculation Formula:\n(Groundedness + Completeness + Consistency + Actionability) / 4"
                     >
@@ -953,13 +952,12 @@ export const AgentWorkspace: React.FC = () => {
                       </div>
                       <span
                         title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass."
-                        className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider cursor-help transition ${
-                          criticOutput.badge === 'green'
+                        className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider cursor-help transition ${criticOutput.badge === 'green'
                             ? 'bg-success/20 text-success border border-success/40'
                             : criticOutput.badge === 'amber'
-                            ? 'bg-warning/50 text-warning border border-warning/50'
-                            : 'bg-danger/50 text-danger border border-danger/50'
-                        }`}
+                              ? 'bg-warning/50 text-warning border border-warning/50'
+                              : 'bg-danger/50 text-danger border border-danger/50'
+                          }`}
                       >
                         {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
                       </span>
@@ -1012,7 +1010,7 @@ export const AgentWorkspace: React.FC = () => {
               {/* EM Alignment Directives Container Block */}
               {artifacts?.alignment_memo && (
                 <div className="flex flex-col items-stretch gap-4 bg-card p-5 rounded-xl border border-border my-2 shadow-md">
-                  
+
                   {/* Clean Title Component Header */}
                   <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
                     <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
@@ -1048,7 +1046,7 @@ export const AgentWorkspace: React.FC = () => {
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (
                 <div className="bg-card border border-border rounded-xl p-5 shadow-md space-y-4">
-                  
+
                   {/* Clean, Bounded Module Action Header Row */}
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <div className="space-y-0.5">
@@ -1069,11 +1067,10 @@ export const AgentWorkspace: React.FC = () => {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 cursor-pointer ${
-                          activeTab === tab
+                        className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 cursor-pointer ${activeTab === tab
                             ? 'bg-card text-primary shadow-sm border border-border font-extrabold'
                             : 'text-muted-foreground hover:text-foreground border border-transparent'
-                        }`}
+                          }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
                       </button>
@@ -1107,219 +1104,216 @@ export const AgentWorkspace: React.FC = () => {
               {/* MASTER WORKFLOW GATE & DELIVERY PIPELINE */}
               {/* ========================================== */}
               {(([
-                PIPELINE_STATUS.AWAITING_HITL, 
-                PIPELINE_STATUS.EXPORTING, 
-                PIPELINE_STATUS.EXPORTED, 
-                PIPELINE_STATUS.EXPORT_FAILED, 
+                PIPELINE_STATUS.AWAITING_HITL,
+                PIPELINE_STATUS.EXPORTING,
+                PIPELINE_STATUS.EXPORTED,
+                PIPELINE_STATUS.EXPORT_FAILED,
                 PIPELINE_STATUS.REJECTED
               ] as string[]).includes(pipelineStatus)) && (
-                <div ref={exportResultsRef} className="border-t border-border pt-5 mt-4">
-                  <div className="max-w-4xl mx-auto p-5 bg-card border border-border rounded-xl shadow-lg transition-all duration-300">
-                    
-                   {/* 1. DYNAMIC SYSTEM ACTION STATE HEADER */}
-                    {pipelineStatus !== PIPELINE_STATUS.AWAITING_HITL && (
-                      <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
-                        <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
-                          {pipelineStatus === PIPELINE_STATUS.EXPORTING && <Loader2 className="animate-spin text-primary" size={14} />}
-                          {pipelineStatus === PIPELINE_STATUS.EXPORTED && <span className="text-success text-sm">✅</span>}
-                          {pipelineStatus === PIPELINE_STATUS.REJECTED && <span className="text-danger text-sm">❌</span>}
-                          {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
-                          
-                          <span>
-                            {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Exporting & Syncing Plan..."}
-                            {!( [PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
-                          </span>
-                        </h3>
-                        
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
-                          pipelineStatus === PIPELINE_STATUS.EXPORTING ? 'bg-primary/20 border-primary/30 text-primary animate-pulse' :
-                          pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success/20 border-success/40 text-success' :
-                          pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-danger/20 border-danger/40 text-danger' :
-                          'bg-warning/20 border-warning/40 text-warning'
-                        }`}>
-                          {pipelineStatus === PIPELINE_STATUS.EXPORTING && 'Syncing integrations'}
-                          {pipelineStatus === PIPELINE_STATUS.EXPORTED && '✓ Export Complete'}
-                          {pipelineStatus === PIPELINE_STATUS.REJECTED && 'Plan Rejected'}
-                          {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && 'Export Failed'}
-                        </span>
-                      </div>
-                    )}
+                  <div ref={exportResultsRef} className="border-t border-border pt-5 mt-4">
+                    <div className="max-w-4xl mx-auto p-5 bg-card border border-border rounded-xl shadow-lg transition-all duration-300">
 
-                    {/* 2. STATE STEP A: INTERACTIVE HUMAN APPROVAL GATE */}
-                    {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
-                      <ErrorBoundary fallback={
-                        <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg space-y-2 text-xs text-danger">
-                          <div className="flex items-center gap-2 font-bold uppercase tracking-wider">
-                            <ShieldAlert size={14} />
-                            <span>Decision Gate Component Failure</span>
-                          </div>
-                          <p className="opacity-90">An error occurred while loading the Decision Gate. Please try refreshing.</p>
-                        </div>
-                      }>
-                        <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
-                      </ErrorBoundary>
-                    )}
+                      {/* 1. DYNAMIC SYSTEM ACTION STATE HEADER */}
+                      {pipelineStatus !== PIPELINE_STATUS.AWAITING_HITL && (
+                        <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+                          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTING && <Loader2 className="animate-spin text-primary" size={14} />}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTED && <span className="text-success text-sm">✅</span>}
+                            {pipelineStatus === PIPELINE_STATUS.REJECTED && <span className="text-danger text-sm">❌</span>}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
 
-                    {/* 3. STATE STEP B: RUNTIME SYNCING SPINNER SUB-VIEW */}
-                    {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
-                      <div className="space-y-4 animate-pulse py-2">
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] font-bold text-muted-foreground">
-                          <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
-                            <span className="text-success">✓</span>
-                            <span>Google Sheets Log</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
-                            <Loader2 className="animate-spin text-primary shrink-0" size={11} />
-                            <span>Creating Jira Epic</span>
-                          </div>
-                          <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
-                            <Loader2 className="animate-spin text-primary shrink-0" size={11} />
-                            <span>Pinecone Indexing</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                            <span>
+                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Exporting & Syncing Plan..."}
+                              {!([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
+                            </span>
+                          </h3>
 
-                    {/* 4. STATE STEP C: TERMINAL AUDIT CARDS SUB-VIEW */}
-                    {(([PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.EXPORT_FAILED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus)) && (
-                      <div className="space-y-4 animate-fade-in">
-                        {pipelineStatus === PIPELINE_STATUS.REJECTED && (
-                          <p className="text-xs text-danger font-semibold bg-danger/5 border border-danger/20 p-3 rounded-lg leading-relaxed">
-                            Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
-                          </p>
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                          {/* Google Sheets Integration Card */}
-                          {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
-                            <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 border ${
-                              pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-secondary/10 border-border' : 'bg-success/5 border-success/20'
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${pipelineStatus === PIPELINE_STATUS.EXPORTING ? 'bg-primary/20 border-primary/30 text-primary animate-pulse' :
+                              pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success/20 border-success/40 text-success' :
+                                pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-danger/20 border-danger/40 text-danger' :
+                                  'bg-warning/20 border-warning/40 text-warning'
                             }`}>
-                              <div className="space-y-1.5">
-                                <div className={`text-xs font-bold ${pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'}`}>
-                                  {pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Rejection recorded' : 'Approval recorded'}
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                  {pipelineStatus === PIPELINE_STATUS.REJECTED
-                                    ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
-                                    : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
-                                </p>
-                                <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
-                                  <span><b>Spreadsheet:</b> EM Copilot Runs Log</span>
-                                  <span><b>Data Type:</b> Run metrics, EM score, notes</span>
-                                </div>
-                              </div>
-                              <a
-                                href={approvalResult.sheet_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`flex items-center justify-center w-fit px-3 py-1.5 border rounded-lg font-bold text-[11px] transition shadow-sm ${
-                                  pipelineStatus === PIPELINE_STATUS.REJECTED
-                                    ? 'border-border text-muted-foreground hover:bg-secondary/30'
-                                    : 'border-primary text-primary hover:bg-primary/10'
-                                }`}
-                              >
-                                Open Google Sheet
-                              </a>
-                            </div>
-                          ) : approvalResult?.export_status === 'local_fallback' ? (
-                            <div className="p-4 bg-warning/5 border border-warning/20 rounded-lg flex flex-col justify-between gap-1.5">
-                              <div>
-                                <div className="text-xs font-bold text-warning">Saved to Local Backup CSV</div>
-                                <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                                  {approvalResult?.export_detail || "Google Sheets integration not configured - backup CSV generated instead."}
-                                </p>
-                              </div>
-                            </div>
-                          ) : approvalResult?.export_status === 'failed' ? (
-                            <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
-                              <div>
-                                <div className="text-xs font-bold text-danger">Sheets Export Failed</div>
-                                <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
-                                  {approvalResult?.export_detail || "Failed to push sheets record trace sync."}
-                                </p>
-                              </div>
-                            </div>
-                          ) : null}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTING && 'Syncing integrations'}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTED && '✓ Export Complete'}
+                            {pipelineStatus === PIPELINE_STATUS.REJECTED && 'Plan Rejected'}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && 'Export Failed'}
+                          </span>
+                        </div>
+                      )}
 
-                          {/* Jira Integration Card */}
-                          {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
-                            approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
-                              <div className="p-4 bg-success/5 border border-success/20 rounded-lg flex flex-col justify-between gap-3">
+                      {/* 2. STATE STEP A: INTERACTIVE HUMAN APPROVAL GATE */}
+                      {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
+                        <ErrorBoundary fallback={
+                          <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg space-y-2 text-xs text-danger">
+                            <div className="flex items-center gap-2 font-bold uppercase tracking-wider">
+                              <ShieldAlert size={14} />
+                              <span>Decision Gate Component Failure</span>
+                            </div>
+                            <p className="opacity-90">An error occurred while loading the Decision Gate. Please try refreshing.</p>
+                          </div>
+                        }>
+                          <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
+                        </ErrorBoundary>
+                      )}
+
+                      {/* 3. STATE STEP B: RUNTIME SYNCING SPINNER SUB-VIEW */}
+                      {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
+                        <div className="space-y-4 animate-pulse py-2">
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] font-bold text-muted-foreground">
+                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                              <span className="text-success">✓</span>
+                              <span>Google Sheets Log</span>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                              <Loader2 className="animate-spin text-primary shrink-0" size={11} />
+                              <span>Creating Jira Epic</span>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                              <Loader2 className="animate-spin text-primary shrink-0" size={11} />
+                              <span>Pinecone Indexing</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. STATE STEP C: TERMINAL AUDIT CARDS SUB-VIEW */}
+                      {(([PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.EXPORT_FAILED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus)) && (
+                        <div className="space-y-4 animate-fade-in">
+                          {pipelineStatus === PIPELINE_STATUS.REJECTED && (
+                            <p className="text-xs text-danger font-semibold bg-danger/5 border border-danger/20 p-3 rounded-lg leading-relaxed">
+                              Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                            {/* Google Sheets Integration Card */}
+                            {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
+                              <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 border ${pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-secondary/10 border-border' : 'bg-success/5 border-success/20'
+                                }`}>
                                 <div className="space-y-1.5">
-                                  <div className="text-xs font-bold text-success flex items-center gap-1.5">
-                                    <span>Pushed to Jira:</span>
-                                    {approvalResult.jira_issue_key && (
-                                      <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success font-extrabold">{approvalResult.jira_issue_key}</code>
-                                    )}
+                                  <div className={`text-xs font-bold ${pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'}`}>
+                                    {pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Rejection recorded' : 'Approval recorded'}
                                   </div>
                                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via Atlassian MCP.`}
+                                    {pipelineStatus === PIPELINE_STATUS.REJECTED
+                                      ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
+                                      : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
                                   </p>
                                   <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
-                                    <span><b>Epic Title:</b> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan</span>
-                                    <span><b>Scope:</b> Multi-agent deliverables & milestones</span>
+                                    <span><b>Spreadsheet:</b> EM Copilot Runs Log</span>
+                                    <span><b>Data Type:</b> Run metrics, EM score, notes</span>
                                   </div>
                                 </div>
                                 <a
-                                  href={approvalResult.jira_url}
+                                  href={approvalResult.sheet_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center justify-center w-fit px-3 py-1.5 border border-primary text-primary hover:bg-primary/10 rounded-lg font-bold text-[11px] transition shadow-sm"
+                                  className={`flex items-center justify-center w-fit px-3 py-1.5 border rounded-lg font-bold text-[11px] transition shadow-sm ${pipelineStatus === PIPELINE_STATUS.REJECTED
+                                      ? 'border-border text-muted-foreground hover:bg-secondary/30'
+                                      : 'border-primary text-primary hover:bg-primary/10'
+                                    }`}
                                 >
-                                  Open Jira Issue
+                                  Open Google Sheet
                                 </a>
                               </div>
-                            ) : approvalResult?.jira_status === 'skipped' ? (
-                              <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-1.5">
+                            ) : approvalResult?.export_status === 'local_fallback' ? (
+                              <div className="p-4 bg-warning/5 border border-warning/20 rounded-lg flex flex-col justify-between gap-1.5">
                                 <div>
-                                  <div className="text-xs font-bold text-muted-foreground">Jira Push Skipped</div>
+                                  <div className="text-xs font-bold text-warning">Saved to Local Backup CSV</div>
                                   <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                                    {approvalResult?.jira_detail || "Jira creation skipped for this run."}
+                                    {approvalResult?.export_detail || "Google Sheets integration not configured - backup CSV generated instead."}
                                   </p>
                                 </div>
                               </div>
-                            ) : approvalResult?.jira_status === 'failed' ? (
+                            ) : approvalResult?.export_status === 'failed' ? (
                               <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
                                 <div>
-                                  <div className="text-xs font-bold text-danger">Jira Integration Failed</div>
+                                  <div className="text-xs font-bold text-danger">Sheets Export Failed</div>
                                   <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
-                                    {approvalResult?.jira_detail || "Check server API log configurations."}
+                                    {approvalResult?.export_detail || "Failed to push sheets record trace sync."}
                                   </p>
                                 </div>
                               </div>
-                            ) : (
-                              <div className="h-full flex flex-col justify-between">
-                                <IntegrationNotConfigured
-                                  title="Jira integration inactive"
-                                  envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
-                                  description="Jira environment configurations missing. Integration disabled."
-                                  docsAnchor="#L59-L65"
-                                />
-                              </div>
-                            )
-                          )}
-                        </div>
+                            ) : null}
 
-                        {/* DYNAMIC FORWARD PROGRESS CALL-TO-ACTION BUTTON */}
-                        <div className="border-t border-border pt-3.5 flex justify-end">
-                          <button
-                            onClick={handleReset}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition shadow-sm hover:shadow-primary/20 cursor-pointer"
-                          >
-                            <Plus size={13} />
-                            Start New Plan
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                            {/* Jira Integration Card */}
+                            {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
+                              approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
+                                <div className="p-4 bg-success/5 border border-success/20 rounded-lg flex flex-col justify-between gap-3">
+                                  <div className="space-y-1.5">
+                                    <div className="text-xs font-bold text-success flex items-center gap-1.5">
+                                      <span>Pushed to Jira:</span>
+                                      {approvalResult.jira_issue_key && (
+                                        <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success font-extrabold">{approvalResult.jira_issue_key}</code>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                      {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via Atlassian MCP.`}
+                                    </p>
+                                    <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
+                                      <span><b>Epic Title:</b> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan</span>
+                                      <span><b>Scope:</b> Multi-agent deliverables & milestones</span>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={approvalResult.jira_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center w-fit px-3 py-1.5 border border-primary text-primary hover:bg-primary/10 rounded-lg font-bold text-[11px] transition shadow-sm"
+                                  >
+                                    Open Jira Issue
+                                  </a>
+                                </div>
+                              ) : approvalResult?.jira_status === 'skipped' ? (
+                                <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-1.5">
+                                  <div>
+                                    <div className="text-xs font-bold text-muted-foreground">Jira Push Skipped</div>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                                      {approvalResult?.jira_detail || "Jira creation skipped for this run."}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : approvalResult?.jira_status === 'failed' ? (
+                                <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
+                                  <div>
+                                    <div className="text-xs font-bold text-danger">Jira Integration Failed</div>
+                                    <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
+                                      {approvalResult?.jira_detail || "Check server API log configurations."}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="h-full flex flex-col justify-between">
+                                  <IntegrationNotConfigured
+                                    title="Jira integration inactive"
+                                    envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
+                                    description="Jira environment configurations missing. Integration disabled."
+                                    docsAnchor="#L59-L65"
+                                  />
+                                </div>
+                              )
+                            )}
+                          </div>
 
+                          {/* DYNAMIC FORWARD PROGRESS CALL-TO-ACTION BUTTON */}
+                          <div className="border-t border-border pt-3.5 flex justify-end">
+                            <button
+                              onClick={handleReset}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition shadow-sm hover:shadow-primary/20 cursor-pointer"
+                            >
+                              <Plus size={13} />
+                              Start New Plan
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
 
               {/* Tavily fallback hint - surfaces when the pipeline tried Tavily web grounding */}
