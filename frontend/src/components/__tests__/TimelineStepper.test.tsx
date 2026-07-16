@@ -1,62 +1,44 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { TimelineStepper } from '../TimelineStepper';
 import { type PipelineStatus, PIPELINE_STATUS } from '../../lib/pipelineStatus';
 
-describe('TimelineStepper', () => {
+describe('TimelineStepper (Hub-and-Spoke)', () => {
   const baseProps = {
     pipelineStatus: PIPELINE_STATUS.IDLE as PipelineStatus,
     completedAgents: new Set<string>(),
     artifacts: null,
     criticOutput: null,
-    approvalResult: null,
     logs: [],
+    isCollapsed: false,
+    onToggleCollapse: vi.fn(),
   };
-
 
   it('renders without throwing', () => {
     render(<TimelineStepper {...baseProps} />);
   });
 
-  it('shows all 7 business-focused stage labels', () => {
+  it('shows the core agent and specialist node labels', () => {
     render(<TimelineStepper {...baseProps} />);
-    // 7 steps: Security, Orchestrator, Specialists Drafting, Arbitration, Specialists Alignment, Critic, Decision
-    expect(screen.getByText('Security Validation')).toBeInTheDocument();
+    
+    // Core flow nodes
+    expect(screen.getByText('Security')).toBeInTheDocument();
     expect(screen.getByText('Orchestrator')).toBeInTheDocument();
-    expect(screen.getByText('Specialists Drafting')).toBeInTheDocument();
-    expect(screen.getByText('Arbitration')).toBeInTheDocument();
-    expect(screen.getByText('Specialists Alignment')).toBeInTheDocument();
-    expect(screen.getByText('Critic')).toBeInTheDocument();
-    expect(screen.getByText('Decision')).toBeInTheDocument();
+    expect(screen.getByText('Critic Agent')).toBeInTheDocument();
+    expect(screen.getByText('EM Decision')).toBeInTheDocument();
+    expect(screen.getByText('Export')).toBeInTheDocument();
+
+    // Specialist satellite nodes
+    expect(screen.getByText('Plan')).toBeInTheDocument();
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
+    expect(screen.getByText('PoC')).toBeInTheDocument();
+    expect(screen.getByText('Tech Stack')).toBeInTheDocument();
+    expect(screen.getByText('Architect')).toBeInTheDocument();
   });
 
-  it('reflects completed orchestrator status visually', () => {
-    const { container } = render(
-      <TimelineStepper {...baseProps} pipelineStatus={PIPELINE_STATUS.ALIGNING} completedAgents={new Set(['orchestrator'])} />
-    );
-    expect(container).toBeTruthy();
-  });
-
-  it('asserts that every pipeline status activates exactly one step (or zero if idle/terminal)', () => {
-    const nonRunningStatuses: PipelineStatus[] = [
-      PIPELINE_STATUS.IDLE,
-      PIPELINE_STATUS.EXPORTED,
-      PIPELINE_STATUS.REJECTED,
-      PIPELINE_STATUS.EXPORT_FAILED,
-      PIPELINE_STATUS.ERROR,
-      PIPELINE_STATUS.CANCELED,
-    ];
-
-    Object.values(PIPELINE_STATUS).forEach((status) => {
-      const { container, unmount } = render(<TimelineStepper {...baseProps} pipelineStatus={status as PipelineStatus} />);
-      const activeCircles = container.querySelectorAll('.w-12.h-12.animate-pulse');
-
-      if (nonRunningStatuses.includes(status as PipelineStatus)) {
-        expect(activeCircles.length).toBe(0);
-      } else {
-        expect(activeCircles.length).toBe(1);
-      }
-      unmount();
-    });
+  it('reflects collapsed summary mode when isCollapsed is true', () => {
+    render(<TimelineStepper {...baseProps} isCollapsed={true} pipelineStatus={PIPELINE_STATUS.AWAITING_HITL} />);
+    expect(screen.getByText(/Awaiting Engineering Manager Decision/i)).toBeInTheDocument();
+    expect(screen.queryByText('Security')).not.toBeInTheDocument(); // should hide the full map diagram
   });
 });

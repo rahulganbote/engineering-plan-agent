@@ -151,6 +151,7 @@ export const AgentWorkspace: React.FC = () => {
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isExampleLoading, setIsExampleLoading] = useState(false);
 
+
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
   // Shape: { openai: {available: true}, anthropic: {available: true, reason?: string}, ... }
@@ -198,6 +199,25 @@ export const AgentWorkspace: React.FC = () => {
 
   const [startupError, setStartupError] = useState<string | null>(null);
   const [confirmResetActive, setConfirmResetActive] = useState(false);
+  const [isStepperCollapsed, setIsStepperCollapsed] = useState(false);
+
+  // Auto-collapse the timeline stepper when pipeline lands at a post-running/decision state
+  useEffect(() => {
+    const autoCollapseStatuses = [
+      PIPELINE_STATUS.AWAITING_HITL,
+      PIPELINE_STATUS.EXPORTING,
+      PIPELINE_STATUS.EXPORTED,
+      PIPELINE_STATUS.REJECTED,
+      PIPELINE_STATUS.ERROR,
+      PIPELINE_STATUS.EXPORT_FAILED
+    ];
+    if (autoCollapseStatuses.includes(pipelineStatus as any)) {
+      setIsStepperCollapsed(true);
+    } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
+      // Auto-expand when a new execution starts
+      setIsStepperCollapsed(false);
+    }
+  }, [pipelineStatus]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -865,6 +885,8 @@ export const AgentWorkspace: React.FC = () => {
                 artifacts={artifacts}
                 criticOutput={criticOutput}
                 logs={logs}
+                isCollapsed={isStepperCollapsed}
+                onToggleCollapse={() => setIsStepperCollapsed(!isStepperCollapsed)}
               />
 
 

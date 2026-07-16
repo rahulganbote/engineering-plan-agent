@@ -1,5 +1,9 @@
-import React from 'react';
-import { Shield, FileJson, Cpu, MessageSquare, UserCheck, Check, Loader2, X, Pause } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Shield, Cpu, UserCheck, Check, Loader2, X, 
+  Database, Sparkles, Wrench, GitPullRequest, BookOpen, 
+  ChevronDown, ChevronUp, FileText, MessageSquare 
+} from 'lucide-react';
 import { type ArtifactsState, type CriticOutput, type LogEvent } from '../hooks/useSSE';
 import { type PipelineStatus, PIPELINE_STATUS } from '../lib/pipelineStatus';
 
@@ -9,525 +13,531 @@ interface TimelineStepperProps {
   artifacts: ArtifactsState | null;
   criticOutput: CriticOutput | null;
   logs: LogEvent[];
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   pipelineStatus,
   completedAgents,
-  artifacts,
-  criticOutput: _criticOutput,
+  artifacts: _artifacts,
+  criticOutput,
   logs,
+  isCollapsed = false,
+  onToggleCollapse,
 }) => {
-  const hasBrdSections = Array.isArray(artifacts?.brd_sections) && (artifacts.brd_sections as unknown[]).length > 0;
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  // Centralized helper to compute step status
-  const getStepStatus = (stepId: number): { isCompleted: boolean; isActive: boolean; isFailed: boolean } => {
-    // 1. Check for terminal export failure (special case for Step 7)
-    if (stepId === 7 && pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED) {
-      return { isCompleted: false, isActive: false, isFailed: true };
+  // Helper to determine status of individual specialists in Pass 1 vs Pass 2
+  const getDetailedStatus = (agentKey: string): 'pending' | 'running' | 'completed' | 'failed' => {
+    if (pipelineStatus === PIPELINE_STATUS.IDLE) return 'pending';
+
+    // During active drafting, refer to Pass 1 logs
+    if (pipelineStatus === PIPELINE_STATUS.DRAFTING) {
+      if (completedAgents.has(agentKey)) return 'completed';
+      const hasStarted = logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
+      return hasStarted ? 'running' : 'pending';
     }
 
-    // 2. Cancellation and Error Handling:
-    if (pipelineStatus === PIPELINE_STATUS.ERROR || pipelineStatus === PIPELINE_STATUS.CANCELED) {
-      const securityPassed = logs.some(l => l.type === 'security_complete') || logs.some(l => l.type === 'agent_start' && l.agent === 'orchestrator') || hasBrdSections;
-      const orchestratorCompleted = completedAgents.has('orchestrator') || hasBrdSections || logs.some(l => l.type === 'orchestrator_reconciled');
-      const draftingCompleted = (
-        completedAgents.has('engineering_plan_generator') &&
-        completedAgents.has('schedule_estimator') &&
-        completedAgents.has('solution_architect') &&
-        completedAgents.has('poc_planner') &&
-        completedAgents.has('tech_stack_recommender')
-      ) || logs.some(l => l.type === 'orchestrator_reconciled');
-      const arbitrationCompleted = logs.some(l => l.type === 'orchestrator_reconciled') || !!artifacts?.alignment_memo;
-      const alignmentCompleted = logs.some(l => l.type === 'agent_start' && l.agent === 'critic') || !!artifacts?.critic_output;
-      const criticCompleted = logs.some(l => l.type === 'agent_complete' && l.agent === 'critic') || !!artifacts?.critic_output;
-
-      if (stepId === 1) {
-        const completed = securityPassed;
-        return { isCompleted: completed, isActive: false, isFailed: !completed };
-      }
-      if (stepId === 2) {
-        const completed = orchestratorCompleted;
-        const failed = securityPassed && !completed;
-        return { isCompleted: completed, isActive: false, isFailed: failed };
-      }
-      if (stepId === 3) {
-        const completed = draftingCompleted;
-        const failed = orchestratorCompleted && !completed;
-        return { isCompleted: completed, isActive: false, isFailed: failed };
-      }
-      if (stepId === 4) {
-        const completed = arbitrationCompleted;
-        const failed = draftingCompleted && !completed;
-        return { isCompleted: completed, isActive: false, isFailed: failed };
-      }
-      if (stepId === 5) {
-        const completed = alignmentCompleted;
-        const failed = arbitrationCompleted && !completed;
-        return { isCompleted: completed, isActive: false, isFailed: failed };
-      }
-      if (stepId === 6) {
-        const completed = criticCompleted;
-        const failed = alignmentCompleted && !completed;
-        return { isCompleted: completed, isActive: false, isFailed: failed };
-      }
-      if (stepId === 7) {
-        return { isCompleted: false, isActive: false, isFailed: true };
-      }
-    }
-
-    // 3. Normal Execution Flow:
-    const activeStepId = (() => {
-      switch (pipelineStatus) {
-        case PIPELINE_STATUS.INITIALIZING:
-        case PIPELINE_STATUS.STARTED:
-        case PIPELINE_STATUS.SECURITY_CHECK:
-          return 1;
-        case PIPELINE_STATUS.RUNNING:
-        case PIPELINE_STATUS.ORCHESTRATOR_PARSING:
-          return 2;
-        case PIPELINE_STATUS.DRAFTING:
-          return 3;
-        case PIPELINE_STATUS.ARBITRATING:
-          return 4;
-        case PIPELINE_STATUS.ALIGNING:
-        case PIPELINE_STATUS.REVISING:
-          return 5;
-        case PIPELINE_STATUS.EVALUATING:
-          return 6;
-        case PIPELINE_STATUS.AWAITING_HITL:
-        case PIPELINE_STATUS.EXPORTING:
-          return 7;
-        default:
-          return 0; // idle or terminal
-      }
-    })();
-
-    const isActive = activeStepId === stepId;
-
-    const isCompleted = (() => {
-      if (pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.REJECTED) {
-        return true;
-      }
-      if (pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED) {
-        return stepId < 7;
-      }
-      if (pipelineStatus === PIPELINE_STATUS.REVISING) {
-        return stepId < 5 || stepId === 6;
-      }
-      return activeStepId > stepId;
-    })();
-
-    return { isCompleted, isActive, isFailed: false };
-  };
-
-  // Define the steps
-  const steps = [
-    {
-      id: 1,
-      label: 'Security Validation',
-      description: 'Format, Security & PII Check',
-      icon: Shield,
-      get isCompleted() { return getStepStatus(1).isCompleted; },
-      get isFailed() { return getStepStatus(1).isFailed; },
-      get isActive() { return getStepStatus(1).isActive; },
-    },
-    {
-      id: 2,
-      label: 'Orchestrator',
-      get description() {
-        const hasReconciled = logs.some(l => l.type === 'orchestrator_reconciled');
-        if (hasReconciled) {
-          return 'Arbitration Completed';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING) {
-          return 'Parsing BRD...';
-        }
-        return 'Parsing BRD';
-      },
-      icon: FileJson,
-      get isCompleted() { return getStepStatus(2).isCompleted; },
-      get isFailed() { return getStepStatus(2).isFailed; },
-      get isActive() { return getStepStatus(2).isActive; },
-    },
-    {
-      id: 3,
-      label: 'Specialists Drafting',
-      get description() {
-        if (pipelineStatus === PIPELINE_STATUS.DRAFTING) {
-          return 'Drafting plans...';
-        }
-        return 'First Draft Generation';
-      },
-      icon: Cpu,
-      get isCompleted() { return getStepStatus(3).isCompleted; },
-      get isFailed() { return getStepStatus(3).isFailed; },
-      get isActive() { return getStepStatus(3).isActive; },
-    },
-    {
-      id: 4,
-      label: 'Arbitration',
-      get description() {
-        if (pipelineStatus === PIPELINE_STATUS.ARBITRATING) {
-          return 'Reconciling agent drafts...';
-        }
-        return 'Conflict Resolution';
-      },
-      icon: MessageSquare,
-      get isCompleted() { return getStepStatus(4).isCompleted; },
-      get isFailed() { return getStepStatus(4).isFailed; },
-      get isActive() { return getStepStatus(4).isActive; },
-    },
-    {
-      id: 5,
-      label: 'Specialists Alignment',
-      get description() {
-        if (pipelineStatus === PIPELINE_STATUS.ALIGNING) {
-          return 'Aligning plans...';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.REVISING) {
-          return 'Revising plans...';
-        }
-        return 'Finalized Plan';
-      },
-      icon: Cpu,
-      get isCompleted() { return getStepStatus(5).isCompleted; },
-      get isFailed() { return getStepStatus(5).isFailed; },
-      get isActive() { return getStepStatus(5).isActive; },
-    },
-    {
-      id: 6,
-      label: 'Critic',
-      get description() {
-        if (pipelineStatus === PIPELINE_STATUS.EVALUATING) {
-          return 'Evaluating quality...';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.REVISING) {
-          return 'Triggered revision...';
-        }
-        const revisionCount = logs.filter(l => l.type === 'revision_start').length;
-        if (revisionCount > 0) {
-          return `🔄 Revision ${revisionCount} done`;
-        }
-        return 'Evaluation & Quality Score';
-      },
-      icon: MessageSquare,
-      get isCompleted() { return getStepStatus(6).isCompleted; },
-      get isFailed() { return getStepStatus(6).isFailed; },
-      get isActive() { return getStepStatus(6).isActive; },
-    },
-    {
-      id: 7,
-      label: 'Decision',
-      get description() {
-        if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
-          return 'Awaiting EM decision';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.EXPORTING) {
-          return 'Exporting plans...';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.EXPORTED) {
-          return 'Exported successfully';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.REJECTED) {
-          return 'Plan rejected';
-        }
-        if (pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED) {
-          return 'Export failed';
-        }
-        return 'Final decision & export';
-      },
-      icon: UserCheck,
-      get isCompleted() { return getStepStatus(7).isCompleted; },
-      get isFailed() { return getStepStatus(7).isFailed; },
-      get isActive() { return getStepStatus(7).isActive; },
-    },
-  ];
-
-  const getDetailedStatus = (agentKey: string, pass: 1 | 2): { status: 'pending' | 'running' | 'completed' | 'failed'; label: string } => {
-    const labels: Record<string, string> = {
-      engineering_plan_generator: 'Plan',
-      solution_architect: 'Architect',
-      schedule_estimator: 'Schedule',
-      poc_planner: 'PoC',
-      tech_stack_recommender: 'Tech Stack',
-    };
-    const label = labels[agentKey] || agentKey;
-
-    const reconciledIdx = logs.findIndex(l => l.type === 'orchestrator_reconciled');
-    const pass1Logs = reconciledIdx === -1 ? logs : logs.slice(0, reconciledIdx);
-    const pass2Logs = reconciledIdx === -1 ? [] : logs.slice(reconciledIdx + 1);
-
-    const getPassStatus = (passLogs: LogEvent[]) => {
-      const hasFailed = passLogs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
-      if (hasFailed) return 'failed';
-      const hasCompleted = passLogs.some(l => l.type === 'agent_complete' && (l.agent === agentKey || l.payload?.agent === agentKey));
+    // During alignment/arbitration, check Pass 2 logs
+    if (pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING) {
+      const reconciledIdx = logs.findIndex(l => l.type === 'orchestrator_reconciled');
+      if (reconciledIdx === -1) return 'completed'; // completed Pass 1, waiting on arbitration
+      const pass2Logs = logs.slice(reconciledIdx + 1);
+      const hasCompleted = pass2Logs.some(l => l.type === 'agent_complete' && (l.agent === agentKey || l.payload?.agent === agentKey));
       if (hasCompleted) return 'completed';
-      const hasStarted = passLogs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
-      if (hasStarted) return 'running';
-      return 'pending';
-    };
+      const hasStarted = pass2Logs.some(l => l.type === 'agent_start' && (l.agent === agentKey || l.payload?.agent === agentKey));
+      return hasStarted ? 'running' : 'pending';
+    }
 
-    if (pass === 1) {
-      if (
-        ([
-          PIPELINE_STATUS.ARBITRATING,
-          PIPELINE_STATUS.ALIGNING,
-          PIPELINE_STATUS.EVALUATING,
-          PIPELINE_STATUS.REVISING,
-          PIPELINE_STATUS.AWAITING_HITL,
-          PIPELINE_STATUS.EXPORTED,
-          PIPELINE_STATUS.REJECTED
-        ] as PipelineStatus[]).includes(pipelineStatus)
-      ) {
-        return { status: 'completed', label };
-      }
-      return { status: getPassStatus(pass1Logs), label };
-    } else {
-      if (
-        ([
-          PIPELINE_STATUS.EVALUATING,
-          PIPELINE_STATUS.REVISING,
-          PIPELINE_STATUS.AWAITING_HITL,
-          PIPELINE_STATUS.EXPORTED,
-          PIPELINE_STATUS.REJECTED
-        ] as PipelineStatus[]).includes(pipelineStatus)
-      ) {
-        return { status: 'completed', label };
-      }
-      const pass2Started = pass2Logs.some(l => l.type === 'agent_start');
-      if (pass2Started) {
-        const s2 = getPassStatus(pass2Logs);
-        if (s2 === 'pending') {
-          return { status: 'completed', label };
-        }
-        return { status: s2, label };
-      }
-      return { status: 'pending', label };
+    // Failures
+    const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
+    if (hasFailed) return 'failed';
+
+    // Terminal or post-alignment states are all completed
+    return 'completed';
+  };
+
+  // Node state descriptors
+  const nodes = {
+    security: {
+      label: 'Security Validator',
+      desc: 'Performs file size validation, prompt injection checks, and redacts PII patterns.',
+      isActive: pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK || pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED,
+      isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.SECURITY_CHECK && pipelineStatus !== PIPELINE_STATUS.INITIALIZING && pipelineStatus !== PIPELINE_STATUS.STARTED,
+      isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'security_complete'),
+    },
+    orchestrator: {
+      label: 'Orchestrator Agent',
+      desc: 'Parses BRD structure, distributes tasks to specialists, and aligns plans in the 2nd pass.',
+      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING || pipelineStatus === PIPELINE_STATUS.ARBITRATING,
+      isCompleted: ([PIPELINE_STATUS.DRAFTING, PIPELINE_STATUS.ALIGNING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
+      isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'orchestrator'),
+    },
+    critic: {
+      label: 'Critic Agent',
+      desc: 'Evaluates plan quality against organizational dimensions (groundedness, completeness).',
+      isActive: pipelineStatus === PIPELINE_STATUS.EVALUATING || pipelineStatus === PIPELINE_STATUS.REVISING,
+      isCompleted: ([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
+      isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'critic') && ([PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING] as string[]).includes(pipelineStatus),
+    },
+    hitl: {
+      label: 'HITL Decision Gate',
+      desc: 'Halts execution for manager review, allowing approval or revision loop feedback.',
+      isActive: pipelineStatus === PIPELINE_STATUS.AWAITING_HITL,
+      isCompleted: ([PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED] as string[]).includes(pipelineStatus),
+      isFailed: pipelineStatus === PIPELINE_STATUS.REJECTED,
+    },
+    export: {
+      label: 'Finalize & Export',
+      desc: 'Indexes the final plan in Pinecone and triggers Sheets + Jira integrations.',
+      isActive: pipelineStatus === PIPELINE_STATUS.EXPORTING,
+      isCompleted: pipelineStatus === PIPELINE_STATUS.EXPORTED,
+      isFailed: pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED,
     }
   };
 
-  const canceledStepId = pipelineStatus === PIPELINE_STATUS.CANCELED ? (steps.find(s => !s.isCompleted)?.id || 1) : null;
+  const getStyleClasses = (nodeState: { isActive: boolean; isCompleted: boolean; isFailed: boolean }, shape: 'circle' | 'diamond' | 'rect' = 'circle') => {
+    let base = "transition-all duration-300 border-2 flex items-center justify-center text-xs font-bold shadow-md cursor-help ";
+    if (shape === 'circle') base += "rounded-full w-12 h-12 ";
+    else if (shape === 'rect') base += "rounded-lg w-28 h-12 ";
+    else base += "w-11 h-11 "; // Diamond handled via rotated divs
 
-  return (
-    <div className="w-full bg-card border border-border rounded-xl p-6 shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Agentic Workflow Progress</h3>
-        <div className="flex items-center gap-2">
-          {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && pipelineStatus !== PIPELINE_STATUS.ERROR && pipelineStatus !== PIPELINE_STATUS.CANCELED && (
-            <span className="flex h-2 w-2 relative">
+    if (nodeState.isCompleted) {
+      return base + "bg-success border-success text-white shadow-success/20";
+    }
+    if (nodeState.isFailed) {
+      return base + "bg-danger border-danger text-white shadow-danger/20";
+    }
+    if (nodeState.isActive) {
+      return base + "bg-card border-primary text-primary ring-4 ring-primary/20 animate-pulse shadow-primary/20";
+    }
+    return base + "bg-card border-border text-muted-foreground";
+  };
+
+  const showRagLines = pipelineStatus === PIPELINE_STATUS.DRAFTING || pipelineStatus === PIPELINE_STATUS.ALIGNING;
+  const isSyncing = pipelineStatus === PIPELINE_STATUS.EXPORTING || pipelineStatus === PIPELINE_STATUS.EXPORTED;
+
+  // Condensed / Collapsed mode layout
+  if (isCollapsed) {
+    let summaryText = 'System Idle';
+    let statusColor = 'text-muted-foreground';
+
+    if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
+      summaryText = 'Awaiting Engineering Manager Decision';
+      statusColor = 'text-warning font-extrabold animate-pulse';
+    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTING) {
+      summaryText = 'Syncing to Jira & Sheets...';
+      statusColor = 'text-primary font-bold';
+    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTED) {
+      summaryText = 'Successfully Exported to Jira & Google Sheets';
+      statusColor = 'text-success font-extrabold';
+    } else if (pipelineStatus === PIPELINE_STATUS.REJECTED) {
+      summaryText = 'Plan Rejected (Revision Loop Triggered)';
+      statusColor = 'text-danger font-bold';
+    } else if (pipelineStatus === PIPELINE_STATUS.ERROR) {
+      summaryText = 'Pipeline Error Encountered';
+      statusColor = 'text-danger font-bold';
+    } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
+      summaryText = `Executing: ${pipelineStatus.replace(/_/g, ' ')}`;
+      statusColor = 'text-primary font-bold';
+    }
+
+    return (
+      <div className="w-full bg-card border border-border rounded-xl px-4 py-2.5 shadow-md flex items-center justify-between text-xs transition-all duration-300">
+        <div className="flex items-center gap-3">
+          <span className="flex h-2 w-2 relative">
+            {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            )}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${
+              pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success' :
+              pipelineStatus === PIPELINE_STATUS.REJECTED || pipelineStatus === PIPELINE_STATUS.ERROR ? 'bg-danger' :
+              pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'bg-warning' : 'bg-primary'
+            }`}></span>
+          </span>
+          <span className="font-semibold text-foreground">
+            Workflow: <span className={statusColor}>{summaryText}</span>
+          </span>
+          {criticOutput && (
+            <span className="hidden md:inline-block bg-[#f0f7ff] dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/40 px-2 py-0.5 rounded text-[10px] font-mono">
+              Critic Score: {criticOutput.overallScore.toFixed(1)}/5.0
             </span>
           )}
-          <span className="text-xs text-muted-foreground font-semibold capitalize">
-            Status: <span className={
-              pipelineStatus === PIPELINE_STATUS.ERROR ? 'text-danger' :
-                pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'text-success' :
-                  pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'text-warning' :
-                    pipelineStatus === PIPELINE_STATUS.CANCELED ? 'text-slate-500' :
-                      'text-primary'
-            }>{pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'awaiting decision' : pipelineStatus === PIPELINE_STATUS.EVALUATING ? 'Evaluating' : pipelineStatus.replace(/_/g, ' ')}</span>
-          </span>
+        </div>
+        <button
+          onClick={onToggleCollapse}
+          className="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-hover px-2 py-1 rounded hover:bg-secondary/40 transition-colors"
+        >
+          Show Workflow Map <ChevronDown size={14} />
+        </button>
+      </div>
+    );
+  }
+
+  // Extended Mode Layout
+  return (
+    <div className="w-full bg-card border border-border rounded-xl p-5 shadow-lg relative transition-all duration-300">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">Agentic Workflow Progress</h3>
+        <div className="flex items-center gap-2">
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-secondary/40 transition-colors"
+            >
+              Minimize <ChevronUp size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      {pipelineStatus === PIPELINE_STATUS.CANCELED && (
-        <div className="mb-4 p-3 bg-slate-500/10 border border-slate-500/20 rounded-lg text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between animate-scale-in">
-          <span>Run was aborted by the user.</span>
-          <span className="bg-slate-500/20 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider">Canceled</span>
-        </div>
-      )}
+      {/* Main Flowchart Outer Container (Scrollable viewport on smaller screens) */}
+      <div className="w-full overflow-x-auto py-4">
+        <div className="relative w-[960px] h-[280px] mx-auto select-none">
+          
+          {/* Background Connector Lines Canvas */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow-success" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10B981" />
+              </marker>
+              <marker id="arrow-danger" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EF4444" />
+              </marker>
+              <marker id="arrow-primary" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6366F1" />
+              </marker>
+              <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94A3B8" />
+              </marker>
+            </defs>
 
-      {/* Increased mt-16 to leave enough space for the headers above */}
-      <div className="relative flex items-start justify-between w-full mt-16">
-        {/* Connecting progress line - sits behind nodes (z-0) and top-6 matches the node circle centers */}
-        <div className="absolute left-0 right-0 top-6 h-0.5 bg-secondary z-0" />
+            {/* 1. Security -> Orchestrator Line */}
+            <path 
+              d="M 125,140 L 292,140" 
+              fill="none" 
+              stroke={nodes.security.isCompleted ? "#10B981" : (nodes.orchestrator.isActive ? "#6366F1" : "#94A3B8")} 
+              strokeWidth="2" 
+              markerEnd={`url(#${nodes.security.isCompleted ? 'arrow-success' : (nodes.orchestrator.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+            />
 
-        {steps.map((step, idx) => {
-          const StepIcon = step.icon;
-          const isCompleted = step.isCompleted;
-          const isFailed = step.isFailed;
-          const isActive = step.isActive;
+            {/* 2. Orchestrator -> Satellite Specialists Spoke Lines */}
+            {[
+              { id: 'plan', x: 230, y: 50 },
+              { id: 'schedule', x: 470, y: 50 },
+              { id: 'poc', x: 230, y: 230 },
+              { id: 'stack', x: 470, y: 230 },
+              { id: 'arch', x: 350, y: 240 }
+            ].map(spoke => {
+              const specStatus = spoke.id === 'plan' ? getDetailedStatus('engineering_plan_generator') :
+                                 spoke.id === 'schedule' ? getDetailedStatus('schedule_estimator') :
+                                 spoke.id === 'poc' ? getDetailedStatus('poc_planner') :
+                                 spoke.id === 'stack' ? getDetailedStatus('tech_stack_recommender') :
+                                 getDetailedStatus('solution_architect');
+              
+              const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
+              const isActive = specStatus === 'running';
+              const isFail = specStatus === 'failed';
 
-          // Compute style tokens
-          let iconContainerClasses = "w-12 h-12 rounded-full flex items-center justify-center border-2 z-10 transition-all duration-300 ";
-          let textLabelClasses = "text-xs font-bold transition-colors duration-300 ";
-          const descriptionClasses = "text-[9px] md:text-[10px] text-slate-600 dark:text-slate-400 font-medium hidden md:block text-center ";
-
-          if (isCompleted) {
-            iconContainerClasses += "bg-success border-success text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]";
-            textLabelClasses += "text-success";
-          } else if (isFailed) {
-            iconContainerClasses += "bg-danger border-danger text-white shadow-[0_0_15px_rgba(239,68,68,0.2)]";
-            textLabelClasses += "text-danger";
-          } else if (isActive) {
-            if (step.id === 7 && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
-              iconContainerClasses += "bg-card border-warning text-warning ring-4 ring-warning/30 animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.4)]";
-              textLabelClasses += "text-warning font-extrabold";
-            } else {
-              iconContainerClasses += "bg-card border-primary text-primary ring-4 ring-primary/30 animate-pulse shadow-[0_0_20px_rgba(99,102,241,0.4)]";
-              textLabelClasses += "text-primary font-extrabold";
-            }
-          } else {
-            iconContainerClasses += "bg-card border-border text-muted-foreground";
-            textLabelClasses += "text-muted-foreground";
-          }
-
-          return (
-            <div key={step.id} className={`flex flex-col items-center flex-1 relative z-10 transition-all duration-300 ${
-              pipelineStatus === PIPELINE_STATUS.CANCELED && !isCompleted ? 'opacity-40 grayscale-[50%]' : ''
-            }`}>
-              {/* Line connector segment highlight - starts at center of current step and goes to next step (prevents overlapping issues on checkmarks) */}
-              {idx < steps.length - 1 && (
-                <div
-                  className={`absolute left-[50%] right-[-50%] top-6 h-0.5 z-0 transition-all duration-500 ${
-                    step.isCompleted
-                      ? 'bg-gradient-to-r from-success to-primary'
-                      : step.isFailed
-                      ? 'bg-gradient-to-r from-danger to-secondary'
-                      : 'bg-secondary'
-                  }`}
+              return (
+                <line 
+                  key={spoke.id}
+                  x1="350" y1="140" 
+                  x2={spoke.x} y2={spoke.y}
+                  stroke={isComp ? "#10B981" : (isFail ? "#EF4444" : (isActive ? "#6366F1" : "#94A3B8"))}
+                  strokeWidth="1.5"
+                  strokeDasharray={isActive ? "4, 2" : "none"}
+                  className={isActive ? "animate-[dash_1s_linear_infinite]" : ""}
                 />
-              )}
+              );
+            })}
 
-              {/* Odd-numbered step header: absolute-positioned above the circle */}
-              {step.id % 2 !== 0 && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center text-center h-12 justify-end w-[130px] md:w-[150px]">
-                  <span className={`${textLabelClasses} leading-tight flex items-center justify-center gap-1`}>
-                    {step.label}
-                    {step.id === 5 && pipelineStatus === PIPELINE_STATUS.REVISING && (
-                      <span className="text-[9px] font-bold text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
-                        🔄 Revision {logs.filter(l => l.type === 'revision_start').length}/2
-                      </span>
-                    )}
-                  </span>
-                  <span className={`${descriptionClasses} leading-tight mt-0.5 block text-center`}>{step.description}</span>
-                </div>
-              )}
+            {/* 3. Orchestrator -> Critic Line */}
+            <path 
+              d="M 400,140 L 582,140" 
+              fill="none" 
+              stroke={nodes.orchestrator.isCompleted ? "#10B981" : (nodes.critic.isActive ? "#6366F1" : "#94A3B8")} 
+              strokeWidth="2" 
+              markerEnd={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+            />
 
-              <div className={iconContainerClasses}>
-                {isCompleted ? (
-                  <Check size={20} className="stroke-[3px] animate-scale-in" />
-                ) : isFailed ? (
-                  <X size={20} className="stroke-[3px] animate-scale-in text-danger" />
-                ) : isActive ? (
-                  step.id === 7 && pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? (
-                    <Pause size={20} className="animate-pulse text-warning" />
-                  ) : (
-                    <Loader2 size={20} className="animate-spin text-primary" />
-                  )
-                ) : (
-                  <StepIcon size={18} />
-                )}
+            {/* 4. Critic -> HITL Line */}
+            <path 
+              d="M 690,140 L 752,140" 
+              fill="none" 
+              stroke={nodes.critic.isCompleted ? "#10B981" : (nodes.hitl.isActive ? "#6366F1" : "#94A3B8")} 
+              strokeWidth="2" 
+              markerEnd={`url(#${nodes.critic.isCompleted ? 'arrow-success' : (nodes.hitl.isActive ? 'arrow-primary' : 'arrow-gray')})`}
+            />
+
+            {/* 5. HITL -> Export Line */}
+            <path 
+              d="M 820,140 L 862,140" 
+              fill="none" 
+              stroke={nodes.hitl.isCompleted ? "#10B981" : (nodes.hitl.isFailed ? "#EF4444" : (nodes.export.isActive ? "#6366F1" : "#94A3B8"))} 
+              strokeWidth="2" 
+              markerEnd={`url(#${nodes.hitl.isCompleted ? 'arrow-success' : (nodes.hitl.isFailed ? 'arrow-danger' : 'arrow-gray')})`}
+            />
+
+            {/* 6. Pinecone RAG dashed queries (Orange) */}
+            {showRagLines && (
+              <>
+                <path d="M 350,25 L 230,50" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 350,25 L 470,50" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 350,25 L 230,230" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 350,25 L 470,230" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 350,25 L 350,240" stroke="#F59E0B" strokeWidth="1" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+              </>
+            )}
+
+            {/* 7. Tool syncing lines (Green) */}
+            {isSyncing && (
+              <>
+                <path d="M 910,170 L 825,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 910,170 L 865,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 910,170 L 905,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+                <path d="M 910,170 L 945,210" stroke="#10B981" strokeWidth="1.5" strokeDasharray="3, 3" className="animate-[dash_1.5s_linear_infinite]" />
+              </>
+            )}
+          </svg>
+
+          {/* SECURITY VALIDATOR */}
+          <div 
+            className="absolute left-[15px] top-[110px] w-[110px] h-[60px] flex items-center justify-center z-10"
+            onMouseEnter={() => setActiveTooltip('security')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div className={getStyleClasses(nodes.security, 'rect')}>
+              <Shield size={16} className="mr-1.5 shrink-0" />
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] font-bold truncate leading-tight">Security</span>
+                <span className="text-[8px] opacity-75 truncate leading-tight">PII & Prompt validation</span>
               </div>
+            </div>
+            {activeTooltip === 'security' && (
+              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                <p className="font-bold text-foreground mb-1">Security Validator</p>
+                {nodes.security.desc}
+              </div>
+            )}
+          </div>
 
-              {/* Even-numbered step header: flows naturally in vertical stack below the circle */}
-              {step.id % 2 === 0 && (
-                <div className="mt-3 flex flex-col items-center text-center w-[130px] md:w-[150px] z-10">
-                  <span className={`${textLabelClasses} leading-tight block text-center`}>{step.label}</span>
-                  <span className={`${descriptionClasses} leading-tight mt-0.5 block text-center`}>{step.description}</span>
-                </div>
-              )}
-
-              {/* Specialist status nested for Step 3 (Pass 1) and Step 5 (Pass 2) */}
-              {(step.id === 3 || step.id === 5) && pipelineStatus !== 'idle' && (
-                <div className={`mt-4 flex flex-col gap-2 w-full max-w-[140px] z-20 animate-scale-in transition-all duration-300 ${isCompleted ? 'opacity-40 hover:opacity-100' : ''}`}>
-                  <div className="flex flex-col gap-1.5 bg-background/40 p-2 rounded-lg border border-border/60 shadow-inner">
-                    {[
-                      { key: 'solution_architect', shortLabel: 'Architect' },
-                      { key: 'tech_stack_recommender', shortLabel: 'Tech Stack' },
-                      { key: 'poc_planner', shortLabel: 'PoC' },
-                      { key: 'engineering_plan_generator', shortLabel: 'Plan' },
-                      { key: 'schedule_estimator', shortLabel: 'Schedule' },
-                    ].map(spec => {
-                      const pass = step.id === 3 ? 1 : 2;
-                      const { status } = getDetailedStatus(spec.key, pass);
-                      let specCardClass = "flex items-center justify-between px-2 py-1 rounded border text-[9px] font-semibold transition-all duration-300 ";
-                      let statusIcon: React.ReactNode;
-                      let delayStyle: React.CSSProperties = {};
-
-                      if (status === 'running') {
-                        const idx = [
-                          'solution_architect',
-                          'tech_stack_recommender',
-                          'poc_planner',
-                          'engineering_plan_generator',
-                          'schedule_estimator',
-                        ].indexOf(spec.key);
-                        delayStyle = { animationDelay: `${idx * 150}ms` };
-                      }
-
-                      if (status === 'completed') {
-                        specCardClass += "bg-success/15 border-success/30 text-[#15803d] dark:text-[#4ade80] font-extrabold";
-                        statusIcon = <Check size={8} className="stroke-[3px] text-[#15803d] dark:text-[#4ade80] shrink-0" />;
-                      } else if (status === 'running') {
-                        specCardClass += "bg-primary/10 border-primary/40 text-primary ring-1 ring-primary/10 animate-pulse";
-                        statusIcon = <Loader2 size={8} style={delayStyle} className="animate-spin text-primary shrink-0" />;
-                      } else if (status === 'failed') {
-                        specCardClass += "bg-danger/20 border-danger/40 text-danger";
-                        statusIcon = <X size={8} className="stroke-[3px] text-danger shrink-0" />;
-                      } else {
-                        specCardClass += "bg-card/40 border-border/40 text-muted-foreground";
-                        statusIcon = <div className="h-1 w-1 rounded-full bg-secondary shrink-0" />;
-                      }
-
-                      return (
-                        <div key={spec.key} style={delayStyle} className={specCardClass} title={spec.key}>
-                           <span className="truncate pr-1 text-left">{spec.shortLabel}</span>
-                          {statusIcon}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Arbitration indicator under step 4 */}
-              {step.id === 4 && (
-                <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in" title={artifacts?.alignment_memo?.overall_strategy || 'Pass 2 Directives'}>
-                  {pipelineStatus === PIPELINE_STATUS.ARBITRATING && (
-                    <div className="px-2 py-1 rounded bg-warning/15 border border-warning/35 text-[8px] text-warning font-semibold text-center animate-pulse">
-                      EM Reconciling Drafts...
-                    </div>
-                  )}
-                  {(artifacts?.alignment_memo || logs.some(l => l.type === 'orchestrator_reconciled')) && (
-                    <div className="px-2.5 py-1.5 rounded-lg border border-warning/30 bg-warning/10 text-[9px] text-warning-foreground font-semibold flex flex-col gap-1 text-center">
-                      <span>Strategy: {artifacts?.alignment_memo?.directives?.length || logs.find(l => l.type === 'orchestrator_reconciled')?.directive_count || 0} Directives</span>
-                      {artifacts?.alignment_memo?.overall_strategy && (
-                        <span className="text-[7.5px] opacity-80 line-clamp-2 italic font-normal text-warning-foreground">
-                          "{artifacts.alignment_memo.overall_strategy}"
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Revision indicator under step 5 */}
-              {step.id === 5 && (
-                <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in">
-                  {logs.filter(l => l.type === 'revision_start').length > 0 && (
-                    <div className="px-2 py-1 rounded bg-primary/10 border border-primary/30 text-[8px] text-primary font-bold text-center animate-pulse">
-                      🔄 Revision {logs.filter(l => l.type === 'revision_start').length} of 2
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Cancellation badge/chip on the canceled step */}
-              {step.id === canceledStepId && (
-                <div className="mt-2 flex flex-col gap-1.5 w-full max-w-[140px] z-20 animate-scale-in animate-pulse">
-                  <div className="px-2 py-1 rounded bg-slate-500/15 border border-slate-500/35 text-[8px] text-slate-500 dark:text-slate-400 font-extrabold text-center">
-                    🚫 Canceled at Step {step.id}
-                  </div>
-                </div>
+          {/* ORCHESTRATOR HUB */}
+          <div 
+            className="absolute left-[300px] top-[105px] w-[100px] h-[70px] flex flex-col items-center justify-center z-20"
+            onMouseEnter={() => setActiveTooltip('orchestrator')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div className={getStyleClasses(nodes.orchestrator, 'circle')}>
+              {nodes.orchestrator.isActive ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <Cpu size={20} />
               )}
             </div>
-          );
-        })}
+            <span className={`text-[9px] font-extrabold mt-1 leading-none ${nodes.orchestrator.isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+              Orchestrator
+            </span>
+            {activeTooltip === 'orchestrator' && (
+              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                <p className="font-bold text-foreground mb-1">Orchestrator Agent</p>
+                {nodes.orchestrator.desc}
+              </div>
+            )}
+          </div>
+
+          {/* RAG VECTOR DATABASE (Top Center) */}
+          <div 
+            className="absolute left-[335px] top-[5px] w-[30px] h-[30px] flex items-center justify-center z-10 cursor-help"
+            onMouseEnter={() => setActiveTooltip('rag')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div className={`p-1.5 rounded bg-amber-500/10 border border-amber-500/40 text-amber-500 transition-colors ${showRagLines ? 'ring-2 ring-amber-500/30' : ''}`}>
+              <BookOpen size={16} />
+            </div>
+            {activeTooltip === 'rag' && (
+              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                <p className="font-bold text-foreground mb-1">RAG (Pinecone DB)</p>
+                Grounds plans dynamically in company engineering standards and approved frameworks.
+              </div>
+            )}
+          </div>
+
+          {/* SATELLITE SPECIALISTS */}
+          {[
+            { id: 'plan', key: 'engineering_plan_generator', label: 'Plan', left: '180px', top: '30px' },
+            { id: 'schedule', key: 'schedule_estimator', label: 'Schedule', left: '420px', top: '30px' },
+            { id: 'poc', key: 'poc_planner', label: 'PoC', left: '180px', top: '210px' },
+            { id: 'stack', key: 'tech_stack_recommender', label: 'Tech Stack', left: '420px', top: '210px' },
+            { id: 'arch', key: 'solution_architect', label: 'Architect', left: '300px', top: '220px' }
+          ].map(spec => {
+            const specStatus = getDetailedStatus(spec.key);
+            const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
+            const isActive = specStatus === 'running';
+            const isFail = specStatus === 'failed';
+
+            let nodeClass = "px-2 py-1 rounded-full border text-[9px] font-bold shadow-sm transition-all duration-300 w-[100px] h-[34px] flex items-center justify-center ";
+            if (isComp) nodeClass += "bg-success/15 border-success/35 text-success shadow-success/5";
+            else if (isFail) nodeClass += "bg-danger/15 border-danger/35 text-danger shadow-danger/5";
+            else if (isActive) nodeClass += "bg-primary/15 border-primary text-primary animate-pulse ring-2 ring-primary/20";
+            else nodeClass += "bg-card border-border text-muted-foreground/80";
+
+            return (
+              <div 
+                key={spec.id} 
+                className="absolute flex flex-col items-center justify-center z-10 cursor-help"
+                style={{ left: spec.left, top: spec.top }}
+                onMouseEnter={() => setActiveTooltip(spec.id)}
+                onMouseLeave={() => setActiveTooltip(null)}
+              >
+                <div className={nodeClass}>
+                  <Sparkles size={11} className={`mr-1 shrink-0 ${isActive ? 'text-primary' : (isComp ? 'text-success' : 'text-muted-foreground')}`} />
+                  <span className="truncate">{spec.label}</span>
+                </div>
+                {activeTooltip === spec.id && (
+                  <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                    <p className="font-bold text-foreground mb-1">{spec.label} Specialist</p>
+                    Autonomous drafting agent producing technical {spec.label.toLowerCase()} layouts.
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* REVISION LOOP INDICATOR (Middle connector line area) */}
+          <div className="absolute left-[475px] top-[102px] w-[50px] h-[50px] flex items-center justify-center z-20">
+            {pipelineStatus === PIPELINE_STATUS.REVISING ? (
+              <div className="flex flex-col items-center gap-0.5 animate-pulse bg-warning/10 border border-warning/30 rounded px-1.5 py-0.5 text-[8px] font-mono text-warning font-bold">
+                <Loader2 size={10} className="animate-spin text-warning" />
+                <span>Looping</span>
+              </div>
+            ) : logs.filter(l => l.type === 'revision_start').length > 0 ? (
+              <div className="bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5 text-[8px] font-mono text-primary font-bold">
+                Rev {logs.filter(l => l.type === 'revision_start').length}
+              </div>
+            ) : null}
+          </div>
+
+          {/* CRITIC EVALUATION NODE */}
+          <div 
+            className="absolute left-[580px] top-[105px] w-[100px] h-[70px] flex flex-col items-center justify-center z-20"
+            onMouseEnter={() => setActiveTooltip('critic')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div className={getStyleClasses(nodes.critic, 'circle')}>
+              {nodes.critic.isActive ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <GitPullRequest size={18} />
+              )}
+            </div>
+            <span className={`text-[9px] font-extrabold mt-1 leading-none ${nodes.critic.isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+              Critic Agent
+            </span>
+            {activeTooltip === 'critic' && (
+              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                <p className="font-bold text-foreground mb-1">Critic Agent</p>
+                {nodes.critic.desc}
+              </div>
+            )}
+          </div>
+
+          {/* HITL DECISION DIAMOND */}
+          <div 
+            className="absolute left-[745px] top-[105px] w-[70px] h-[70px] flex flex-col items-center justify-center z-20"
+            onMouseEnter={() => setActiveTooltip('hitl')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div className="relative w-12 h-12 flex items-center justify-center">
+              {/* Rotated outer shell */}
+              <div className={`absolute inset-0 rotate-45 border-2 rounded transition-all duration-300 ${
+                nodes.hitl.isCompleted ? 'bg-success border-success text-white shadow-success/15' :
+                nodes.hitl.isFailed ? 'bg-danger border-danger text-white shadow-danger/15' :
+                nodes.hitl.isActive ? 'bg-card border-warning ring-4 ring-warning/20 animate-pulse text-warning' :
+                'bg-card border-border text-muted-foreground'
+              }`} />
+              {/* Unrotated core content */}
+              <div className={`relative z-10 flex items-center justify-center ${
+                nodes.hitl.isCompleted || nodes.hitl.isFailed ? 'text-white' : (nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground')
+              }`}>
+                {nodes.hitl.isCompleted ? <Check size={18} className="stroke-[3px]" /> :
+                 nodes.hitl.isFailed ? <X size={18} className="stroke-[3px]" /> :
+                 <UserCheck size={18} />}
+              </div>
+            </div>
+            <span className={`text-[9px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-warning' : 'text-muted-foreground'}`}>
+              EM Decision
+            </span>
+            {activeTooltip === 'hitl' && (
+              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                <p className="font-bold text-foreground mb-1">Manager Decision Gate (HITL)</p>
+                {nodes.hitl.desc}
+              </div>
+            )}
+          </div>
+
+          {/* EXPORTS TERMINAL NODE */}
+          <div 
+            className="absolute left-[850px] top-[110px] w-[100px] h-[60px] flex items-center justify-center z-10"
+            onMouseEnter={() => setActiveTooltip('export')}
+            onMouseLeave={() => setActiveTooltip(null)}
+          >
+            <div className={getStyleClasses(nodes.export, 'rect')}>
+              <Wrench size={15} className="mr-1.5 shrink-0" />
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] font-bold truncate leading-tight">Export</span>
+                <span className="text-[8px] opacity-75 truncate leading-tight">
+                  {pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'Completed' : 'Sync outputs'}
+                </span>
+              </div>
+            </div>
+            {activeTooltip === 'export' && (
+              <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                <p className="font-bold text-foreground mb-1">Finalize & Export Node</p>
+                {nodes.export.desc}
+              </div>
+            )}
+          </div>
+
+          {/* TOOL LAYER DESTINATIONS (Bottom Right) */}
+          {[
+            { id: 'sheet', icon: <FileText size={14} />, left: '810px', top: '210px', label: 'Sheets', color: 'text-success border-success/40 bg-success/10' },
+            { id: 'jira', icon: <Cpu size={14} />, left: '850px', top: '210px', label: 'Jira', color: 'text-sky-500 border-sky-500/40 bg-sky-500/10' },
+            { id: 'slack', icon: <MessageSquare size={14} />, left: '890px', top: '210px', label: 'Slack', color: 'text-indigo-500 border-indigo-500/40 bg-indigo-500/10' },
+            { id: 'db', icon: <Database size={14} />, left: '930px', top: '210px', label: 'Redis', color: 'text-purple-500 border-purple-500/40 bg-purple-500/10' }
+          ].map(tool => {
+            const active = pipelineStatus === PIPELINE_STATUS.EXPORTING;
+            const complete = pipelineStatus === PIPELINE_STATUS.EXPORTED;
+
+            let cardClass = `p-1.5 rounded border transition-all duration-300 cursor-help ${tool.color} `;
+            if (complete) cardClass += "ring-2 ring-success/30 border-success shadow-success/10 bg-success/20";
+            else if (active) cardClass += "animate-pulse ring-2 ring-primary/20";
+            else cardClass += "grayscale-[40%] opacity-60";
+
+            return (
+              <div 
+                key={tool.id} 
+                className="absolute flex items-center justify-center z-10"
+                style={{ left: tool.left, top: tool.top }}
+                onMouseEnter={() => setActiveTooltip(tool.id)}
+                onMouseLeave={() => setActiveTooltip(null)}
+              >
+                <div className={cardClass}>
+                  {tool.icon}
+                </div>
+                {activeTooltip === tool.id && (
+                  <div className="absolute z-40 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 bg-background border border-border rounded-lg shadow-xl text-[10px] text-muted-foreground leading-normal">
+                    <p className="font-bold text-foreground mb-1">{tool.label} Integration</p>
+                    Pushes plan deliverables to organization-wide {tool.label} tools on HITL gate approval.
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+        </div>
       </div>
     </div>
   );
 };
-
