@@ -26,7 +26,7 @@ describe('IngestionLanding', () => {
   it('shows welcome banner when logged in and no file is selected', () => {
     render(<IngestionLanding {...defaultProps} isAuthenticated={true} selectedFile={null} />);
     expect(screen.getByText(/Next Step:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Drag and drop a BRD file on the left to generate/i)).toBeInTheDocument();
+    expect(screen.getByText(/Drag & drop a BRD file on the left panel to begin/i)).toBeInTheDocument();
   });
 
   it('does not show welcome banner when logged in but file is already selected', () => {

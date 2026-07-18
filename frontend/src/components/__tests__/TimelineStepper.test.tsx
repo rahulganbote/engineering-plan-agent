@@ -25,7 +25,7 @@ describe('TimelineStepper (Hub-and-Spoke)', () => {
     expect(screen.getByText('Security')).toBeInTheDocument();
     expect(screen.getByText('Orchestrator')).toBeInTheDocument();
     expect(screen.getByText('Critic Agent')).toBeInTheDocument();
-    expect(screen.getByText('HITL Decision')).toBeInTheDocument();
+    expect(screen.getByText('HITL Decision Gate')).toBeInTheDocument();
     expect(screen.getByText('Export')).toBeInTheDocument();
 
     // Specialist satellite nodes

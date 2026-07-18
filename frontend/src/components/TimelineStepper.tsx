@@ -438,7 +438,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 <Upload size={16} className="mr-2 shrink-0" />
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">BRD Ingestion</span>
-                  <span className="text-[7.5px] opacity-75 leading-tight">Upload</span>
+                  <span className="text-[8.5px] opacity-75 leading-tight">Upload</span>
                 </div>
               </div>
             </div>
@@ -455,7 +455,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 <Shield size={16} className="mr-2 shrink-0" />
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">Security</span>
-                  <span className="text-[7.5px] leading-tight">Validator</span>
+                  <span className="text-[8.5px] leading-tight">Validator</span>
                 </div>
               </div>
             </div>
@@ -478,7 +478,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 )}
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">Orchestrator</span>
-                  <span className="text-[7.5px] leading-tight">Agent (Hub)</span>
+                  <span className="text-[8.5px] leading-tight">Agent (Hub)</span>
                 </div>
               </div>
             </div>
@@ -558,7 +558,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                     )}
                     <div className="flex flex-col items-start leading-tight">
                       <span className="text-[10px] font-bold truncate">{spec.label}</span>
-                      <span className="text-[7px] opacity-70 uppercase tracking-wider">Agent</span>
+                      <span className="text-[8px] tracking-wider">Specialist</span>
                     </div>
                   </div>
                 </div>
@@ -620,7 +620,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 )}
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">Critic Agent</span>
-                  <span className="text-[7.5px] opacity-75 leading-tight">Evaluation</span>
+                  <span className="text-[8.5px] opacity-75 leading-tight">Evaluation</span>
                 </div>
               </div>
             </div>
@@ -648,8 +648,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                       <UserCheck size={18} />}
                 </div>
               </div>
-              <span className={`text-[8.5px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground'}`}>
-                HITL Decision
+              <span className={`text-[10px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground'}`}>
+                HITL Decision Gate
               </span>
             </div>
           </foreignObject>
@@ -665,7 +665,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 <Wrench size={16} className="mr-2 shrink-0" />
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">Export</span>
-                  <span className="text-[7.5px] opacity-75 leading-tight">
+                  <span className="text-[8.5px] opacity-75 leading-tight">
                     {pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'Completed' : 'Sync outputs'}
                   </span>
                 </div>
