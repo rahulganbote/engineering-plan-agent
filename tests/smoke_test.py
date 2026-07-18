@@ -146,11 +146,11 @@ def _():
     assert settings.max_critic_revisions == expected
 
 
-@test("Config: pipeline_timeout_sec is 300", group="config")
+@test("Config: pipeline_timeout_sec is 600", group="config")
 def _():
     from src.core.config import settings
 
-    assert settings.pipeline_timeout_sec == 300
+    assert settings.pipeline_timeout_sec == 600
 
 
 # ════════════════════════════════════════════════════════════════════════════════

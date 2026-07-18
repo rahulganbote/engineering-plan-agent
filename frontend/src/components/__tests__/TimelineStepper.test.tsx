@@ -29,16 +29,16 @@ describe('TimelineStepper (Hub-and-Spoke)', () => {
     expect(screen.getByText('Export')).toBeInTheDocument();
 
     // Specialist satellite nodes
-    expect(screen.getByText('Plan')).toBeInTheDocument();
-    expect(screen.getByText('Schedule')).toBeInTheDocument();
-    expect(screen.getByText('PoC')).toBeInTheDocument();
-    expect(screen.getByText('Tech Stack')).toBeInTheDocument();
-    expect(screen.getByText('Architect')).toBeInTheDocument();
+    expect(screen.getByText('Plan Agent')).toBeInTheDocument();
+    expect(screen.getByText('Schedule Agent')).toBeInTheDocument();
+    expect(screen.getByText('PoC Agent')).toBeInTheDocument();
+    expect(screen.getByText('Tech Stack Agent')).toBeInTheDocument();
+    expect(screen.getByText('Architect Agent')).toBeInTheDocument();
   });
 
   it('reflects collapsed summary mode when isCollapsed is true', () => {
     render(<TimelineStepper {...baseProps} isCollapsed={true} pipelineStatus={PIPELINE_STATUS.AWAITING_HITL} />);
-    expect(screen.getByText(/Awaiting Engineering Manager Decision/i)).toBeInTheDocument();
+    expect(screen.getByText(/Awaiting your Decision/i)).toBeInTheDocument();
     expect(screen.queryByText('Security')).not.toBeInTheDocument(); // should hide the full map diagram
   });
 });
