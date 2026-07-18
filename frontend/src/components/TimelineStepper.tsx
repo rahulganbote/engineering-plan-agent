@@ -22,7 +22,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   pipelineStatus,
   completedAgents,
   artifacts: _artifacts,
-  criticOutput,
+  // Retained on props for API compatibility with AgentWorkspace; no longer rendered
+  // in-banner after the Critic Score pill was replaced with the Scroll-to-Decision-Gate button.
+  criticOutput: _criticOutput,
   logs,
   isCollapsed = false,
   onToggleCollapse,
@@ -81,7 +83,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
 
     if (IS_PARALLEL_PHASE) {
       if (completedAgents.has(agentKey)) return 'completed';
-      
+
       // Check if any failures occurred
       const hasFailed = logs.some(l => l.type === 'agent_failed' && (l.agent === agentKey || l.payload?.agent === agentKey));
       if (hasFailed) return 'failed';
@@ -90,22 +92,44 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       return 'running';
     }
 
-    return 'completed';
+    // Post-parallel states — specialists have finished by the time we hit these.
+    const PAST_PARALLEL: string[] = [
+      PIPELINE_STATUS.EVALUATING,
+      PIPELINE_STATUS.REVISING,
+      PIPELINE_STATUS.AWAITING_HITL,
+      PIPELINE_STATUS.EXPORTING,
+      PIPELINE_STATUS.EXPORTED,
+      PIPELINE_STATUS.REJECTED,
+      PIPELINE_STATUS.EXPORT_FAILED,
+    ];
+    if (PAST_PARALLEL.includes(pipelineStatus)) return 'completed';
+
+    // Pre-parallel states (INITIALIZING, STARTED, SECURITY_CHECK, ORCHESTRATOR_PARSING,
+    // CANCELED, ERROR): specialists haven't started yet — do NOT mark them completed.
+    return 'pending';
   };
 
   const nodes = {
     upload: {
       label: 'BRD Ingestion',
       desc: 'Ingests PDF, DOCX, or TXT Business Requirements Documents to initiate the planning pipeline.',
-      isActive: pipelineStatus === PIPELINE_STATUS.IDLE,
-      isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE,
+      // Active only while the file is actually being ingested (post-click transient states).
+      // IDLE = user hasn't started yet, so BRD Ingestion is neither active nor complete.
+      isActive: pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED,
+      isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE
+        && pipelineStatus !== PIPELINE_STATUS.INITIALIZING
+        && pipelineStatus !== PIPELINE_STATUS.STARTED,
       isFailed: false,
     },
     security: {
       label: 'Security Validator',
       desc: 'Performs file size check, BRD validity check, prompt injection assessment, and filters/redacts PII patterns.',
-      isActive: pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK || pipelineStatus === PIPELINE_STATUS.INITIALIZING || pipelineStatus === PIPELINE_STATUS.STARTED,
-      isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.SECURITY_CHECK && pipelineStatus !== PIPELINE_STATUS.INITIALIZING && pipelineStatus !== PIPELINE_STATUS.STARTED,
+      // Only active during SECURITY_CHECK — BRD Ingestion owns INITIALIZING/STARTED now.
+      isActive: pipelineStatus === PIPELINE_STATUS.SECURITY_CHECK,
+      isCompleted: pipelineStatus !== PIPELINE_STATUS.IDLE
+        && pipelineStatus !== PIPELINE_STATUS.INITIALIZING
+        && pipelineStatus !== PIPELINE_STATUS.STARTED
+        && pipelineStatus !== PIPELINE_STATUS.SECURITY_CHECK,
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'security_complete'),
     },
     orchestrator: {
@@ -138,81 +162,96 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     }
   };
 
-  const getStyleClasses = (nodeState: { isActive: boolean; isCompleted: boolean; isFailed: boolean }, shape: 'circle' | 'diamond' | 'rect' = 'circle') => {
-    let base = "transition-all duration-300 border-2 flex items-center justify-center text-xs font-bold shadow-md cursor-help ";
-    if (shape === 'circle') base += "rounded-full w-12 h-12 ";
-    else if (shape === 'rect') base += "rounded-full w-32 h-12 ";
-    else base += "w-11 h-11 ";
+  const getStyleClasses = (nodeState: { isActive: boolean; isCompleted: boolean; isFailed: boolean }, shape: 'circle' | 'diamond' | 'rect' = 'circle') => { 
+    let base = "transition-all duration-300 border-2 flex items-center justify-center text-xs font-bold shadow-md cursor-help "; 
+    if (shape === 'circle') base += "rounded-full w-12 h-12 "; 
+    else if (shape === 'rect') base += "rounded-full w-32 h-12 "; 
+    else base += "w-11 h-11 "; 
+    if (nodeState.isCompleted) { return base + "bg-success border-success text-white shadow-success/20"; } 
+    if (nodeState.isFailed) { return base + "bg-danger border-danger text-white shadow-danger/20"; } 
+    if (nodeState.isActive) { 
+      // animate-pulse dips element opacity to 0.5 which revealed the SVG connector
+      // lines behind the pill body — visual bug. The Loader2 spinner inside the pill
+      // already signals "in progress"; the ring + indigo border + shadow do the rest. 
+      return base + "bg-card border-primary text-primary ring-4 ring-primary/20 shadow-primary/20"; 
+    } 
+    return base + "bg-card border-border text-muted-foreground"; 
+  }; 
 
-    if (nodeState.isCompleted) {
-      return base + "bg-success border-success text-white shadow-success/20";
-    }
-    if (nodeState.isFailed) {
-      return base + "bg-danger border-danger text-white shadow-danger/20";
-    }
-    if (nodeState.isActive) {
-      return base + "bg-card border-primary text-primary ring-4 ring-primary/20 animate-pulse shadow-primary/20";
-    }
-    return base + "bg-card border-border text-muted-foreground";
-  };
+  const showRagLines = pipelineStatus === PIPELINE_STATUS.DRAFTING || pipelineStatus === PIPELINE_STATUS.ALIGNING; 
+  const isSyncing = pipelineStatus === PIPELINE_STATUS.EXPORTING || pipelineStatus === PIPELINE_STATUS.EXPORTED; 
 
-  const showRagLines = pipelineStatus === PIPELINE_STATUS.DRAFTING || pipelineStatus === PIPELINE_STATUS.ALIGNING;
-  const isSyncing = pipelineStatus === PIPELINE_STATUS.EXPORTING || pipelineStatus === PIPELINE_STATUS.EXPORTED;
+  if (isCollapsed) { 
+    let summaryText = 'System Idle'; 
+    let statusColor = 'text-muted-foreground'; 
+    if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) { 
+      summaryText = 'Awaiting your Decision'; 
+      statusColor = 'text-warning-strong font-semibold animate-pulse'; 
+    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTING) { 
+      summaryText = 'Syncing to Jira...'; 
+      statusColor = 'text-primary font-bold'; 
+    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTED) { 
+      summaryText = 'Successfully Exported to Jira'; 
+      statusColor = 'text-success font-extrabold'; 
+    } else if (pipelineStatus === PIPELINE_STATUS.REJECTED) { 
+      summaryText = 'Plan Rejected (Revision Loop Triggered)'; 
+      statusColor = 'text-danger font-bold'; 
+    } else if (pipelineStatus === PIPELINE_STATUS.ERROR) { 
+      summaryText = 'Pipeline Error Encountered'; 
+      statusColor = 'text-danger font-bold'; 
+    } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) { 
+      summaryText = `Executing: ${pipelineStatus.replace(/_/g, ' ')}`; 
+      statusColor = 'text-primary font-bold'; 
+    } 
 
-  if (isCollapsed) {
-    let summaryText = 'System Idle';
-    let statusColor = 'text-muted-foreground';
-
-    if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) {
-      summaryText = 'Awaiting Engineering Manager Decision';
-      statusColor = 'text-warning font-extrabold animate-pulse';
-    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTING) {
-      summaryText = 'Syncing to Jira...';
-      statusColor = 'text-primary font-bold';
-    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTED) {
-      summaryText = 'Successfully Exported to Jira';
-      statusColor = 'text-success font-extrabold';
-    } else if (pipelineStatus === PIPELINE_STATUS.REJECTED) {
-      summaryText = 'Plan Rejected (Revision Loop Triggered)';
-      statusColor = 'text-danger font-bold';
-    } else if (pipelineStatus === PIPELINE_STATUS.ERROR) {
-      summaryText = 'Pipeline Error Encountered';
-      statusColor = 'text-danger font-bold';
-    } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
-      summaryText = `Executing: ${pipelineStatus.replace(/_/g, ' ')}`;
-      statusColor = 'text-primary font-bold';
-    }
-
-    return (
-      <div className="w-full bg-card border border-border rounded-xl px-4 py-2.5 shadow-md flex items-center justify-between text-xs transition-all duration-300">
-        <div className="flex items-center gap-3">
-          <span className="flex h-2 w-2 relative">
-            {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+    return ( 
+      <div className="w-full bg-card border border-border rounded-xl px-4 py-2.5 shadow-md flex items-center justify-between text-xs transition-all duration-300"> 
+        <div className="flex items-center gap-3"> 
+          
+          {/* Core Text Label Block */}
+          <span className="text-xs font-black text-primary uppercase tracking-wider inline-flex items-center gap-2"> 
+            Workflow: <span className={statusColor}>{summaryText}</span> 
+            
+            {/* Anchored Pulsing Dot - Now paired natively right next to the active status label */}
+            {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && ( 
+              <span className="flex h-2 w-2 relative shrink-0"> 
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span> 
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${ 
+                  pipelineStatus === PIPELINE_STATUS.ERROR ? 'bg-danger' : 
+                  pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'bg-warning' : 'bg-primary' 
+                }`}></span>  
+              </span> 
             )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success' :
-              pipelineStatus === PIPELINE_STATUS.REJECTED || pipelineStatus === PIPELINE_STATUS.ERROR ? 'bg-danger' :
-                pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'bg-warning' : 'bg-primary'
-              }`}></span>
-          </span>
-          <span className="font-semibold text-foreground">
-            Workflow: <span className={statusColor}>{summaryText}</span>
-          </span>
-          {criticOutput && (
-            <span className="hidden md:inline-block bg-[#f0f7ff] dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/40 px-2 py-0.5 rounded text-[10px] font-mono">
-              Critic Score: {criticOutput.overallScore.toFixed(1)}/5.0
-            </span>
-          )}
-        </div>
-        <button
-          onClick={onToggleCollapse}
-          className="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-hover px-2 py-1 rounded hover:bg-secondary/40 transition-colors"
-        >
-          Show Workflow Map <ChevronDown size={14} />
-        </button>
-      </div>
-    );
+          </span> 
+
+          {/* Core Layout Execution Button */}
+          {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && ( 
+            <button 
+              type="button" 
+              onClick={(e) => { 
+                e.preventDefault(); 
+                const el = document.getElementById('decision-gate'); 
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+              }} 
+              className="px-2.5 py-1 bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-semibold rounded transition shadow-sm hover:shadow-md shrink-0 cursor-pointer" 
+            > 
+              Scroll to Decision Gate 
+            </button> 
+          )} 
+        </div> 
+
+        {/* Since this whole parent block only mounts when isCollapsed is true, the string remains static */}
+        <button 
+          onClick={onToggleCollapse} 
+          className="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-hover px-2 py-1 rounded hover:bg-secondary/40 transition-colors cursor-pointer" 
+        > 
+          <span>Show Workflow Map</span> 
+          <ChevronDown size={14} /> 
+        </button> 
+      </div> 
+    ); 
   }
+
 
   return (
     <div
@@ -220,7 +259,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       className="w-full bg-card border border-border rounded-xl p-4 shadow-lg relative transition-all duration-300 select-none"
     >
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">{title || "Agentic Workflow Progress"}</h3>
+        <h3 className="text-xs font-black text-primary uppercase tracking-wider">{title || "Agentic Workflow Progress"}</h3>
         <div className="flex items-center gap-2">
           {onToggleCollapse && (
             <button
@@ -432,6 +471,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               <div className={getStyleClasses(nodes.orchestrator, 'rect')}>
                 {nodes.orchestrator.isActive ? (
                   <Loader2 size={16} className="animate-spin mr-2" />
+                ) : nodes.orchestrator.isCompleted ? (
+                  <Check size={16} className="mr-2 stroke-[3px]" />
                 ) : (
                   <Cpu size={16} className="mr-2" />
                 )}
@@ -487,7 +528,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             { id: 'arch', key: 'solution_architect', label: 'Architect Agent', emoji: '🏗️', x: 300, y: 15, w: 130 }
           ].map(spec => {
             const specStatus = getDetailedStatus(spec.key);
-            const isComp = specStatus === 'completed' || nodes.critic.isCompleted;
+            // Redundant `|| nodes.critic.isCompleted` fallback removed — getDetailedStatus
+            // now correctly returns 'completed' for all post-parallel states.
+            const isComp = specStatus === 'completed';
             const isActive = specStatus === 'running';
             const isFail = specStatus === 'failed';
             const width = spec.w || 110;
@@ -508,6 +551,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   <div className={nodeClass}>
                     {isActive ? (
                       <Loader2 size={11} className="animate-spin shrink-0 text-primary" />
+                    ) : isComp ? (
+                      <Check size={11} className="shrink-0 stroke-[3px] text-success" />
                     ) : (
                       <span className="text-[11px] select-none shrink-0">{spec.emoji}</span>
                     )}
@@ -541,8 +586,10 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   );
                 }
                 if (revisionCount > 0) {
+                  // bg-card (opaque) prevents the SVG connector line from bleeding
+                  // through the badge; primary color signal stays via border + text.
                   return (
-                    <div className="w-8 h-8 rounded-full border border-primary/30 bg-primary/5 flex items-center justify-center shadow-sm text-primary text-[8.5px] font-extrabold font-mono">
+                    <div className="w-8 h-8 rounded-full border border-primary/40 bg-card flex items-center justify-center shadow-sm text-primary text-[8.5px] font-extrabold font-mono">
                       R{revisionCount}
                     </div>
                   );
@@ -566,6 +613,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               <div className={getStyleClasses(nodes.critic, 'rect')}>
                 {nodes.critic.isActive ? (
                   <Loader2 size={16} className="animate-spin mr-2" />
+                ) : nodes.critic.isCompleted ? (
+                  <Check size={16} className="mr-2 stroke-[3px]" />
                 ) : (
                   <GitPullRequest size={16} className="mr-2" />
                 )}

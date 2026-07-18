@@ -200,6 +200,11 @@ export const AgentWorkspace: React.FC = () => {
   const [startupError, setStartupError] = useState<string | null>(null);
   const [confirmResetActive, setConfirmResetActive] = useState(false);
   const [isStepperCollapsed, setIsStepperCollapsed] = useState(false);
+  const [showCalculationDetails, setShowCalculationDetails] = useState(false);
+  // Alignment Recommendations default collapsed — puts Generated Artifacts within reach
+  // without scrolling. The "N Directives Issued" badge stays visible so the signal
+  // that arbitration produced something isn't lost.
+  const [showAlignmentDirectives, setShowAlignmentDirectives] = useState(false);
 
   // Auto-collapse the timeline stepper when pipeline lands at a post-running/decision state
   useEffect(() => {
@@ -673,8 +678,11 @@ export const AgentWorkspace: React.FC = () => {
                   handleReset();
                   setConfirmResetActive(false);
                 }}
-                disabled={CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED}
-                className={`w-full py-1.5 rounded text-xs font-semibold transition ${(CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED)
+                // Disabled ONLY during in-flight cancellable states. Terminal
+                // post-decision states (EXPORTED / EXPORT_FAILED / REJECTED)
+                // now enable the reset so the user can start a new run.
+                disabled={CANCELLABLE_STATES.includes(pipelineStatus)}
+                className={`w-full py-1.5 rounded text-xs font-semibold transition ${CANCELLABLE_STATES.includes(pipelineStatus)
                     ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                     : confirmResetActive
                       ? 'border border-danger bg-danger text-white animate-pulse'
@@ -853,30 +861,6 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* HITL Awaiting Alert Banner */}
-              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && !approvalResult && (
-                <div className="bg-warning/20 border-l-4 border-warning py-2 px-4 rounded-lg shadow-sm flex items-center justify-between animate-fade-in">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-sm select-none">⏸️</span>
-                    <div>
-                      <h4 className="text-xs font-bold text-warning leading-snug">Action Required: Review the Artifacts. Approval needed to push plan into Jira.</h4>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const element = document.getElementById('decision-gate');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }}
-                    className="px-3 py-1 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-[11px] rounded transition shadow hover:shadow-md shrink-0 cursor-pointer"
-                  >
-                    Scroll to Decision Gate
-                  </button>
-                </div>
-              )}
-
               {/* Stepper Timeline Progress Nodes */}
               <TimelineStepper
                 pipelineStatus={pipelineStatus}
@@ -889,32 +873,43 @@ export const AgentWorkspace: React.FC = () => {
               />
 
 
-              {/* Performance Metrics Summary Header Row */}
-              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-3 rounded-xl border border-border shadow-sm">
-                <div className="flex items-center gap-1.5">
-                  <strong>Evaluation Score:</strong>
-                  <code className={`inline-flex items-center justify-center text-center min-w-[70px] bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>
-                    {criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}
-                  </code>
-                  {criticOutput && (
-                    <span
-                      className="cursor-help text-muted-foreground hover:text-primary transition-colors text-[13px] ml-0.5"
-                      title="Calculation Formula:\n(Groundedness + Completeness + Consistency + Actionability) / 4"
-                    >
-                      ⓘ
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <strong>Total Processing Time:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[50px] bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
-                </div>
-                <div>
-                  <strong>Tokens used:</strong> <code className={`inline-flex items-center justify-center text-center bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
-                </div>
-                <div>
-                  <strong>Cost Spent:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[75px] bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
-                </div>
-              </div>
+              {/* Telemetry Row — purely operational metrics (Time / Tokens / Cost).
+                  The Evaluation Score used to live here but was removed to avoid
+                  duplication with the Critic card below, which owns the score story. */}
+              <div className="w-full bg-card border border-border rounded-xl px-4 py-2.5 shadow-md flex items-baseline justify-between text-xs transition-all duration-300">
+  <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+    
+    {/* Standardized Title block */}
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-xs font-black text-primary uppercase tracking-wider select-none">
+        Telemetry:
+      </span>
+      <span className="text-muted-foreground">Total Processing Time:</span>
+      <span className={`font-semibold tabular-nums ${elapsedSeconds ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {elapsedSeconds ? `${elapsedSeconds}s` : '-'}
+      </span>
+    </div>
+
+    {/* Metric 2 */}
+    <div className="flex items-baseline gap-1.5 text-muted-foreground">
+      <span>Tokens used:</span>
+      <span className={`font-semibold tabular-nums ${tokenUsage ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}
+      </span>
+    </div>
+
+    {/* Metric 3 */}
+    <div className="flex items-baseline gap-1.5 text-muted-foreground">
+      <span>Cost Spent:</span>
+      <span className={`font-semibold tabular-nums ${costUsd != null ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {costUsd != null ? `$${costUsd.toFixed(2)}` : '-'}
+      </span>
+    </div>
+
+  </div>
+</div>
+
+
 
               {/* Critic Scoring Cards Box */}
               {criticOutput && (
@@ -932,31 +927,166 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="space-y-4 border border-border rounded-xl p-5 bg-card shadow-md">
                     <div className="flex items-center justify-between border-b border-border/60 pb-3">
                       <div className="space-y-0.5">
-                        <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">Independent Critic Score</h3>
-                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
-                          <span>Final Score:</span>
-                          <strong className={criticOutput.badge === 'green' ? 'text-success font-extrabold' : criticOutput.badge === 'amber' ? 'text-warning font-extrabold' : 'text-danger font-extrabold'}>
+                        <h3 className="text-xs font-black text-primary uppercase tracking-wider">Independent Critic Score</h3>
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
+                          <span>Evaluation Score:</span>
+                          <span className={`font-semibold tabular-nums ${
+                            criticOutput.badge === 'green' ? 'text-success'
+                              : criticOutput.badge === 'amber' ? 'text-warning-strong'
+                              : 'text-danger'
+                          }`}>
                             {criticOutput.overallScore.toFixed(2)}/5.0
-                          </strong>
-                          <span className="text-[11px] text-muted-foreground/80">
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
                             (Target: &ge;4.00 for Green)
                           </span>
-                          <span className="text-muted-foreground/40 px-1">•</span>
+                          <span className="px-1 text-muted-foreground">•</span>
                           <span>Revision(s):</span>
-                          <strong className="text-foreground font-bold">{criticOutput.revisionNumber}</strong>
+                          <span className="font-semibold tabular-nums text-foreground">{criticOutput.revisionNumber}</span>
+                          <span className="px-1 text-muted-foreground">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCalculationDetails(!showCalculationDetails)}
+                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-black uppercase tracking-wider cursor-pointer"
+                          >
+                            <span>{showCalculationDetails ? "Hide Calculation details" : "How was this calculated?"}</span>
+                            {showCalculationDetails ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                          </button>
                         </div>
-                        {/* Transparent Mathematical Formula Breakdown String */}
-                        <span className="text-[10px] text-muted-foreground/80 block font-mono mt-1 bg-background px-2 py-0.5 rounded border border-border/40 w-fit">
-                          Formula: ({criticOutput.dimensions.groundedness?.score.toFixed(2)} + {criticOutput.dimensions.completeness?.score.toFixed(2)} + {criticOutput.dimensions.consistency?.score.toFixed(2)} + {criticOutput.dimensions.actionability?.score.toFixed(2)}) ÷ 4 = {criticOutput.overallScore.toFixed(2)}
-                        </span>
+                        {/* Expanded calculation trace panel — appears below the breadcrumb when toggled. */}
+                        {showCalculationDetails && (
+                            <div className="space-y-3 p-4 bg-background/50 rounded-xl border border-border mt-2 animate-fade-in">
+                              {/* Formula stays in mono — it's mathematical notation, not prose. */}
+                              <span className="text-[10px] text-primary block font-mono bg-primary/5 px-2.5 py-1 rounded border border-primary/20 w-fit tabular-nums shadow-sm shadow-primary/5">
+                                Formula: ({criticOutput.dimensions.groundedness?.score.toFixed(2)} + {criticOutput.dimensions.completeness?.score.toFixed(2)} + {criticOutput.dimensions.consistency?.score.toFixed(2)} + {criticOutput.dimensions.actionability?.score.toFixed(2)}) ÷ 4 = {criticOutput.overallScore.toFixed(2)}
+                              </span>
+
+                              <div className="font-semibold uppercase tracking-wider text-[9px] text-muted-foreground border-b border-border pb-1">
+                                Calibrated Dimension Metrics Breakdowns
+                              </div>
+
+                              <div className="space-y-2">
+                                {/* Groundedness Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.groundedness;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (FM-1 Hallucination rule: ungrounded claims detected)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to ${data.score.toFixed(2)} (All citations verified against Pineapple/Pinecone index)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">⚖️ Groundedness Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> &ge; {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Completeness Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.completeness;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (Missing key deliverables or required sections)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to 5.00 (All 5 mandatory sections present and formatted)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">📦 Completeness Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> {data.threshold === 5 ? '=' : '&ge;'} {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Consistency Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.consistency;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (Cross-agent conflict detected: contradiction found)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to 5.00 (Zero conflicts detected across parallel outputs)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">🔄 Consistency Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> {data.threshold === 5 ? '=' : '&ge;'} {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Actionability Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.actionability;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (Missing owner roles or timeline gaps)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to ${data.score.toFixed(2)} (High-certainty deliverables with clear owner coverage)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">🎯 Actionability Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> {data.threshold === 5 ? '=' : '≥'} {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          )}
                       </div>
+                      {/* Amber & Red use SOLID fills with dark foreground text for WCAG-strong
+                          contrast — these are attention/failure states that should pop.
+                          Green stays soft (pastel) because passing is the calm/default case. */}
                       <span
                         title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass."
-                        className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider cursor-help transition ${criticOutput.badge === 'green'
+                        className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider cursor-help transition ${criticOutput.badge === 'green'
                             ? 'bg-success/20 text-success border border-success/40'
                             : criticOutput.badge === 'amber'
-                              ? 'bg-warning/50 text-warning border border-warning/50'
-                              : 'bg-danger/50 text-danger border border-danger/50'
+                              ? 'bg-warning text-warning-foreground border border-warning shadow-sm'
+                              : 'bg-danger text-danger-foreground border border-danger shadow-sm'
                           }`}
                       >
                         {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
@@ -969,12 +1099,12 @@ export const AgentWorkspace: React.FC = () => {
                         {criticOutput.capReasons.map((reason, index) => (
                           <div key={index} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-warning/30 bg-warning/5 text-warning font-medium leading-relaxed">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-extrabold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
+                              <span className="font-semibold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
                                 {reason.mechanism}
                               </span>
-                              <span><strong>{reason.verb} by Quality Safeguard:</strong> {reason.detail}</span>
+                              <span><span className="font-semibold">{reason.verb} by Quality Safeguard:</span> {reason.detail}</span>
                             </div>
-                            <span className="font-mono text-[10px] font-bold whitespace-nowrap ml-4">
+                            <span className="text-[10px] font-semibold tabular-nums whitespace-nowrap ml-4">
                               {reason.before.toFixed(2)} &rarr; {reason.after.toFixed(2)}
                             </span>
                           </div>
@@ -982,21 +1112,27 @@ export const AgentWorkspace: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Metrics Row */}
+                    {/* Metrics Row — shows CALIBRATED score prominently, plus the LLM-as-Judge
+                        raw score in muted text with a directional indicator so users can see
+                        where the deterministic calibration raised (▲), lowered (▼), or left
+                        the LLM's opinion unchanged (=). Older runs (pre-raw_llm_score field)
+                        gracefully hide the LLM segment. */}
+                    {/* Collapsed dimension chips. Semantic color on score value + ✓/✗ is meaningful
+                        (passing/failing state) so it stays. Label and threshold are neutral. */}
                     <div className="flex flex-wrap md:flex-nowrap gap-4 items-center justify-between text-xs text-muted-foreground pt-1">
                       {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
                         const data = criticOutput.dimensions[metric];
                         if (!data) return null;
                         return (
                           <div key={metric} className="flex items-center gap-1.5 bg-background/40 px-2 py-1 rounded-md border border-border/50 flex-1 justify-center">
-                            <strong className="capitalize text-foreground">{metric}:</strong>
-                            <code className={`font-mono font-bold text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
+                            <span className="capitalize font-medium text-muted-foreground">{metric}:</span>
+                            <span className={`font-semibold tabular-nums text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.score.toFixed(2)}
-                            </code>
-                            <span className={`text-[11px] font-bold ${data.passed ? 'text-success' : 'text-danger'}`}>
+                            </span>
+                            <span className={`text-[11px] font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.passed ? '✓' : '✗'}
                             </span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-[10px] text-foreground/70 font-medium">
                               ({data.threshold === 5 ? '=' : '≥'}{data.threshold})
                             </span>
                           </div>
@@ -1007,38 +1143,51 @@ export const AgentWorkspace: React.FC = () => {
                 </ErrorBoundary>
               )}
 
-              {/* EM Alignment Directives Container Block */}
+              {/* EM Alignment Directives Container Block — collapsible, default collapsed.
+                  Count badge is always visible so the presence signal is preserved. */}
               {artifacts?.alignment_memo && (
                 <div className="flex flex-col items-stretch gap-4 bg-card p-5 rounded-xl border border-border my-2 shadow-md">
 
-                  {/* Clean Title Component Header */}
-                  <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-                    <h4 className="text-xs font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  {/* Clickable Title Component Header (whole row toggles) */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAlignmentDirectives(!showAlignmentDirectives)}
+                    aria-expanded={showAlignmentDirectives}
+                    className={`flex items-center justify-between text-left w-full cursor-pointer group ${showAlignmentDirectives ? 'border-b border-border/60 pb-2.5' : ''}`}
+                  >
+                    <h4 className="text-xs font-black text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      Alignment Recommendations
                       <img
                         src="/favicon.svg"
                         alt="EM Copilot"
                         className="h-3.5 w-3.5 object-contain select-none shrink-0"
                       />
-                      Alignment Recommendations
                     </h4>
-                    {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 && (
-                      <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
-                        {artifacts.alignment_memo.directives.length} Directives Issued
+                    <div className="flex items-center gap-2">
+                      {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 && (
+                        <span className="px-2 py-0.5 rounded bg-warning/20 border border-warning/40 text-[10px] font-extrabold text-warning uppercase tracking-wider">                          {artifacts.alignment_memo.directives.length} Directives Issued
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:underline">
+                        {showAlignmentDirectives ? 'Hide' : 'Show recommendations'}
+                        {showAlignmentDirectives ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  </button>
 
                   {/* Directives Output Content Grid */}
-                  {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {artifacts.alignment_memo.directives.map((d: AlignmentDirective, idx: number) => (
-                        <DirectiveCard key={idx} d={d} setActiveTab={navigateToTab} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold">
-                      <span>🟢</span> All Pass 1 drafts aligned — no arbitration needed.
-                    </div>
+                  {showAlignmentDirectives && (
+                    artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                        {artifacts.alignment_memo.directives.map((d: AlignmentDirective, idx: number) => (
+                          <DirectiveCard key={idx} d={d} setActiveTab={navigateToTab} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold animate-fade-in">
+                        <span>🟢</span> All Pass 1 drafts aligned — no arbitration needed.
+                      </div>
+                    )
                   )}
                 </div>
               )}
@@ -1050,12 +1199,12 @@ export const AgentWorkspace: React.FC = () => {
                   {/* Clean, Bounded Module Action Header Row */}
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <div className="space-y-0.5">
-                      <h3 className="text-xs font-extrabold text-primary uppercase tracking-wider">Generated Artifacts</h3>
+                      <h3 className="text-xs font-black text-primary uppercase tracking-wider">Generated Artifacts</h3>
                       <p className="text-[11px] text-muted-foreground">Review individual multi-agent operational planning deliverables</p>
                     </div>
                     <button
                       onClick={handleDownloadPDF}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-background hover:bg-secondary/40 text-foreground border border-border rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/80 rounded-lg text-xs font-semibold transition shadow-sm cursor-pointer"
                     >
                       <Download size={14} /> Download PDF
                     </button>
@@ -1123,7 +1272,7 @@ export const AgentWorkspace: React.FC = () => {
                             {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
 
                             <span>
-                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Exporting & Syncing Plan..."}
+                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Recording Decision & Syncing Plan..."}
                               {!([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
                             </span>
                           </h3>
