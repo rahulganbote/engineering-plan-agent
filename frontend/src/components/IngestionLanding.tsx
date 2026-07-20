@@ -1,6 +1,5 @@
 import React from 'react';
-import { TimelineStepper } from './TimelineStepper';
-import { PIPELINE_STATUS } from '../lib/pipelineStatus';
+import { LandingWorkflow } from './LandingWorkflow';
 
 interface IngestionLandingProps {
   selectedFile: File | null;
@@ -42,15 +41,11 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         </div>
       )}
       */}
-      {/* System Architecture Diagram - full width, compact above-the-fold layout */}
-      <TimelineStepper
-        pipelineStatus={PIPELINE_STATUS.IDLE}
-        completedAgents={new Set()}
-        artifacts={null}
-        criticOutput={null}
-        logs={[]}
-        title="System Architecture"
-      />
+      {/* User-journey workflow diagram — story-first, non-technical audience.
+          The technical System Architecture diagram (was TimelineStepper) has
+          moved to the About page for engineers/technical evaluators who want
+          the plumbing view. */}
+      <LandingWorkflow title="How It Works" />
     </div>
   );
 };
