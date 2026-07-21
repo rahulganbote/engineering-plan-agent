@@ -74,6 +74,13 @@ class CriticAgent:
 
         # Step 2: LLM-as-Judge scoring
         scores = self._llm_judge_scoring(outputs_summary, state)
+        # Snapshot the raw LLM-judge scores BEFORE calibration overwrites them
+        # in Step 5. Surfaced on each DimensionScore.raw_llm_score so the UI can
+        # show users where deterministic calibration diverged from the LLM's
+        # opinion (raised, lowered, or unchanged).
+        raw_llm_scores: dict[str, float] = {
+            dim: float(scores.get(dim, 0.0)) for dim in ("groundedness", "completeness", "consistency", "actionability")
+        }
 
         # Step 3: Hallucination detection
         hallucination_flags = self._detect_hallucinations(state)
@@ -277,6 +284,7 @@ class CriticAgent:
             ],
             groundedness=DimensionScore(
                 score=scores["groundedness"],
+                raw_llm_score=raw_llm_scores["groundedness"],
                 threshold=THRESHOLDS["groundedness"],
                 passed=scores["groundedness"] >= THRESHOLDS["groundedness"],
                 evidence=scores.get("groundedness_evidence", ""),
@@ -284,6 +292,7 @@ class CriticAgent:
             ),
             completeness=DimensionScore(
                 score=scores["completeness"],
+                raw_llm_score=raw_llm_scores["completeness"],
                 threshold=THRESHOLDS["completeness"],
                 passed=scores["completeness"] >= THRESHOLDS["completeness"],
                 evidence=scores.get("completeness_evidence", ""),
@@ -291,6 +300,7 @@ class CriticAgent:
             ),
             consistency=DimensionScore(
                 score=scores["consistency"],
+                raw_llm_score=raw_llm_scores["consistency"],
                 threshold=THRESHOLDS["consistency"],
                 passed=scores["consistency"] >= THRESHOLDS["consistency"],
                 evidence=scores.get("consistency_evidence", ""),
@@ -298,6 +308,7 @@ class CriticAgent:
             ),
             actionability=DimensionScore(
                 score=scores["actionability"],
+                raw_llm_score=raw_llm_scores["actionability"],
                 threshold=THRESHOLDS["actionability"],
                 passed=scores["actionability"] >= THRESHOLDS["actionability"],
                 evidence=scores.get("actionability_evidence", ""),

@@ -38,7 +38,8 @@ export interface LogEvent {
 }
 
 export interface CriticDimension {
-  score: number;
+  score: number;                  // calibrated (final) score used for gating
+  raw_llm_score?: number | null;  // LLM-as-Judge raw score before deterministic calibration
   threshold: number;
   passed: boolean;
 }

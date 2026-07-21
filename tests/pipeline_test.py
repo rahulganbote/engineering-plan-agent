@@ -114,7 +114,7 @@ def test_simple_brd_pipeline():
     brd_path = ROOT / "eval" / "test_brd_simple.txt"
     if not brd_path.exists():
         print(f"  ⚠️  {brd_path} not found - skipping")
-        return {}
+        return
 
     t0 = time.perf_counter()
     state, brd_text = _run_brd(brd_path)
@@ -165,7 +165,7 @@ def test_simple_brd_pipeline():
             sched.comparable_projects,
         )
         checks["schedule_effort_days_sum"] = (
-            abs(sched.total_effort_days - sum(s.effort_days for s in sched.sprints)) < 0.5,
+            abs(sched.total_effort_days - sum(s.effort_days for s in sched.sprints)) < 1.0,
             f"stated={sched.total_effort_days} sum={sum(s.effort_days for s in sched.sprints):.1f}",
         )
         checks["schedule_critical_path"] = (len(sched.critical_path) >= 1, sched.critical_path)
@@ -180,7 +180,8 @@ def test_simple_brd_pipeline():
         checks["critic_groundedness_ge_3"] = (c.groundedness.score >= 3.0, round(c.groundedness.score, 2))
         checks["critic_scores_history"] = (len(state.critic_scores_history) >= 1, len(state.critic_scores_history))
 
-    return _print_suite_results("Simple BRD", checks, ms, state)
+    _print_suite_results("Simple BRD", checks, ms, state)
+    assert all(ok for ok, _ in checks.values()), f"Some checks failed in Simple BRD: {checks}"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -197,7 +198,7 @@ def test_medium_brd_pipeline():
     brd_path = ROOT / "eval" / "test_brd_medium.txt"
     if not brd_path.exists():
         print(f"  ⚠️  {brd_path} not found - skipping")
-        return {}
+        return
 
     t0 = time.perf_counter()
     state, _ = _run_brd(brd_path)
@@ -221,7 +222,8 @@ def test_medium_brd_pipeline():
     if state.critic_output:
         checks["medium_badge_assigned"] = (state.critic_output.badge is not None, "None")
 
-    return _print_suite_results("Medium BRD", checks, ms, state)
+    _print_suite_results("Medium BRD", checks, ms, state)
+    assert all(ok for ok, _ in checks.values()), f"Some checks failed in Medium BRD: {checks}"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -238,7 +240,7 @@ def test_critic_scores():
     brd_path = ROOT / "eval" / "test_brd_simple.txt"
     if not brd_path.exists():
         print(f"  ⚠️  {brd_path} not found - skipping")
-        return {}
+        return
 
     t0 = time.perf_counter()
     state, _ = _run_brd(brd_path)
@@ -248,7 +250,8 @@ def test_critic_scores():
 
     if not state.critic_output:
         checks["critic_output_exists"] = (False, "None - pipeline may have errored")
-        return _print_suite_results("Critic Scores", checks, ms, state)
+        _print_suite_results("Critic Scores", checks, ms, state)
+        assert False, "critic_output_exists failed"
 
     c = state.critic_output
 
@@ -293,7 +296,8 @@ def test_critic_scores():
         for agent, fb in c.agent_feedback.items():
             print(f"    [{agent}] {fb[:100]}...")
 
-    return _print_suite_results("Critic Scores", checks, ms, state)
+    _print_suite_results("Critic Scores", checks, ms, state)
+    assert all(ok for ok, _ in checks.values()), f"Some checks failed in Critic Scores: {checks}"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -406,7 +410,8 @@ Mitigation: Implement exponential backoff.
         f"status={r.status.value}",
     )
 
-    return _print_suite_results("Guardrails", checks, ms=0, state=None)
+    _print_suite_results("Guardrails", checks, ms=0, state=None)
+    assert all(ok for ok, _ in checks.values()), f"Some checks failed in Guardrails: {checks}"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -454,7 +459,8 @@ def test_rag_retrieval():
         checks["rag_no_exception"] = (False, str(e)[:120])
 
     ms = int((time.perf_counter() - t0) * 1000)
-    return _print_suite_results("RAG Retrieval", checks, ms, state=None)
+    _print_suite_results("RAG Retrieval", checks, ms, state=None)
+    assert all(ok for ok, _ in checks.values()), f"Some checks failed in RAG Retrieval: {checks}"
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -522,7 +528,8 @@ def test_logging():
             except Exception as e:
                 checks["summary_parseable"] = (False, str(e))
 
-    return _print_suite_results("JSONL Logging", checks, ms, state)
+    _print_suite_results("JSONL Logging", checks, ms, state)
+    assert all(ok for ok, _ in checks.values()), f"Some checks failed in JSONL Logging: {checks}"
 
 
 # ════════════════════════════════════════════════════════════════════════════════

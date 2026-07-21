@@ -12,6 +12,8 @@
  */
 import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle } from "lucide-react";
 import { ThemePicker } from "./ThemePicker";
+import { TimelineStepper } from "./TimelineStepper";
+import { PIPELINE_STATUS } from "../lib/pipelineStatus";
 
 const PUBLIC_REPO_URL = "https://github.com/rahulganbote/engineering-plan-agent";
 
@@ -178,6 +180,27 @@ export const AboutPage: React.FC = () => {
             </a>
           </div>
         </section>
+
+        {/* System Architecture — moved off the landing page for technical
+            evaluators. The landing hero now shows a user-journey workflow
+            (LandingWorkflow); this diagram is for the audience that wants
+            to see the internal component layout, RAG plumbing, delivery
+            targets, etc. */}
+        <section className="space-y-3 border-b border-border/40 pb-6">
+          <h2 className="text-2xl font-bold tracking-tight">System Architecture</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Component diagram of the multi-agent pipeline: BRD ingestion, security validator, orchestrator with five specialist agents, critic evaluation gate, human decision node, and delivery targets. RAG storage and shared tool/state layers sit as first-class components. Live during a run this same diagram lights up node-by-node as the pipeline executes.
+          </p>
+          <TimelineStepper
+            pipelineStatus={PIPELINE_STATUS.IDLE}
+            completedAgents={new Set()}
+            artifacts={null}
+            criticOutput={null}
+            logs={[]}
+            title="System Architecture"
+          />
+        </section>
+
         {/* About Me */}
         <section className="space-y-4 border-b border-border/40 pb-6">
           <h2 className="text-3xl font-extrabold tracking-tight">About Me</h2>

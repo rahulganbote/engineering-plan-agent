@@ -20,11 +20,17 @@ interface ScheduleOutput {
   confidence_drivers?: string[];
 }
 
-interface ScheduleTabProps {
-  scheduleData: unknown;
+interface PlanOutput {
+  team_composition?: Record<string, number>;
+  total_duration_weeks?: number;
 }
 
-export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
+interface ScheduleTabProps {
+  scheduleData: unknown;
+  planData?: unknown;
+}
+
+export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData, planData }) => {
   let sched: ScheduleOutput | null = null;
   if (scheduleData) {
     if (typeof scheduleData === 'string') {
@@ -35,6 +41,19 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
       }
     } else {
       sched = scheduleData as ScheduleOutput;
+    }
+  }
+
+  let plan: PlanOutput | null = null;
+  if (planData) {
+    if (typeof planData === 'string') {
+      try {
+        plan = JSON.parse(planData) as PlanOutput;
+      } catch {
+        plan = null;
+      }
+    } else {
+      plan = planData as PlanOutput;
     }
   }
 
@@ -53,6 +72,23 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
     );
   }
 
+  // Dynamic Total Effort formula values based on Plan and Schedule
+  let totalResources = 4;
+  if (plan?.team_composition && Object.keys(plan.team_composition).length > 0) {
+    totalResources = Object.values(plan.team_composition).reduce((a, b) => a + (Number(b) || 0), 0);
+  } else if (sched?.sprints && sched.sprints.length > 0) {
+    const memberSet = new Set<string>();
+    sched.sprints.forEach(s => s.team_members?.forEach(m => memberSet.add(m)));
+    if (memberSet.size > 0) totalResources = memberSet.size;
+  }
+
+  const durationWeeks = plan?.total_duration_weeks || 8;
+  const businessDays = durationWeeks * 5;
+  const totalEffortDays = sched.total_effort_days !== undefined ? Math.ceil(sched.total_effort_days) : 112;
+  const maxCapacity = totalResources * businessDays;
+  const rawAllocation = maxCapacity > 0 ? totalEffortDays / maxCapacity : 0.7;
+  const allocationStr = Number(rawAllocation.toFixed(2));
+
   const getRoleInitials = (role: string) => {
     return role
       .split(' ')
@@ -69,8 +105,11 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Total Effort</span>
           <span className="text-2xl font-black text-primary">
-            {sched.total_effort_days !== undefined ? `${sched.total_effort_days.toFixed(1)} days` : '-'}
+            {sched.total_effort_days !== undefined ? `${Math.ceil(sched.total_effort_days)} days` : '-'}
           </span>
+          <p className="text-[11px] text-muted-foreground mt-1.5 font-medium leading-relaxed">
+            = {totalResources} resources * {businessDays} business days * {allocationStr} allocation = {totalEffortDays} effort-days
+          </p>
         </div>
         <div>
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Buffer Allocation</span>
@@ -89,13 +128,13 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
             )}
             {sched.llm_confidence_score != null &&
               Math.abs(sched.llm_confidence_score - sched.confidence_score) > 0.15 && (
-              <div className="mt-2 flex items-start gap-1.5 rounded border border-warning/40 bg-warning/10 px-2 py-1.5 text-[10px] text-warning leading-snug">
-                <span aria-hidden="true">⚠</span>
-                <span>
-                  LLM judge scored <strong>{(sched.llm_confidence_score * 100).toFixed(0)}%</strong> here — {Math.abs(sched.llm_confidence_score - sched.confidence_score) >= 0.5 ? 'large' : 'notable'} gap from the structural {Math.round(sched.confidence_score * 100)}%. Worth a closer look before approval.
-                </span>
-              </div>
-            )}
+                <div className="mt-2 flex items-start gap-1.5 rounded border border-warning/40 bg-warning/10 px-2 py-1.5 text-[10px] text-warning leading-snug">
+                  <span aria-hidden="true">⚠</span>
+                  <span>
+                    LLM judge scored <strong>{(sched.llm_confidence_score * 100).toFixed(0)}%</strong> here — {Math.abs(sched.llm_confidence_score - sched.confidence_score) >= 0.5 ? 'large' : 'notable'} gap from the structural {Math.round(sched.confidence_score * 100)}%. Worth a closer look before approval.
+                  </span>
+                </div>
+              )}
           </div>
         )}
       </div>
@@ -131,8 +170,8 @@ export const ScheduleTab: React.FC<ScheduleTabProps> = ({ scheduleData }) => {
                       <div className="flex flex-wrap gap-1">
                         {s.team_members && s.team_members.length > 0 ? (
                           s.team_members.map((member, mIdx) => (
-                            <div 
-                              key={mIdx} 
+                            <div
+                              key={mIdx}
                               className="flex items-center gap-1 bg-background border border-border px-1.5 py-0.5 rounded text-[10px] text-foreground"
                               title={member}
                             >

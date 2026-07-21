@@ -15,23 +15,8 @@ describe('IngestionLanding', () => {
 
   it('renders without throwing', () => {
     render(<IngestionLanding {...defaultProps} />);
-    expect(screen.getByText('System Architecture')).toBeInTheDocument();
+    expect(screen.getByText('How It Works')).toBeInTheDocument();
   });
 
-  it('does not show welcome banner when logged out', () => {
-    render(<IngestionLanding {...defaultProps} isAuthenticated={false} />);
-    expect(screen.queryByText(/Next Step:/i)).not.toBeInTheDocument();
-  });
 
-  it('shows welcome banner when logged in and no file is selected', () => {
-    render(<IngestionLanding {...defaultProps} isAuthenticated={true} selectedFile={null} />);
-    expect(screen.getByText(/Next Step:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Drag and drop a BRD file on the left to generate/i)).toBeInTheDocument();
-  });
-
-  it('does not show welcome banner when logged in but file is already selected', () => {
-    const mockFile = new File(['brd content'], 'FoodHub_BRD.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    render(<IngestionLanding {...defaultProps} isAuthenticated={true} selectedFile={mockFile} />);
-    expect(screen.queryByText(/Next Step:/i)).not.toBeInTheDocument();
-  });
 });

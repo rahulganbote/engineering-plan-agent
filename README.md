@@ -118,7 +118,7 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
                                                │
                                                ▼
                                      Orchestrator (Pass 2)
-                                  (Arbitration & Alignment)
+                                    (Synthesis & Alignment)
                                                │
                        ┌───────────────────────┴───────────────────────┐
                        │  Are EM alignment directives present?         │
@@ -143,7 +143,7 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
 
 Four architectural patterns matter more than the rest:
 
-* **Two-Pass Targeted Alignment Loop**: Rather than chaining agents sequentially, the pipeline splits into two distinct passes. Pass 1 drafts all deliverables concurrently. If the EM submits custom directives during **Arbitration**, Pass 2 performs a targeted rerun *only* on the violating specialists, reusing the other drafts to save cost and latency.
+* **Two-Pass Targeted Alignment Loop**: Rather than chaining agents sequentially, the pipeline splits into two distinct passes. Pass 1 drafts all deliverables concurrently. If the EM submits custom directives during **Alignment**, Pass 2 performs a targeted rerun *only* on the violating specialists, reusing the other drafts to save cost and latency.
 * **Targeted Critic Self-Correction**: After alignment, the Critic evaluates final outputs. If dimension scores fall below threshold limits, up to 2 self-correction cycles are triggered, rerunning only the flagged agents.
 * **Deterministic Quality Caps over LLM-Judge**: LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating to guarantee audit quality.
 * **L1/L2 Caching & External Tool Boundaries**: To optimize costs and latency, all external LLM calls, semantic Pinecone search queries, and external Tavily web lookups are intercepted by a unified caching layer (L1 in-process memory with thread-safe TTL/LRU, or L2 Redis Cache). Cache hits bypass network boundaries and external rate-limiters completely.
@@ -182,21 +182,50 @@ The vector database stores organization-specific architectural patterns, plannin
 
 ## Evaluation Framework
 
-Five-method evaluation suite (`eval/run_eval.py`):
+Two independent scoring systems: (1) per-run scoring that fires on every BRD and drives 
+the Green/Amber/Red badge in the UI, and (2) offline benchmarking that measures the whole 
+system against a golden BRD set.
 
-1. **Rule-based** - deterministic structural assertions (milestone count, owner coverage, citation format)
-2. **LLM-as-Judge** - 0–5 scores for Groundedness, Completeness, Consistency, Actionability
-3. **Execution-based** - Pydantic schema pass rate, Kroki render checks, total pipeline time SLA
-4. **Reference-based** - BERTScore F1 against golden output files
-5. **Human HITL** - 1–5 EM rating + free-text notes
+### 1. Online scoring (drives the quality badge)
 
-**Deterministic quality caps** override optimistic LLM-judge scores:
+Every BRD run produces an overall score in 5 steps:
 
-- **FM-1 Hallucination Guard:** -0.3 per citation not matching the Pinecone index
-- **FM-2 Uncited Claim Cap:** caps overall at 3.9 (below the 4.0 Green threshold) if any specialist fails to cite at least one chunk
-- **FM-3 Sentinel Fallback Cap:** caps overall at 3.9 (below the 4.0 Green threshold) if any specialist times out and falls back
+**Step 1 — LLM-as-Judge (0–5 per dimension)**
+- Groundedness (threshold ≥ 3.75) — every claim cited to a real chunk
+- Completeness (=5) — every BRD section addressed
+- Consistency (=5) — zero cross-agent contradictions
+- Actionability (≥ 4) — EM can act immediately
 
-**Result of the Critic loop (v0 → v1):** Overall **3.38 → 4.33** (+0.95 lift after one revision cycle; ~28% relative improvement on the 5-point scale). Full breakdown in [docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
+**Step 2 — Deterministic calibration** overrides the judge for verifiable signals
+(e.g. Consistency snaps to 5.0 if zero conflicts detected; Groundedness capped at 3.5 if 
+hallucinations found).
+
+**Step 3 — Raw overall** = mean of the 4 (calibrated) dimensions.
+
+**Step 4 — Quality Safeguards** can reduce the overall further:
+- **FM-1 Hallucination Penalty:** `overall -= 0.3 × unsupported_claim_count`
+- **FM-2 Zero-RAG Cap:** if any agent got zero RAG hits, cap at 3.9
+- **FM-3 Low-Confidence Cap:** if any agent self-reported confidence ≤ 0.30, cap at 3.9
+- **FM-4 Embedding-Fallback Cap:** if OpenAI embeddings fell back to zero-vectors, cap at 3.9
+
+**Step 5 — Badge assignment:** Green ≥ 4.0 (all dims pass) · Amber 3.5–3.99 · Red < 3.5.
+
+Worked example — a FoodHub run:
+
+### 2. Offline benchmarking suite (`eval/run_eval.py`)
+
+Runs against `docs/golden_brd_plans/*` reference outputs. Used to measure regressions 
+across releases, not per-run.
+
+1. **Rule-based** — deterministic structural assertions (milestone count, owner coverage)
+2. **LLM-as-Judge** — the same scorer used per-run, applied to the golden set
+3. **Execution-based** — Pydantic schema pass rate, Kroki render checks, pipeline SLA
+4. **Reference-based** — BERTScore F1 against golden outputs
+5. **Human HITL** — 1–5 EM rating + free-text notes
+
+Result of Critic revision loop (v0 → v1): overall **3.38 → 4.33** on the golden set 
+(+0.95 lift after one revision cycle; ~28% relative improvement). Full breakdown in 
+[docs/EVAL_RESULTS.md](./docs/EVAL_RESULTS.md).
 
 ---
 
@@ -240,7 +269,7 @@ A consolidated log of core architectural compromises. Detailed records are maint
 
 | Decision | Alternatives | Why | Trade-off |
 |---|---|---|---|
-| **LangGraph state** | LCEL chains; raw asyncio | Native support for loop cycles (Pass 1 ↔ arbitration ↔ Pass 2 ↔ Critic revision) and node observability. | Heavier runtime dependency; lock-in to LangChain ecosystem. |
+| **LangGraph state** | LCEL chains; raw asyncio | Native support for loop cycles (Pass 1 ↔ alignment ↔ Pass 2 ↔ Critic revision) and node observability. | Heavier runtime dependency; lock-in to LangChain ecosystem. |
 | **Multi-provider failover** | Single LLM provider | Production redundancy (OpenAI ↔ Anthropic failover) to handle provider-side outages. | Two separate prompt layouts and budget cost-tables to maintain. |
 | **Async `/approve` + SSE** | Synchronous approve endpoint | External tool calls (Jira/Sheets) and ElevenLabs voice tasks easily exceed the 20s API timeout threshold. | UI must listen for the final SSE event to hydrate export links. |
 | **Hard $2.00 per-run budget** | Soft warning logs | Prevents runaway LLM loops or excessively large uploads from consuming billing budgets. | Aborts legitimate very large BRDs; accepted as visible error over budget leak. |

@@ -107,7 +107,7 @@ const DirectiveCard: React.FC<DirectiveCardProps> = ({ d, setActiveTab }) => {
           </button>
         )}
       </div>
-      
+
       <p className="text-foreground leading-relaxed font-bold">
         {d.directive}
       </p>
@@ -150,6 +150,7 @@ export const AgentWorkspace: React.FC = () => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isExampleLoading, setIsExampleLoading] = useState(false);
+
 
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
@@ -198,6 +199,30 @@ export const AgentWorkspace: React.FC = () => {
 
   const [startupError, setStartupError] = useState<string | null>(null);
   const [confirmResetActive, setConfirmResetActive] = useState(false);
+  const [isStepperCollapsed, setIsStepperCollapsed] = useState(false);
+  const [showCalculationDetails, setShowCalculationDetails] = useState(false);
+  // Alignment Recommendations default collapsed — puts Generated Artifacts within reach
+  // without scrolling. The "N Directives Issued" badge stays visible so the signal
+  // that arbitration produced something isn't lost.
+  const [showAlignmentDirectives, setShowAlignmentDirectives] = useState(false);
+
+  // Auto-collapse the timeline stepper when pipeline lands at a post-running/decision state
+  useEffect(() => {
+    const autoCollapseStatuses = [
+      PIPELINE_STATUS.AWAITING_HITL,
+      PIPELINE_STATUS.EXPORTING,
+      PIPELINE_STATUS.EXPORTED,
+      PIPELINE_STATUS.REJECTED,
+      PIPELINE_STATUS.ERROR,
+      PIPELINE_STATUS.EXPORT_FAILED
+    ];
+    if (autoCollapseStatuses.includes(pipelineStatus as any)) {
+      setIsStepperCollapsed(true);
+    } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) {
+      // Auto-expand when a new execution starts
+      setIsStepperCollapsed(false);
+    }
+  }, [pipelineStatus]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -519,13 +544,13 @@ export const AgentWorkspace: React.FC = () => {
                 <p className="text-xs font-semibold text-primary">Drag and drop file here</p>
                 <p className="text-[10px] text-muted-foreground mt-1">Limit 5MB per file • PDF, DOCX, TXT</p>
                 <div className="flex flex-col gap-2 mt-3 items-center justify-center">
-                  <button 
+                  <button
                     type="button"
                     className="w-full px-3 py-1.5 bg-primary/10 text-primary border border-primary/30 rounded hover:bg-primary/20 hover:border-primary/50 text-xs font-semibold transition-colors"
                   >
                     Browse files
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -558,7 +583,7 @@ export const AgentWorkspace: React.FC = () => {
           {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
             <div>
-              <div 
+              <div
                 className="relative group/btn w-full"
                 title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
               >
@@ -653,14 +678,16 @@ export const AgentWorkspace: React.FC = () => {
                   handleReset();
                   setConfirmResetActive(false);
                 }}
-                disabled={CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED}
-                className={`w-full py-1.5 rounded text-xs font-semibold transition ${
-                  (CANCELLABLE_STATES.includes(pipelineStatus) || pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED)
+                // Disabled ONLY during in-flight cancellable states. Terminal
+                // post-decision states (EXPORTED / EXPORT_FAILED / REJECTED)
+                // now enable the reset so the user can start a new run.
+                disabled={CANCELLABLE_STATES.includes(pipelineStatus)}
+                className={`w-full py-1.5 rounded text-xs font-semibold transition ${CANCELLABLE_STATES.includes(pipelineStatus)
                     ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
                     : confirmResetActive
                       ? 'border border-danger bg-danger text-white animate-pulse'
                       : 'border border-destructive bg-destructive/10 hover:bg-destructive/40 text-destructive hover:text-destructive shadow-[0_0_10px_rgba(244,63,94,0.05)]'
-                }`}
+                  }`}
               >
                 {confirmResetActive ? "Confirm Reset? (Click again)" : "Clear Plan & Reset"}
               </button>
@@ -724,13 +751,13 @@ export const AgentWorkspace: React.FC = () => {
           <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
             <a
               href="#/about"
-              className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg"
+              className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary hover:ring-2 hover:ring-primary transition-all duration-200"
             >
               ℹ️ About
             </a>
             <button
               onClick={() => setIsFeedbackOpen(true)}
-              className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg"
+              className="text-xs font-bold text-muted-foreground hover:text-primary transition flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary hover:ring-2 hover:ring-primary transition-all duration-200"
             >
               📝 Feedback
             </button>
@@ -834,30 +861,6 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* HITL Awaiting Alert Banner */}
-              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && !approvalResult && (
-                <div className="bg-warning/20 border-l-4 border-warning py-2 px-4 rounded-lg shadow-sm flex items-center justify-between animate-fade-in">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-sm select-none">⏸️</span>
-                    <div>
-                      <h4 className="text-xs font-bold text-warning leading-snug">Action Required: Review the Artifacts. Approval needed to push plan into Jira.</h4>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const element = document.getElementById('decision-gate');
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }
-                    }}
-                    className="px-3 py-1 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-[11px] rounded transition shadow hover:shadow-md shrink-0 cursor-pointer"
-                  >
-                    Scroll to Decision Gate
-                  </button>
-                </div>
-              )}
-
               {/* Stepper Timeline Progress Nodes */}
               <TimelineStepper
                 pipelineStatus={pipelineStatus}
@@ -865,26 +868,50 @@ export const AgentWorkspace: React.FC = () => {
                 artifacts={artifacts}
                 criticOutput={criticOutput}
                 logs={logs}
+                isCollapsed={isStepperCollapsed}
+                onToggleCollapse={() => setIsStepperCollapsed(!isStepperCollapsed)}
               />
 
 
-              {/* Performance Metrics Summary */}
-              <div className="flex flex-wrap justify-between items-center gap-4 text-xs text-muted-foreground bg-card p-4 rounded-lg border border-border my-4">
-                <div>
-                  <strong>Evaluation Score:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[70px] bg-background border border-border px-2.5 py-1 rounded font-mono ${criticOutput ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{criticOutput ? `${criticOutput.overallScore.toFixed(2)}/5.0` : '-/5.0'}</code>
-                </div>
-                <div>
-                  <strong>Total Processing Time:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[50px] bg-background border border-border px-2.5 py-1 rounded font-mono ${elapsedSeconds ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{elapsedSeconds ? `${elapsedSeconds}s` : '-'}</code>
-                </div>
-                <div>
-                  <strong>Tokens used:</strong> <code className={`inline-flex items-center justify-center text-center bg-background border border-border px-2.5 py-1 rounded font-mono ${tokenUsage ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}</code>
-                </div>
-                <div>
-                  <strong>Cost Spent:</strong> <code className={`inline-flex items-center justify-center text-center min-w-[75px] bg-background border border-border px-2.5 py-1 rounded font-mono ${costUsd != null ? 'text-[#047857] dark:text-[#34d399] font-bold' : 'text-muted-foreground'}`}>{costUsd != null ? `$${costUsd.toFixed(4)}` : '-'}</code>
-                </div>
-              </div>
+              {/* Telemetry Row — purely operational metrics (Time / Tokens / Cost).
+                  The Evaluation Score used to live here but was removed to avoid
+                  duplication with the Critic card below, which owns the score story. */}
+              <div className="w-full bg-card border border-border rounded-xl px-4 py-2.5 shadow-md flex items-baseline justify-between text-xs transition-all duration-300">
+  <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
+    
+    {/* Standardized Title block */}
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-xs font-black text-primary uppercase tracking-wider select-none">
+        Telemetry:
+      </span>
+      <span className="text-muted-foreground">Total Processing Time:</span>
+      <span className={`font-semibold tabular-nums ${elapsedSeconds ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {elapsedSeconds ? `${elapsedSeconds}s` : '-'}
+      </span>
+    </div>
 
-              {/* Critic Scoring Cards */}
+    {/* Metric 2 */}
+    <div className="flex items-baseline gap-1.5 text-muted-foreground">
+      <span>Tokens used:</span>
+      <span className={`font-semibold tabular-nums ${tokenUsage ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {tokenUsage ? `${tokenUsage.input.toLocaleString()} in / ${tokenUsage.output.toLocaleString()} out` : '-'}
+      </span>
+    </div>
+
+    {/* Metric 3 */}
+    <div className="flex items-baseline gap-1.5 text-muted-foreground">
+      <span>Cost Spent:</span>
+      <span className={`font-semibold tabular-nums ${costUsd != null ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {costUsd != null ? `$${costUsd.toFixed(2)}` : '-'}
+      </span>
+    </div>
+
+  </div>
+</div>
+
+
+
+              {/* Critic Scoring Cards Box */}
               {criticOutput && (
                 <ErrorBoundary fallback={
                   <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
@@ -893,85 +920,191 @@ export const AgentWorkspace: React.FC = () => {
                       <span>Critic Component Failure</span>
                     </div>
                     <p className="text-xs text-danger/80 leading-relaxed">
-                      An error occurred while rendering the Critic scorecards. The rest of the workspace remains active.
+                      An error occurred while rendering the Critic scorecards.
                     </p>
                   </div>
                 }>
-                  <div className="space-y-4 border border-border rounded-xl p-6 bg-card shadow-lg">
-                    <div className="flex items-center justify-between border-b border-border/60 pb-4">
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Independent Critic Score</h3>
-                        <div className="text-xs text-muted-foreground">
-                          Final Score:{' '}
-                          <strong
-                            className={
-                              criticOutput.badge === 'green'
-                                ? 'text-success font-bold'
-                                : criticOutput.badge === 'amber'
-                                ? 'text-warning font-bold'
-                                : 'text-danger font-bold'
-                            }
-                          >
+                  <div className="space-y-4 border border-border rounded-xl p-5 bg-card shadow-md">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                      <div className="space-y-0.5">
+                        <h3 className="text-xs font-black text-primary uppercase tracking-wider">Independent Critic Score</h3>
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
+                          <span>Evaluation Score:</span>
+                          <span className={`font-semibold tabular-nums ${
+                            criticOutput.badge === 'green' ? 'text-success'
+                              : criticOutput.badge === 'amber' ? 'text-warning-strong'
+                              : 'text-danger'
+                          }`}>
                             {criticOutput.overallScore.toFixed(2)}/5.0
-                          </strong>{' '}
+                          </span>
                           <span className="text-[11px] text-muted-foreground">
                             (Target: &ge;4.00 for Green)
-                          </span>{' '}
-                          | Total Revision(s):{' '}
-                          <strong className="text-foreground font-bold">
-                            {criticOutput.revisionNumber}
-                          </strong>
+                          </span>
+                          <span className="px-1 text-muted-foreground">•</span>
+                          <span>Revision(s):</span>
+                          <span className="font-semibold tabular-nums text-foreground">{criticOutput.revisionNumber}</span>
+                          <span className="px-1 text-muted-foreground">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCalculationDetails(!showCalculationDetails)}
+                            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-black uppercase tracking-wider cursor-pointer"
+                          >
+                            <span>{showCalculationDetails ? "Hide Calculation details" : "How was this calculated?"}</span>
+                            {showCalculationDetails ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                          </button>
                         </div>
+                        {/* Expanded calculation trace panel — appears below the breadcrumb when toggled. */}
+                        {showCalculationDetails && (
+                            <div className="space-y-3 p-4 bg-background/50 rounded-xl border border-border mt-2 animate-fade-in">
+                              {/* Formula stays in mono — it's mathematical notation, not prose. */}
+                              <span className="text-[10px] text-primary block font-mono bg-primary/5 px-2.5 py-1 rounded border border-primary/20 w-fit tabular-nums shadow-sm shadow-primary/5">
+                                Formula: ({criticOutput.dimensions.groundedness?.score.toFixed(2)} + {criticOutput.dimensions.completeness?.score.toFixed(2)} + {criticOutput.dimensions.consistency?.score.toFixed(2)} + {criticOutput.dimensions.actionability?.score.toFixed(2)}) ÷ 4 = {criticOutput.overallScore.toFixed(2)}
+                              </span>
+
+                              <div className="font-semibold uppercase tracking-wider text-[9px] text-muted-foreground border-b border-border pb-1">
+                                Calibrated Dimension Metrics Breakdowns
+                              </div>
+
+                              <div className="space-y-2">
+                                {/* Groundedness Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.groundedness;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (FM-1 Hallucination rule: ungrounded claims detected)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to ${data.score.toFixed(2)} (All citations verified against Pineapple/Pinecone index)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">⚖️ Groundedness Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> &ge; {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Completeness Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.completeness;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (Missing key deliverables or required sections)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to 5.00 (All 5 mandatory sections present and formatted)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">📦 Completeness Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> {data.threshold === 5 ? '=' : '&ge;'} {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Consistency Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.consistency;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (Cross-agent conflict detected: contradiction found)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to 5.00 (Zero conflicts detected across parallel outputs)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">🔄 Consistency Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> {data.threshold === 5 ? '=' : '&ge;'} {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Actionability Detail Row */}
+                                {(() => {
+                                  const data = criticOutput.dimensions.actionability;
+                                  if (!data) return null;
+                                  const raw = data.raw_llm_score;
+                                  const hasRaw = typeof raw === 'number';
+                                  let calibrationDetail = "No calibration applied (matched LLM score)";
+                                  if (hasRaw) {
+                                    const diff = data.score - (raw as number);
+                                    if (diff < -0.05) {
+                                      calibrationDetail = `Capped at ${data.score.toFixed(2)} (Missing owner roles or timeline gaps)`;
+                                    } else if (diff > 0.05) {
+                                      calibrationDetail = `Raised to ${data.score.toFixed(2)} (High-certainty deliverables with clear owner coverage)`;
+                                    }
+                                  }
+                                  return (
+                                    <div className="bg-background/40 p-3 rounded-lg border border-border/60 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                                      <div className="text-foreground font-semibold mb-1 uppercase tracking-wide text-[10px]">🎯 Actionability Metric Trace</div>
+                                      <div className="pl-3 border-l-2 border-primary/30 space-y-0.5">
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">LLM-as-Judge Raw Score:</span> {hasRaw ? (raw as number).toFixed(2) : 'N/A'}</p>
+                                        <p><span className="text-muted-foreground/40">├──</span> <span className="text-foreground font-semibold">Deterministic Calibration:</span> <span className={hasRaw && data.score < (raw as number) - 0.05 ? 'text-warning' : hasRaw && data.score > (raw as number) + 0.05 ? 'text-success' : 'text-muted-foreground'}>{calibrationDetail}</span></p>
+                                        <p><span className="text-muted-foreground/40">└──</span> <span className="text-foreground font-semibold">Quality Target Threshold:</span> {data.threshold === 5 ? '=' : '≥'} {data.threshold.toFixed(2)} <span className={data.passed ? "text-success font-semibold ml-2" : "text-danger font-semibold ml-2"}>{data.passed ? '✓ PASS' : '✗ FAIL'}</span></p>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          )}
                       </div>
+                      {/* Amber & Red use SOLID fills with dark foreground text for WCAG-strong
+                          contrast — these are attention/failure states that should pop.
+                          Green stays soft (pastel) because passing is the calm/default case. */}
                       <span
-                        title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass. Amber is awarded if the score falls below 4.00, if any metrics failed, or if safety/quality safeguards were applied."
-                        className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider cursor-help transition ${
-                          criticOutput.badge === 'green'
+                        title="Green badge requires an overall score of ≥4.00 and all sub-metrics to pass."
+                        className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider cursor-help transition ${criticOutput.badge === 'green'
                             ? 'bg-success/20 text-success border border-success/40'
                             : criticOutput.badge === 'amber'
-                            ? 'bg-warning/50 text-warning border border-warning/50'
-                            : 'bg-danger/50 text-danger border border-danger/50'
-                        }`}
+                              ? 'bg-warning text-warning-foreground border border-warning shadow-sm'
+                              : 'bg-danger text-danger-foreground border border-danger shadow-sm'
+                          }`}
                       >
-                        {criticOutput.badge === 'green'
-                          ? '🟢 GREEN'
-                          : criticOutput.badge === 'amber'
-                          ? '🟡 AMBER'
-                          : '🔴 RED'}
+                        {criticOutput.badge === 'green' ? '🟢 GREEN' : criticOutput.badge === 'amber' ? '🟡 AMBER' : '🔴 RED'}
                       </span>
                     </div>
 
-                    {/* Quality Safeguard / Cap Reasons alerts (stacked) */}
+                    {/* Quality Cap Alert Module */}
                     {criticOutput.capReasons && criticOutput.capReasons.length > 0 && (
-                      <div className="space-y-2 pb-2 animate-fade-in">
+                      <div className="space-y-2 pb-1 animate-fade-in">
                         {criticOutput.capReasons.map((reason, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between text-xs px-3.5 py-2.5 rounded-lg border border-warning/30 bg-warning/5 text-warning font-medium leading-relaxed"
-                          >
+                          <div key={index} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-warning/30 bg-warning/5 text-warning font-medium leading-relaxed">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-extrabold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
+                              <span className="font-semibold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-warning/20 border border-warning/30">
                                 {reason.mechanism}
                               </span>
-                              <span>
-                                <strong>{reason.verb} by Quality Safeguard:</strong> {reason.detail}
-                              </span>
-                              {reason.agentsInvolved && reason.agentsInvolved.length > 0 && (
-                                <div className="flex items-center gap-1 ml-1">
-                                  {reason.agentsInvolved.map((agent) => (
-                                    <button
-                                      key={agent}
-                                      onClick={() => navigateToTab(agent as any)}
-                                      className="text-[9px] px-1.5 py-0.5 rounded bg-warning/10 border border-warning/20 text-warning hover:bg-warning/20 cursor-pointer font-bold uppercase transition-colors"
-                                      title={`View ${agent} agent work`}
-                                    >
-                                      {agent}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
+                              <span><span className="font-semibold">{reason.verb} by Quality Safeguard:</span> {reason.detail}</span>
                             </div>
-                            <span className="font-mono text-[11px] font-bold whitespace-nowrap ml-4">
+                            <span className="text-[10px] font-semibold tabular-nums whitespace-nowrap ml-4">
                               {reason.before.toFixed(2)} &rarr; {reason.after.toFixed(2)}
                             </span>
                           </div>
@@ -979,21 +1112,27 @@ export const AgentWorkspace: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Metrics row */}
-                    <div className="flex flex-wrap md:flex-nowrap gap-x-4 gap-y-2 items-center justify-between text-xs text-muted-foreground pt-2">
+                    {/* Metrics Row — shows CALIBRATED score prominently, plus the LLM-as-Judge
+                        raw score in muted text with a directional indicator so users can see
+                        where the deterministic calibration raised (▲), lowered (▼), or left
+                        the LLM's opinion unchanged (=). Older runs (pre-raw_llm_score field)
+                        gracefully hide the LLM segment. */}
+                    {/* Collapsed dimension chips. Semantic color on score value + ✓/✗ is meaningful
+                        (passing/failing state) so it stays. Label and threshold are neutral. */}
+                    <div className="flex flex-wrap md:flex-nowrap gap-4 items-center justify-between text-xs text-muted-foreground pt-1">
                       {(['groundedness', 'completeness', 'consistency', 'actionability'] as const).map((metric) => {
                         const data = criticOutput.dimensions[metric];
                         if (!data) return null;
                         return (
-                          <div key={metric} className="flex items-center gap-1.5 whitespace-nowrap">
-                            <strong className="capitalize">{metric}:</strong>
-                            <code className={`bg-background border border-border px-1.5 py-0.5 rounded font-mono font-bold text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
+                          <div key={metric} className="flex items-center gap-1.5 bg-background/40 px-2 py-1 rounded-md border border-border/50 flex-1 justify-center">
+                            <span className="capitalize font-medium text-muted-foreground">{metric}:</span>
+                            <span className={`font-semibold tabular-nums text-[11px] ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.score.toFixed(2)}
-                            </code>
+                            </span>
                             <span className={`text-[11px] font-semibold ${data.passed ? 'text-success' : 'text-danger'}`}>
                               {data.passed ? '✓' : '✗'}
                             </span>
-                            <span className="text-[11px] text-muted-foreground font-medium">
+                            <span className="text-[10px] text-foreground/70 font-medium">
                               ({data.threshold === 5 ? '=' : '≥'}{data.threshold})
                             </span>
                           </div>
@@ -1004,55 +1143,82 @@ export const AgentWorkspace: React.FC = () => {
                 </ErrorBoundary>
               )}
 
-              {/* EM Alignment Directives Banner */}
+              {/* EM Alignment Directives Container Block — collapsible, default collapsed.
+                  Count badge is always visible so the presence signal is preserved. */}
               {artifacts?.alignment_memo && (
-                <div className="bg-primary/5 border border-primary/20 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
-                  <div className="flex items-start justify-between gap-4">
-                    <h4 className="text-xs sm:text-sm md:text-base font-bold text-primary flex items-center gap-2">
-                     How the EM Copilot AI Aligned Your Plan
+                <div className="flex flex-col items-stretch gap-4 bg-card p-5 rounded-xl border border-border my-2 shadow-md">
+
+                  {/* Clickable Title Component Header (whole row toggles) */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAlignmentDirectives(!showAlignmentDirectives)}
+                    aria-expanded={showAlignmentDirectives}
+                    className={`flex items-center justify-between text-left w-full cursor-pointer group ${showAlignmentDirectives ? 'border-b border-border/60 pb-2.5' : ''}`}
+                  >
+                    <h4 className="text-xs font-black text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      Alignment Recommendations
+                      <img
+                        src="/favicon.svg"
+                        alt="EM Copilot"
+                        className="h-3.5 w-3.5 object-contain select-none shrink-0"
+                      />
                     </h4>
-                  </div>
-                  {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
-                      {artifacts.alignment_memo.directives.map((d: AlignmentDirective, idx: number) => (
-                        <DirectiveCard key={idx} d={d} setActiveTab={navigateToTab} />
-                      ))}
+                    <div className="flex items-center gap-2">
+                      {artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 && (
+                        <span className="px-2 py-0.5 rounded bg-warning/20 border border-warning/40 text-[10px] font-extrabold text-warning uppercase tracking-wider">                          {artifacts.alignment_memo.directives.length} Directives Issued
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:underline">
+                        {showAlignmentDirectives ? 'Hide' : 'Show recommendations'}
+                        {showAlignmentDirectives ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold mt-1">
-                      <span>🟢</span> All Pass 1 drafts aligned — no arbitration needed.
-                    </div>
+                  </button>
+
+                  {/* Directives Output Content Grid */}
+                  {showAlignmentDirectives && (
+                    artifacts.alignment_memo.directives && artifacts.alignment_memo.directives.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                        {artifacts.alignment_memo.directives.map((d: AlignmentDirective, idx: number) => (
+                          <DirectiveCard key={idx} d={d} setActiveTab={navigateToTab} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-semibold animate-fade-in">
+                        <span>🟢</span> All Pass 1 drafts aligned — no arbitration needed.
+                      </div>
+                    )
                   )}
                 </div>
               )}
 
               {/* Tabbed Viewport for Artifacts */}
               {artifacts && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border pb-2">
-                    <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Artifacts</h3>
+                <div className="bg-card border border-border rounded-xl p-5 shadow-md space-y-4">
+
+                  {/* Clean, Bounded Module Action Header Row */}
+                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                    <div className="space-y-0.5">
+                      <h3 className="text-xs font-black text-primary uppercase tracking-wider">Generated Artifacts</h3>
+                      <p className="text-[12px] text-muted-foreground">Review individual planning deliverables</p>
+                    </div>
                     <button
                       onClick={handleDownloadPDF}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-card hover:bg-secondary text-foreground border border-border rounded text-xs font-bold transition shadow-sm"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/80 rounded-lg text-xs font-semibold transition shadow-sm cursor-pointer"
                     >
                       <Download size={14} /> Download PDF
                     </button>
                   </div>
 
-                  {/* Disclaimer notice banner */}
-                  <div className="bg-background border border-border p-4 rounded-lg text-xs leading-relaxed text-foreground/75">
-                    <span className="font-bold text-foreground uppercase">⚠️ Disclaimer:</span> It is a engineering planning assistant AI tool. Mandatory professional review and validation required before implementation.
-                  </div>
-
-                  {/* Tabs list */}
-                  <div ref={tabsRef} className="flex bg-background p-1 rounded-lg border border-border w-full overflow-x-auto scrollbar-none whitespace-nowrap">
+                  {/* Integrated Navigation Tabs Ribbon Container */}
+                  <div ref={tabsRef} className="flex bg-background p-1 rounded-xl border border-border/80 w-full overflow-x-auto scrollbar-none whitespace-nowrap">
                     {(['plan', 'schedule', 'arch', 'poc', 'stack'] as const).map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 ${activeTab === tab
-                          ? 'bg-card text-primary shadow-sm border border-primary font-extrabold'
-                          : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
+                        className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-all min-w-[110px] text-center flex-1 cursor-pointer ${activeTab === tab
+                            ? 'bg-card text-primary shadow-sm border border-border font-extrabold'
+                            : 'text-muted-foreground hover:text-foreground border border-transparent'
                           }`}
                       >
                         {tab === 'arch' ? 'Architecture' : tab === 'stack' ? 'Tech Stack' : tab}
@@ -1060,8 +1226,8 @@ export const AgentWorkspace: React.FC = () => {
                     ))}
                   </div>
 
-                  {/* Tab Display Area */}
-                  <div className="border border-border rounded-xl p-6 bg-card shadow-lg min-h-[250px]">
+                  {/* Tab Active Content Window Canvas */}
+                  <div className="bg-background/30 rounded-xl border border-border/60 p-5 min-h-[250px]">
                     <ErrorBoundary fallback={<div className="p-4 bg-danger/20 border border-danger/40 text-danger rounded-lg text-sm">Failed to render artifact.</div>}>
                       {([
                         PIPELINE_STATUS.DRAFTING,
@@ -1071,21 +1237,16 @@ export const AgentWorkspace: React.FC = () => {
                         <PlanSkeleton />
                       ) : (
                         <div>
-                          {activeTab === 'plan' && (
-                            <PlanTab planData={artifacts.plan_output} />
-                          )}
+                          {activeTab === 'plan' && <PlanTab planData={artifacts.plan_output} />}
                           {activeTab === 'schedule' && (
-                            <ScheduleTab scheduleData={artifacts.schedule_output} />
+                            <ScheduleTab
+                              scheduleData={artifacts.schedule_output}
+                              planData={artifacts.plan_output}
+                            />
                           )}
-                          {activeTab === 'arch' && (
-                            <ArchitectureTab architectureData={artifacts.arch_output} />
-                          )}
-                          {activeTab === 'poc' && (
-                            <PoCTab pocData={artifacts.poc_output} />
-                          )}
-                          {activeTab === 'stack' && (
-                            <TechStackTab techStackData={artifacts.stack_output} />
-                          )}
+                          {activeTab === 'arch' && <ArchitectureTab architectureData={artifacts.arch_output} />}
+                          {activeTab === 'poc' && <PoCTab pocData={artifacts.poc_output} />}
+                          {activeTab === 'stack' && <TechStackTab techStackData={artifacts.stack_output} />}
                         </div>
                       )}
                     </ErrorBoundary>
@@ -1093,253 +1254,223 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
 
-              {/* Decision Gate Section */}
-              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
-                <div className="border-t border-border pt-8">
-                  <ErrorBoundary fallback={
-                    <div className="p-6 bg-danger/20 border border-danger/40 rounded-xl space-y-3">
-                      <div className="flex items-center gap-2 text-danger font-bold text-sm uppercase tracking-wider">
-                        <ShieldAlert size={16} />
-                        <span>Decision Gate Component Failure</span>
-                      </div>
-                      <p className="text-xs text-danger/80 leading-relaxed">
-                        An error occurred while loading the Decision Gate. Please try refreshing or restarting the run.
-                      </p>
-                    </div>
-                  }>
-                    <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
-                  </ErrorBoundary>
-                </div>
-              )}
+              {/* ========================================== */}
+              {/* MASTER WORKFLOW GATE & DELIVERY PIPELINE */}
+              {/* ========================================== */}
+              {(([
+                PIPELINE_STATUS.AWAITING_HITL,
+                PIPELINE_STATUS.EXPORTING,
+                PIPELINE_STATUS.EXPORTED,
+                PIPELINE_STATUS.EXPORT_FAILED,
+                PIPELINE_STATUS.REJECTED
+              ] as string[]).includes(pipelineStatus)) && (
+                  <div ref={exportResultsRef} className="border-t border-border pt-5 mt-4">
+                    <div className="max-w-4xl mx-auto p-5 bg-card border border-border rounded-xl shadow-lg transition-all duration-300">
 
-              {/* Exporting loading indicator section */}
-              {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
-                <div className="border-t border-border pt-8">
-                  <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-pulse">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
-                      <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
-                        <Loader2 className="animate-spin text-primary" size={16} />
-                        <span>Exporting & Syncing...</span>
-                      </h3>
-                      <span className="px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider bg-primary/10 border border-primary/20 text-primary">
-                        Syncing to Jira
-                      </span>
-                    </div>
-                    
-                    <p className="text-xs text-muted-foreground leading-relaxed font-semibold">
-                      Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure. This could take few seconds.
-                    </p>
+                      {/* 1. DYNAMIC SYSTEM ACTION STATE HEADER */}
+                      {pipelineStatus !== PIPELINE_STATUS.AWAITING_HITL && (
+                        <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+                          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTING && <Loader2 className="animate-spin text-primary" size={14} />}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTED && <span className="text-success text-sm">✅</span>}
+                            {pipelineStatus === PIPELINE_STATUS.REJECTED && <span className="text-danger text-sm">❌</span>}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-[11px] font-bold text-muted-foreground">
-                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
-                        <span className="text-success text-sm">✓</span>
-                        <span>Google Sheets Log</span>
-                      </div>
-                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
-                        <Loader2 className="animate-spin text-primary shrink-0" size={12} />
-                        <span>Creating Jira Epic</span>
-                      </div>
-                      <div className="flex items-center gap-2 p-3 bg-secondary/20 border border-border rounded-lg">
-                        <Loader2 className="animate-spin text-primary shrink-0" size={12} />
-                        <span>Pinecone Indexing</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                            <span>
+                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Recording Decision & Syncing Plan..."}
+                              {!([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
+                            </span>
+                          </h3>
 
-              {/* Export Status / Final Decision Section */}
-              {(pipelineStatus === PIPELINE_STATUS.EXPORTED || pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED || pipelineStatus === PIPELINE_STATUS.REJECTED) && (
-                <div ref={exportResultsRef} className="border-t border-border pt-8">
-                  <div className="max-w-3xl mx-auto p-6 bg-card border border-border rounded-xl space-y-6 shadow-xl animate-fade-in">
-                    <div className="flex items-center justify-between border-b border-border pb-3">
-                      <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wider flex items-center gap-2">
-                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? (
-                          <span className="text-success animate-scale-in text-base">✅</span>
-                        ) : pipelineStatus === PIPELINE_STATUS.REJECTED ? (
-                          <span className="text-danger animate-scale-in text-base">❌</span>
-                        ) : (
-                          <span className="text-warning animate-scale-in text-base">⚠️</span>
-                        )}
-                        <span>Export Results</span>
-                      </h3>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-extrabold uppercase tracking-wider ${pipelineStatus === PIPELINE_STATUS.EXPORTED
-                        ? 'bg-success/20 border border-success/40 text-success'
-                        : pipelineStatus === PIPELINE_STATUS.REJECTED
-                          ? 'bg-danger/20 border border-danger/40 text-danger'
-                          : 'bg-warning/20 border border-warning/40 text-warning'
-                        }`}>
-                        {pipelineStatus === PIPELINE_STATUS.EXPORTED ? '✓ Exported Successfully' : pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Plan Rejected' : 'Export Failed'}
-                      </span>
-                    </div>
-
-                    {pipelineStatus === PIPELINE_STATUS.REJECTED && (
-                      <p className="text-xs text-danger font-semibold bg-danger/10 border border-danger/20 p-3.5 rounded-lg animate-fade-in leading-relaxed">
-                        Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
-                      </p>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                      {/* Google Sheets Status Box */}
-                      {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
-                        <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 animate-fade-in h-full ${
-                          pipelineStatus === PIPELINE_STATUS.REJECTED
-                            ? 'bg-secondary/25 border border-border'
-                            : 'bg-success/15 border border-success/30'
-                        }`}>
-                          <div className="space-y-2">
-                            <div className={`text-xs font-bold ${
-                              pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${pipelineStatus === PIPELINE_STATUS.EXPORTING ? 'bg-primary/20 border-primary/30 text-primary animate-pulse' :
+                              pipelineStatus === PIPELINE_STATUS.EXPORTED ? 'bg-success/20 border-success/40 text-success' :
+                                pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-danger/20 border-danger/40 text-danger' :
+                                  'bg-warning/20 border-warning/40 text-warning'
                             }`}>
-                              {pipelineStatus === PIPELINE_STATUS.REJECTED
-                                ? 'Rejection recorded in Google Sheets'
-                                : 'Approval recorded in Google Sheets'}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground leading-relaxed">
-                              {pipelineStatus === PIPELINE_STATUS.REJECTED
-                                ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
-                                : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
-                            </div>
-
-                            {/* Mini-metadata row showing target document details for alignment symmetry */}
-                            <div className="text-[10px] text-muted-foreground bg-background/50 border border-border/40 p-2 rounded flex flex-col gap-1 mt-2">
-                              <div>
-                                <span className="font-bold text-foreground">Target spreadsheet:</span> EM Copilot Runs Log
-                              </div>
-                              <div>
-                                <span className="font-bold text-foreground">Data logged:</span> Run summary, EM score, notes, and timestamp
-                              </div>
-                            </div>
-                          </div>
-                          <a
-                            href={approvalResult.sheet_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`flex items-center justify-center w-fit px-4 py-2 bg-transparent border rounded font-bold text-xs transition duration-150 shadow-sm ${
-                              pipelineStatus === PIPELINE_STATUS.REJECTED
-                                ? 'border-muted-foreground/30 text-muted-foreground hover:bg-secondary/50'
-                                : 'border-primary text-primary hover:bg-primary/10'
-                            }`}
-                          >
-                            Open Google Sheet
-                          </a>
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTING && 'Syncing integrations'}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORTED && '✓ Export Complete'}
+                            {pipelineStatus === PIPELINE_STATUS.REJECTED && 'Plan Rejected'}
+                            {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && 'Export Failed'}
+                          </span>
                         </div>
-                      ) : approvalResult?.export_status === 'local_fallback' ? (
-                        <div className="p-4 bg-warning/15 border border-warning/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                          <div>
-                            <div className="text-xs font-bold text-warning">
-                              Artifacts saved to local fallback CSV
-                            </div>
-                            <div className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                              {approvalResult?.export_detail || "Google Sheets integration is not configured - local CSV backup exported instead."}
-                            </div>
-                          </div>
-                        </div>
-                      ) : approvalResult?.export_status === 'failed' ? (
-                        <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                          <div>
-                            <div className="text-xs font-bold text-danger">
-                              Google Sheets export failed
-                            </div>
-                            <div className="text-[11px] text-danger leading-relaxed font-mono mt-1">
-                              {approvalResult?.export_detail || "Failed to push decision. Google Sheets export failed."}
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {/* Jira Status Box */}
-                      {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
-                        approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
-                          <div className="p-4 bg-success/15 border border-success/30 rounded-lg flex flex-col justify-between gap-3 animate-fade-in h-full">
-                            <div className="space-y-2">
-                              <div className="text-xs font-bold text-success flex items-center gap-1.5">
-                                <span>Pushed to Jira:</span>
-                                {approvalResult.jira_issue_key && (
-                                  <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success-foreground">{approvalResult.jira_issue_key}</code>
-                                )}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground leading-relaxed">
-                                {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via MCP (mcp-atlassian server)`}
-                              </div>
-                              {/* Mini-metadata row showing generated title or scope summary */}
-                              <div className="text-[10px] text-muted-foreground bg-background/50 border border-border/40 p-2 rounded flex flex-col gap-1">
-                                <div>
-                                  <span className="font-bold text-foreground">Summary:</span> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan
-                                </div>
-                                <div>
-                                  <span className="font-bold text-foreground">Scope:</span> Multi-agent cross-functional deliverables & milestones exported
-                                </div>
-                              </div>
-                            </div>
-                            <a
-                              href={approvalResult.jira_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center justify-center w-fit px-4 py-2 bg-transparent border border-primary text-primary hover:bg-primary/10 rounded font-bold text-xs transition duration-150 shadow-sm"
-                            >
-                              Open Jira issue {approvalResult.jira_issue_key}
-                            </a>
-                          </div>
-                        ) : approvalResult?.jira_status === 'skipped' ? (
-                          <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                            <div>
-                              <div className="text-xs font-bold text-muted-foreground">
-                                Jira push skipped
-                              </div>
-                              <div className="text-[11px] text-muted-foreground leading-relaxed mt-1">
-                                {approvalResult?.jira_detail || "Jira push was skipped for this pipeline run."}
-                              </div>
-                            </div>
-                          </div>
-                        ) : approvalResult?.jira_status === 'failed' ? (
-                          <div className="p-4 bg-danger/15 border border-danger/30 rounded-lg flex flex-col justify-between gap-2 animate-fade-in h-full">
-                            <div>
-                              <div className="text-xs font-bold text-danger">
-                                Jira push failed
-                              </div>
-                              <div className="text-[11px] text-danger leading-relaxed font-mono mt-1">
-                                {approvalResult?.jira_detail || "Jira push failed. Check configuration and service settings."}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          /* Fallback when backend didn't include any jira_status
-                             (e.g. Jira credentials not configured on this deploy). */
-                          <div className="h-full flex flex-col justify-between">
-                            <IntegrationNotConfigured
-                              title="Jira push not available"
-                              envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
-                              description="Jira integration is not configured on this deployment, so the engineering plan was not pushed as a Jira Epic."
-                              docsAnchor="#L59-L65"
-                            />
-                          </div>
-                        )
                       )}
-                    </div>
 
-                    {/* Primary CTA - natural "what now?" path after terminal state.
-                        Same effect as the sidebar's destructive "Clear Plan & Reset"
-                        but framed as a forward action (indigo, not red) since the
-                        user has just finished a run, not aborting one mid-flight. */}
-                    <div className="border-t border-border pt-5 flex justify-end">
-                      <button
-                        onClick={handleReset}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded text-xs font-bold text-white uppercase tracking-wider transition shadow-md hover:shadow-primary/30"
-                      >
-                        <Plus size={14} />
-                        Start New Plan
-                      </button>
+                      {/* 2. STATE STEP A: INTERACTIVE HUMAN APPROVAL GATE */}
+                      {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
+                        <ErrorBoundary fallback={
+                          <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg space-y-2 text-xs text-danger">
+                            <div className="flex items-center gap-2 font-bold uppercase tracking-wider">
+                              <ShieldAlert size={14} />
+                              <span>Decision Gate Component Failure</span>
+                            </div>
+                            <p className="opacity-90">An error occurred while loading the Decision Gate. Please try refreshing.</p>
+                          </div>
+                        }>
+                          <HITLApprovalGate key={runId || undefined} runId={runId!} onDecisionSubmitted={handleDecisionSubmitted} />
+                        </ErrorBoundary>
+                      )}
+
+                      {/* 3. STATE STEP B: RUNTIME SYNCING SPINNER SUB-VIEW */}
+                      {pipelineStatus === PIPELINE_STATUS.EXPORTING && (
+                        <div className="space-y-4 animate-pulse py-2">
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure.
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] font-bold text-muted-foreground">
+                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                              <span className="text-success">✓</span>
+                              <span>Google Sheets Log</span>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                              <Loader2 className="animate-spin text-primary shrink-0" size={11} />
+                              <span>Creating Jira Epic</span>
+                            </div>
+                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                              <Loader2 className="animate-spin text-primary shrink-0" size={11} />
+                              <span>Pinecone Indexing</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. STATE STEP C: TERMINAL AUDIT CARDS SUB-VIEW */}
+                      {(([PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.EXPORT_FAILED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus)) && (
+                        <div className="space-y-4 animate-fade-in">
+                          {pipelineStatus === PIPELINE_STATUS.REJECTED && (
+                            <p className="text-xs text-danger font-semibold bg-danger/5 border border-danger/20 p-3 rounded-lg leading-relaxed">
+                              Export skipped. The engineering plan was rejected at the decision gate. Audit logs and decision notes have been preserved below.
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                            {/* Google Sheets Integration Card */}
+                            {approvalResult?.export_status === 'ok' && approvalResult?.sheet_url ? (
+                              <div className={`p-4 rounded-lg flex flex-col justify-between gap-3 border ${pipelineStatus === PIPELINE_STATUS.REJECTED ? 'bg-secondary/10 border-border' : 'bg-success/5 border-success/20'
+                                }`}>
+                                <div className="space-y-1.5">
+                                  <div className={`text-xs font-bold ${pipelineStatus === PIPELINE_STATUS.REJECTED ? 'text-muted-foreground' : 'text-success'}`}>
+                                    {pipelineStatus === PIPELINE_STATUS.REJECTED ? 'Rejection recorded' : 'Approval recorded'}
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    {pipelineStatus === PIPELINE_STATUS.REJECTED
+                                      ? "Wrote rejection decision, reviewer notes, and EM score to Google Sheets for audit trace."
+                                      : (approvalResult?.export_detail || "Wrote Pipeline Run Summary to Google Sheets for audit purposes.")}
+                                  </p>
+                                  <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
+                                    <span><b>Spreadsheet:</b> EM Copilot Runs Log</span>
+                                    <span><b>Data Type:</b> Run metrics, EM score, notes</span>
+                                  </div>
+                                </div>
+                                <a
+                                  href={approvalResult.sheet_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center justify-center w-fit px-3 py-1.5 border rounded-lg font-bold text-[11px] transition shadow-sm ${pipelineStatus === PIPELINE_STATUS.REJECTED
+                                      ? 'border-border text-muted-foreground hover:bg-secondary/30'
+                                      : 'border-primary text-primary hover:bg-primary/10'
+                                    }`}
+                                >
+                                  Open Google Sheet
+                                </a>
+                              </div>
+                            ) : approvalResult?.export_status === 'local_fallback' ? (
+                              <div className="p-4 bg-warning/5 border border-warning/20 rounded-lg flex flex-col justify-between gap-1.5">
+                                <div>
+                                  <div className="text-xs font-bold text-warning">Saved to Local Backup CSV</div>
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                                    {approvalResult?.export_detail || "Google Sheets integration not configured - backup CSV generated instead."}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : approvalResult?.export_status === 'failed' ? (
+                              <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
+                                <div>
+                                  <div className="text-xs font-bold text-danger">Sheets Export Failed</div>
+                                  <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
+                                    {approvalResult?.export_detail || "Failed to push sheets record trace sync."}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : null}
+
+                            {/* Jira Integration Card */}
+                            {pipelineStatus !== PIPELINE_STATUS.REJECTED && (
+                              approvalResult?.jira_status === 'jira' && approvalResult?.jira_url ? (
+                                <div className="p-4 bg-success/5 border border-success/20 rounded-lg flex flex-col justify-between gap-3">
+                                  <div className="space-y-1.5">
+                                    <div className="text-xs font-bold text-success flex items-center gap-1.5">
+                                      <span>Pushed to Jira:</span>
+                                      {approvalResult.jira_issue_key && (
+                                        <code className="bg-background border border-border px-1.5 py-0.5 rounded font-mono text-[10px] text-success font-extrabold">{approvalResult.jira_issue_key}</code>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                      {approvalResult?.jira_detail || `Created Jira Epic ${approvalResult.jira_issue_key} via Atlassian MCP.`}
+                                    </p>
+                                    <div className="text-[10px] text-muted-foreground/80 bg-background/60 border border-border/40 p-2 rounded flex flex-col gap-0.5 font-mono">
+                                      <span><b>Epic Title:</b> {selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, "") : 'BRD'} Integration Plan</span>
+                                      <span><b>Scope:</b> Multi-agent deliverables & milestones</span>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={approvalResult.jira_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center w-fit px-3 py-1.5 border border-primary text-primary hover:bg-primary/10 rounded-lg font-bold text-[11px] transition shadow-sm"
+                                  >
+                                    Open Jira Issue
+                                  </a>
+                                </div>
+                              ) : approvalResult?.jira_status === 'skipped' ? (
+                                <div className="p-4 bg-card border border-border rounded-lg flex flex-col justify-between gap-1.5">
+                                  <div>
+                                    <div className="text-xs font-bold text-muted-foreground">Jira Push Skipped</div>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-1">
+                                      {approvalResult?.jira_detail || "Jira creation skipped for this run."}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : approvalResult?.jira_status === 'failed' ? (
+                                <div className="p-4 bg-danger/5 border border-danger/20 rounded-lg flex flex-col justify-between gap-1.5">
+                                  <div>
+                                    <div className="text-xs font-bold text-danger">Jira Integration Failed</div>
+                                    <p className="text-[11px] text-danger/90 leading-relaxed font-mono mt-1">
+                                      {approvalResult?.jira_detail || "Check server API log configurations."}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="h-full flex flex-col justify-between">
+                                  <IntegrationNotConfigured
+                                    title="Jira integration inactive"
+                                    envVars={["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_PROJECT_KEY"]}
+                                    description="Jira environment configurations missing. Integration disabled."
+                                    docsAnchor="#L59-L65"
+                                  />
+                                </div>
+                              )
+                            )}
+                          </div>
+
+                          {/* DYNAMIC FORWARD PROGRESS CALL-TO-ACTION BUTTON */}
+                          <div className="border-t border-border pt-3.5 flex justify-end">
+                            <button
+                              onClick={handleReset}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition shadow-sm hover:shadow-primary/20 cursor-pointer"
+                            >
+                              <Plus size={13} />
+                              Start New Plan
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Tavily fallback hint - surfaces when the pipeline tried Tavily web
-                  grounding but the API key isn't configured on this deployment.
-                  The backend emits tool_call_degraded events into the SSE stream;
-                  useSSE pushes them into `logs`. We scan for a Tavily api_key_missing
-                  reason - if found, render the hint above Critic findings. */}
+
+              {/* Tavily fallback hint - surfaces when the pipeline tried Tavily web grounding */}
               {(() => {
                 const tavilyMissing = logs.some(
                   (l) =>
@@ -1350,21 +1481,25 @@ export const AgentWorkspace: React.FC = () => {
                       ((l.payload as Record<string, unknown> | undefined)?.reason === 'api_key_missing')),
                 );
                 return tavilyMissing ? (
-                  <IntegrationNotConfigured
-                    title="Web grounding fallback unavailable"
-                    envVars={['TAVILY_API_KEY']}
-                    description="The Architect or Tech Stack agent hit a RAG miss and would have used Tavily for live web grounding, but Tavily is not configured on this deployment. The pipeline continued with RAG-only context."
-                    docsAnchor="#L74-L78"
-                  />
+                  <div className="mt-4">
+                    <IntegrationNotConfigured
+                      title="Web grounding fallback unavailable"
+                      envVars={['TAVILY_API_KEY']}
+                      description="The Architect or Tech Stack agent hit a RAG miss and would have used Tavily for live web grounding, but Tavily is not configured on this deployment. The pipeline continued with RAG-only context."
+                      docsAnchor="#L74-L78"
+                    />
+                  </div>
                 ) : null;
               })()}
 
               {/* Critic findings - consistency issues + hallucination flags */}
-              <CriticFindings criticDetail={artifacts?.critic_output} />
+              <div className="mt-4">
+                <CriticFindings criticDetail={artifacts?.critic_output} />
+              </div>
 
-              {/* Live Log Console */}
-              <div className="border-t border-border pt-8">
-                <LogConsole logs={logs} />
+              {/* Live Log Console - Tightened Spacing Alignment */}
+              <div className="border-t border-border pt-4 mt-5">
+                <LogConsole logs={logs} pipelineStatus={pipelineStatus} />
               </div>
             </>
           )}

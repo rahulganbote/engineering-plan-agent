@@ -98,7 +98,7 @@ export const PlanTab: React.FC<PlanTabProps> = ({ planData }) => {
     if (l === 'medium' || l === 'amber') {
       return 'bg-warning/40 text-warning border border-warning/30';
     }
-    return 'bg-green-950/40 text-success border border-green-900/30';
+    return 'bg-success/20 text-success border border-success/30';
   };
 
   return (

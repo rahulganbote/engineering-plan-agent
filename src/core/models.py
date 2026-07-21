@@ -422,7 +422,18 @@ class DimensionScore(BaseModel):
     Used to track evaluation improvements.
     """
 
-    score: float = Field(..., ge=0.0, le=5.0)
+    score: float = Field(..., ge=0.0, le=5.0)  # calibrated (final) score
+    raw_llm_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=5.0,
+        description=(
+            "The LLM-as-Judge raw score BEFORE deterministic calibration was applied. "
+            "Nullable for backward-compat with pre-existing serialized runs. When present, "
+            "the UI displays it alongside `score` so users can see where the deterministic "
+            "check raised (▲), lowered (▼), or left the LLM's opinion unchanged."
+        ),
+    )
     threshold: float  # minimum passing score for this dimension
     passed: bool
     evidence: str  # specific justification for this score

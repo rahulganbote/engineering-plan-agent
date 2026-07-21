@@ -46,8 +46,9 @@
   --color-ai-spark-foreground:  oklch(0.985 0 0);
   --color-success:              oklch(0.696 0.17 162.48);           /* #10B981 */
   --color-success-foreground:   oklch(0.985 0 0);
-  --color-warning:              oklch(0.74 0.18 70);                /* amber-500-ish */
+  --color-warning:              oklch(0.74 0.18 70);                /* amber-500-ish; used for fills */
   --color-warning-foreground:   oklch(0.145 0 0);
+  --color-warning-strong:       oklch(0.52 0.17 63);                /* ~amber-700 (#b45309); use for text on white bg */
   --color-danger:               oklch(0.637 0.237 25.331);          /* #EF4444 */
   --color-danger-foreground:    oklch(0.985 0 0);
   --color-destructive:          oklch(0.637 0.237 25.331);          /* alias of --danger for shadcn parity */
@@ -82,7 +83,7 @@
   --color-accent:               oklch(0.28 0.018 257);
   --color-accent-foreground:    oklch(0.97 0.01 244);
 
-  --color-border:               oklch(0.28 0.018 257);
+  --color-border:               #2e3748;
   --color-input:                oklch(0.21 0.02 256);
   --color-ring:                 oklch(0.71 0.013 252);
 
@@ -92,6 +93,7 @@
   --color-success-foreground:   oklch(0.985 0 0);
   --color-warning:              oklch(0.8 0.16 70);
   --color-warning-foreground:   oklch(0.145 0 0);
+  --color-warning-strong:       oklch(0.85 0.17 75);                /* lifted for dark bg: amber-400-ish */
   --color-danger:               oklch(0.704 0.19 22);
   --color-danger-foreground:    oklch(0.985 0 0);
   --color-destructive:          oklch(0.704 0.19 22);
@@ -167,5 +169,11 @@ elevenlabs-convai::part(powered-by) {
   background: var(--color-card);
   pointer-events: none;
   border-radius: 0 0 12px 12px;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -20;
+  }
 }
 
