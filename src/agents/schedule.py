@@ -209,6 +209,8 @@ class ScheduleEstimatorAgent(BaseAgent):
             if not comparable:
                 comparable = citation_ids[:2]
 
+            import math
+
             sched = ScheduleOutput(
                 run_id=run_id,
                 citations=citation_ids,
@@ -216,7 +218,7 @@ class ScheduleEstimatorAgent(BaseAgent):
                 assumptions=d.get("assumptions", []),
                 flagged_ambiguities=d.get("flagged_ambiguities", []),
                 sprints=sprints if sprints else self._default_sprints(),
-                total_effort_days=round(total_stated, 1),
+                total_effort_days=float(math.ceil(total_stated)),
                 critical_path=d.get("critical_path", ["Requirements sign-off", "UAT"]),
                 buffer_weeks=int(d.get("buffer_weeks", 1)),
                 comparable_projects=comparable,

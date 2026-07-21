@@ -1,15 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Terminal, Copy, Check } from 'lucide-react';
+import { Terminal, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { type LogEvent } from '../hooks/useSSE';
 import { cleanLlmErrorMessage } from '../lib/utils';
 
 interface LogConsoleProps {
   logs: LogEvent[];
+  pipelineStatus?: string;
 }
 
-export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
+export const LogConsole: React.FC<LogConsoleProps> = ({ logs, pipelineStatus }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Auto-collapse when pipeline status transitions to awaiting_hitl
+  useEffect(() => {
+    if (pipelineStatus === 'awaiting_hitl') {
+      setIsCollapsed(true);
+    } else if (pipelineStatus === 'running' || pipelineStatus === 'initializing') {
+      setIsCollapsed(false);
+    }
+  }, [pipelineStatus]);
 
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
@@ -89,7 +100,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
       }
       case 'orchestrator_reconciled': {
         const count = log.directive_count || log.payload?.directive_count || 0;
-        return `[Orchestrator EM] Arbitration completed: Issued ${count} alignment directives for Pass 2 refinement.`;
+        return `[Orchestrator EM] Alignment completed: Issued ${count} alignment directives for Pass 2 refinement.`;
       }
       case 'artifacts_update':
         return `[Artifacts Engine] Shared state bundles updated.`;
@@ -166,7 +177,10 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-background flex flex-col shadow-lg">
       {/* Console Header */}
-      <div className="px-5 py-3 bg-card border-b border-border flex justify-between items-center select-none">
+      <div 
+        className="px-5 py-3 bg-card border-b border-border flex justify-between items-center select-none cursor-pointer hover:bg-secondary/20 transition-colors"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
         <div className="flex items-center gap-2 text-foreground">
           <Terminal size={16} className="text-cyan-400" />
           <span className="font-bold text-xs uppercase tracking-wider">Live Pipeline Engine Console</span>
@@ -174,51 +188,63 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs }) => {
             {logs.length} events
           </span>
         </div>
-        <button
-          onClick={handleCopy}
-          disabled={logs.length === 0}
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-secondary hover:bg-secondary text-foreground disabled:opacity-55 disabled:cursor-not-allowed rounded text-[11px] font-semibold border border-border transition"
-          title="Copy formatted logs to clipboard"
-        >
-          {copied ? (
-            <>
-              <Check size={12} className="text-success animate-scale-in" />
-              <span className="text-success">Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              <span>Copy Logs</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={handleCopy}
+            disabled={logs.length === 0}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-secondary hover:bg-secondary/80 text-foreground disabled:opacity-55 disabled:cursor-not-allowed rounded text-[11px] font-semibold border border-border transition"
+            title="Copy formatted logs to clipboard"
+          >
+            {copied ? (
+              <>
+                <Check size={12} className="text-success animate-scale-in" />
+                <span className="text-success">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy size={12} />
+                <span>Copy Logs</span>
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition flex items-center justify-center"
+            title={isCollapsed ? "Expand Console" : "Collapse Console"}
+          >
+            {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+        </div>
       </div>
 
       {/* Terminal logs list */}
-      <div
-        ref={containerRef}
-        className="p-5 bg-background text-foreground font-mono text-xs max-h-72 min-h-[12rem] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
-      >
-        {logs.length === 0 ? (
-          <div className="text-muted-foreground italic flex items-center gap-2 select-none h-full justify-center py-12">
-            <span className="animate-pulse">_</span> Awaiting execution triggers to hook into the SSE event stream...
-          </div>
-        ) : (
-          logs.map((log, i) => (
-            <div key={i} className="leading-relaxed hover:bg-card/40 px-1 rounded transition-colors flex items-start gap-3">
-              {/* Event counter */}
-              <span className="text-muted-foreground select-none font-bold shrink-0">
-                [{(i + 1).toString().padStart(2, '0')}]
-              </span>
-              
-              {/* Formatted Message */}
-              <span className={`break-all ${getEventColorClass(log.type)}`}>
-                {formatEventText(log)}
-              </span>
+      {!isCollapsed && (
+        <div
+          ref={containerRef}
+          className="p-5 bg-background text-foreground font-mono text-xs max-h-72 min-h-[12rem] overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
+        >
+          {logs.length === 0 ? (
+            <div className="text-muted-foreground italic flex items-center gap-2 select-none h-full justify-center py-12">
+              <span className="animate-pulse">_</span> Awaiting execution triggers to hook into the SSE event stream...
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            logs.map((log, i) => (
+              <div key={i} className="leading-relaxed hover:bg-card/40 px-1 rounded transition-colors flex items-start gap-3">
+                {/* Event counter */}
+                <span className="text-muted-foreground select-none font-bold shrink-0">
+                  [{(i + 1).toString().padStart(2, '0')}]
+                </span>
+                
+                {/* Formatted Message */}
+                <span className={`break-all ${getEventColorClass(log.type)}`}>
+                  {formatEventText(log)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

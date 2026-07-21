@@ -165,7 +165,7 @@ def test_simple_brd_pipeline():
             sched.comparable_projects,
         )
         checks["schedule_effort_days_sum"] = (
-            abs(sched.total_effort_days - sum(s.effort_days for s in sched.sprints)) < 0.5,
+            abs(sched.total_effort_days - sum(s.effort_days for s in sched.sprints)) < 1.0,
             f"stated={sched.total_effort_days} sum={sum(s.effort_days for s in sched.sprints):.1f}",
         )
         checks["schedule_critical_path"] = (len(sched.critical_path) >= 1, sched.critical_path)

@@ -1200,7 +1200,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <div className="space-y-0.5">
                       <h3 className="text-xs font-black text-primary uppercase tracking-wider">Generated Artifacts</h3>
-                      <p className="text-[11px] text-muted-foreground">Review individual multi-agent operational planning deliverables</p>
+                      <p className="text-[12px] text-muted-foreground">Review individual planning deliverables</p>
                     </div>
                     <button
                       onClick={handleDownloadPDF}
@@ -1238,7 +1238,12 @@ export const AgentWorkspace: React.FC = () => {
                       ) : (
                         <div>
                           {activeTab === 'plan' && <PlanTab planData={artifacts.plan_output} />}
-                          {activeTab === 'schedule' && <ScheduleTab scheduleData={artifacts.schedule_output} />}
+                          {activeTab === 'schedule' && (
+                            <ScheduleTab
+                              scheduleData={artifacts.schedule_output}
+                              planData={artifacts.plan_output}
+                            />
+                          )}
                           {activeTab === 'arch' && <ArchitectureTab architectureData={artifacts.arch_output} />}
                           {activeTab === 'poc' && <PoCTab pocData={artifacts.poc_output} />}
                           {activeTab === 'stack' && <TechStackTab techStackData={artifacts.stack_output} />}
@@ -1494,7 +1499,7 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Live Log Console - Tightened Spacing Alignment */}
               <div className="border-t border-border pt-4 mt-5">
-                <LogConsole logs={logs} />
+                <LogConsole logs={logs} pipelineStatus={pipelineStatus} />
               </div>
             </>
           )}

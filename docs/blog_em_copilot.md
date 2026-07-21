@@ -55,7 +55,7 @@ The pipeline runs in four conceptual stages.
 
 **2. Orchestrator dispatch (Two-Pass Loop).** The Orchestrator runs the specialists in two distinct phases:
 - **Pass 1 (Drafting):** Fans out to all five specialists in parallel using a `ThreadPoolExecutor` to generate initial drafts. This concurrency is what cuts wall-clock time from ~2.5 minutes (sequential) to under a minute.
-- **Arbitration & Pass 2 (Alignment):** The Orchestrator evaluates the drafts. If alignment conflicts are found, it schedules a targeted Pass 2 rerun *only* on the violating specialists using custom directives, reusing the other drafts to save cost and latency. If consistency checks pass with 0 conflicts, the LLM arbitration and Pass 2 rerun are bypassed entirely.
+- **Pass 2 (Alignment):** The Orchestrator evaluates the drafts. If alignment conflicts are found, it schedules a targeted Pass 2 rerun *only* on the violating specialists using custom directives, reusing the other drafts to save cost and latency. If consistency checks pass with 0 conflicts, the LLM arbitration and Pass 2 rerun are bypassed entirely.
 
 The specialists:
 - **Plan Generator** - reflection-based, with a self-critique pass

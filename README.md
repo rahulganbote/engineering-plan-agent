@@ -118,7 +118,7 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
                                                │
                                                ▼
                                      Orchestrator (Pass 2)
-                                  (Arbitration & Alignment)
+                                    (Synthesis & Alignment)
                                                │
                        ┌───────────────────────┴───────────────────────┐
                        │  Are EM alignment directives present?         │
@@ -143,7 +143,7 @@ EM Copilot ingests raw BRDs and produces a complete, audit-ready engineering bun
 
 Four architectural patterns matter more than the rest:
 
-* **Two-Pass Targeted Alignment Loop**: Rather than chaining agents sequentially, the pipeline splits into two distinct passes. Pass 1 drafts all deliverables concurrently. If the EM submits custom directives during **Arbitration**, Pass 2 performs a targeted rerun *only* on the violating specialists, reusing the other drafts to save cost and latency.
+* **Two-Pass Targeted Alignment Loop**: Rather than chaining agents sequentially, the pipeline splits into two distinct passes. Pass 1 drafts all deliverables concurrently. If the EM submits custom directives during **Alignment**, Pass 2 performs a targeted rerun *only* on the violating specialists, reusing the other drafts to save cost and latency.
 * **Targeted Critic Self-Correction**: After alignment, the Critic evaluates final outputs. If dimension scores fall below threshold limits, up to 2 self-correction cycles are triggered, rerunning only the flagged agents.
 * **Deterministic Quality Caps over LLM-Judge**: LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating to guarantee audit quality.
 * **L1/L2 Caching & External Tool Boundaries**: To optimize costs and latency, all external LLM calls, semantic Pinecone search queries, and external Tavily web lookups are intercepted by a unified caching layer (L1 in-process memory with thread-safe TTL/LRU, or L2 Redis Cache). Cache hits bypass network boundaries and external rate-limiters completely.
@@ -269,7 +269,7 @@ A consolidated log of core architectural compromises. Detailed records are maint
 
 | Decision | Alternatives | Why | Trade-off |
 |---|---|---|---|
-| **LangGraph state** | LCEL chains; raw asyncio | Native support for loop cycles (Pass 1 ↔ arbitration ↔ Pass 2 ↔ Critic revision) and node observability. | Heavier runtime dependency; lock-in to LangChain ecosystem. |
+| **LangGraph state** | LCEL chains; raw asyncio | Native support for loop cycles (Pass 1 ↔ alignment ↔ Pass 2 ↔ Critic revision) and node observability. | Heavier runtime dependency; lock-in to LangChain ecosystem. |
 | **Multi-provider failover** | Single LLM provider | Production redundancy (OpenAI ↔ Anthropic failover) to handle provider-side outages. | Two separate prompt layouts and budget cost-tables to maintain. |
 | **Async `/approve` + SSE** | Synchronous approve endpoint | External tool calls (Jira/Sheets) and ElevenLabs voice tasks easily exceed the 20s API timeout threshold. | UI must listen for the final SSE event to hydrate export links. |
 | **Hard $2.00 per-run budget** | Soft warning logs | Prevents runaway LLM loops or excessively large uploads from consuming billing budgets. | Aborts legitimate very large BRDs; accepted as visible error over budget leak. |

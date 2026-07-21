@@ -181,36 +181,36 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   const showRagLines = pipelineStatus === PIPELINE_STATUS.DRAFTING || pipelineStatus === PIPELINE_STATUS.ALIGNING; 
   const isSyncing = pipelineStatus === PIPELINE_STATUS.EXPORTING || pipelineStatus === PIPELINE_STATUS.EXPORTED; 
 
-  if (isCollapsed) { 
-    let summaryText = 'System Idle'; 
-    let statusColor = 'text-muted-foreground'; 
-    if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) { 
-      summaryText = 'Awaiting your Decision'; 
-      statusColor = 'text-warning-strong font-semibold animate-pulse'; 
-    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTING) { 
-      summaryText = 'Syncing to Jira...'; 
-      statusColor = 'text-primary font-bold'; 
-    } else if (pipelineStatus === PIPELINE_STATUS.EXPORTED) { 
-      summaryText = 'Successfully Exported to Jira'; 
-      statusColor = 'text-success font-extrabold'; 
-    } else if (pipelineStatus === PIPELINE_STATUS.REJECTED) { 
-      summaryText = 'Plan Rejected (Revision Loop Triggered)'; 
-      statusColor = 'text-danger font-bold'; 
-    } else if (pipelineStatus === PIPELINE_STATUS.ERROR) { 
-      summaryText = 'Pipeline Error Encountered'; 
-      statusColor = 'text-danger font-bold'; 
-    } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) { 
-      summaryText = `Executing: ${pipelineStatus.replace(/_/g, ' ')}`; 
-      statusColor = 'text-primary font-bold'; 
-    } 
+  let summaryText = 'System Idle'; 
+  let statusColor = 'text-muted-foreground'; 
+  if (pipelineStatus === PIPELINE_STATUS.AWAITING_HITL) { 
+    summaryText = 'Awaiting your Decision'; 
+    statusColor = 'text-warning-strong font-semibold animate-pulse'; 
+  } else if (pipelineStatus === PIPELINE_STATUS.EXPORTING) { 
+    summaryText = 'Syncing to Jira...'; 
+    statusColor = 'text-primary font-bold'; 
+  } else if (pipelineStatus === PIPELINE_STATUS.EXPORTED) { 
+    summaryText = 'Successfully Exported to Jira'; 
+    statusColor = 'text-success font-extrabold'; 
+  } else if (pipelineStatus === PIPELINE_STATUS.REJECTED) { 
+    summaryText = 'Plan Rejected (Revision Loop Triggered)'; 
+    statusColor = 'text-danger font-bold'; 
+  } else if (pipelineStatus === PIPELINE_STATUS.ERROR) { 
+    summaryText = 'Pipeline Error Encountered'; 
+    statusColor = 'text-danger font-bold'; 
+  } else if (pipelineStatus !== PIPELINE_STATUS.IDLE) { 
+    summaryText = `Executing: ${pipelineStatus.replace(/_/g, ' ')}`; 
+    statusColor = 'text-primary font-bold'; 
+  } 
 
+  if (isCollapsed) { 
     return ( 
       <div className="w-full bg-card border border-border rounded-xl px-4 py-2.5 shadow-md flex items-center justify-between text-xs transition-all duration-300"> 
         <div className="flex items-center gap-3"> 
           
           {/* Core Text Label Block */}
           <span className="text-xs font-black text-primary uppercase tracking-wider inline-flex items-center gap-2"> 
-            Workflow: <span className={statusColor}>{summaryText}</span> 
+            Status: <span className={statusColor}>{summaryText}</span> 
             
             {/* Anchored Pulsing Dot - Now paired natively right next to the active status label */}
             {pipelineStatus !== PIPELINE_STATUS.IDLE && pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && ( 
@@ -258,13 +258,46 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
       ref={containerRef}
       className="w-full bg-card border border-border rounded-xl p-4 shadow-lg relative transition-all duration-300 select-none"
     >
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-xs font-black text-primary uppercase tracking-wider">{title || "Agentic Workflow Progress"}</h3>
+      <div className="flex items-center justify-between mb-3 border-b border-border pb-2.5">
+        <div className="flex items-center gap-4">
+          <h3 className="text-xs font-black text-primary uppercase tracking-wider">{title || "Agentic Workflow Progress"}</h3>
+          
+          {pipelineStatus !== PIPELINE_STATUS.IDLE && (
+            <div className="flex items-center gap-2 text-[11px] border-l border-border pl-4">
+              <span className="font-semibold text-muted-foreground">Status:</span>
+              <span className={`${statusColor} uppercase tracking-wider inline-flex items-center gap-1.5`}>
+                {summaryText}
+                {pipelineStatus !== PIPELINE_STATUS.EXPORTED && pipelineStatus !== PIPELINE_STATUS.REJECTED && (
+                  <span className="flex h-1.5 w-1.5 relative shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                      pipelineStatus === PIPELINE_STATUS.ERROR ? 'bg-danger' :
+                      pipelineStatus === PIPELINE_STATUS.AWAITING_HITL ? 'bg-warning' : 'bg-primary'
+                    }`}></span>
+                  </span>
+                )}
+              </span>
+              {pipelineStatus === PIPELINE_STATUS.AWAITING_HITL && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.getElementById('decision-gate');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="ml-2 px-2.5 py-1 bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] font-semibold rounded transition shadow-sm hover:shadow-md shrink-0 cursor-pointer"
+                >
+                  Scroll to Decision Gate
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {onToggleCollapse && (
             <button
               onClick={onToggleCollapse}
-              className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-secondary/40 transition-colors"
+              className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-secondary/40 transition-colors cursor-pointer"
             >
               Minimize <ChevronUp size={14} />
             </button>
@@ -383,12 +416,20 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               pipelineStatus !== PIPELINE_STATUS.STARTED && 
               pipelineStatus !== PIPELINE_STATUS.RUNNING && 
               pipelineStatus !== PIPELINE_STATUS.ORCHESTRATOR_PARSING;
+
+            const isRagAnimating = 
+              nodes.orchestrator.isActive || 
+              ['engineering_plan_generator', 'schedule_estimator', 'poc_planner', 'tech_stack_recommender', 'solution_architect']
+                .some(key => getDetailedStatus(key) === 'running');
+
             return (
               <path
-                d="M 350,154 L 270,306"
+                d="M 340,154 L 340,260 L 220,260 L 220,306"
                 stroke={isRagUsed ? "#10B981" : "#94A3B8"}
-                strokeWidth="2.5"
+                strokeWidth="1.5"
+                strokeDasharray="3, 3"
                 fill="none"
+                className={isRagAnimating ? "animate-[dash_1.5s_linear_infinite]" : ""}
                 markerEnd={`url(#${isRagUsed ? 'arrow-success' : 'arrow-gray'})`}
               />
             );
@@ -504,12 +545,12 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   <div className="flex items-center justify-between border-b border-primary/15 pb-0.5 mb-0.5">
                     <div className="flex items-center gap-1 text-primary">
                       <Database size={13} className="shrink-0" />
-                      <span className="text-[9px] font-extrabold uppercase tracking-wide">RAG (Pinecone)</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide">RAG (Pinecone)</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-1 text-[8px] text-muted-foreground leading-snug">
+                  <div className="grid grid-cols-1 gap-1 text-[10px] text-muted-foreground leading-snug">
                     <div className="hover:text-primary transition-colors">
-                      <span className="font-extrabold text-ai-spark block mb-0.5 text-[7px] uppercase">Storage</span>
+                      <span className="font-extrabold text-ai-spark block mb-0.5 text-[10px] uppercase">Storage</span>
                       <span>🌲 Pinecone Index</span>
                       <span className="block">📚 Engineering Guidelines</span>
                     </div>
@@ -648,7 +689,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                       <UserCheck size={18} />}
                 </div>
               </div>
-              <span className={`text-[10px] font-extrabold mt-1.5 leading-none ${nodes.hitl.isActive ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground'}`}>
+              <span className={`text-[10px] font-extrabold mt-2.5 leading-none ${nodes.hitl.isActive ? 'text-teal-600 dark:text-teal-400' : 'text-muted-foreground'}`}>
                 HITL Decision Gate
               </span>
             </div>
@@ -696,12 +737,12 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   <div className="flex items-center justify-between border-b border-primary/15 pb-0.5 mb-0.5">
                     <div className="flex items-center gap-1 text-primary">
                       <Wrench size={13} className="shrink-0" />
-                      <span className="text-[9px] font-extrabold uppercase tracking-wide">Agent Tools & State</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide">Agent Tools & State</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 text-[8px] text-muted-foreground leading-snug">
+                  <div className="grid grid-cols-2 gap-1 text-[9px] text-muted-foreground leading-snug">
                     <div className="hover:text-primary transition-colors">
-                      <span className="font-extrabold text-ai-spark block mb-0.5 text-[7px] uppercase">Autonomous</span>
+                      <span className="font-extrabold text-ai-spark block mb-0.5 text-[8px] uppercase">Autonomous</span>
                       <span>🔍 Tavily</span>
                       <span className="block">💻 GitHub</span>
                     </div>
@@ -738,17 +779,17 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   <div className="flex items-center justify-between border-b border-primary/15 pb-0.5 mb-0.5">
                     <div className="flex items-center gap-1 text-primary">
                       <Wrench size={13} className="shrink-0" />
-                      <span className="text-[9px] font-extrabold uppercase tracking-wide">Delivery Targets</span>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide">Delivery Targets</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 text-[8px] text-muted-foreground leading-snug">
+                  <div className="grid grid-cols-2 gap-1 text-[9px] text-muted-foreground leading-snug">
                     <div className="hover:text-success transition-colors">
-                      <span className="font-extrabold text-success block mb-0.5 text-[7px] uppercase">EXPORT</span>
+                      <span className="font-extrabold text-success block mb-0.5 text-[9px] uppercase">EXPORT</span>
                       <span>📋 Jira Epic</span>
                       <span className="block">📊 Sheets</span>
                     </div>
                     <div className="border-l border-border/60 pl-1 hover:text-warning transition-colors">
-                      <span className="font-extrabold text-warning block mb-0.5 text-[7px] uppercase">Alerts</span>
+                      <span className="font-extrabold text-warning block mb-0.5 text-[9px] uppercase">Alerts</span>
                       <span>💬 Slack</span>
                     </div>
                   </div>

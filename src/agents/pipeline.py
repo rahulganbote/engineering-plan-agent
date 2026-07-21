@@ -404,7 +404,9 @@ def node_pass2_alignment(state: dict) -> dict:
                     avg_effort = round(min_effort / len(sprints), 1) if sprints else 0
                     for s in sprints:
                         s.effort_days = avg_effort
-                output.total_effort_days = round(sum(s.effort_days for s in sprints), 1)
+                import math
+
+                output.total_effort_days = float(math.ceil(sum(s.effort_days for s in sprints)))
     except Exception as e:
         log.error(f"[{ps.run_id}] pass2_alignment effort scaling failed: {e}")
 
