@@ -435,7 +435,7 @@ export const AgentWorkspace: React.FC = () => {
           ) : (
             <div className="space-y-4">
               <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
+                <div className="text-xs font-bold text-primary uppercase tracking-wider">Authentication</div>
                 <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, and helps us maintain EM Copilot as a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
                 <button
                   onClick={login}
@@ -447,7 +447,7 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Added checklist list to balance visual weight on the landing page */}
               <div className="bg-secondary/40 border border-border/50 rounded-lg p-4 space-y-3">
-                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-foreground">What you can do:</h4>
+                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-primary">What you can do:</h4>
                 <ul className="text-xs text-muted-foreground space-y-2">
                   <li className="flex items-start gap-2">
                     <span className="text-success font-bold shrink-0">✓</span>

@@ -34,7 +34,7 @@ const NODE_TOOLTIPS: Record<NodeId, { Icon: LucideIcon; iconClass: string; title
   draft: {
     Icon: FileText,
     iconClass: 'text-indigo-600 dark:text-indigo-400',
-    title: 'Draft & Refine',
+    title: 'Draft & Refine Plan',
     desc: "Five specialist agents draft PoC, Architect, Tech Stack, Schedule, and Plan artifacts in parallel — grounded via RAG in your team's own docs — with multi-pass alignment refinement.",
   },
   critic: {
@@ -46,7 +46,7 @@ const NODE_TOOLTIPS: Record<NodeId, { Icon: LucideIcon; iconClass: string; title
   hitl: {
     Icon: UserCheck,
     iconClass: 'text-amber-600 dark:text-amber-400',
-    title: 'HITL Approval',
+    title: 'HITL Review & Approval',
     desc: 'You review the deliverables and approve — or reject with notes to trigger another revision. Voice AI support (ElevenLabs) is available at the Decision Gate.',
   },
   export: {
@@ -133,11 +133,11 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
       {/* ─── TIER 1: SVG WORKFLOW CHAIN ───────────────────────────────── */}
       <div className="overflow-x-auto -mx-1 md:mx-0">
         <svg
-          viewBox="0 0 1160 250"
+          viewBox="0 0 750 250"
           xmlns="http://www.w3.org/2000/svg"
           role="img"
           aria-label="EM Copilot user workflow: six-step user journey from BRD upload to Jira export."
-          className="w-full h-auto min-w-[880px]"
+          className="w-full h-auto"
         >
           <defs>
             <marker id="lw-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -156,77 +156,77 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
 
           {/* Revision Loop */}
           <path
-            d="M 690 75 C 690 15, 490 15, 490 75"
+            d="M 437 75 C 437 15, 312 15, 312 75"
             fill="none"
             stroke="#f59e0b"
             strokeWidth={2}
             strokeDasharray="6 4"
             markerEnd="url(#lw-arrow-warn)"
           />
-          <text x={590} y={12} fontSize={11} fill="#f59e0b" fontWeight={700} textAnchor="middle">
+          <text x={374} y={12} fontSize={11} fill="#f59e0b" fontWeight={700} textAnchor="middle">
             ↻ Revision loop
           </text>
 
           {/* Connectors */}
-          <line x1={160} y1={115} x2={220} y2={115} stroke="var(--color-muted-foreground)" strokeWidth={2} markerEnd="url(#lw-arrow)" />
-          <line x1={360} y1={115} x2={420} y2={115} stroke="var(--color-muted-foreground)" strokeWidth={2} markerEnd="url(#lw-arrow)" />
-          <line x1={560} y1={115} x2={620} y2={115} stroke="var(--color-muted-foreground)" strokeWidth={2} markerEnd="url(#lw-arrow)" />
-          <line x1={760} y1={115} x2={820} y2={115} stroke="var(--color-muted-foreground)" strokeWidth={2} markerEnd="url(#lw-arrow)" />
-          <line x1={960} y1={115} x2={1020} y2={115} stroke="#10b981" strokeWidth={2.5} markerEnd="url(#lw-arrow-success)" />
+          <line x1={115} y1={115} x2={135} y2={115} stroke="var(--color-muted-foreground)" strokeWidth={2} markerEnd="url(#lw-arrow)" />
+          <line x1={240} y1={115} x2={260} y2={115} stroke="#4f46e5" strokeWidth={2} markerEnd="url(#lw-arrow-primary)" />
+          <line x1={365} y1={115} x2={385} y2={115} stroke="#4f46e5" strokeWidth={2} markerEnd="url(#lw-arrow-primary)" />
+          <line x1={490} y1={115} x2={510} y2={115} stroke="#f59e0b" strokeWidth={2} markerEnd="url(#lw-arrow-warn)" />
+          <line x1={615} y1={115} x2={635} y2={115} stroke="#10b981" strokeWidth={2.5} markerEnd="url(#lw-arrow-success)" />
 
           {/* Down Arrow to Artifact Pills */}
-          <line x1="490" y1="156" x2="490" y2="171" stroke="#4f46e5" strokeWidth="2" markerEnd="url(#lw-arrow-primary)" />
+          <line x1="312" y1="156" x2="312" y2="171" stroke="#4f46e5" strokeWidth="2" markerEnd="url(#lw-arrow-primary)" />
 
           {/* Node 1: Upload */}
-          <foreignObject x={20} y={75} width={140} height={80}>
+          <foreignObject x={10} y={75} width={105} height={80}>
             <div
               onMouseEnter={(e) => handleMouseEnter('upload', e)}
               onMouseLeave={handleMouseLeave}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-slate-300 dark:border-slate-700 hover:border-indigo-600 rounded-2xl bg-card px-2 py-1 shadow-sm transition-all duration-200 cursor-help"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-slate-300 dark:border-slate-700 hover:border-indigo-600 rounded-2xl bg-card px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
-              <Upload className="text-foreground shrink-0" size={26} />
-              <span className="text-xs font-bold text-foreground leading-tight">Upload BRD</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Document</span>
+              <Upload className="text-foreground shrink-0" size={24} />
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Upload BRD</span>
+              <span className="text-[9px] text-muted-foreground leading-tight text-center">Document</span>
             </div>
           </foreignObject>
 
           {/* Node 2: Analyze */}
-          <foreignObject x={220} y={75} width={140} height={80}>
+          <foreignObject x={135} y={75} width={105} height={80}>
             <div
               onMouseEnter={(e) => handleMouseEnter('analyze', e)}
               onMouseLeave={handleMouseLeave}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-indigo-400 dark:border-indigo-500 hover:border-indigo-600 rounded-2xl bg-card px-2 py-1 shadow-sm transition-all duration-200 cursor-help"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-indigo-400 dark:border-indigo-500 hover:border-indigo-600 rounded-2xl bg-card px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
-              <Search className="text-[#4f46e5] shrink-0" size={26} />
-              <span className="text-xs font-bold text-foreground leading-tight">Analyze BRD</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Verification</span>
+              <Search className="text-[#4f46e5] shrink-0" size={24} />
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Analyze Requirements</span>
+              <span className="text-[9px] text-muted-foreground leading-tight text-center">Verification</span>
             </div>
           </foreignObject>
 
           {/* Node 3: Draft & Refine */}
-          <foreignObject x={420} y={75} width={140} height={80}>
+          <foreignObject x={260} y={75} width={105} height={80}>
             <div
               onMouseEnter={(e) => handleMouseEnter('draft', e)}
               onMouseLeave={handleMouseLeave}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-indigo-400 dark:border-indigo-500 hover:border-indigo-600 rounded-2xl bg-card px-2 py-1 shadow-sm transition-all duration-200 cursor-help"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-indigo-400 dark:border-indigo-500 hover:border-indigo-600 rounded-2xl bg-card px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
-              <FileText className="text-[#4f46e5] shrink-0" size={26} />
-              <span className="text-xs font-bold text-foreground leading-tight">Draft &amp; Refine</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Multi-pass alignment</span>
+              <FileText className="text-[#4f46e5] shrink-0" size={24} />
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Draft &amp; Refine Plan</span>
+              <span className="text-[9px] text-muted-foreground leading-tight text-center">Multi-pass alignment</span>
             </div>
           </foreignObject>
 
           {/* Artifact Pills */}
-          <foreignObject x={280} y={178} width={420} height={80}>
+          <foreignObject x={142} y={178} width={340} height={80}>
             <div className="w-full">
               <div className="text-[10px] text-[#4f46e5] text-center font-extrabold uppercase tracking-wider mb-1">
-                5 Artifacts Generated
+                5 Agents - Generate The Plan
               </div>
-              <div className="flex flex-nowrap items-center justify-center gap-1.5 whitespace-nowrap">
+              <div className="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap">
                 {['PoC', 'Architect', 'Tech Stack', 'Schedule', 'Plan'].map((name) => (
                   <span
                     key={name}
-                    className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#4f46e5]/10 text-[#4f46e5] border border-[#4f46e5]/30"
+                    className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4f46e5]/10 text-[#4f46e5] border border-[#4f46e5]/30 shadow-sm"
                   >
                     {name}
                   </span>
@@ -239,43 +239,43 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
           </foreignObject>
 
           {/* Node 4: Critic */}
-          <foreignObject x={620} y={75} width={140} height={80}>
+          <foreignObject x={385} y={75} width={105} height={80}>
             <div
               onMouseEnter={(e) => handleMouseEnter('critic', e)}
               onMouseLeave={handleMouseLeave}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-amber-400 dark:border-amber-500 hover:border-amber-600 rounded-2xl bg-card px-2 py-1 shadow-sm transition-all duration-200 cursor-help"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-amber-400 dark:border-amber-500 hover:border-amber-600 rounded-2xl bg-card px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
-              <Scale className="text-amber-500 shrink-0" size={26} />
-              <span className="text-xs font-bold text-foreground leading-tight">Critic-Verify</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Score &amp; revise loop</span>
+              <Scale className="text-amber-500 shrink-0" size={24} />
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Critic - Verify</span>
+              <span className="text-[9px] text-muted-foreground leading-tight text-center">Score &amp; revise loop</span>
             </div>
           </foreignObject>
 
           {/* Node 5: HITL */}
-          <foreignObject x={820} y={75} width={140} height={80}>
+          <foreignObject x={510} y={75} width={105} height={80}>
             <div
               onMouseEnter={(e) => handleMouseEnter('hitl', e)}
               onMouseLeave={handleMouseLeave}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-amber-400 dark:border-amber-500 hover:border-amber-600 rounded-2xl bg-card px-2 py-1 shadow-sm transition-all duration-200 cursor-help"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-amber-400 dark:border-amber-500 hover:border-amber-600 rounded-2xl bg-card px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
-              <UserCheck className="text-amber-500 shrink-0" size={26} />
-              <span className="text-xs font-bold text-foreground leading-tight">HITL Approval</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Human-in-the-loop</span>
+              <UserCheck className="text-amber-500 shrink-0" size={24} />
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">HITL Review &amp; Approval</span>
+              <span className="text-[9px] text-muted-foreground leading-tight text-center">Human-in-the-loop</span>
             </div>
           </foreignObject>
 
           {/* Node 6: Export */}
-          <foreignObject x={1020} y={75} width={140} height={80}>
+          <foreignObject x={635} y={75} width={105} height={80}>
             <div
               onMouseEnter={(e) => handleMouseEnter('export', e)}
               onMouseLeave={handleMouseLeave}
-              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-emerald-500 hover:border-emerald-600 rounded-2xl bg-emerald-500/10 px-2 py-1 shadow-sm transition-all duration-200 cursor-help"
+              className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-emerald-500 hover:border-emerald-600 rounded-2xl bg-emerald-500/10 px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
-              <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                <Rocket className="text-white" size={16} />
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <Rocket className="text-white" size={14} />
               </div>
-              <span className="text-xs font-bold text-foreground leading-tight">Export to Jira</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Epic · Sheets · Slack</span>
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Export to Jira</span>
+              <span className="text-[9px] text-muted-foreground leading-tight text-center">Epic · Sheets · Slack</span>
             </div>
           </foreignObject>
         </svg>
