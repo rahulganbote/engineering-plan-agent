@@ -2,7 +2,7 @@
  * LandingWorkflow — landing-page hero visual.
  *
  * Story-first user-journey diagram. Six-step chain (Upload → Analyze → Draft &
- * Refine → Critic-Verify → HITL Approval → Export) paired with a 4-card
+ * Refine → Critic & Verify → HITL Approval → Export) paired with a 4-card
  * mechanism breakdown below.
  *
  * Strictly adheres to the 3-Color System:
@@ -40,7 +40,7 @@ const NODE_TOOLTIPS: Record<NodeId, { Icon: LucideIcon; iconClass: string; title
   critic: {
     Icon: Scale,
     iconClass: 'text-amber-600 dark:text-amber-400',
-    title: 'Critic-Verify',
+    title: 'Critic & Verify',
     desc: 'Independent Critic grades outputs on 4 quality dimensions (Groundedness, Completeness, Consistency, Actionability) and triggers a revision loop if the gate fails.',
   },
   hitl: {
@@ -125,7 +125,7 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
 
       {/* ─── SECTION HEADER ───────────────────────────────────────────── */}
       <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-        <h3 className="text-xs font-extrabold text-[#4f46e5] uppercase tracking-wider">
+        <h3 className="text-sm font-extrabold text-[#4f46e5] uppercase tracking-wider">
           {title || 'How It Works'}
         </h3>
       </div>
@@ -220,7 +220,7 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
           <foreignObject x={142} y={178} width={340} height={80}>
             <div className="w-full">
               <div className="text-[10px] text-[#4f46e5] text-center font-extrabold uppercase tracking-wider mb-1">
-                5 Agents - Generate The Plan
+                5 Agents Generate the Plan
               </div>
               <div className="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap">
                 {['PoC', 'Architect', 'Tech Stack', 'Schedule', 'Plan'].map((name) => (
@@ -246,7 +246,7 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
               className="w-full h-full flex flex-col items-center justify-center gap-0.5 border-2 border-amber-400 dark:border-amber-500 hover:border-amber-600 rounded-2xl bg-card px-1 py-1 shadow-sm transition-all duration-200 cursor-help"
             >
               <Scale className="text-amber-500 shrink-0" size={24} />
-              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Critic - Verify</span>
+              <span className="text-[11px] font-bold text-foreground leading-tight text-center">Critic &amp; Verify</span>
               <span className="text-[9px] text-muted-foreground leading-tight text-center">Score &amp; revise loop</span>
             </div>
           </foreignObject>
@@ -290,17 +290,17 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
 
             <div className="pt-1 space-y-1">
               {/* 2. Clean Category Header without Numbering */}
-              <div className={`text-[11px] font-extrabold ${p.text} uppercase tracking-wider`}>
+              <div className={`text-sm font-extrabold ${p.text} uppercase tracking-wider`}>
                 {p.title}
               </div>
 
               {/* 3. Subtitle / Tagline */}
-              <div className="text-xs font-bold text-foreground tracking-tight">
+              <div className="text-sm font-bold text-foreground tracking-tight">
                 {p.tagline}
               </div>
 
               {/* 4. Body Description */}
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {p.body}
               </p>
             </div>

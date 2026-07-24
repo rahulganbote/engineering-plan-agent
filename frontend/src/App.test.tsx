@@ -23,12 +23,12 @@ describe('App (Sprint 1 workspace and sandbox)', () => {
 
   it('renders without throwing', async () => {
     render(<App />);
-    expect(await screen.findByRole('heading', { name: /BRD → Engineering Plan/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Next Gen Software Engineering/i })).toBeInTheDocument();
   });
 
   it('renders the workspace title', async () => {
     render(<App />);
-    expect(await screen.findByRole('heading', { name: /BRD → Engineering Plan/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Next Gen Software Engineering/i })).toBeInTheDocument();
   });
 
   it('renders the workspace control elements', async () => {

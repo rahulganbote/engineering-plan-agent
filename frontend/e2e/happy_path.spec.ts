@@ -16,12 +16,12 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('EM Copilot - happy path', () => {
-  test('app shell loads and renders the BRD → Engineering Plan title', async ({ page }) => {
+  test('app shell loads and renders the EM Copilot title', async ({ page }) => {
     await page.goto('/');
 
     // The header text from AgentWorkspace is the canonical landmark
     await expect(
-      page.getByText(/BRD\s*[→-]\s*Engineering Plan/i)
+      page.getByRole('heading', { name: /EM Copilot/i })
     ).toBeVisible({ timeout: 10_000 });
   });
 
