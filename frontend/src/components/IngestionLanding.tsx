@@ -61,19 +61,24 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           CTA is shown once authenticated. */}
       <div className="space-y-4 text-center max-w-4xl mx-auto pt-4 sm:pt-10">
         <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
-          Transform a Business Requirements Document (BRD) into your organization standard Engineering Plan in{' '}
+          Transform a Business Requirements Document (BRD) into your organization's standard Engineering Plan in{' '}
           <span className="text-primary">minutes</span>
         </h2>
         <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           EM Copilot transforms your raw BRD into an audit-ready engineering plan, grounded via RAG (Retrieval-Augmented Generation) in your organization's own architectural patterns and approved tech stack. Artifacts are presented for your review; on approval, pushed to Jira.
         </p>
         {!isAuthenticated && (
-          <button
-            onClick={onLogin}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-bold text-sm shadow-md transition"
-          >
-            Sign in with Google to Get Started
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={onLogin}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-bold text-sm shadow-md transition"
+            >
+              Sign in with Google to Get Started
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Takes 10 seconds — then upload your BRD and get a plan in minutes.
+            </p>
+          </div>
         )}
       </div>
 
@@ -84,7 +89,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           30% { opacity: 0.3; transform: scale(0.9); }
         }
       `}</style>
-      <div id="see-it-in-action" className="w-full max-w-2xl mx-auto bg-card border border-border rounded-xl p-3 md:p-4 shadow-lg space-y-3 scroll-mt-20">
+      <div id="see-it-in-action" className="w-full bg-card border border-border rounded-xl p-3 md:p-4 shadow-lg space-y-3 scroll-mt-20">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black text-primary uppercase tracking-wider">
             See It in Action
@@ -170,9 +175,12 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
 
             <button
               onClick={() => setShowVideo(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-secondary/60 hover:bg-secondary text-foreground rounded-lg font-bold text-sm transition"
+              className="group w-full flex items-center justify-center gap-2 py-2.5 bg-secondary/60 hover:bg-secondary hover:shadow-md text-foreground rounded-lg font-bold text-sm transition-all"
             >
-              <Play size={16} className="text-primary" />
+              <span className="relative flex items-center justify-center w-5 h-5">
+                <span className="absolute inset-0 rounded-full bg-primary/30 group-hover:animate-ping" />
+                <Play size={16} className="relative text-primary" />
+              </span>
               Watch the 97s walkthrough
             </button>
           </div>

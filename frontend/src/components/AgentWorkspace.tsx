@@ -749,9 +749,9 @@ export const AgentWorkspace: React.FC = () => {
             {!isAuthenticated && (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="text-xs font-bold text-white bg-primary hover:bg-primary/90 transition px-3.5 py-1.5 rounded-lg shadow-sm"
+                className="text-xs font-bold text-primary border border-primary/40 hover:bg-primary/10 transition px-3.5 py-1.5 rounded-lg"
               >
-                Get started
+                Sign in
               </button>
             )}
           </div>
