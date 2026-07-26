@@ -152,6 +152,9 @@ export const AgentWorkspace: React.FC = () => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Which nav/hero CTA opened the modal — varies the modal headline only;
+  // both paths use the same Google OAuth flow (see AuthPromptModal).
+  const [authModalVariant, setAuthModalVariant] = useState<'signin' | 'signup'>('signup');
   const [isExampleLoading, setIsExampleLoading] = useState(false);
 
 
@@ -707,7 +710,12 @@ export const AgentWorkspace: React.FC = () => {
             login buttons bolted on. Signed-in users keep the original header
             (title, About, Feedback, theme, API status). */}
         {!isAuthenticated ? (
-          <HomepageNav onSignIn={() => setIsAuthModalOpen(true)} />
+          <HomepageNav
+            onSignIn={(variant) => {
+              setAuthModalVariant(variant ?? 'signup');
+              setIsAuthModalOpen(true);
+            }}
+          />
         ) : (
         <header className="min-h-12 border-b border-border px-6 py-2.5 gap-4 flex flex-col sm:flex-row sm:items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
@@ -774,7 +782,10 @@ export const AgentWorkspace: React.FC = () => {
                 onTrigger={triggerPipeline}
                 isLoading={pipelineStatus === PIPELINE_STATUS.INITIALIZING}
                 isAuthenticated={isAuthenticated}
-                onLogin={() => setIsAuthModalOpen(true)}
+                onLogin={() => {
+                  setAuthModalVariant('signup');
+                  setIsAuthModalOpen(true);
+                }}
               />
             </div>
           ) : (
@@ -1522,6 +1533,7 @@ export const AgentWorkspace: React.FC = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onLogin={login}
+        variant={authModalVariant}
       />
     </div>
   );

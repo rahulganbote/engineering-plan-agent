@@ -54,12 +54,15 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
   }, [showVideo, slides.length]);
 
   return (
-    <div className="space-y-3 w-full py-2">
+    <div className="space-y-9 w-full max-w-5xl mx-auto py-4">
+      {/* Capped at max-w-5xl (1024px) — tightened from max-w-6xl per
+          feedback that even the industry-standard 1152px column felt too
+          big on a wide monitor. */}
       {/* Welcome & Subtitle Section — big, centered hero (Figma-style type
           scale) with a single primary CTA for signed-out visitors. Signed-in
           users already have Upload/Generate in the sidebar, so no duplicate
           CTA is shown once authenticated. */}
-      <div className="space-y-4 text-center max-w-4xl mx-auto pt-4 sm:pt-10">
+      <div className="space-y-3 text-center max-w-4xl mx-auto pt-2 sm:pt-6">
         <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
           Transform a Business Requirements Document (BRD) into your organization's standard Engineering Plan in{' '}
           <span className="text-primary">minutes</span>
@@ -75,9 +78,6 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             >
               Sign in with Google to Get Started
             </button>
-            <p className="text-xs text-muted-foreground">
-              Takes 10 seconds — then upload your BRD and get a plan in minutes.
-            </p>
           </div>
         )}
       </div>
@@ -89,7 +89,10 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           30% { opacity: 0.3; transform: scale(0.9); }
         }
       `}</style>
-      <div id="see-it-in-action" className="w-full bg-card border border-border rounded-xl p-3 md:p-4 shadow-lg space-y-3 scroll-mt-20">
+      {/* max-w-4xl matches the H1 hero's width above, and How It Works below
+          — all three now share one column so the page reads as a single
+          aligned layout instead of cards of differing widths. */}
+      <div id="see-it-in-action" className="w-full max-w-4xl mx-auto bg-card border border-border rounded-xl p-3 md:p-4 shadow-lg space-y-3 scroll-mt-20">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black text-primary uppercase tracking-wider">
             See It in Action
@@ -111,37 +114,51 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         {showVideo ? (
           <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
             <iframe
-              src="https://www.loom.com/embed/b45c127069f84573b0a713a241155214?hide_owner=true&hide_title=true&hideEmbedTopBar=true"
+              src="https://www.loom.com/embed/b45c127069f84573b0a713a241155214?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
               className="absolute inset-0 w-full h-full"
               allowFullScreen
-              allow="fullscreen; picture-in-picture"
+              allow="autoplay; fullscreen; picture-in-picture"
               title="EM Copilot demo — BRD to Engineering Plan in minutes"
             />
           </div>
         ) : (
           <div className="space-y-3">
             {hasSlides ? (
-              // Screenshot carousel — cross-fades through real pipeline states.
-              <div className="space-y-2">
-                <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-slate-900">
+              // Screenshot carousel — cross-fading through real pipeline states.
+              <div className="space-y-3">
+                {/* Interactive Preview Container with Full-Card Play Overlay */}
+                <div
+                  onClick={() => setShowVideo(true)}
+                  className="group relative w-full aspect-video bg-slate-950 rounded-xl border border-border/60 overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
+                >
                   {slides.map((slide, i) => (
                     <img
                       key={slide.src}
                       src={slide.src}
                       alt={slide.caption}
                       onError={() => setFailedSrcs((prev) => new Set(prev).add(slide.src))}
-                      className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${
-                        i === activeIndex ? 'opacity-100' : 'opacity-0'
+                      className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 group-hover:scale-[1.01] transform ${
+                        i === activeIndex ? 'opacity-90 group-hover:opacity-75' : 'opacity-0'
                       }`}
                     />
                   ))}
+
+                  {/* Centered Play Button Overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/20 group-hover:bg-slate-950/40 transition-colors duration-300 z-20">
+                    {/* Glowing Primary Play Circle */}
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
+                      <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white translate-x-0.5" />
+                    </div>
+                  </div>
+
                   {/* Caption bar */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-8 pb-2.5">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-8 pb-2.5 z-10">
                     <p className="text-xs sm:text-sm font-semibold text-white text-center">
                       {slides[activeIndex]?.caption}
                     </p>
                   </div>
                 </div>
+
                 {/* Progress dots */}
                 {slides.length > 1 && (
                   <div className="flex items-center justify-center gap-1.5">
@@ -157,32 +174,40 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                     ))}
                   </div>
                 )}
+
+                {/* Persistent solid CTA */}
+                <button
+                  onClick={() => setShowVideo(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 active:scale-[0.99] rounded-lg font-bold text-sm text-white shadow-md transition-all duration-150 cursor-pointer"
+                >
+                  <Play size={16} fill="currentColor" />
+                  Watch the 97s Walkthrough Video
+                </button>
               </div>
             ) : (
               // Fallback: ambient icon pulse when no screenshots are present.
-              <div className="flex items-center justify-center gap-3 sm:gap-5 py-4">
-                {PULSE_ICONS.map((Icon, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 text-primary"
-                    style={{ animation: 'pipelinePulse 3.6s ease-in-out infinite', animationDelay: `${i * 0.6}s` }}
-                  >
-                    <Icon size={20} />
+              <div className="space-y-3">
+                <div
+                  onClick={() => setShowVideo(true)}
+                  className="group relative flex items-center justify-center gap-3 sm:gap-5 py-8 rounded-xl border border-border/60 bg-card cursor-pointer hover:shadow-md transition-all duration-300"
+                >
+                  {PULSE_ICONS.map((Icon, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 text-primary"
+                      style={{ animation: 'pipelinePulse 3.6s ease-in-out infinite', animationDelay: `${i * 0.6}s` }}
+                    >
+                      <Icon size={20} />
+                    </div>
+                  ))}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/10 group-hover:bg-slate-950/20 transition-colors duration-300 rounded-xl">
+                    <div className="w-12 h-12 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-all duration-300">
+                      <Play className="w-5 h-5 fill-white translate-x-0.5" />
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
             )}
-
-            <button
-              onClick={() => setShowVideo(true)}
-              className="group w-full flex items-center justify-center gap-2 py-2.5 bg-secondary/60 hover:bg-secondary hover:shadow-md text-foreground rounded-lg font-bold text-sm transition-all"
-            >
-              <span className="relative flex items-center justify-center w-5 h-5">
-                <span className="absolute inset-0 rounded-full bg-primary/30 group-hover:animate-ping" />
-                <Play size={16} className="relative text-primary" />
-              </span>
-              Watch the 97s walkthrough
-            </button>
           </div>
         )}
       </div>
@@ -191,7 +216,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           The technical System Architecture diagram (was TimelineStepper) has
           moved to the About page for engineers/technical evaluators who want
           the plumbing view. */}
-      <div id="how-it-works" className="scroll-mt-20">
+      <div id="how-it-works" className="w-full max-w-4xl mx-auto scroll-mt-20">
         <LandingWorkflow title="How It Works" />
       </div>
     </div>

@@ -1,9 +1,13 @@
-import { X, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface AuthPromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: () => void;
+  // Both nav CTAs ("Sign in" and "Get started") open this same modal and
+  // same Google OAuth flow — there's only one auth path. This just varies
+  // the headline copy so the two buttons don't feel like true duplicates.
+  variant?: 'signin' | 'signup';
 }
 
 // Perks shown to convince a signed-out visitor to sign in — replaces the
@@ -14,8 +18,10 @@ const PERKS = [
   'Download or sync your approved Engineering Plan directly into a Jira Epic',
 ];
 
-export default function AuthPromptModal({ isOpen, onClose, onLogin }: AuthPromptModalProps) {
+export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 'signup' }: AuthPromptModalProps) {
   if (!isOpen) return null;
+
+  const headline = variant === 'signin' ? 'Welcome back' : 'Get started with EM Copilot';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -38,12 +44,12 @@ export default function AuthPromptModal({ isOpen, onClose, onLogin }: AuthPrompt
         </button>
 
         <div className="px-6 pt-8 pb-6 text-center space-y-5">
-          <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-            <Sparkles size={22} />
+          <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden">
+            <img src="/favicon.svg" alt="EM Copilot" className="h-full w-full object-contain" />
           </div>
 
           <div className="space-y-1.5">
-            <h2 className="text-lg font-extrabold tracking-tight">Sign in to run the pipeline</h2>
+            <h2 className="text-lg font-extrabold tracking-tight">{headline}</h2>
             <p className="text-xs text-muted-foreground">Free to use. Your email only identifies your sessions.</p>
           </div>
 
