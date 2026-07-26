@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface MarketingNavProps {
+interface HomepageNavProps {
   onSignIn: () => void;
 }
 
@@ -12,7 +12,7 @@ interface MarketingNavProps {
 // Get started right. Both buttons open the same AuthPromptModal — that's
 // the deliberate two-CTA SaaS pattern from the mockup (ghost "Sign in" for
 // returning users, solid "Get started" for new visitors), not duplication.
-export const MarketingNav: React.FC<MarketingNavProps> = ({ onSignIn }) => {
+export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn }) => {
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };

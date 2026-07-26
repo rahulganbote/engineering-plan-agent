@@ -23,7 +23,7 @@ import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 import FeedbackModal from './FeedbackModal';
 import ConsentModal from './ConsentModal';
 import AuthPromptModal from './AuthPromptModal';
-import { MarketingNav } from './MarketingNav';
+import { HomepageNav } from './HomepageNav';
 import { type AlignmentDirective } from '../hooks/useSSE';
 
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -707,7 +707,7 @@ export const AgentWorkspace: React.FC = () => {
             login buttons bolted on. Signed-in users keep the original header
             (title, About, Feedback, theme, API status). */}
         {!isAuthenticated ? (
-          <MarketingNav onSignIn={() => setIsAuthModalOpen(true)} />
+          <HomepageNav onSignIn={() => setIsAuthModalOpen(true)} />
         ) : (
         <header className="min-h-12 border-b border-border px-6 py-2.5 gap-4 flex flex-col sm:flex-row sm:items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
