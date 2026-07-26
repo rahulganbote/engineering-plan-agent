@@ -1,7 +1,10 @@
 import React from 'react';
 
+import { ThemePicker } from './ThemePicker';
+
 interface HomepageNavProps {
   onSignIn: (variant?: 'signin' | 'signup') => void;
+  onFeedbackClick: () => void;
 }
 
 // Standalone marketing top-nav — signed-out landing only. Replaces the
@@ -12,7 +15,7 @@ interface HomepageNavProps {
 // Get started right. Both buttons open the same AuthPromptModal — that's
 // the deliberate two-CTA SaaS pattern from the mockup (ghost "Sign in" for
 // returning users, solid "Get started" for new visitors), not duplication.
-export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn }) => {
+export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackClick }) => {
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -50,6 +53,15 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn }) => {
         </nav>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={onFeedbackClick}
+            className="hidden sm:inline-flex text-sm font-semibold text-muted-foreground hover:text-primary transition px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary hover:ring-2 hover:ring-primary transition-all duration-200"
+          >
+            📝 Feedback
+          </button>
+          <div className="border-r border-border h-4 mx-1 hidden sm:block" />
+          <ThemePicker />
+          <div className="border-r border-border h-4 mx-1" />
           <button
             onClick={() => onSignIn('signin')}
             className="text-sm font-semibold text-muted-foreground hover:text-primary transition px-3 py-1.5 rounded-lg"
