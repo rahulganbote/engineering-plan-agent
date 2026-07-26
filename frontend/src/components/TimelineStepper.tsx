@@ -135,8 +135,8 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     orchestrator: {
       label: 'Orchestrator Agent',
       desc: 'Parses the BRD sections, evaluates structure completeness, and distributes tasks to 5 specialists Agents.',
-      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING || pipelineStatus === PIPELINE_STATUS.ARBITRATING,
-      isCompleted: ([PIPELINE_STATUS.DRAFTING, PIPELINE_STATUS.ALIGNING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
+      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING || pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING,
+      isCompleted: ([PIPELINE_STATUS.DRAFTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'orchestrator'),
     },
     critic: {
@@ -627,11 +627,9 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                   );
                 }
                 if (revisionCount > 0) {
-                  // bg-card (opaque) prevents the SVG connector line from bleeding
-                  // through the badge; primary color signal stays via border + text.
                   return (
-                    <div className="w-8 h-8 rounded-full border border-primary/40 bg-card flex items-center justify-center shadow-sm text-primary text-[8.5px] font-extrabold font-mono">
-                      R{revisionCount}
+                    <div className="w-8 h-8 rounded-full border border-primary/40 bg-card flex items-center justify-center shadow-sm text-primary text-[8.5px] font-extrabold">
+                      Rev
                     </div>
                   );
                 }

@@ -22,6 +22,8 @@ import { generateVoiceBrief } from '../lib/voiceBrief';
 import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 import FeedbackModal from './FeedbackModal';
 import ConsentModal from './ConsentModal';
+import AuthPromptModal from './AuthPromptModal';
+import { HomepageNav } from './HomepageNav';
 import { type AlignmentDirective } from '../hooks/useSSE';
 
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -149,6 +151,10 @@ export const AgentWorkspace: React.FC = () => {
   const [modelFamily, setModelFamily] = useState('openai');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  // Which nav/hero CTA opened the modal — varies the modal headline only;
+  // both paths use the same Google OAuth flow (see AuthPromptModal).
+  const [authModalVariant, setAuthModalVariant] = useState<'signin' | 'signup'>('signup');
   const [isExampleLoading, setIsExampleLoading] = useState(false);
 
 
@@ -411,7 +417,12 @@ export const AgentWorkspace: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row min-h-[100dvh] md:h-[100dvh] bg-background text-foreground md:overflow-hidden font-sans">
-      {/* Left Sidebar Control Panel */}
+      {/* Left Sidebar Control Panel — only mounts once the user is signed in
+          (or while the session is still resolving). Signed-out visitors get a
+          full-width, panel-free landing; authentication now lives entirely in
+          the hero CTA + AuthPromptModal, so the sidebar no longer needs a
+          sign-in card. */}
+      {(loading || isAuthenticated) && (
       <aside className="w-full md:w-80 bg-card border-b md:border-b-0 md:border-r border-border flex flex-col justify-between overflow-hidden shadow-xl shrink-0 order-2 md:order-1">
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
           {/* User Sign-In/Sign-Out Container */}
@@ -419,7 +430,7 @@ export const AgentWorkspace: React.FC = () => {
             <div className="bg-background p-4 rounded-lg border border-border text-center text-xs text-muted-foreground">
               Loading session...
             </div>
-          ) : isAuthenticated ? (
+          ) : (
             <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground font-medium">Signed in:</span>
@@ -432,44 +443,12 @@ export const AgentWorkspace: React.FC = () => {
               </div>
               <div className="text-sm font-semibold text-foreground truncate">{user?.name || user?.email}</div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-center">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Authentication</div>
-                <p className="text-xs text-muted-foreground">Please <strong className="text-foreground font-semibold">sign in with Google</strong> to launch your live demo of EM Copilot. Signing in keeps your workspace private, and helps us maintain EM Copilot as a free, high-quality experience for everyone. Your email is only used to identify your sessions.</p>
-                <button
-                  onClick={login}
-                  className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded font-bold text-xs transition duration-155"
-                >
-                  Sign in with Google
-                </button>
-              </div>
-
-              {/* Added checklist list to balance visual weight on the landing page */}
-              <div className="bg-secondary/40 border border-border/50 rounded-lg p-4 space-y-3">
-                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-foreground">What you can do:</h4>
-                <ul className="text-xs text-muted-foreground space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-success font-bold shrink-0">✓</span>
-                    <span><strong>Upload complex BRDs</strong> (PDF, DOCX, or TXT)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-success font-bold shrink-0">✓</span>
-                    <span>Observe Agentic Pipeline run and <strong>Review Engineering Plan Artifacts</strong> with confidence score</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-success font-bold shrink-0">✓</span>
-                    <span><strong>Download or Sync approved Engineering Plan</strong> directly into Jira Epic</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
           )}
 
           {/* Model Selection Section */}
           {isAuthenticated && (
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Model Selection</h3>
+              <h3 className="text-xs font-bold text-primary flex items-center justify-center uppercase tracking-wider">Model Selection</h3>
               <div className="relative">
                 <select
                   id="model-family-select"
@@ -516,7 +495,7 @@ export const AgentWorkspace: React.FC = () => {
           {isAuthenticated && (
             <div className="space-y-3">
               <div className="flex items-center justify-center">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center">Upload BRD</h3>
+                <h3 className="text-sm font-bold text-primary uppercase tracking-wider text-center">Upload BRD</h3>
               </div>
 
               <input
@@ -721,18 +700,28 @@ export const AgentWorkspace: React.FC = () => {
           </div>
         )}
       </aside>
+      )}
 
       {/* Main Workstation Panel */}
       <main className="flex-1 flex flex-col md:overflow-hidden bg-background order-1 md:order-2">
-        {/* Main Header - uses min-h instead of fixed h so the title can wrap
-            cleanly at narrow viewports (e.g. devtools open) without overflowing
-            into the IngestionLanding hero below. items-start keeps the controls
-            (Theme picker, API status) pinned to the top-right of the title block. */}
+        {/* Signed-out visitors get the standalone marketing nav (logo, section
+            links, Sign in / Get started) instead of the app workspace header —
+            the landing should read as a product page, not a dashboard with
+            login buttons bolted on. Signed-in users keep the original header
+            (title, About, Feedback, theme, API status). */}
+        {!isAuthenticated ? (
+          <HomepageNav
+            onSignIn={(variant) => {
+              setAuthModalVariant(variant ?? 'signup');
+              setIsAuthModalOpen(true);
+            }}
+          />
+        ) : (
         <header className="min-h-12 border-b border-border px-6 py-2.5 gap-4 flex flex-col sm:flex-row sm:items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
               <span className="text-primary">EM Copilot</span>
-              <span className="text-foreground">: BRD → Engineering Plan</span>
+              <span className="text-foreground">: Next Gen Software Engineering</span>
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">Multi-Agent AI Software Engineering Planning System</p>
           </div>
@@ -770,6 +759,7 @@ export const AgentWorkspace: React.FC = () => {
             </div>
           </div>
         </header>
+        )}
         {/* Scrollable Workstation Body */}
         <div className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
           {!runId ? (
@@ -792,7 +782,10 @@ export const AgentWorkspace: React.FC = () => {
                 onTrigger={triggerPipeline}
                 isLoading={pipelineStatus === PIPELINE_STATUS.INITIALIZING}
                 isAuthenticated={isAuthenticated}
-                onLogin={login}
+                onLogin={() => {
+                  setAuthModalVariant('signup');
+                  setIsAuthModalOpen(true);
+                }}
               />
             </div>
           ) : (
@@ -1534,6 +1527,13 @@ export const AgentWorkspace: React.FC = () => {
           sessionStorage.setItem("em_copilot_consent_accepted", "true");
           triggerPipeline(true);
         }}
+      />
+
+      <AuthPromptModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLogin={login}
+        variant={authModalVariant}
       />
     </div>
   );

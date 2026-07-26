@@ -4,7 +4,56 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EM Copilot</title>
+
+    <!-- ─── SEO + Social sharing ───────────────────────────────────────
+         The visible landing header stays "EM Copilot: BRD → Engineering
+         Plan" for descriptive impact. Below are the SEO / social preview
+         strings that Google and LinkedIn/Slack/Twitter actually read. -->
+    <title>EM Copilot — AI Engineering Planning Platform for Managers</title>
+    <meta name="description" content="Multi-agent AI system that transforms Business Requirements Documents (BRDs) into audit-ready engineering plans in minutes. Grounded via RAG in your team's own docs, human-approved, shipped to Jira." />
+    <link rel="canonical" href="https://emcopilot.ai/" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, Discord, iMessage previews) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://emcopilot.ai/" />
+    <meta property="og:site_name" content="EM Copilot" />
+    <meta property="og:title" content="EM Copilot — AI Engineering Planning Platform" />
+    <meta property="og:description" content="Turn BRDs into engineering plans with a multi-agent AI pipeline. Grounded in your team's docs. Human-approved. Shipped to Jira." />
+    <meta property="og:image" content="https://emcopilot.ai/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="EM Copilot workflow diagram: BRD upload through 5 AI agents to Jira export." />
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EM Copilot — AI Engineering Planning Platform" />
+    <meta name="twitter:description" content="Multi-agent AI that turns BRDs into audit-ready engineering plans in minutes. Grounded via RAG, human-approved, shipped to Jira." />
+    <meta name="twitter:image" content="https://emcopilot.ai/og-image.png" />
+
+    <!-- JSON-LD structured data — helps Google rank in "AI tool" listicles
+         and generate rich results in SERP. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "EM Copilot",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "Multi-agent AI system that transforms Business Requirements Documents into audit-ready engineering plans. Grounded via RAG in your team's own docs, human-approved, shipped to Jira.",
+        "url": "https://emcopilot.ai/",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Rahul Ganbote"
+        }
+      }
+    </script>
     <!-- FOUC prevention - apply theme class BEFORE React mounts.
          Reads localStorage('em-copilot-theme'); falls back to LIGHT (the
          public-demo default). Users opting into System or Dark have their
