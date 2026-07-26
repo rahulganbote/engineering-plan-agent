@@ -79,6 +79,8 @@ async def get_current_user(request: Request):
     from src.security.google_auth import is_configured
 
     if not is_configured():
+        if request.session.get("local_logout"):
+            return {"authenticated": False}
         return {
             "authenticated": True,
             "email": "local-dev@example.com",
@@ -97,6 +99,7 @@ async def login(request: Request):
     from src.security.google_auth import GOOGLE_AUTH_URL, _env, is_configured
 
     if not is_configured():
+        request.session.pop("local_logout", None)
         request.session["auth_email"] = "local-dev@example.com"
         request.session["auth_name"] = "Local Developer"
         return RedirectResponse(url="/")
@@ -134,4 +137,8 @@ async def auth_callback(request: Request, code: str = None, error: str = None):
 @router.get("/auth/logout")
 async def logout(request: Request):
     request.session.clear()
+    from src.security.google_auth import is_configured
+
+    if not is_configured():
+        request.session["local_logout"] = True
     return RedirectResponse(url="/")

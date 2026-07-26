@@ -23,6 +23,7 @@ import { IntegrationNotConfigured } from './IntegrationNotConfigured';
 import FeedbackModal from './FeedbackModal';
 import ConsentModal from './ConsentModal';
 import AuthPromptModal from './AuthPromptModal';
+import { MarketingNav } from './MarketingNav';
 import { type AlignmentDirective } from '../hooks/useSSE';
 
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -700,10 +701,14 @@ export const AgentWorkspace: React.FC = () => {
 
       {/* Main Workstation Panel */}
       <main className="flex-1 flex flex-col md:overflow-hidden bg-background order-1 md:order-2">
-        {/* Main Header - uses min-h instead of fixed h so the title can wrap
-            cleanly at narrow viewports (e.g. devtools open) without overflowing
-            into the IngestionLanding hero below. items-start keeps the controls
-            (Theme picker, API status) pinned to the top-right of the title block. */}
+        {/* Signed-out visitors get the standalone marketing nav (logo, section
+            links, Sign in / Get started) instead of the app workspace header —
+            the landing should read as a product page, not a dashboard with
+            login buttons bolted on. Signed-in users keep the original header
+            (title, About, Feedback, theme, API status). */}
+        {!isAuthenticated ? (
+          <MarketingNav onSignIn={() => setIsAuthModalOpen(true)} />
+        ) : (
         <header className="min-h-12 border-b border-border px-6 py-2.5 gap-4 flex flex-col sm:flex-row sm:items-center justify-between bg-card shrink-0 shadow-sm relative">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight">
@@ -744,18 +749,9 @@ export const AgentWorkspace: React.FC = () => {
                 {Object.keys(providers).length > 0 ? "API connected" : "API Offline"}
               </span>
             </div>
-            {/* Primary CTA on the signed-out landing — opens the auth modal,
-                same path as the hero button. */}
-            {!isAuthenticated && (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="text-xs font-bold text-primary border border-primary/40 hover:bg-primary/10 transition px-3.5 py-1.5 rounded-lg"
-              >
-                Sign in
-              </button>
-            )}
           </div>
         </header>
+        )}
         {/* Scrollable Workstation Body */}
         <div className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
           {!runId ? (
