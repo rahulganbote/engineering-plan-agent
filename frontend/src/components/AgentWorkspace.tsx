@@ -715,6 +715,7 @@ export const AgentWorkspace: React.FC = () => {
               setAuthModalVariant(variant ?? 'signup');
               setIsAuthModalOpen(true);
             }}
+            onFeedbackClick={() => setIsFeedbackOpen(true)}
           />
         ) : (
         <header className="min-h-12 border-b border-border px-6 py-2.5 gap-4 flex flex-col sm:flex-row sm:items-center justify-between bg-card shrink-0 shadow-sm relative">
