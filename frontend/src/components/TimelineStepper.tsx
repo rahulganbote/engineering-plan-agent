@@ -577,7 +577,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             const width = spec.w || 110;
 
             let nodeClass = "px-2.5 py-1 rounded-full border shadow-sm transition-all duration-300 w-full h-[38px] flex items-center justify-center gap-1.5 ";
-            if (isComp) nodeClass += "bg-success/15 border-success/35 text-success shadow-success/5";
+            if (isComp) nodeClass += "bg-success border-success text-white shadow-success/15";
             else if (isFail) nodeClass += "bg-danger/15 border-danger/35 text-danger shadow-danger/5";
             else if (isActive) nodeClass += "bg-primary/15 border-primary text-primary animate-pulse ring-2 ring-primary/20";
             else nodeClass += "bg-card border-border text-muted-foreground/80";
@@ -593,13 +593,13 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                     {isActive ? (
                       <Loader2 size={11} className="animate-spin shrink-0 text-primary" />
                     ) : isComp ? (
-                      <Check size={11} className="shrink-0 stroke-[3px] text-success" />
+                      <Check size={11} className="shrink-0 stroke-[3px] text-white" />
                     ) : (
                       <span className="text-[11px] select-none shrink-0">{spec.emoji}</span>
                     )}
                     <div className="flex flex-col items-start leading-tight">
                       <span className="text-[10px] font-bold truncate">{spec.label}</span>
-                      <span className="text-[8px] tracking-wider">Specialist</span>
+                      <span className="text-[8px] tracking-wider opacity-90">Specialist</span>
                     </div>
                   </div>
                 </div>
@@ -628,7 +628,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
                 }
                 if (revisionCount > 0) {
                   return (
-                    <div className="w-8 h-8 rounded-full border border-primary/40 bg-card flex items-center justify-center shadow-sm text-primary text-[8.5px] font-extrabold">
+                    <div className="w-8 h-8 rounded-full bg-success border-success text-white flex items-center justify-center shadow-sm text-[8.5px] font-extrabold">
                       Rev
                     </div>
                   );

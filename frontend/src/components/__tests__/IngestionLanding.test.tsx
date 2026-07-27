@@ -15,7 +15,7 @@ describe('IngestionLanding', () => {
 
   it('renders without throwing', () => {
     render(<IngestionLanding {...defaultProps} />);
-    expect(screen.getByText('How It Works')).toBeInTheDocument();
+    expect(screen.getByText('The Engineering Planning Workflow')).toBeInTheDocument();
   });
 
 

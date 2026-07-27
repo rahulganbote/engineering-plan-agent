@@ -33,6 +33,12 @@ const GLIMPSE_SLIDES = [
 // the two visuals feel like one story when screenshots are unavailable.
 const PULSE_ICONS = [Upload, Search, FileText, Scale, UserCheck, Rocket];
 
+const PERKS = [
+  'Upload complex BRDs (PDF, DOCX, or TXT)',
+  'Watch the Agentic Pipeline run and review Engineering Plan artifacts with a confidence score',
+  'Download or sync your approved Engineering Plan directly into a Jira Epic',
+];
+
 export const IngestionLanding: React.FC<IngestionLandingProps> = ({
   selectedFile: _selectedFile,
   isAuthenticated,
@@ -68,10 +74,18 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           <span className="text-primary">minutes</span>
         </h2>
         <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          EM Copilot transforms your raw BRD into an audit-ready engineering plan, grounded via RAG (Retrieval-Augmented Generation) in your organization's own architectural patterns and approved tech stack. Artifacts are presented for your review; on approval, pushed to Jira.
+          EM Copilot transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's own architectural patterns and approved tech stack. Artifacts are presented for your review; on approval, pushed to Jira.
         </p>
         {!isAuthenticated && (
-          <div className="space-y-2">
+          <div className="space-y-4 max-w-xl mx-auto pt-2">
+            <ul className="text-sm sm:text-sm text-muted-foreground space-y-2.5 text-left bg-secondary/40 border border-border/50 rounded-lg p-4">
+              {PERKS.map((perk) => (
+                <li key={perk} className="flex items-start gap-2">
+                  <span className="text-success font-bold shrink-0">✓</span>
+                  <span>{perk}</span>
+                </li>
+              ))}
+            </ul>
             <button
               onClick={onLogin}
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-bold text-sm shadow-md transition"
@@ -95,7 +109,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
       <div id="see-it-in-action" className="w-full max-w-4xl mx-auto bg-card border border-border rounded-xl p-3 md:p-4 shadow-lg space-y-3 scroll-mt-20">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black text-primary uppercase tracking-wider">
-            See It in Action
+            How it works
           </h3>
           {showVideo ? (
             <button
@@ -137,9 +151,8 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                       src={slide.src}
                       alt={slide.caption}
                       onError={() => setFailedSrcs((prev) => new Set(prev).add(slide.src))}
-                      className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 group-hover:scale-[1.01] transform ${
-                        i === activeIndex ? 'opacity-90 group-hover:opacity-75' : 'opacity-0'
-                      }`}
+                      className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 group-hover:scale-[1.01] transform ${i === activeIndex ? 'opacity-90 group-hover:opacity-75' : 'opacity-0'
+                        }`}
                     />
                   ))}
 
@@ -167,9 +180,8 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                         key={slide.src}
                         onClick={() => setSlideIndex(i)}
                         aria-label={`Show step ${i + 1}`}
-                        className={`h-1.5 rounded-full transition-all ${
-                          i === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground'
-                        }`}
+                        className={`h-1.5 rounded-full transition-all ${i === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground'
+                          }`}
                       />
                     ))}
                   </div>
@@ -217,7 +229,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           moved to the About page for engineers/technical evaluators who want
           the plumbing view. */}
       <div id="how-it-works" className="w-full max-w-4xl mx-auto scroll-mt-20">
-        <LandingWorkflow title="How It Works" />
+        <LandingWorkflow title="The Engineering Planning Workflow" />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 
 interface AuthPromptModalProps {
   isOpen: boolean;
@@ -9,14 +9,6 @@ interface AuthPromptModalProps {
   // the headline copy so the two buttons don't feel like true duplicates.
   variant?: 'signin' | 'signup';
 }
-
-// Perks shown to convince a signed-out visitor to sign in — replaces the
-// "What you can do:" checklist that used to sit permanently in the sidebar.
-const PERKS = [
-  'Upload complex BRDs (PDF, DOCX, or TXT)',
-  'Watch the Agentic Pipeline run and review Engineering Plan artifacts with a confidence score',
-  'Download or sync your approved Engineering Plan directly into a Jira Epic',
-];
 
 export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 'signup' }: AuthPromptModalProps) {
   if (!isOpen) return null;
@@ -32,46 +24,47 @@ export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 's
       />
 
       {/* Modal Container */}
-      <div className="bg-card border border-border shadow-2xl rounded-2xl max-w-sm w-full relative z-10 flex flex-col overflow-hidden animate-scale-in text-foreground">
+      <div className="bg-card border border-border shadow-2xl rounded-2xl max-w-lg w-full relative z-10 flex flex-col overflow-hidden animate-scale-in text-foreground">
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition p-1.5 rounded-lg hover:bg-secondary/80"
+          className="absolute right-5 top-5 text-muted-foreground hover:text-foreground transition p-2 rounded-lg hover:bg-secondary/80"
           aria-label="Close sign-in prompt"
         >
-          <X size={16} />
+          <X size={20} />
         </button>
 
-        <div className="px-6 pt-8 pb-6 text-center space-y-5">
-          <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center overflow-hidden">
+        <div className="px-8 pt-10 pb-8 text-center space-y-6">
+          <div className="mx-auto h-16 w-16 rounded-xl flex items-center justify-center overflow-hidden">
             <img src="/favicon.svg" alt="EM Copilot" className="h-full w-full object-contain" />
           </div>
 
-          <div className="space-y-1.5">
-            <h2 className="text-lg font-extrabold tracking-tight">{headline}</h2>
-            <p className="text-xs text-muted-foreground">Free to use. Your email only identifies your sessions.</p>
+          <div className="space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">{headline}</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">Free to use. Your email is only used to track & limit usage.</p>
           </div>
 
-          <ul className="text-xs text-muted-foreground space-y-2.5 text-left bg-secondary/40 border border-border/50 rounded-lg p-4">
-            {PERKS.map((perk) => (
-              <li key={perk} className="flex items-start gap-2">
-                <span className="text-success font-bold shrink-0">✓</span>
-                <span>{perk}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="text-left bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/30 rounded-xl p-4.5 space-y-2">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500 font-extrabold text-sm sm:text-base">
+              <AlertTriangle size={18} className="shrink-0" />
+              <span>Important Terms</span>
+            </div>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
+              Your <span className="font-bold text-foreground">email-id</span> and <span className="font-bold text-foreground">BRD data</span> is stored temporarily in our App. EM Copilot is currently configured as a <span className="font-bold text-foreground">sandbox and demonstration environment</span>.  BRD data is shared with LLM providers (OpenAI, Anthropic) and third party tool like Tavily, Pinecone etc. to generate the engineering plan. You should not upload sensitive, proprietary, or regulated production data here.
+            </p>
+          </div>
 
           <button
             onClick={onLogin}
-            className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-bold text-sm shadow-md transition"
+            className="w-full py-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base sm:text-lg shadow-md transition"
           >
             Sign in with Google
           </button>
 
           <button
             onClick={onClose}
-            className="block w-full text-xs text-muted-foreground hover:text-foreground transition"
+            className="block w-full text-sm font-semibold text-muted-foreground hover:text-foreground transition"
           >
             Maybe later
           </button>

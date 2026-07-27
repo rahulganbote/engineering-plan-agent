@@ -11,12 +11,12 @@
  *   - Tech Green: Final Export & External Integrations
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Upload, Search, FileText, Scale, UserCheck, Rocket, type LucideIcon } from 'lucide-react';
+import { Upload, Search, FileText, Scale, UserCheck, Rocket, Wrench, Layers, Cpu, Calendar, Database, Workflow, Users, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react';
 
 // ─── Node Tooltip Data (Tier 1) ──────────────────────────────────────────
-type NodeId = 'upload' | 'analyze' | 'draft' | 'critic' | 'hitl' | 'export';
+type NodeId = 'upload' | 'analyze' | 'draft' | 'critic' | 'hitl' | 'export' | 'poc' | 'arch' | 'stack' | 'schedule' | 'plan' | 'rag';
 
 const NODE_TOOLTIPS: Record<NodeId, { Icon: LucideIcon; iconClass: string; title: string; desc: string }> = {
   upload: {
@@ -55,7 +55,57 @@ const NODE_TOOLTIPS: Record<NodeId, { Icon: LucideIcon; iconClass: string; title
     title: 'Export to Jira',
     desc: 'On approval, the plan writes to a Jira Epic, logs to Google Sheets, and pings Slack — full audit trail preserved for compliance.',
   },
+  poc: {
+    Icon: Wrench,
+    iconClass: 'text-indigo-600 dark:text-indigo-400',
+    title: 'PoC Agent',
+    desc: 'Autonomous specialist agent producing technical proof-of-concept artifacts.',
+  },
+  arch: {
+    Icon: Layers,
+    iconClass: 'text-indigo-600 dark:text-indigo-400',
+    title: 'Architect Agent',
+    desc: 'Autonomous specialist agent producing technical architecture blueprints.',
+  },
+  stack: {
+    Icon: Cpu,
+    iconClass: 'text-indigo-600 dark:text-indigo-400',
+    title: 'Tech Stack Agent',
+    desc: 'Autonomous specialist agent producing technical tech stack recommendations.',
+  },
+  schedule: {
+    Icon: Calendar,
+    iconClass: 'text-indigo-600 dark:text-indigo-400',
+    title: 'Schedule Agent',
+    desc: 'Autonomous specialist agent producing technical project timeline and task estimates.',
+  },
+  plan: {
+    Icon: FileText,
+    iconClass: 'text-indigo-600 dark:text-indigo-400',
+    title: 'Plan Agent',
+    desc: 'Autonomous specialist agent producing the comprehensive engineering plan.',
+  },
+  rag: {
+    Icon: Database,
+    iconClass: 'text-amber-600 dark:text-amber-400',
+    title: 'RAG (Vector DB)',
+    desc: 'Grounds plans dynamically in company engineering standards and approved frameworks.',
+  },
 };
+
+// ─── Agent Roster (collapsible deep-dive under Tier 2) ────────────────────
+// Color mirrors the Tier 2 phase cards: indigo = Multi-Agent Draft phase,
+// amber = Critic & Revise phase — so the roster reads as an extension of
+// the same story, not a disconnected gray table.
+const AGENT_ROSTER: { name: string; scope: string; role: string; Icon: LucideIcon; color: 'indigo' | 'amber' }[] = [
+  { name: 'Orchestrator', scope: 'Central hub', role: 'Parses the BRD, delegates tasks, and synthesizes multi-agent outputs.', Icon: Workflow, color: 'indigo' },
+  { name: 'PoC Agent', scope: 'Specialist', role: 'Identifies technical feasibility, risks, and prototype requirements.', Icon: Wrench, color: 'indigo' },
+  { name: 'Architect Agent', scope: 'Specialist', role: 'Defines system components, API boundaries, and architectural patterns.', Icon: Layers, color: 'indigo' },
+  { name: 'Tech Stack Agent', scope: 'Specialist', role: 'Selects approved frameworks, libraries, and infrastructure grounded in RAG.', Icon: Cpu, color: 'indigo' },
+  { name: 'Schedule Agent', scope: 'Specialist', role: 'Breaks down work into milestones, estimation buffers, and sprint dependencies.', Icon: Calendar, color: 'indigo' },
+  { name: 'Plan Agent', scope: 'Specialist', role: 'Assembles the final, audit-ready master engineering plan document.', Icon: FileText, color: 'indigo' },
+  { name: 'Critic Agent', scope: 'Evaluation gate', role: 'Scores outputs on Groundedness, Completeness, Consistency, and Actionability.', Icon: Scale, color: 'amber' },
+];
 
 // ─── Phase Card Data (Tier 2) ─────────────────────────────────────────────
 const PHASES = [
@@ -95,6 +145,32 @@ interface LandingWorkflowProps {
 
 export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
   const [tooltipState, setTooltipState] = useState<{ id: NodeId; x: number; y: number } | null>(null);
+  const [showRoster, setShowRoster] = useState(false);
+  const rosterContainerRef = useRef<HTMLDivElement>(null);
+  const prevShowRoster = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (prevShowRoster.current === null) {
+      prevShowRoster.current = showRoster;
+      return;
+    }
+
+    if (prevShowRoster.current === showRoster) {
+      return;
+    }
+
+    prevShowRoster.current = showRoster;
+
+    const timer = setTimeout(() => {
+      if (showRoster) {
+        rosterContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } else {
+        rosterContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 360);
+
+    return () => clearTimeout(timer);
+  }, [showRoster]);
 
   const handleMouseEnter = (id: NodeId, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -223,17 +299,36 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
                 5 Agents Generate the Plan
               </div>
               <div className="flex flex-nowrap items-center justify-center gap-1 whitespace-nowrap">
-                {['PoC', 'Architect', 'Tech Stack', 'Schedule', 'Plan'].map((name) => (
-                  <span
-                    key={name}
-                    className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4f46e5]/10 text-[#4f46e5] border border-[#4f46e5]/30 shadow-sm"
-                  >
-                    {name}
-                  </span>
-                ))}
+                {['PoC', 'Architect', 'Tech Stack', 'Schedule', 'Plan'].map((name) => {
+                  const id = ({
+                    'PoC': 'poc',
+                    'Architect': 'arch',
+                    'Tech Stack': 'stack',
+                    'Schedule': 'schedule',
+                    'Plan': 'plan',
+                  } as const)[name];
+                  return (
+                    <span
+                      key={name}
+                      onMouseEnter={(e) => handleMouseEnter(id!, e)}
+                      onMouseLeave={handleMouseLeave}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#4f46e5]/10 text-[#4f46e5] border border-[#4f46e5]/30 shadow-sm cursor-help transition-all duration-200 hover:bg-[#4f46e5]/20"
+                    >
+                      {name}
+                    </span>
+                  );
+                })}
               </div>
-              <div className="text-[10px] text-[#4f46e5]/80 text-center italic mt-1.5 font-medium">
-                ↑ grounded via RAG using Organization's docs
+              <div className="text-[10px] text-[#4f46e5]/80 text-center mt-1.5 font-medium flex items-center justify-center gap-1">
+                <span>↑ grounded via</span>
+                <span
+                  onMouseEnter={(e) => handleMouseEnter('rag', e)}
+                  onMouseLeave={handleMouseLeave}
+                  className="px-2 py-0.5 mx-0.5 rounded-full text-[10px] font-bold bg-[#4f46e5]/10 text-[#4f46e5] border border-[#4f46e5]/30 shadow-sm cursor-help transition-all duration-200 hover:bg-[#4f46e5]/20"
+                >
+                  RAG
+                </span>
+                <span>using Organization's docs</span>
               </div>
             </div>
           </foreignObject>
@@ -306,6 +401,49 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* ─── MEET THE AGENTS (collapsible deep-dive, default collapsed) ── */}
+      <div ref={rosterContainerRef} className="pt-3 border-t border-border/60">
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowRoster((s) => !s)}
+            aria-expanded={showRoster}
+            className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wider text-[#4f46e5] bg-[#4f46e5]/5 hover:bg-[#4f46e5]/10 border border-[#4f46e5]/30 rounded-full px-4 py-1.5 transition-colors"
+          >
+            <Users size={16} />
+            {AGENT_ROSTER.length} Specialist Agents
+            {showRoster ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
+        <div
+          className={`grid transition-all duration-300 ease-in-out ${
+            showRoster ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div className="overflow-hidden grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {AGENT_ROSTER.map((a) => {
+              const isAmber = a.color === 'amber';
+              return (
+                <div
+                  key={a.name}
+                  className={`flex flex-col items-center text-center gap-1.5 rounded-lg border p-3 bg-transparent ${
+                    isAmber ? 'border-amber-500' : 'border-[#4f46e5]'
+                  }`}
+                >
+                  <a.Icon size={20} className={isAmber ? 'text-amber-500' : 'text-[#4f46e5]'} />
+                  <span className={`text-sm font-bold ${isAmber ? 'text-amber-600 dark:text-amber-400' : 'text-[#4f46e5]'}`}>
+                    {a.name}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                    {a.scope}
+                  </span>
+                  <span className="text-sm text-muted-foreground leading-relaxed">{a.role}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* ─── RICH HOVER TOOLTIP PORTAL ─────────────────────────────────── */}
