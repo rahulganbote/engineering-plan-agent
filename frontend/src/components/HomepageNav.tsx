@@ -1,4 +1,5 @@
 import React from 'react';
+import { MessageSquare } from 'lucide-react';
 
 import { ThemePicker } from './ThemePicker';
 
@@ -28,18 +29,23 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackCl
       <div className="max-w-5xl mx-auto flex items-center justify-between">
         <a href="#/" className="flex items-center gap-2 shrink-0">
           <img src="/favicon.svg" alt="" aria-hidden="true" className="w-6 h-6" />
-          <span className="text-base font-extrabold tracking-tight text-primary">EM Copilot</span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-base font-extrabold tracking-tight text-primary">EM Copilot</span>
+            <span className="hidden sm:block text-[10px] font-semibold text-muted-foreground tracking-wide">
+              Next Gen Software Engineering Planning
+            </span>
+          </span>
         </a>
 
         <nav className="hidden md:flex items-center gap-1">
           <button
-            onClick={() => scrollTo('how-it-works')}
+            onClick={() => scrollTo('see-it-in-action')}
             className="text-sm font-semibold text-muted-foreground hover:text-primary transition px-3 py-1.5 rounded-lg hover:bg-secondary/40"
           >
             How it works
           </button>
           <button
-            onClick={() => scrollTo('see-it-in-action')}
+            onClick={() => scrollTo('how-it-works')}
             className="text-sm font-semibold text-muted-foreground hover:text-primary transition px-3 py-1.5 rounded-lg hover:bg-secondary/40"
           >
             Platform
@@ -52,28 +58,36 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackCl
           </a>
         </nav>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={onFeedbackClick}
-            className="hidden sm:inline-flex text-sm font-semibold text-muted-foreground hover:text-primary transition px-2.5 py-1.5 hover:bg-secondary/40 rounded-lg items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary hover:ring-2 hover:ring-primary transition-all duration-200"
-          >
-            📝 Feedback
-          </button>
-          <div className="border-r border-border h-4 mx-1 hidden sm:block" />
-          <ThemePicker />
-          <div className="border-r border-border h-4 mx-1" />
-          <button
-            onClick={() => onSignIn('signin')}
-            className="text-sm font-semibold text-muted-foreground hover:text-primary transition px-3 py-1.5 rounded-lg"
-          >
-            Sign in
-          </button>
-          <button
-            onClick={() => onSignIn('signup')}
-            className="text-sm font-bold text-white bg-primary hover:bg-primary/90 transition px-4 py-1.5 rounded-lg shadow-sm"
-          >
-            Get started
-          </button>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Utility cluster — icon-only, muted, tightly grouped. Kept
+              visually secondary so Sign in / Get started stay the clear
+              endpoint for a first-time visitor. */}
+          <div className="hidden sm:flex items-center gap-0.5">
+            <button
+              onClick={onFeedbackClick}
+              aria-label="Feedback"
+              title="Feedback"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <MessageSquare size={14} />
+            </button>
+            <ThemePicker />
+          </div>
+          <div className="border-r border-border h-4 hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onSignIn('signin')}
+              className="text-sm font-semibold text-muted-foreground hover:text-primary transition px-3 py-1.5 rounded-lg"
+            >
+              Sign in
+            </button>
+            <button
+              onClick={() => onSignIn('signup')}
+              className="text-sm font-bold text-white bg-primary hover:bg-primary/90 transition px-4 py-1.5 rounded-lg shadow-sm"
+            >
+              Get started
+            </button>
+          </div>
         </div>
       </div>
     </header>
