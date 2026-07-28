@@ -103,7 +103,7 @@ class RedisDictProxy:
                 return self.deserializer(raw)
             except KeyError:
                 raise
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict get failed ({type(e).__name__}); degrading to memory: {e}")
 
         # In-memory path
@@ -124,7 +124,7 @@ class RedisDictProxy:
                 else:
                     self.redis.set(full_k, self.serializer(value), ex=_RUN_TTL_SECONDS)
                 return
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict set failed ({type(e).__name__}); degrading to memory: {e}")
 
         self.local_dict[key] = value
@@ -139,7 +139,7 @@ class RedisDictProxy:
                 return
             except KeyError:
                 raise
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict del failed ({type(e).__name__}); degrading to memory: {e}")
 
         del self.local_dict[key]
@@ -148,7 +148,7 @@ class RedisDictProxy:
         if self.redis:
             try:
                 return bool(self.redis.exists(self._full_key(key)))
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict contains failed ({type(e).__name__}); degrading to memory: {e}")
 
         return key in self.local_dict
@@ -160,7 +160,7 @@ class RedisDictProxy:
                     sub = RedisSubDictProxy(self, key)
                     snap = sub._hgetall()
                     return snap if snap else default
-                except (redis.RedisError, Exception) as e:
+                except redis.RedisError as e:
                     log.warning(f"[state:redis] Dict get sub-proxy failed ({type(e).__name__}); degrading: {e}")
             snap = self.local_dict.get(key)
             if not snap:
@@ -188,7 +188,7 @@ class RedisDictProxy:
                     return default
                 self.redis.delete(full_k)
                 return self.deserializer(raw)
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict pop failed ({type(e).__name__}); degrading to memory: {e}")
 
         return self.local_dict.pop(key, default)
@@ -219,7 +219,7 @@ class RedisSubDictProxy:
                     except (TypeError, ValueError):
                         out[k] = v_raw
                 return out
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict hgetall failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self._key not in self._parent.local_dict:
@@ -234,7 +234,7 @@ class RedisSubDictProxy:
         if self._parent.redis:
             try:
                 return int(self._parent.redis.hlen(self._hash_key))
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict hlen failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self._key not in self._parent.local_dict:
@@ -257,7 +257,7 @@ class RedisSubDictProxy:
                     return raw_str
             except KeyError:
                 raise
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict hget failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self._key not in self._parent.local_dict or item not in self._parent.local_dict[self._key]:
@@ -270,7 +270,7 @@ class RedisSubDictProxy:
                 self._parent.redis.hset(self._hash_key, item, json.dumps(value))
                 self._parent.redis.expire(self._hash_key, _RUN_TTL_SECONDS)
                 return
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict hset failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self._key not in self._parent.local_dict:
@@ -281,7 +281,7 @@ class RedisSubDictProxy:
         if self._parent.redis:
             try:
                 return bool(self._parent.redis.hexists(self._hash_key, item))
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict hexists failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self._key not in self._parent.local_dict:
@@ -303,7 +303,7 @@ class RedisSubDictProxy:
                 self._parent.redis.hset(self._hash_key, mapping=payload)
                 self._parent.redis.expire(self._hash_key, _RUN_TTL_SECONDS)
                 return
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict update failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self._key not in self._parent.local_dict:
@@ -388,7 +388,7 @@ class RedisListProxy:
                     self.redis.rpush(full_k, *value)
                     self.redis.expire(full_k, _RUN_TTL_SECONDS)
                 return
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List set failed ({type(e).__name__}); degrading to memory: {e}")
 
         self.local_dict[key] = value
@@ -403,7 +403,7 @@ class RedisListProxy:
                 return
             except KeyError:
                 raise
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List del failed ({type(e).__name__}); degrading to memory: {e}")
 
         del self.local_dict[key]
@@ -412,7 +412,7 @@ class RedisListProxy:
         if self.redis:
             try:
                 return bool(self.redis.exists(self._full_key(key)))
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List contains failed ({type(e).__name__}); degrading to memory: {e}")
 
         return key in self.local_dict
@@ -432,7 +432,7 @@ class RedisListProxy:
                 items = list(helper)
                 self.redis.delete(full_k)
                 return items
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List pop failed ({type(e).__name__}); degrading to memory: {e}")
 
         return self.local_dict.pop(key, default)
@@ -456,7 +456,7 @@ class RedisListHelper:
                 self.parent.redis.ltrim(self.full_key, -_MAX_EVENTS_PER_RUN, -1)
                 self.parent.redis.expire(self.full_key, _RUN_TTL_SECONDS)
                 return
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List append failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self.key not in self.parent.local_dict:
@@ -467,7 +467,7 @@ class RedisListHelper:
         if self.parent.redis:
             try:
                 return self.parent.redis.llen(self.full_key)
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List llen failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self.key not in self.parent.local_dict:
@@ -492,7 +492,7 @@ class RedisListHelper:
                 return raw.decode("utf-8")
             except IndexError:
                 raise
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List getitem failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self.key not in self.parent.local_dict:
@@ -506,7 +506,7 @@ class RedisListHelper:
                 for raw in raw_list:
                     yield raw.decode("utf-8")
                 return
-            except (redis.RedisError, Exception) as e:
+            except redis.RedisError as e:
                 log.warning(f"[state:redis] List iter failed ({type(e).__name__}); degrading to memory: {e}")
 
         if self.key not in self.parent.local_dict:

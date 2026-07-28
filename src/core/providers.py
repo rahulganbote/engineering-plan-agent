@@ -84,7 +84,16 @@ class OpenRouterProvider:
             "temperature": temperature,
             # Hard price ceiling in USD per million tokens: prevents guest-mode run
             # cost exposure from skyrocketing in case of unexpected routing.
-            "extra_body": {"provider": {"max_price": {"prompt": 0.2, "completion": 0.5}}},
+            # sort="throughput" picks the fastest provider that still respects the
+            # price ceiling (OpenRouter's documented pattern for latency-sensitive
+            # + budget-capped traffic) - mitigates multi-minute latency outliers
+            # observed on some free/cheap routed endpoints.
+            "extra_body": {
+                "provider": {
+                    "sort": "throughput",
+                    "max_price": {"prompt": 0.2, "completion": 0.5},
+                }
+            },
         }
         if response_format:
             kwargs["response_format"] = response_format

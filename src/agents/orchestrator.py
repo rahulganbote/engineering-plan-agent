@@ -305,6 +305,7 @@ class OrchestratorAgent:
         import json
 
         from src.agents.base_agent import _current_model_family, add_cost, add_tokens, settings
+        from src.core.json_utils import parse_llm_json
         from src.core.models import AlignmentDirective, AlignmentMemo
         from src.core.pricing import calculate_cost
         from src.core.providers import complete_with_fallback, map_model
@@ -408,7 +409,7 @@ class OrchestratorAgent:
         add_cost(cost, state.run_id)
 
         try:
-            data = json.loads(content)
+            data = parse_llm_json(content)
             directives_list = []
             for d in data.get("directives", []):
                 canonical_agents = [

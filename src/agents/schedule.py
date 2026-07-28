@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 
 from src.agents.base_agent import BaseAgent
+from src.core.json_utils import parse_llm_json
 from src.core.logger import get_logger
 from src.core.models import PipelineState, ScheduleOutput, SprintRow
 
@@ -181,7 +182,7 @@ class ScheduleEstimatorAgent(BaseAgent):
 
     def _parse(self, raw: str, run_id: str, citation_ids: list[str]) -> ScheduleOutput:
         try:
-            d = json.loads(raw)
+            d = parse_llm_json(raw)
         except json.JSONDecodeError as e:
             log.error(f"[{run_id}] ScheduleEstimator parse error: {e}")
             return self._fallback(run_id, citation_ids, str(e))

@@ -13,6 +13,7 @@ import json
 
 from src.agents.base_agent import BaseAgent
 from src.core.cache import CachePolicy
+from src.core.json_utils import parse_llm_json
 from src.core.logger import get_logger
 from src.core.models import PipelineState, PoCOutput, SuccessCriterion
 
@@ -140,7 +141,7 @@ class PoCPlannerAgent(BaseAgent):
 
     def _parse(self, raw: str, run_id: str, citation_ids: list[str]) -> PoCOutput:
         try:
-            d = json.loads(raw)
+            d = parse_llm_json(raw)
         except json.JSONDecodeError as e:
             log.error(f"[{run_id}] PoCPlanner parse error: {e}")
             return self._fallback(run_id, citation_ids, str(e))
