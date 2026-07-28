@@ -632,8 +632,9 @@ def test_guest_auth_flow(client):
 
         # 4. Sign in as local dev when auth is disabled
         with patch("src.security.google_auth.is_configured", return_value=False):
-            resp_login = client.get("/auth/login", follow_redirects=True)
-            assert resp_login.status_code == 200
+            resp_login = client.get("/auth/login", follow_redirects=False)
+            assert resp_login.status_code in (302, 307)
+            assert resp_login.headers["location"] == "/"
 
             resp_me = client.get("/auth/me")
             data_me = resp_me.json()
