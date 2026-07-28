@@ -122,6 +122,24 @@ def _safe_emit(event_type: str, **fields) -> None:
     try:
         from src.core.events import emit
 
+        if event_type == "agent_start":
+            try:
+                from src.core.config import settings
+                from src.core.providers import map_model
+
+                # Resolve active model based on current run model family
+                family = _current_model_family() or "openai"
+                default_model = settings.openai_model
+                if family == "anthropic":
+                    default_model = settings.anthropic_default_model
+                elif family == "llama":
+                    default_model = settings.openrouter_model
+
+                mapped_model = map_model(family, default_model)
+                fields["model"] = mapped_model
+            except Exception:
+                pass
+
         emit(event_type, **fields)
     except Exception:
         pass

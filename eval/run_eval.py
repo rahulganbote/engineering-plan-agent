@@ -45,17 +45,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from src.core.logger import get_logger
 from src.core.config import settings
+from src.core.logger import get_logger
 
 log      = get_logger(__name__)
 EVAL_DIR = Path(__file__).parent
@@ -746,7 +746,7 @@ def run_guardrail_test(test_config: dict, agent_output: dict = None) -> dict:
                 term_found = term.lower() in all_output_text
                 _add(checks, f"Scope creep: '{term}' absent from output",
                      not term_found,
-                     f"FOUND in output" if term_found else "absent",
+                     "FOUND in output" if term_found else "absent",
                      "must not appear in any agent output")
 
             # Phase count constraint
@@ -869,7 +869,6 @@ def run_operationalization_check(results: dict) -> dict:
     }
 
     # SC-3: E2E pipeline time < 300s - read from execution logs
-    wall_clock_times = []
     for t in tests:
         ex = t.get("execution_based", {})
         for check in ex.get("checks", []):
@@ -917,7 +916,7 @@ def run_operationalization_check(results: dict) -> dict:
 def _print_operationalization_report(ops: dict) -> None:
     """Print dataset-level success criteria summary table."""
     print(f"\n  {'─'*56}")
-    print(f"  OPERATIONALIZATION - Dataset-level Success Criteria")
+    print("  OPERATIONALIZATION - Dataset-level Success Criteria")
     print(f"  {'─'*56}")
     labels = {
         "SC-1_completeness":   "SC-1 Completeness  ≥ 5.0 all BRDs",
@@ -1007,8 +1006,9 @@ def main():
         # Run pipeline (or use mock if not built)
         agent_output = {}
         try:
-            from src.agents.pipeline import run_pipeline
             import hashlib
+
+            from src.agents.pipeline import run_pipeline
             brd_hash = hashlib.sha256(brd_text.encode()).hexdigest()
             state    = run_pipeline(brd_text, brd_hash, brd_hash[:8])
             agent_output = {

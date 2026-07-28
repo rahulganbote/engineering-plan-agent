@@ -16,7 +16,7 @@ import { ScheduleTab } from './ScheduleTab';
 import { ArchitectureTab } from './ArchitectureTab';
 import { PoCTab } from './PoCTab';
 import { TechStackTab } from './TechStackTab';
-import { X, LogOut, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2, Plus } from 'lucide-react';
+import { X, LogOut, LogIn, Upload, ShieldAlert, ChevronDown, ChevronUp, Download, Copy, Check, Loader2, Plus } from 'lucide-react';
 import { ThemePicker } from './ThemePicker';
 import { generateVoiceBrief } from '../lib/voiceBrief';
 import { IntegrationNotConfigured } from './IntegrationNotConfigured';
@@ -156,6 +156,12 @@ export const AgentWorkspace: React.FC = () => {
   // both paths use the same Google OAuth flow (see AuthPromptModal).
   const [authModalVariant, setAuthModalVariant] = useState<'signin' | 'signup'>('signup');
   const [isExampleLoading, setIsExampleLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.isGuest && modelFamily !== 'llama') {
+      setModelFamily('llama');
+    }
+  }, [user, modelFamily]);
 
 
   // Provider availability map - populated at mount from /api/providers so the
@@ -431,17 +437,29 @@ export const AgentWorkspace: React.FC = () => {
               Loading session...
             </div>
           ) : (
-            <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3">
+            <div className="bg-background p-4 rounded-lg border border-border shadow-sm space-y-3 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground font-medium">Signed in:</span>
+                <span className="text-xs text-primary font-semibold">
+                  {user?.isGuest ? 'Guest Mode:' : 'Signed in:'}
+                </span>
                 <button
-                  onClick={logout}
+                  onClick={user?.isGuest ? login : logout}
                   className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
                 >
-                  Sign out <LogOut size={12} />
+                  {user?.isGuest ? (
+                    <>
+                      Sign in <LogIn size={12} />
+                    </>
+                  ) : (
+                    <>
+                      Sign out <LogOut size={12} />
+                    </>
+                  )}
                 </button>
               </div>
-              <div className="text-sm font-semibold text-foreground truncate">{user?.name || user?.email}</div>
+              <div className="text-sm font-semibold text-foreground truncate">
+                {user?.isGuest ? 'Anonymous Guest' : (user?.name || user?.email)}
+              </div>
             </div>
           )}
 
@@ -464,14 +482,24 @@ export const AgentWorkspace: React.FC = () => {
                   {[
                     { key: 'openai', label: 'OpenAI (Default: GPT-4o)' },
                     { key: 'anthropic', label: 'Anthropic (Default: Claude 4.5 Sonnet)' },
-                    { key: 'llama', label: 'Llama' },
+                    { key: 'llama', label: 'Llama 3.3 (OpenRouter)' },
                     { key: 'mistral', label: 'Mistral' },
                   ].map(({ key, label }) => {
                     // Default to "available" if we haven't received the providers
                     // payload yet - keeps the dropdown usable on first paint.
                     const p = providers[key];
-                    const isAvailable = p?.available ?? (key === 'openai' || key === 'anthropic');
-                    const reason = p?.reason;
+                    let isAvailable = p?.available ?? (key === 'openai' || key === 'anthropic');
+                    let reason = p?.reason;
+
+                    if (user?.isGuest && key !== 'llama') {
+                      if (isAvailable) {
+                        isAvailable = false;
+                        reason = 'Sign in to unlock frontier models';
+                      } else {
+                        isAvailable = false;
+                      }
+                    }
+
                     return (
                       <option
                         key={key}
@@ -479,7 +507,7 @@ export const AgentWorkspace: React.FC = () => {
                         disabled={!isAvailable}
                         title={reason || undefined}
                       >
-                        {label}{!isAvailable && reason ? ` - ${reason}` : ''}
+                        {label}{!isAvailable && reason ? ` - (${reason})` : ''}
                       </option>
                     );
                   })}
@@ -806,9 +834,9 @@ export const AgentWorkspace: React.FC = () => {
                 </div>
               )}
               {longRunningWarning && (
-                <div className="bg-warning/20 border-l-4 border-warning py-3 px-4 rounded-lg shadow-sm flex items-center justify-between animate-pulse">
+                <div className="bg-warning/20 border-l-4 border-warning py-3 px-4 rounded-lg shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm select-none">⏳</span>
+                    <span className="text-sm select-none inline-block animate-spin" style={{ animationDuration: '2s' }}>⏳</span>
                     <div>
                       <h4 className="font-bold text-warning text-xs">Processing Update</h4>
                       <p className="text-warning/80 mt-0.5 text-[11px] leading-snug">

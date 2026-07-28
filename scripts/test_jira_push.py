@@ -37,11 +37,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv  # type: ignore
+
 load_dotenv("secrets/.env")
 load_dotenv(".env")  # belt-and-braces, in case of root-level .env
 
 from src.core.config import settings
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixture: minimal but realistic PipelineState
@@ -51,13 +51,25 @@ def build_fixture_state():
     """Build a fully-populated PipelineState that exercises every section of
     the ADF builder. Same shape as the Sheets smoke fixture so we don't drift."""
     from src.core.models import (
-        PipelineState, HITLDecision, QualityBadge, RiskLevel,
-        EngineeringPlanOutput, Phase, Milestone, Risk,
-        ScheduleOutput, SprintRow,
-        ArchitectureOutput, Component, NFRMapping,
-        PoCOutput, SuccessCriterion,
-        TechStackOutput, StackOption,
-        CriticOutput, DimensionScore,
+        ArchitectureOutput,
+        Component,
+        CriticOutput,
+        DimensionScore,
+        EngineeringPlanOutput,
+        HITLDecision,
+        Milestone,
+        NFRMapping,
+        Phase,
+        PipelineState,
+        PoCOutput,
+        QualityBadge,
+        Risk,
+        RiskLevel,
+        ScheduleOutput,
+        SprintRow,
+        StackOption,
+        SuccessCriterion,
+        TechStackOutput,
     )
 
     state = PipelineState(run_id="jira-smoke", brd_raw_hash="cafef00d" * 8)
@@ -217,7 +229,7 @@ def main() -> int:
     print("─" * 60)
 
     # 2. Probe credentials before building any payload
-    from src.integrations.jira import _credentials_status, _build_summary, _build_labels, _build_adf_description
+    from src.integrations.jira import _build_adf_description, _build_labels, _build_summary, _credentials_status
     ok, why_not = _credentials_status()
     if not ok:
         print(f"✗ Credentials check FAILED: {why_not}")

@@ -238,7 +238,9 @@ HITL Gate
 | Tool | Used by | Purpose | Auth |
 |------|---------|---------|------|
 | Pinecone | All 5 agents | RAG retrieval | API key |
-| OpenAI | All agents + Critic | LLM generation | API key |
+| OpenAI | All agents + Critic | LLM generation (default provider) | API key |
+| Anthropic | All agents + Critic | LLM generation (alt. provider; OpenAI ↔ Anthropic failover) | API key |
+| OpenRouter | All agents + Critic | LLM generation (Llama 3.3 70B - paid route with cost cap, powers Guest Mode free to user) | API key |
 | Kroki.io | Solution Architect | Mermaid → SVG diagram | None (free) |
 | GitHub API | Tech Stack | Velocity data | None (public) |
 | Tavily | Solution Architect, Tech Stack | Live web grounding fallback | API key |

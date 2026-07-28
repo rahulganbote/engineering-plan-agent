@@ -28,7 +28,7 @@ def main():
         print("Error: REDIS_URL not found in secrets/.env or environment.")
         sys.exit(1)
 
-    print(f"Connecting to Redis...")
+    print("Connecting to Redis...")
     try:
         r = redis.from_url(redis_url)
         keys = r.keys("em-copilot:*")

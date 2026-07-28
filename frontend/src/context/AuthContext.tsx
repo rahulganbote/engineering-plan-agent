@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   message?: string;
+  isGuest?: boolean;
 }
 
 interface AuthContextType {
@@ -11,6 +12,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => void;
   logout: () => void;
+  loginAsGuest: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -35,6 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               email: data.email,
               name: data.name,
               message: data.message,
+              isGuest: data.is_guest,
             });
           } else {
             setUser(null);
@@ -65,6 +68,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = '/auth/logout';
   };
 
+  const loginAsGuest = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/auth/guest', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.authenticated) {
+          setUser({
+            email: data.email,
+            name: data.name,
+            isGuest: data.is_guest,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Guest login failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -72,6 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         login,
         logout,
+        loginAsGuest,
         isAuthenticated: !!user,
       }}
     >

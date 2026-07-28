@@ -76,7 +76,7 @@ if REDIS_URL:
 class RedisDictProxy:
     """
     Dict-like view backed by Redis SET/GET (single serialized value per key).
-    Falls back to a plain dict if the shared Redis client is None.
+    Gracefully degrades to local in-memory storage if Redis operations fail.
     """
 
     def __init__(self, key_prefix: str, serializer=None, deserializer=None, return_sub_proxy: bool = False):
@@ -92,16 +92,19 @@ class RedisDictProxy:
 
     def __getitem__(self, key: str):
         if self.redis:
-            full_k = self._full_key(key)
-            if self.return_sub_proxy:
-                # Sub-proxy is backed by a Redis HASH, checked via EXISTS on the
-                # hash key. We return the proxy even if the hash is empty so
-                # setters can lazily create fields.
-                return RedisSubDictProxy(self, key)
-            if not self.redis.exists(full_k):
-                raise KeyError(key)
-            raw = self.redis.get(full_k)
-            return self.deserializer(raw)
+            try:
+                full_k = self._full_key(key)
+                if self.return_sub_proxy:
+                    # Return the proxy even if empty so setters can lazily create fields.
+                    return RedisSubDictProxy(self, key)
+                if not self.redis.exists(full_k):
+                    raise KeyError(key)
+                raw = self.redis.get(full_k)
+                return self.deserializer(raw)
+            except KeyError:
+                raise
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] Dict get failed ({type(e).__name__}); degrading to memory: {e}")
 
         # In-memory path
         if self.return_sub_proxy:
@@ -110,52 +113,55 @@ class RedisDictProxy:
 
     def __setitem__(self, key: str, value):
         if self.redis:
-            full_k = self._full_key(key)
-            if self.return_sub_proxy:
-                # This proxy stores each entry as a Redis HASH so that later
-                # `_proxy[key]["field"] = v` (via RedisSubDictProxy → HSET)
-                # doesn't collide with a STRING-typed key here. Delete any
-                # prior key (guards against previous serializer runs) then
-                # HSET all fields at once.
-                self.redis.delete(full_k)
-                if isinstance(value, dict) and value:
-                    payload = {k: json.dumps(v) for k, v in value.items()}
-                    self.redis.hset(full_k, mapping=payload)
-                    self.redis.expire(full_k, _RUN_TTL_SECONDS)
-            else:
-                self.redis.set(full_k, self.serializer(value), ex=_RUN_TTL_SECONDS)
-        else:
-            self.local_dict[key] = value
+            try:
+                full_k = self._full_key(key)
+                if self.return_sub_proxy:
+                    self.redis.delete(full_k)
+                    if isinstance(value, dict) and value:
+                        payload = {k: json.dumps(v) for k, v in value.items()}
+                        self.redis.hset(full_k, mapping=payload)
+                        self.redis.expire(full_k, _RUN_TTL_SECONDS)
+                else:
+                    self.redis.set(full_k, self.serializer(value), ex=_RUN_TTL_SECONDS)
+                return
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] Dict set failed ({type(e).__name__}); degrading to memory: {e}")
+
+        self.local_dict[key] = value
 
     def __delitem__(self, key: str):
         if self.redis:
-            full_k = self._full_key(key)
-            if not self.redis.exists(full_k):
-                raise KeyError(key)
-            self.redis.delete(full_k)
-        else:
-            del self.local_dict[key]
+            try:
+                full_k = self._full_key(key)
+                if not self.redis.exists(full_k):
+                    raise KeyError(key)
+                self.redis.delete(full_k)
+                return
+            except KeyError:
+                raise
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] Dict del failed ({type(e).__name__}); degrading to memory: {e}")
+
+        del self.local_dict[key]
 
     def __contains__(self, key: str) -> bool:
         if self.redis:
-            return bool(self.redis.exists(self._full_key(key)))
+            try:
+                return bool(self.redis.exists(self._full_key(key)))
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] Dict contains failed ({type(e).__name__}); degrading to memory: {e}")
+
         return key in self.local_dict
 
     def get(self, key: str, default=None):
-        """
-        Read a snapshot value. IMPORTANT: even when return_sub_proxy=True,
-        .get() returns a plain dict (or `default`) — NOT a sub-proxy. This
-        keeps the return value JSON-serializable, which matters for callers
-        that inline the value into an API response.
-
-        For mutation patterns like `proxy[key]["field"] = value`, use
-        `proxy[key]` (bracket access) which returns the sub-proxy.
-        """
         if self.return_sub_proxy:
             if self.redis:
-                sub = RedisSubDictProxy(self, key)
-                snap = sub._hgetall()
-                return snap if snap else default
+                try:
+                    sub = RedisSubDictProxy(self, key)
+                    snap = sub._hgetall()
+                    return snap if snap else default
+                except redis.RedisError as e:
+                    log.warning(f"[state:redis] Dict get sub-proxy failed ({type(e).__name__}); degrading: {e}")
             snap = self.local_dict.get(key)
             if not snap:
                 return default
@@ -167,22 +173,24 @@ class RedisDictProxy:
 
     def pop(self, key: str, default=None):
         if self.redis:
-            full_k = self._full_key(key)
-            if self.return_sub_proxy:
-                # HASH-typed key — read snapshot then delete.
-                sub = RedisSubDictProxy(self, key)
-                snap = sub._hgetall()
-                if not snap:
-                    # Also delete in case an empty HASH-key was left over.
+            try:
+                full_k = self._full_key(key)
+                if self.return_sub_proxy:
+                    sub = RedisSubDictProxy(self, key)
+                    snap = sub._hgetall()
+                    if not snap:
+                        self.redis.delete(full_k)
+                        return default
                     self.redis.delete(full_k)
+                    return snap
+                raw = self.redis.get(full_k)
+                if raw is None:
                     return default
                 self.redis.delete(full_k)
-                return snap
-            raw = self.redis.get(full_k)
-            if raw is None:
-                return default
-            self.redis.delete(full_k)
-            return self.deserializer(raw)
+                return self.deserializer(raw)
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] Dict pop failed ({type(e).__name__}); degrading to memory: {e}")
+
         return self.local_dict.pop(key, default)
 
 
@@ -190,6 +198,7 @@ class RedisSubDictProxy:
     """
     Hash-backed sub-dictionary view. Field-level HSET/HGET so concurrent
     updates from multiple Cloud Run instances don't clobber each other.
+    Gracefully degrades to local in-memory storage if Redis operations fail.
     """
 
     def __init__(self, parent_proxy: RedisDictProxy, key: str):
@@ -198,44 +207,86 @@ class RedisSubDictProxy:
         self._hash_key = parent_proxy._full_key(key)
 
     def _hgetall(self) -> dict:
-        raw_map = self._parent.redis.hgetall(self._hash_key) if self._parent.redis else {}
-        out: dict = {}
-        for k_bytes, v_bytes in raw_map.items():
-            k = k_bytes.decode("utf-8") if isinstance(k_bytes, (bytes, bytearray)) else k_bytes
-            v_raw = v_bytes.decode("utf-8") if isinstance(v_bytes, (bytes, bytearray)) else v_bytes
+        if self._parent.redis:
             try:
-                out[k] = json.loads(v_raw)
-            except (TypeError, ValueError):
-                out[k] = v_raw
-        return out
+                raw_map = self._parent.redis.hgetall(self._hash_key)
+                out: dict = {}
+                for k_bytes, v_bytes in raw_map.items():
+                    k = k_bytes.decode("utf-8") if isinstance(k_bytes, (bytes, bytearray)) else k_bytes
+                    v_raw = v_bytes.decode("utf-8") if isinstance(v_bytes, (bytes, bytearray)) else v_bytes
+                    try:
+                        out[k] = json.loads(v_raw)
+                    except (TypeError, ValueError):
+                        out[k] = v_raw
+                return out
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] SubDict hgetall failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self._key not in self._parent.local_dict:
+            self._parent.local_dict[self._key] = {}
+        return self._parent.local_dict[self._key]
 
     def _get_data(self) -> dict:
         """Compatibility with older callers that expected a full dict snapshot."""
         return self._hgetall()
 
     def __len__(self) -> int:
-        return int(self._parent.redis.hlen(self._hash_key)) if self._parent.redis else 0
+        if self._parent.redis:
+            try:
+                return int(self._parent.redis.hlen(self._hash_key))
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] SubDict hlen failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self._key not in self._parent.local_dict:
+            return 0
+        return len(self._parent.local_dict[self._key])
 
     def __bool__(self) -> bool:
         return len(self) > 0
 
     def __getitem__(self, item):
-        raw = self._parent.redis.hget(self._hash_key, item)
-        if raw is None:
+        if self._parent.redis:
+            try:
+                raw = self._parent.redis.hget(self._hash_key, item)
+                if raw is None:
+                    raise KeyError(item)
+                raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+                try:
+                    return json.loads(raw_str)
+                except (TypeError, ValueError):
+                    return raw_str
+            except KeyError:
+                raise
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] SubDict hget failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self._key not in self._parent.local_dict or item not in self._parent.local_dict[self._key]:
             raise KeyError(item)
-        raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
-        try:
-            return json.loads(raw_str)
-        except (TypeError, ValueError):
-            return raw_str
+        return self._parent.local_dict[self._key][item]
 
     def __setitem__(self, item, value):
-        self._parent.redis.hset(self._hash_key, item, json.dumps(value))
-        # Refresh TTL on every write — a live run keeps its export state fresh.
-        self._parent.redis.expire(self._hash_key, _RUN_TTL_SECONDS)
+        if self._parent.redis:
+            try:
+                self._parent.redis.hset(self._hash_key, item, json.dumps(value))
+                self._parent.redis.expire(self._hash_key, _RUN_TTL_SECONDS)
+                return
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] SubDict hset failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self._key not in self._parent.local_dict:
+            self._parent.local_dict[self._key] = {}
+        self._parent.local_dict[self._key][item] = value
 
     def __contains__(self, item) -> bool:
-        return bool(self._parent.redis.hexists(self._hash_key, item))
+        if self._parent.redis:
+            try:
+                return bool(self._parent.redis.hexists(self._hash_key, item))
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] SubDict hexists failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self._key not in self._parent.local_dict:
+            return False
+        return item in self._parent.local_dict[self._key]
 
     def get(self, item, default=None):
         try:
@@ -246,18 +297,23 @@ class RedisSubDictProxy:
     def update(self, other: dict):
         if not other:
             return
-        payload = {k: json.dumps(v) for k, v in other.items()}
-        self._parent.redis.hset(self._hash_key, mapping=payload)
-        self._parent.redis.expire(self._hash_key, _RUN_TTL_SECONDS)
+        if self._parent.redis:
+            try:
+                payload = {k: json.dumps(v) for k, v in other.items()}
+                self._parent.redis.hset(self._hash_key, mapping=payload)
+                self._parent.redis.expire(self._hash_key, _RUN_TTL_SECONDS)
+                return
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] SubDict update failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self._key not in self._parent.local_dict:
+            self._parent.local_dict[self._key] = {}
+        self._parent.local_dict[self._key].update(other)
 
 
 class LocalSubDictProxy:
     """
     Helper mirroring RedisSubDictProxy for in-memory fallback.
-
-    Semantics parity note: `__contains__` and read-only `get` do NOT create
-    the key. Only `__setitem__` and `update` create the underlying entry.
-    This matches RedisSubDictProxy (hexists / hget are non-mutating).
     """
 
     def __init__(self, local_dict: dict, key: str):
@@ -274,8 +330,6 @@ class LocalSubDictProxy:
             self._local_dict[self._key] = {}
         return self._local_dict[self._key]
 
-    # Kept for backward compat with any external caller that reached in here.
-    # Prefer the two specific accessors above.
     def _get_data(self) -> dict:
         return self._get_data_mutating()
 
@@ -320,55 +374,67 @@ class RedisListProxy:
 
     def __getitem__(self, key: str):
         if self.redis:
-            return RedisListHelper(self.redis, self._full_key(key))
+            return RedisListHelper(self, key)
         if key not in self.local_dict:
             self.local_dict[key] = []
         return self.local_dict[key]
 
     def __setitem__(self, key: str, value):
         if self.redis:
-            full_k = self._full_key(key)
-            self.redis.delete(full_k)
-            if value:
-                self.redis.rpush(full_k, *value)
-                self.redis.expire(full_k, _RUN_TTL_SECONDS)
-        else:
-            self.local_dict[key] = value
+            try:
+                full_k = self._full_key(key)
+                self.redis.delete(full_k)
+                if value:
+                    self.redis.rpush(full_k, *value)
+                    self.redis.expire(full_k, _RUN_TTL_SECONDS)
+                return
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List set failed ({type(e).__name__}); degrading to memory: {e}")
+
+        self.local_dict[key] = value
 
     def __delitem__(self, key: str):
         if self.redis:
-            full_k = self._full_key(key)
-            if not self.redis.exists(full_k):
-                raise KeyError(key)
-            self.redis.delete(full_k)
-        else:
-            del self.local_dict[key]
+            try:
+                full_k = self._full_key(key)
+                if not self.redis.exists(full_k):
+                    raise KeyError(key)
+                self.redis.delete(full_k)
+                return
+            except KeyError:
+                raise
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List del failed ({type(e).__name__}); degrading to memory: {e}")
+
+        del self.local_dict[key]
 
     def __contains__(self, key: str) -> bool:
         if self.redis:
-            return bool(self.redis.exists(self._full_key(key)))
+            try:
+                return bool(self.redis.exists(self._full_key(key)))
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List contains failed ({type(e).__name__}); degrading to memory: {e}")
+
         return key in self.local_dict
 
     def get(self, key: str, default=None):
         if self.redis:
-            # Always return a helper — no upfront EXISTS check. An LRANGE
-            # against a missing key returns `[]`, which is the same behavior
-            # a caller would get from a real empty list. Avoids an extra
-            # Redis roundtrip per `.get()` call (matters in SSE hot loops).
-            # The `default` argument is preserved for API compatibility but
-            # will only be returned in the in-memory fallback path.
-            return RedisListHelper(self.redis, self._full_key(key))
+            return RedisListHelper(self, key)
         return self.local_dict.get(key, default)
 
     def pop(self, key: str, default=None):
         if self.redis:
-            full_k = self._full_key(key)
-            if not self.redis.exists(full_k):
-                return default
-            helper = RedisListHelper(self.redis, full_k)
-            items = list(helper)
-            self.redis.delete(full_k)
-            return items
+            try:
+                full_k = self._full_key(key)
+                if not self.redis.exists(full_k):
+                    return default
+                helper = RedisListHelper(self, key)
+                items = list(helper)
+                self.redis.delete(full_k)
+                return items
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List pop failed ({type(e).__name__}); degrading to memory: {e}")
+
         return self.local_dict.pop(key, default)
 
 
@@ -378,38 +444,75 @@ class RedisListHelper:
     Each append renews the TTL and LTRIMs to the configured cap.
     """
 
-    def __init__(self, r_client: redis.Redis, full_key: str):
-        self.r_client = r_client
-        self.full_key = full_key
+    def __init__(self, parent_proxy: RedisListProxy, key: str):
+        self.parent = parent_proxy
+        self.key = key
+        self.full_key = parent_proxy._full_key(key)
 
     def append(self, value):
-        self.r_client.rpush(self.full_key, value)
-        # Bound growth AND refresh TTL — two ops but both cheap.
-        self.r_client.ltrim(self.full_key, -_MAX_EVENTS_PER_RUN, -1)
-        self.r_client.expire(self.full_key, _RUN_TTL_SECONDS)
+        if self.parent.redis:
+            try:
+                self.parent.redis.rpush(self.full_key, value)
+                self.parent.redis.ltrim(self.full_key, -_MAX_EVENTS_PER_RUN, -1)
+                self.parent.redis.expire(self.full_key, _RUN_TTL_SECONDS)
+                return
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List append failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self.key not in self.parent.local_dict:
+            self.parent.local_dict[self.key] = []
+        self.parent.local_dict[self.key].append(value)
 
     def __len__(self) -> int:
-        return self.r_client.llen(self.full_key)
+        if self.parent.redis:
+            try:
+                return self.parent.redis.llen(self.full_key)
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List llen failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self.key not in self.parent.local_dict:
+            return 0
+        return len(self.parent.local_dict[self.key])
 
     def __getitem__(self, index):
-        if isinstance(index, slice):
-            start = index.start or 0
-            stop = index.stop
-            if stop is None:
-                stop = -1
-            elif stop > 0:
-                stop = stop - 1
-            raw_list = self.r_client.lrange(self.full_key, start, stop)
-            return [raw.decode("utf-8") for raw in raw_list]
-        raw = self.r_client.lindex(self.full_key, index)
-        if raw is None:
+        if self.parent.redis:
+            try:
+                if isinstance(index, slice):
+                    start = index.start or 0
+                    stop = index.stop
+                    if stop is None:
+                        stop = -1
+                    elif stop > 0:
+                        stop = stop - 1
+                    raw_list = self.parent.redis.lrange(self.full_key, start, stop)
+                    return [raw.decode("utf-8") for raw in raw_list]
+                raw = self.parent.redis.lindex(self.full_key, index)
+                if raw is None:
+                    raise IndexError("list index out of range")
+                return raw.decode("utf-8")
+            except IndexError:
+                raise
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List getitem failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self.key not in self.parent.local_dict:
             raise IndexError("list index out of range")
-        return raw.decode("utf-8")
+        return self.parent.local_dict[self.key][index]
 
     def __iter__(self):
-        raw_list = self.r_client.lrange(self.full_key, 0, -1)
-        for raw in raw_list:
-            yield raw.decode("utf-8")
+        if self.parent.redis:
+            try:
+                raw_list = self.parent.redis.lrange(self.full_key, 0, -1)
+                for raw in raw_list:
+                    yield raw.decode("utf-8")
+                return
+            except redis.RedisError as e:
+                log.warning(f"[state:redis] List iter failed ({type(e).__name__}); degrading to memory: {e}")
+
+        if self.key not in self.parent.local_dict:
+            return
+        for item in self.parent.local_dict[self.key]:
+            yield item
 
 
 # ── Proxy instances ────────────────────────────────────────────────────────────

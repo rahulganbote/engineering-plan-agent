@@ -4,8 +4,6 @@ src/api/routes/runs.py
 Pipeline execution, status streaming, and event log routes.
 """
 
-from __future__ import annotations
-
 import asyncio
 import hashlib
 import json
@@ -16,7 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Reque
 from fastapi.responses import StreamingResponse
 
 from src.api.dependencies import get_current_user_email, verify_run_ownership
-from src.api.limiter import limiter
+from src.api.limiter import is_rate_limit_exempt, limiter
 from src.api.models import PipelineRunResponse
 from src.api.state import _run_cancel_flags, _run_events, _run_export, _run_owner, _runs
 from src.api.tasks import _run_pipeline_task
@@ -28,9 +26,25 @@ log = get_logger(__name__)
 router = APIRouter(tags=["runs"])
 
 
-@limiter.limit(settings.rate_limit_run_pipeline_per_day)
-@limiter.limit(settings.rate_limit_run_pipeline_per_week)
+def get_daily_limit(key: str) -> str | None:
+    if key.startswith("guest-ip:"):
+        return settings.rate_limit_guest_run_per_day
+    if is_rate_limit_exempt(key):
+        return None
+    return settings.rate_limit_run_pipeline_per_day
+
+
+def get_weekly_limit(key: str) -> str | None:
+    if key.startswith("guest-ip:"):
+        return "10/week"
+    if is_rate_limit_exempt(key):
+        return None
+    return settings.rate_limit_run_pipeline_per_week
+
+
 @router.post("/run-pipeline", response_model=PipelineRunResponse)
+@limiter.limit(get_daily_limit)
+@limiter.limit(get_weekly_limit)
 async def trigger_pipeline(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -42,15 +56,17 @@ async def trigger_pipeline(
     """BRD upload → Security validation → Agent pipeline → Artifacts."""
     user_email = get_current_user_email(request)
 
+    is_guest = bool(request.session.get("is_guest"))
+    if is_guest:
+        model_family = "llama"
+
     if not consent_accepted:
         raise HTTPException(
             status_code=400, detail="You must accept the Terms of Service and Privacy Policy to upload documents."
         )
 
-    if model_family.lower() not in ("openai", "anthropic"):
-        raise HTTPException(
-            status_code=400, detail=f"Model family '{model_family}' is coming soon. Please select OpenAI or Anthropic."
-        )
+    if model_family.lower() not in ("openai", "anthropic", "llama"):
+        raise HTTPException(status_code=400, detail=f"Model family '{model_family}' is not available.")
 
     content = await file.read()
 
@@ -65,7 +81,8 @@ async def trigger_pipeline(
     consent_file = consent_dir / "consent.jsonl"
 
     consent_record = {
-        "email": user_email,
+        "email": "guest" if is_guest else user_email,
+        "is_guest": is_guest,
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "brd_hash": brd_hash,
         "terms_version": "2026-07-01",

@@ -37,6 +37,8 @@ Five rules of thumb that were followed while building EM Copilot, and that I bri
 
 **Tools & Integrations:** Tavily Search, Voice AI (ElevenLabs) support for HITL, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP), and Slack alerts.
 
+**Guest Mode:** No signup required to try it - anonymous sessions run on Llama 3.3 70B (via OpenRouter with cost caps, free to user), rate-limited by IP to prevent abuse and control costs.
+
 EM Copilot is built with enterprise requirements in mind. 
 
 The full EM Copilot AI implementation is now available in the public repository below, including detailed design documents, the evaluation framework, production-grade pipeline code, RAG ingestion logic, prompts, and integration adapters. API keys, deployment secrets, and environment-specific configuration remain outside the repository..

@@ -6,10 +6,23 @@ Rate limiting configuration and Limiter instance.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import Request
 from slowapi import Limiter
 
 from src.core.config import settings
+
+
+# Centralized exemption helper
+def is_rate_limit_exempt(email: str | None) -> bool:
+    if not email:
+        return False
+    if not settings.rate_limit_exempt_emails:
+        return False
+    exempt_list = [e.strip().lower() for e in settings.rate_limit_exempt_emails.split(",") if e.strip()]
+    return email.lower() in exempt_list
+
 
 # Sentinel identity for verified voice-agent calls. Every call that presents a
 # valid VOICE_WEBHOOK_SECRET Bearer token maps to this single key, so voice
@@ -43,6 +56,10 @@ def get_user_identifier(request: Request) -> str:
     if _is_verified_voice_agent(request):
         return _VOICE_AGENT_KEY
 
+    if request.session.get("is_guest"):
+        ip = request.client.host if request.client else (request.headers.get("x-forwarded-for") or "unknown-client-ip")
+        return f"guest-ip:{ip}"
+
     email = request.session.get("auth_email")
     if email:
         return email
@@ -53,4 +70,15 @@ def get_user_identifier(request: Request) -> str:
     return request.headers.get("x-forwarded-for") or "unknown-client-ip"
 
 
-limiter = Limiter(key_func=get_user_identifier)
+REDIS_URL = (os.environ.get("REDIS_URL") or "").strip()
+if REDIS_URL:
+    # in_memory_fallback_enabled: if the shared Redis backend becomes
+    # unreachable (outage, DNS blip, etc.), slowapi catches the storage
+    # exception and transparently retries against local in-memory storage
+    # instead of letting the exception propagate as a 500. This trades away
+    # cross-instance quota sync during the outage (each Cloud Run instance
+    # reverts to its own local counter) in exchange for /run-pipeline and
+    # /approve staying up - degraded rate-limit accuracy beats a hard outage.
+    limiter = Limiter(key_func=get_user_identifier, storage_uri=REDIS_URL, in_memory_fallback_enabled=True)
+else:
+    limiter = Limiter(key_func=get_user_identifier)

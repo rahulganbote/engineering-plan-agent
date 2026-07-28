@@ -19,7 +19,7 @@ PRICING_TABLE = {
         "claude-3-5-haiku-20241022": {"input": 0.80 / 1e6, "output": 4.00 / 1e6},  # restore
     },
     "llama": {
-        "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo": {"input": 0.60 / 1e6, "output": 0.60 / 1e6},
+        "meta-llama/llama-3.3-70b-instruct": {"input": 0.20 / 1e6, "output": 0.50 / 1e6},
     },
     "mistral": {
         "mistralai/Mistral-Large": {"input": 2.00 / 1e6, "output": 6.00 / 1e6},

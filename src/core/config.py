@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     # ── Pinecone ──────────────────────────────────────────────────────────────
     pinecone_api_key: str = ""
     pinecone_index: str = "brd-knowledge-base"
-    rag_top_k: int = 4
+    rag_top_k: int = 6
     rag_similarity_threshold: float = 0.45
 
     # ── LangSmith (observability - primary for demo day) ──────────────────────
@@ -78,6 +78,17 @@ class Settings(BaseSettings):
     # ── ElevenLabs (voice HITL) ───────────────────────────────────────────────
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""
+
+    # ── OpenRouter (Llama 3.3 70B paid model with cost limits. Powers guest
+    # mode.) ──────────────────────────────────────────────────────────────────
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
+    openrouter_model_mini: str = "meta-llama/llama-3.3-70b-instruct"
+
+    # ── Guest Quotas ─────────────────────────────────────────────────────────
+    rate_limit_guest_run_per_day: str = "3/day"
+    rate_limit_exempt_emails: str = ""
 
     # ── Tavily (web search tool) ──────────────────────────────────────────────
     tavily_api_key: str = ""

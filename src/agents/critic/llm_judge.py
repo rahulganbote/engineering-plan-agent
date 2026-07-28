@@ -6,8 +6,7 @@ LLM-as-Judge scoring for EM Copilot artifacts.
 
 from __future__ import annotations
 
-import json
-
+from src.core.json_utils import parse_llm_json
 from src.core.logger import get_logger
 from src.core.models import PipelineState
 
@@ -151,7 +150,7 @@ Return ONLY valid JSON with this exact structure:
         if final_family != family:
             state.model_family = final_family
 
-        return json.loads(content)
+        return parse_llm_json(content)
     except Exception as e:
         log.error(f"Critic LLM judge failed | error={e}")
         # Return middling scores on failure - don't block pipeline

@@ -69,8 +69,8 @@ async def list_providers():
             "reason": "ANTHROPIC_API_KEY not set on this deployment" if not settings.anthropic_api_key else None,
         },
         "llama": {
-            "available": False,
-            "reason": "Coming soon",
+            "available": bool(settings.openrouter_api_key),
+            "reason": "OPENROUTER_API_KEY not set on this deployment" if not settings.openrouter_api_key else None,
         },
         "mistral": {
             "available": False,
