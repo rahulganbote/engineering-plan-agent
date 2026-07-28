@@ -101,13 +101,14 @@ export const TermsOfServicePage: React.FC = () => {
               <li>Contains unredacted Personally Identifiable Information (PII) including names, email addresses, financial accounts, or health records subject to GDPR, HIPAA, or other privacy regulations.</li>
               <li>Is unlawful, harmful, threatening, abusive, defamatory, or otherwise objectionable.</li>
               <li>Contains viruses, malware, prompt injection attacks designed to exploit foundation models, or other malicious payloads.</li>
+              <li>Attempts to circumvent guest-mode usage limits (e.g. IP rotation, VPN switching, or automated session cycling) to exceed the intended guest quota.</li>
             </ul>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-lg font-bold text-foreground">3. Processing & Third-Party APIs</h2>
             <p className="text-xs text-muted-foreground">
-              Uploading a document initiates an orchestration process that routes sanitized text chunks to external generative AI model providers (OpenAI, Anthropic, or others selected in the interface). Please review our <a href="#/privacy" className="text-primary hover:underline font-semibold">Privacy Policy</a> to understand data handling, transit, and vector storage details.
+              Uploading a document initiates an orchestration process that routes sanitized text chunks to external generative AI model providers (OpenAI, Anthropic, OpenRouter, or others selected in the interface). If you use "Continue as guest," your run is automatically routed to Llama 3.3 70B (via OpenRouter with cost caps, free to the user) and limited to a fixed number of runs per day, tracked by IP address rather than account. Please review our <a href="#/privacy" className="text-primary hover:underline font-semibold">Privacy Policy</a> to understand data handling, transit, and vector storage details.
             </p>
           </div>
 
@@ -155,7 +156,7 @@ export const TermsOfServicePage: React.FC = () => {
 
         {/* Footer info */}
         <footer className="text-center pt-8 border-t border-border/40 text-xs text-muted-foreground space-y-1">
-          <p>Last updated: July 1<sup>st</sup>, 2026.</p>
+          <p>Last updated: July 27<sup>th</sup>, 2026.</p>
           <p>© 2026 EM Copilot. Independently maintained demonstration project.</p>
         </footer>
       </main>

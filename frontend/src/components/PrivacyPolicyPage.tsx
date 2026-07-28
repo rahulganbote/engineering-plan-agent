@@ -99,12 +99,18 @@ export const PrivacyPolicyPage: React.FC = () => {
             <p className="text-xs text-muted-foreground">
               All uploaded files and synthesized plans remain under your active run context. You can wipe this data instantly by clicking the <strong>"Clear Plan & Reset"</strong> button in the control panel. Background trace logs captured in developer consoles (such as LangSmith) are strictly used for diagnostics and debugging and do not retain raw files permanently.
             </p>
+            <p className="text-xs text-muted-foreground">
+              <strong>Guest sessions:</strong> if you use "Continue as guest," no email address is collected — you're assigned a random, non-identifying session id. Your IP address is used transiently to enforce the guest daily usage limit and is not stored beyond that rate-limiting purpose.
+            </p>
           </div>
 
           <div className="space-y-2">
             <h2 className="text-lg font-bold text-foreground">2. Model Provider Boundary</h2>
             <p className="text-xs text-muted-foreground">
-              The multi-agent orchestrator makes API requests to foundation model providers (OpenAI and Anthropic — selected via the Model Selection dropdown in the control panel). By uploading a document, you acknowledge that processed BRD content and derived prompts flow through these API services. Neither OpenAI nor Anthropic uses paid-API traffic to train their models under their default enterprise API terms of service. You should still review each provider's current policy before submitting proprietary content.
+              The multi-agent orchestrator makes API requests to foundation model providers (OpenAI, Anthropic, and OpenRouter — selected via the Model Selection dropdown in the control panel, or fixed automatically for guest sessions). By uploading a document, you acknowledge that processed BRD content and derived prompts flow through these API services. None of OpenAI, Anthropic, or OpenRouter uses paid-API traffic to train their models under their default enterprise API terms of service. You should still review each provider's current policy before submitting proprietary content.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <strong>Guest mode</strong> runs are always routed to Llama 3.3 70B via OpenRouter, regardless of any selection made in the UI — this is enforced server-side so anonymous traffic can never reach OpenAI or Anthropic.
             </p>
           </div>
 
@@ -114,7 +120,7 @@ export const PrivacyPolicyPage: React.FC = () => {
               A run touches multiple third-party services. Uploads and the artifacts derived from them may be transmitted to the following, in this order:
             </p>
             <ul className="text-xs text-muted-foreground space-y-1 pl-4 list-disc marker:text-primary">
-              <li><strong>OpenAI / Anthropic</strong> — receive the sanitized BRD text and all specialist / critic prompts.</li>
+              <li><strong>OpenAI / Anthropic / OpenRouter</strong> — receive the sanitized BRD text and all specialist / critic prompts. Guest-mode runs are routed exclusively to Llama 3.3 70B via OpenRouter.</li>
               <li><strong>Pinecone (vector database)</strong> — receives embeddings derived from the BRD for retrieval, alongside the organization's knowledge-base index.</li>
               <li><strong>Tavily (web search)</strong> — receives short, derived-metadata queries only. A helper (<code className="text-[10px] px-1 rounded bg-secondary/40">build_tavily_query</code>) constructs each query from an allowlist of ~35 safe engineering concept keywords (e.g., <em>availability, microservices, payments</em>) plus bounded structural labels (section names). Raw BRD content, customer names, and PII never leave the process boundary to Tavily.</li>
               <li><strong>GitHub API</strong> — receives repository lookup requests only (no BRD content) when the Tech Stack agent verifies library metadata.</li>
@@ -179,7 +185,7 @@ export const PrivacyPolicyPage: React.FC = () => {
 
         {/* Footer info */}
         <footer className="text-center pt-8 border-t border-border/40 text-xs text-muted-foreground space-y-1">
-          <p>Last updated: July 1<sup>st</sup> , 2026.</p>
+          <p>Last updated: July 27<sup>th</sup> , 2026.</p>
           <p>© 2026 EM Copilot. Independently maintained demonstration project.</p>
         </footer>
       </main>

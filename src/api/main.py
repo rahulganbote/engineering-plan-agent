@@ -122,6 +122,14 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# Rate limiting middleware
+from slowapi.middleware import SlowAPIMiddleware
+
+from src.api.limiter import limiter
+
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
 secret_key = _os.environ.get("SESSION_SECRET_KEY")
 if _os.environ.get("K_SERVICE") and not secret_key:
     raise ValueError("SESSION_SECRET_KEY environment variable is required in production (Cloud Run).")

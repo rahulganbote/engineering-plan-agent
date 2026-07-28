@@ -59,6 +59,43 @@ class OpenAIProvider:
         return resp.choices[0].message.content, input_tokens, output_tokens
 
 
+class OpenRouterProvider:
+    @traceable(run_type="llm", name="OpenRouter Completion")
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        model: str,
+        temperature: float,
+        response_format: dict[str, str] | None = None,
+    ) -> tuple[str, int, int]:
+        if not settings.openrouter_api_key:
+            raise ValueError("OpenRouter API key is not configured. Please set OPENROUTER_API_KEY.")
+        client = wrap_openai(
+            openai.OpenAI(
+                api_key=settings.openrouter_api_key,
+                base_url=settings.openrouter_base_url,
+                timeout=90.0,
+                max_retries=0,
+            )
+        )
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            # Hard price ceiling in USD per million tokens: prevents guest-mode run
+            # cost exposure from skyrocketing in case of unexpected routing.
+            "extra_body": {"provider": {"max_price": {"prompt": 0.2, "completion": 0.5}}},
+        }
+        if response_format:
+            kwargs["response_format"] = response_format
+
+        resp = client.chat.completions.create(**kwargs)
+        usage = getattr(resp, "usage", None)
+        input_tokens = getattr(usage, "prompt_tokens", 0) or 0
+        output_tokens = getattr(usage, "completion_tokens", 0) or 0
+        return resp.choices[0].message.content, input_tokens, output_tokens
+
+
 class AnthropicProvider:
     @traceable(run_type="llm", name="Anthropic Completion")
     def complete(
@@ -133,12 +170,13 @@ class AnthropicProvider:
 _PROVIDERS: dict[str, LLMProvider] = {
     "openai": cast(LLMProvider, OpenAIProvider()),
     "anthropic": cast(LLMProvider, AnthropicProvider()),
+    "llama": cast(LLMProvider, OpenRouterProvider()),
 }
 
 
 def get_provider(model_family: str) -> LLMProvider:
     family = model_family.lower()
-    if family in ("llama", "mistral"):
+    if family in ("mistral",):
         raise ValueError(
             f"Model family '{model_family}' is coming soon. Please configure TOGETHER_API_KEY in the future."
         )
@@ -165,7 +203,9 @@ def map_model(model_family: str, model: str) -> str:
             return settings.anthropic_mini_model
         return settings.anthropic_default_model
     elif family == "llama":
-        return "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+        if "mini" in model:
+            return settings.openrouter_model_mini
+        return settings.openrouter_model
     elif family == "mistral":
         return "mistralai/Mistral-Large"
     return model
@@ -235,8 +275,26 @@ def complete_with_fallback(
         # Just call the chosen provider; let exceptions surface
         provider = get_provider(family)
         mapped_model = map_model(family, model)
-        content, p, c = provider.complete(messages, mapped_model, temperature, response_format)
-        return content, p, c, family
+        if family == "llama":
+            import time
+
+            try:
+                content, p, c = provider.complete(messages, mapped_model, temperature, response_format)
+                return content, p, c, family
+            except (openai.RateLimitError, openai.APITimeoutError, openai.APIConnectionError) as e:
+                log.warning(f"OpenRouter primary call failed: {e}. Sleeping 1.5s and retrying once...")
+                time.sleep(1.5)
+                try:
+                    content, p, c = provider.complete(messages, mapped_model, temperature, response_format)
+                    return content, p, c, family
+                except Exception as retry_exc:
+                    log.error(f"OpenRouter retry also failed: {retry_exc}")
+                    raise QuotaExceededError(
+                        "Your API Credits/Tokens has expired or reached limit. Please try again later. Sorry."
+                    ) from retry_exc
+        else:
+            content, p, c = provider.complete(messages, mapped_model, temperature, response_format)
+            return content, p, c, family
 
     fallback_family = "anthropic" if family == "openai" else "openai"
 

@@ -4,12 +4,10 @@ src/api/routes/approval.py
 Human-in-the-loop (HITL) approval / rejection routes.
 """
 
-from __future__ import annotations
-
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from src.api.dependencies import verify_run_ownership
-from src.api.limiter import limiter
+from src.api.limiter import is_rate_limit_exempt, limiter
 from src.api.models import ApprovalRequest, ApprovalResponse
 from src.api.state import _push_event, _run_export, _runs
 from src.core.config import settings
@@ -21,13 +19,19 @@ log = get_logger(__name__)
 router = APIRouter(tags=["approval"])
 
 
-@limiter.limit(settings.rate_limit_approve_per_hour)
+def get_approve_limit(key: str) -> str | None:
+    if is_rate_limit_exempt(key):
+        return None
+    return settings.rate_limit_approve_per_hour
+
+
 @router.post("/approve/{run_id}", response_model=ApprovalResponse)
+@limiter.limit(get_approve_limit)
 async def hitl_approve(
     run_id: str,
-    request: ApprovalRequest,
+    approval_request: ApprovalRequest,
     background_tasks: BackgroundTasks,
-    fastapi_request: Request,
+    request: Request,
 ):
     """
     Human-in-the-loop decision gate - fast path.
@@ -37,14 +41,14 @@ async def hitl_approve(
     background task. Returns immediately.
     """
     # ── 1. Validate state ────────────────────────────────────────────────────
-    verify_run_ownership(run_id, fastapi_request, allow_voice_agent=True)
+    verify_run_ownership(run_id, request, allow_voice_agent=True)
     state = _runs.get(run_id)
     if not state:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
     # Parse incoming decision once so we can compare against existing
     try:
-        incoming_decision = HITLDecision(request.decision.strip().lower())
+        incoming_decision = HITLDecision(approval_request.decision.strip().lower())
     except ValueError:
         raise HTTPException(
             status_code=400,
@@ -97,22 +101,22 @@ async def hitl_approve(
 
     # ── 2. Record decision in state (fast, pure in-memory update) ────────────
     state.hitl_decision = decision
-    if hasattr(state, "hitl_em_ratings") and request.em_rating > 0:
+    if hasattr(state, "hitl_em_ratings") and approval_request.em_rating > 0:
         state.hitl_em_ratings.append(
             {
                 "rejection_count": state.hitl_rejection_count,
                 "decision": decision.value,
-                "reviewer": request.reviewer,
-                "em_rating": request.em_rating,
-                "notes": request.notes,
+                "reviewer": approval_request.reviewer,
+                "em_rating": approval_request.em_rating,
+                "notes": approval_request.notes,
             }
         )
     if hasattr(state, "hitl_latest_note"):
-        state.hitl_latest_note = request.notes
+        state.hitl_latest_note = approval_request.notes
 
     if decision == HITLDecision.REJECTED:
-        if request.notes:
-            state.hitl_rejection_notes.append(request.notes)
+        if approval_request.notes:
+            state.hitl_rejection_notes.append(approval_request.notes)
         state.hitl_rejection_count += 1
         if state.hitl_rejection_count >= 2:
             _push_event(
@@ -127,8 +131,8 @@ async def hitl_approve(
     state.pipeline_status = PipelineStatus.EXPORTING.value
 
     log.info(
-        f"[{run_id}] HITL decision: {decision.value} by {request.reviewer} "
-        f"| em_rating={request.em_rating} | exports scheduled in background"
+        f"[{run_id}] HITL decision: {decision.value} by {approval_request.reviewer} "
+        f"| em_rating={approval_request.em_rating} | exports scheduled in background"
     )
 
     _push_event(
@@ -136,14 +140,14 @@ async def hitl_approve(
         {
             "type": "hitl_decision",
             "decision": decision.value,
-            "reviewer": request.reviewer,
+            "reviewer": approval_request.reviewer,
         },
     )
 
     # Resolve email from request body, session, or default
-    resolved_email = request.email.strip() if request.email else ""
+    resolved_email = approval_request.email.strip() if approval_request.email else ""
     if not resolved_email:
-        resolved_email = fastapi_request.session.get("auth_email") or ""
+        resolved_email = request.session.get("auth_email") or ""
 
     # Fallback to run owner if session is absent (e.g. for external voice agent webhooks)
     if not resolved_email:
@@ -157,7 +161,7 @@ async def hitl_approve(
         if not is_configured():
             resolved_email = "local-dev@example.com"
         else:
-            if "voice" in request.reviewer.lower() or "eleven" in request.reviewer.lower():
+            if "voice" in approval_request.reviewer.lower() or "eleven" in approval_request.reviewer.lower():
                 resolved_email = "voice-agent@example.com"
             else:
                 resolved_email = "anonymous@example.com"

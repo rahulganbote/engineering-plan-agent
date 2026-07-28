@@ -74,7 +74,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           <span className="text-primary">minutes</span>
         </h2>
         <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          EM Copilot transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's own architectural patterns and approved tech stack. Artifacts are presented for your review; on approval, pushed to Jira.
+          EM Copilot transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's own architectural patterns, web search and approved tech stack. Artifacts are presented for your review; available to download as PDF; and on your approval, pushed to Jira.
         </p>
         {!isAuthenticated && (
           <div className="space-y-4 max-w-xl mx-auto pt-2">

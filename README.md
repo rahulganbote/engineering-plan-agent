@@ -7,7 +7,8 @@
 [![Jira](https://img.shields.io/badge/Jira%20Epic-MCP%20%2B%20REST-0052CC)](https://www.atlassian.com/software/jira)
 [![ElevenLabs](https://img.shields.io/badge/Voice%20HITL-ElevenLabs-1F1F1F)](https://elevenlabs.io)
 [![React](https://img.shields.io/badge/UI-React%2019%20%2B%20Vite-61DAFB)](https://react.dev)
-[![Anthropic](https://img.shields.io/badge/Multi--Provider-OpenAI%20%2B%20Anthropic-D97757)](https://www.anthropic.com)
+[![Anthropic](https://img.shields.io/badge/Multi--Provider-OpenAI%20%2B%20Anthropic%20%2B%20Llama%203.3-D97757)](https://www.anthropic.com)
+[![Guest Mode](https://img.shields.io/badge/Guest%20Mode-No%20signup%20required-4f46e5)](#multi-provider-strategy)
 [![Tavily](https://img.shields.io/badge/Search-Tavily-orange)](https://tavily.com)
 
 > EM Copilot is a Multi-Agent AI system that transforms raw Business Requirements Documents (BRDs) into an audit-ready engineering plan package, and presented to you for review. Upon HITL (Human in the Loop) approval, it pushes the artifacts into Jira. Artifacts are also downloadable as PDF.
@@ -31,6 +32,7 @@
 * **AI Governance**: **$2.00 per-run budget ceiling**, Quality Gate (F3-Score across 5 dimensions for audit-readiness scoring, Green/Amber/Red badge), **Human-in-the-Loop (HITL)** review & approval.
 * **Resilience & Guardrails:** Pre-defined Contracts, Intelligent LLM Failover, Per-agent Circuit Breakers, Bulkhead Isolation (per-provider + per-family + global), per-tenant data isolation and an innovative **idempotent approval** that makes decision gate safe to retry without creating duplicate artifacts.
 * **Tools & Integrations:** Tavily Search, Voice AI (ElevenLabs) support for HITL, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP), and Slack alerts.
+* **Guest Mode:** Try the full pipeline with zero signup - anonymous "Continue as guest" sessions run exclusively on **Llama 3.3 70B** (via OpenRouter, free to the end user, hard-capped on the backend), IP-rate-limited to 3 runs/day, so cold traffic can never spend paid OpenAI/Anthropic credit. See [Multi-Provider Strategy](#multi-provider-strategy).
 
 ---
 
@@ -249,17 +251,26 @@ Observability is a core production requirement implemented from Day 1. Every age
 
 ## Multi-Provider Strategy
 
-To prevent single-provider vendor lock-in and mitigate outages, rate-limiting, or latency spikes, EM Copilot abstracts the model layer using a pluggable `LLMProvider` protocol. This allows seamless runtime switching between OpenAI and Anthropic, making it straightforward to measure performance and cost trade-offs empirically.
+To prevent single-provider vendor lock-in and mitigate outages, rate-limiting, or latency spikes, EM Copilot abstracts the model layer using a pluggable `LLMProvider` protocol. This allows seamless runtime switching between OpenAI, Anthropic, and Llama 3.3 70B via OpenRouter, making it straightforward to measure performance and cost trade-offs empirically. `complete_with_fallback()` auto-swaps OpenAI ↔ Anthropic on rate-limit/auth/timeout errors for signed-in runs; the OpenRouter (`llama` family) path gets a same-family retry with backoff instead (see Guest Mode below - a guest run must never silently fall through to a paid provider).
 
-| Dimension | OpenAI (`gpt-4o` / `gpt-4o-mini`) | Anthropic (`claude-sonnet-4-5` / `claude-haiku-4-5`) |
-|---|---|---|
-| **End-to-end latency (p50)** | ~26s (n=13, measured) | ~86s (n=9, measured) |
-| **End-to-end latency (p95)** | ~72s (n=13, measured) | ~102s (n=9, measured) |
-| **Cost per run (median)** | ~$0.08 (n=13, measured) | ~$0.20 (n=9, measured; ~2.5× OpenAI on observed data) |
-| **Output tokens per run (mean)** | ~5,100 | ~11,300 (n=9; Anthropic is ~2.2× more verbose for the same prompt) |
-| **Critic GREEN-rate (standard BRDs)** | ~70% | ~75% (anecdotal, broader benchmarking pending) |
-| **Per-agent bulkhead timeout** | 90s | 180s |
-| **Best for** | Latency-sensitive demos; high-throughput; tight cost budgets | Complex BRDs needing deeper reasoning; consistency-critical drafts where the 2× cost is justified |
+| Dimension | OpenAI (`gpt-4o` / `gpt-4o-mini`) | Anthropic (`claude-sonnet-4-5` / `claude-haiku-4-5`) | Llama 3.3 70B (OpenRouter) |
+|---|---|---|---|
+| **End-to-end latency (p50)** | ~26s (n=13, measured) | ~86s (n=9, measured) | Not yet benchmarked at n |
+| **End-to-end latency (p95)** | ~72s (n=13, measured) | ~102s (n=9, measured) | — |
+| **Cost per run (median)** | ~$0.08 (n=13, measured) | ~$0.20 (n=9, measured; ~2.5× OpenAI on observed data) | Near-zero (~$0.003; enforced by a hard cost cap: prompt $0.20, completion $0.50 per million tokens) |
+| **Output tokens per run (mean)** | ~5,100 | ~11,300 (n=9; Anthropic is ~2.2× more verbose for the same prompt) | — |
+| **Critic GREEN-rate (standard BRDs)** | ~70% | ~75% (anecdotal, broader benchmarking pending) | — |
+| **Per-agent bulkhead timeout** | 90s | 180s | 90s |
+| **Best for** | Latency-sensitive demos; high-throughput; tight cost budgets | Complex BRDs needing deeper reasoning; consistency-critical drafts where the 2× cost is justified | Anonymous guest trials; zero-cost evaluation (free to user) before signing in |
+
+### Guest Mode (no signup required)
+
+Visitors can click "Continue as guest" and run the full pipeline - upload, multi-agent draft, Critic scoring, HITL approval, Jira export - without a Google sign-in. Two things keep this safe to expose to public/cold traffic:
+
+* **Model is forced server-side.** `/run-pipeline` overrides `model_family` to `llama` for any guest session regardless of what the client requests - guests can never reach a premium paid provider (OpenAI or Anthropic), by construction, not just by UI convention.
+* **Rate-limited by IP, not by session.** Guest identity is a throwaway per-session id, so quota is keyed on IP (`3/day`) instead - clearing cookies doesn't reset the limit.
+
+Guests get the same export capabilities as signed-in users (PDF, Jira, Sheets); the only constraint is the model and the daily quota.
 
 ---
 
@@ -273,6 +284,7 @@ A consolidated log of core architectural compromises. Detailed records are maint
 | **Multi-provider failover** | Single LLM provider | Production redundancy (OpenAI ↔ Anthropic failover) to handle provider-side outages. | Two separate prompt layouts and budget cost-tables to maintain. |
 | **Async `/approve` + SSE** | Synchronous approve endpoint | External tool calls (Jira/Sheets) and ElevenLabs voice tasks easily exceed the 20s API timeout threshold. | UI must listen for the final SSE event to hydrate export links. |
 | **Hard $2.00 per-run budget** | Soft warning logs | Prevents runaway LLM loops or excessively large uploads from consuming billing budgets. | Aborts legitimate very large BRDs; accepted as visible error over budget leak. |
+| **Guest mode forced onto Llama 3.3 70B (OpenRouter, price-capped)** | Let guests choose any provider; meter by spend | Publicly-linked "try it free" traffic must have bounded, near-zero cost exposure by construction, not by UI trust. A hard `max_price` ceiling on every call means even a misrouted request can't exceed the cap. | Guests get a smaller open-source model instead of GPT-4o/Claude; mitigated by a same-family retry (no cross-provider fallback) and clear "sign in for premium models" messaging. |
 
 ---
 
@@ -306,6 +318,7 @@ High-priority operational considerations and mitigations for production readines
 | **PII leak via Tavily Search** | Med | Med | Regex redact + section slice searches (avoids sending full BRD). | **Deploy LLM-based Layer 5 privacy filter pre-network query.** |
 | **Jira connection drops** | Low | Med | Graceful degradation: marks Jira status as `"skipped"` / `"local_fallback"`. | **Implement background job queue with automated retry-loops.** |
 | **LLM judge bias (Critic)** | Med | Low | Deterministic cap rules overrides to catch false-greens. | **Expand and calibrate the golden dataset `eval/` on niche BRDs.** |
+| **Guest-mode abuse from public traffic** | Med | Low | IP-keyed rate limit (3/day) independent of guest session id; guests hard-locked to Llama 3.3 70B via OpenRouter with a `max_price` cost ceiling server-side. | **Monitor per-run OpenRouter spend under real launch traffic; add a global daily guest-run cap if needed.** |
 
 ---
 
@@ -352,7 +365,7 @@ cd frontend && npm run dev
 
 **Required keys (minimum to run):** `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`), `PINECONE_API_KEY`, `GOOGLE_OAUTH_CLIENT_ID` + `GOOGLE_OAUTH_CLIENT_SECRET` + `SESSION_SECRET_KEY`.
 
-**Recommended for production parity:** `LANGCHAIN_API_KEY` (observability), `VOICE_WEBHOOK_SECRET` (voice auth), `MAX_PIPELINE_RUN_BUDGET_USD` (cost ceiling), `REDIS_URL` (L2 cache), `TAVILY_API_KEY` + `TAVILY_MONTHLY_BUDGET` (web grounding fallback), `MAX_CRITIC_REVISIONS` (maximum self-revision loops for quality criteria, default is `2`; set to `0` to disable and save tokens/time).
+**Recommended for production parity:** `LANGCHAIN_API_KEY` (observability), `VOICE_WEBHOOK_SECRET` (voice auth), `MAX_PIPELINE_RUN_BUDGET_USD` (cost ceiling), `REDIS_URL` (L2 cache), `TAVILY_API_KEY` + `TAVILY_MONTHLY_BUDGET` (web grounding fallback), `MAX_CRITIC_REVISIONS` (maximum self-revision loops for quality criteria, default is `2`; set to `0` to disable and save tokens/time), `OPENROUTER_API_KEY` (enables Guest Mode - a free open-source community model for anonymous "Continue as guest" runs; no card required).
 
 Full configuration reference: [.env.example](./.env.example) - every variable is documented with its purpose and default.
 

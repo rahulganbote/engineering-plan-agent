@@ -30,8 +30,44 @@ def test_map_model():
     assert map_model("openai", "mini") == settings.openai_model_mini
     assert map_model("anthropic", "gpt-4o") == settings.anthropic_default_model
     assert map_model("anthropic", "mini") == settings.anthropic_mini_model
-    assert map_model("llama", "default") == "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"
+    assert map_model("llama", "default") == settings.openrouter_model
     assert map_model("mistral", "default") == "mistralai/Mistral-Large"
+
+
+@patch("openai.OpenAI")
+def test_openrouter_provider_complete(mock_openai_class):
+    mock_client = MagicMock()
+    mock_openai_class.return_value = mock_client
+
+    mock_resp = MagicMock()
+    mock_resp.choices = [MagicMock(message=MagicMock(content="OpenRouter hello"))]
+    mock_resp.usage = MagicMock(prompt_tokens=5, completion_tokens=15)
+
+    captured_kwargs = {}
+
+    def fake_create(**kwargs):
+        captured_kwargs.update(kwargs)
+        return mock_resp
+
+    mock_client.chat.completions.create.side_effect = fake_create
+
+    with patch("src.core.config.settings.openrouter_api_key", "mock-openrouter-key"):
+        from src.core.providers import OpenRouterProvider
+
+        provider = OpenRouterProvider()
+        content, prompt, completion = provider.complete(
+            messages=[{"role": "user", "content": "hi"}],
+            model="meta-llama/llama-3.3-70b-instruct",
+            temperature=0.2,
+        )
+
+    assert content == "OpenRouter hello"
+    assert prompt == 5
+    assert completion == 15
+
+    # Verify the hard price ceiling is always sent, so a misconfigured
+    # slug can never silently route to an expensive endpoint.
+    assert captured_kwargs["extra_body"]["provider"]["max_price"] == {"prompt": 0.2, "completion": 0.5}
 
 
 @patch("openai.OpenAI")
@@ -76,14 +112,16 @@ def test_anthropic_provider_complete(mock_anthropic_class):
 
 
 def test_get_provider_invalid_family():
-    # Test Llama and Mistral which are "Coming soon"
-    with pytest.raises(ValueError) as excinfo:
-        get_provider("llama")
-    assert "coming soon" in str(excinfo.value).lower()
-
+    # Mistral is still "Coming soon"
     with pytest.raises(ValueError) as excinfo:
         get_provider("mistral")
     assert "coming soon" in str(excinfo.value).lower()
+
+    # Test Llama is not coming soon anymore (returns OpenRouterProvider)
+    from src.core.providers import OpenRouterProvider
+
+    with patch("src.core.config.settings.openrouter_api_key", "mock-openrouter-key"):
+        assert isinstance(get_provider("llama"), OpenRouterProvider)
 
     # Test an unknown provider
     with pytest.raises(ValueError) as excinfo:
@@ -279,6 +317,67 @@ def test_complete_with_fallback_not_found_error():
     set_event_sink(None)
 
 
+@patch("time.sleep", return_value=None)
+def test_complete_with_fallback_llama_retry_succeeds(mock_sleep):
+    """Guest/llama calls never cross-fall-back to a paid provider, but DO get
+    one same-family retry with backoff on a transient OpenRouter rate limit."""
+    import openai
+
+    from src.core.providers import complete_with_fallback
+
+    with patch("src.core.providers.get_provider") as mock_get_provider:
+        mock_provider = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 429
+        mock_provider.complete.side_effect = [
+            openai.RateLimitError(message="rate limit", response=mock_resp, body=None),
+            ("Retry success", 10, 20),
+        ]
+        mock_get_provider.return_value = mock_provider
+
+        content, prompt, completion, final_family = complete_with_fallback(
+            model_family="llama",
+            messages=[{"role": "user", "content": "hi"}],
+            model="default",
+            temperature=0.2,
+        )
+
+    assert content == "Retry success"
+    assert final_family == "llama"
+    assert prompt == 10
+    assert completion == 20
+    assert mock_provider.complete.call_count == 2
+    mock_sleep.assert_called_once_with(1.5)
+
+
+@patch("time.sleep", return_value=None)
+def test_complete_with_fallback_llama_retry_also_fails(mock_sleep):
+    """When BOTH the primary llama call and its retry fail, raise
+    QuotaExceededError - never silently fall through to a paid provider."""
+    import openai
+
+    from src.core.providers import complete_with_fallback
+    from src.core.resilience import QuotaExceededError
+
+    with patch("src.core.providers.get_provider") as mock_get_provider:
+        mock_provider = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 429
+        mock_provider.complete.side_effect = openai.RateLimitError(message="rate limit", response=mock_resp, body=None)
+        mock_get_provider.return_value = mock_provider
+
+        with pytest.raises(QuotaExceededError):
+            complete_with_fallback(
+                model_family="llama",
+                messages=[{"role": "user", "content": "hi"}],
+                model="default",
+                temperature=0.2,
+            )
+
+    assert mock_provider.complete.call_count == 2
+    mock_sleep.assert_called_once_with(1.5)
+
+
 def test_complete_with_fallback_disabled_by_settings():
     import anthropic
 
@@ -345,11 +444,18 @@ def test_api_providers_endpoint():
 
     from src.api.main import list_providers
 
-    res = asyncio.run(list_providers())
-    assert "openai" in res
-    assert "anthropic" in res
-    assert "llama" in res
-    assert "mistral" in res
-    assert res["llama"]["available"] is False
-    assert res["mistral"]["available"] is False
-    assert "coming soon" in res["llama"]["reason"].lower()
+    # Test when API key is not set
+    with patch("src.core.config.settings.openrouter_api_key", ""):
+        res = asyncio.run(list_providers())
+        assert "openai" in res
+        assert "anthropic" in res
+        assert "llama" in res
+        assert "mistral" in res
+        assert res["llama"]["available"] is False
+        assert res["mistral"]["available"] is False
+        assert "openrouter_api_key not set" in res["llama"]["reason"].lower()
+
+    # Test when API key is set
+    with patch("src.core.config.settings.openrouter_api_key", "sk-or-v1-mock"):
+        res = asyncio.run(list_providers())
+        assert res["llama"]["available"] is True

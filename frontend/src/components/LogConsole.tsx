@@ -33,7 +33,7 @@ export const LogConsole: React.FC<LogConsoleProps> = ({ logs, pipelineStatus }) 
   const formatEventText = (log: LogEvent): string => {
     switch (log.type) {
       case 'agent_start':
-        return `[Agent: ${log.agent}] Starting execution...`;
+        return `[Agent: ${log.agent}] Starting execution...${log.model ? ` (model: ${log.model})` : ''}`;
       case 'agent_complete':
         return `[Agent: ${log.agent}] Completed execution successfully.`;
       case 'revision_start': {

@@ -35,6 +35,7 @@ export interface LogEvent {
   seq?: number;
   ts?: number;
   directive_count?: number;
+  model?: string;
 }
 
 export interface CriticDimension {

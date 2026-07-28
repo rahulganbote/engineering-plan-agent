@@ -604,3 +604,130 @@ def test_run_pipeline_without_consent_raises_400(client):
     )
     assert response.status_code == 400
     assert "accept the Terms of Service and Privacy Policy" in response.json()["detail"]
+
+
+def test_guest_auth_flow(client):
+    """Assert POST /auth/guest successfully authenticates guest and sets session."""
+    # 1. Start signed out
+    with patch("src.security.google_auth.is_configured", return_value=True):
+        resp = client.get("/auth/me")
+        assert resp.json() == {"authenticated": False}
+
+        # 2. Login as guest
+        resp_guest = client.post("/auth/guest")
+        assert resp_guest.status_code == 200
+        data = resp_guest.json()
+        assert data["authenticated"] is True
+        assert data["is_guest"] is True
+        assert "guest-" in data["email"]
+        assert data["name"] == "Guest"
+
+        # 3. Check /auth/me returns guest state
+        resp_me = client.get("/auth/me")
+        assert resp_me.status_code == 200
+        data_me = resp_me.json()
+        assert data_me["authenticated"] is True
+        assert data_me["is_guest"] is True
+        assert "guest-" in data_me["email"]
+
+        # 4. Sign in as local dev when auth is disabled
+        with patch("src.security.google_auth.is_configured", return_value=False):
+            resp_login = client.get("/auth/login", follow_redirects=True)
+            assert resp_login.status_code == 200
+
+            resp_me = client.get("/auth/me")
+            data_me = resp_me.json()
+            assert data_me["authenticated"] is True
+            assert data_me["is_guest"] is False
+            assert data_me["email"] == "local-dev@example.com"
+
+
+def test_guest_pipeline_run_override(client):
+    """Assert guest run overrides model family selection to llama."""
+    with patch("src.api.routes.runs._run_pipeline_task") as mock_task:
+        with patch("src.security.google_auth.is_configured", return_value=True):
+            # 1. Login as guest first
+            client.post("/auth/guest")
+
+            # 2. Run pipeline selecting openai, but it should be overridden to llama
+            response = client.post(
+                "/run-pipeline",
+                data={"model_family": "openai", "enable_fallback": True, "consent_accepted": True},
+                files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+            )
+            assert response.status_code == 200
+
+            # Verify model_family argument passed to the background task (arg 5) is overridden to llama
+            mock_task.assert_called_once()
+            args, kwargs = mock_task.call_args
+            assert args[5] == "llama"
+
+
+def test_rate_limit_exemptions():
+    from src.api.routes.approval import get_approve_limit
+    from src.api.routes.runs import get_daily_limit, get_weekly_limit
+    from src.core.config import settings
+
+    orig_exempt = settings.rate_limit_exempt_emails
+    settings.rate_limit_exempt_emails = "test-exempt@example.com,test-another@example.com"
+    try:
+        # 1. Exempt user
+        assert get_daily_limit("test-exempt@example.com") is None
+        assert get_weekly_limit("test-exempt@example.com") is None
+        assert get_approve_limit("test-exempt@example.com") is None
+
+        # 2. Case-insensitivity check
+        assert get_daily_limit("TEST-EXEMPT@EXAMPLE.COM") is None
+
+        # 3. Non-exempt user
+        assert get_daily_limit("regular-user@example.com") == settings.rate_limit_run_pipeline_per_day
+        assert get_weekly_limit("regular-user@example.com") == settings.rate_limit_run_pipeline_per_week
+        assert get_approve_limit("regular-user@example.com") == settings.rate_limit_approve_per_hour
+
+        # 4. Guest user
+        assert get_daily_limit("guest-ip:1.2.3.4") == settings.rate_limit_guest_run_per_day
+        assert get_weekly_limit("guest-ip:1.2.3.4") == "10/week"
+    finally:
+        settings.rate_limit_exempt_emails = orig_exempt
+
+
+def test_rate_limiter_integration(client):
+    """Verify that SlowAPI rate limiting intercepts /run-pipeline and returns 429 after limits are exceeded."""
+    from src.api.limiter import limiter
+    from src.core.config import settings
+
+    orig_guest_day = settings.rate_limit_guest_run_per_day
+    # Set to a very low daily rate limit for testing
+    settings.rate_limit_guest_run_per_day = "1/day"
+    # Enable limiter for this specific integration test
+    limiter.enabled = True
+
+    try:
+        # Reset limiter memory
+        limiter._limiter.storage.reset()
+
+        with patch("src.api.routes.runs._run_pipeline_task"):
+            with patch("src.security.google_auth.is_configured", return_value=True):
+                # Login as guest
+                client.post("/auth/guest")
+
+                # First run - should be successful (200)
+                response1 = client.post(
+                    "/run-pipeline",
+                    data={"model_family": "openai", "enable_fallback": True, "consent_accepted": True},
+                    files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+                )
+                assert response1.status_code == 200
+
+                # Second run - should exceed rate limit (429)
+                response2 = client.post(
+                    "/run-pipeline",
+                    data={"model_family": "openai", "enable_fallback": True, "consent_accepted": True},
+                    files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+                )
+                assert response2.status_code == 429
+                json_res = response2.json()
+                assert json_res["detail"]["code"] == "rate_limited"
+    finally:
+        settings.rate_limit_guest_run_per_day = orig_guest_day
+        limiter.enabled = False

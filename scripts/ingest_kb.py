@@ -37,20 +37,20 @@ Expected output:
 """
 
 import argparse
+import os
 import sys
 import time
-import os
 from pathlib import Path
 
 # Add project root to Python path so imports work
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from src.core.rag import ingest_document, retrieve
 from src.core.logger import get_logger
-
+from src.core.rag import ingest_document, retrieve
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(PROJECT_ROOT / "secrets" / ".env")
@@ -377,8 +377,9 @@ def test_retrieval() -> bool:
 def check_connectivity() -> bool:
     """Check Pinecone connectivity without ingesting anything."""
     try:
-        from pinecone import Pinecone
         import os
+
+        from pinecone import Pinecone
         pc    = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         idx   = os.getenv("PINECONE_INDEX", "brd-knowledge-base")
         stats = pc.Index(idx).describe_index_stats()

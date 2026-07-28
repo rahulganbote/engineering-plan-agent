@@ -41,6 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv  # type: ignore
+
 load_dotenv("secrets/.env")
 load_dotenv(".env")
 
@@ -50,13 +51,25 @@ from src.core.config import settings
 def _build_fixture_state():
     """Minimal but realistic PipelineState - same shape used by test_jira_push.py."""
     from src.core.models import (
-        PipelineState, HITLDecision, QualityBadge, RiskLevel,
-        EngineeringPlanOutput, Phase, Milestone, Risk,
-        ScheduleOutput, SprintRow,
-        ArchitectureOutput, Component, NFRMapping,
-        PoCOutput, SuccessCriterion,
-        TechStackOutput, StackOption,
-        CriticOutput, DimensionScore,
+        ArchitectureOutput,
+        Component,
+        CriticOutput,
+        DimensionScore,
+        EngineeringPlanOutput,
+        HITLDecision,
+        Milestone,
+        NFRMapping,
+        Phase,
+        PipelineState,
+        PoCOutput,
+        QualityBadge,
+        Risk,
+        RiskLevel,
+        ScheduleOutput,
+        SprintRow,
+        StackOption,
+        SuccessCriterion,
+        TechStackOutput,
     )
 
     state = PipelineState(run_id="jira-mcp-smoke", brd_raw_hash="deadbeef" * 8)
@@ -166,7 +179,7 @@ async def main() -> int:
     # 2. MCP SDK importable
     try:
         from mcp import ClientSession, StdioServerParameters  # noqa: F401
-        from mcp.client.stdio import stdio_client            # noqa: F401
+        from mcp.client.stdio import stdio_client  # noqa: F401
         print("✓ mcp SDK importable")
     except ImportError as e:
         print(f"✗ mcp SDK not installed: {e}")
@@ -175,8 +188,8 @@ async def main() -> int:
 
     # 3. Build the fixture + payload
     state = _build_fixture_state()
-    from src.integrations.jira_mcp import _build_markdown_description, MCP_SERVER_COMMAND, MCP_SERVER_ARGS
-    from src.integrations.jira import _build_summary, _build_labels
+    from src.integrations.jira import _build_labels, _build_summary
+    from src.integrations.jira_mcp import MCP_SERVER_ARGS, MCP_SERVER_COMMAND, _build_markdown_description
 
     summary = _build_summary(state)
     labels  = _build_labels(state)

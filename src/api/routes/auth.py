@@ -74,23 +74,47 @@ def exchange_code_for_user(code: str, redirect_uri: str) -> tuple[bool, dict | s
         return False, f"Auth callback error: {str(e)}"
 
 
+@router.post("/auth/guest")
+async def continue_as_guest(request: Request):
+    import uuid
+
+    request.session.pop("local_logout", None)
+    request.session["is_guest"] = True
+    request.session["auth_email"] = f"guest-{uuid.uuid4().hex[:12]}@guest.local"
+    request.session["auth_name"] = "Guest"
+    return {
+        "authenticated": True,
+        "is_guest": True,
+        "email": request.session["auth_email"],
+        "name": "Guest",
+    }
+
+
 @router.get("/auth/me")
 async def get_current_user(request: Request):
     from src.security.google_auth import is_configured
+
+    is_guest = bool(request.session.get("is_guest"))
 
     if not is_configured():
         if request.session.get("local_logout"):
             return {"authenticated": False}
         return {
             "authenticated": True,
-            "email": "local-dev@example.com",
-            "name": "Local Developer",
+            "is_guest": is_guest,
+            "email": request.session.get("auth_email") or "local-dev@example.com",
+            "name": request.session.get("auth_name") or "Local Developer",
             "message": "Auth disabled (local dev mode)",
         }
 
     email = request.session.get("auth_email")
     if email:
-        return {"authenticated": True, "email": email, "name": request.session.get("auth_name", "")}
+        return {
+            "authenticated": True,
+            "is_guest": is_guest,
+            "email": email,
+            "name": request.session.get("auth_name", ""),
+        }
     return {"authenticated": False}
 
 
@@ -100,6 +124,7 @@ async def login(request: Request):
 
     if not is_configured():
         request.session.pop("local_logout", None)
+        request.session.pop("is_guest", None)
         request.session["auth_email"] = "local-dev@example.com"
         request.session["auth_name"] = "Local Developer"
         return RedirectResponse(url="/")
@@ -129,6 +154,7 @@ async def auth_callback(request: Request, code: str = None, error: str = None):
     if not success:
         raise HTTPException(status_code=400, detail=str(result))
 
+    request.session.pop("is_guest", None)
     request.session["auth_email"] = result["email"]
     request.session["auth_name"] = result["name"]
     return RedirectResponse(url="/")

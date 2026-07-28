@@ -10,7 +10,7 @@
  * section in the public repo README, so the page doubles as a navigable index
  * into the engineering reasoning.
  */
-import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Mail, Link2, Cpu, Coins, ShieldCheck, Shield, Wrench, CheckCircle, Users } from "lucide-react";
 import { ThemePicker } from "./ThemePicker";
 import { TimelineStepper } from "./TimelineStepper";
 import { PIPELINE_STATUS } from "../lib/pipelineStatus";
@@ -127,13 +127,24 @@ export const AboutPage: React.FC = () => {
             </div>
 
             {/* Tools & Integrations */}
-            <div className="p-4 rounded-xl border border-border bg-card/40 space-y-2 md:col-span-2">
+            <div className="p-4 rounded-xl border border-border bg-card/40 space-y-2">
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-warning flex items-center gap-1.5">
                 <Wrench size={14} />
                 Tools & Integrations
               </h3>
               <p className="text-xs leading-relaxed text-foreground">
                 Tavily Search, Voice AI (ElevenLabs) support for HITL, and direct export handlers (Google Sheets, ReportLab PDF, and Jira Epic creation via MCP), and Slack alerts.
+              </p>
+            </div>
+
+            {/* Guest Mode */}
+            <div className="p-4 rounded-xl border border-border bg-card/40 space-y-2">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                <Users size={14} />
+                Guest Mode
+              </h3>
+              <p className="text-xs leading-relaxed text-foreground">
+                No signup required to try it. Anonymous "Continue as guest" sessions run on Llama 3.3 70B (via OpenRouter with cost caps, free to the user) and are rate-limited by IP, not account — cold traffic can never spend paid OpenAI/Anthropic credit.
               </p>
             </div>
           </div>

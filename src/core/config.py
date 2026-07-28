@@ -79,6 +79,17 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""
 
+    # ── OpenRouter (Llama 3.3 70B paid model with cost limits. Powers guest
+    # mode.) ──────────────────────────────────────────────────────────────────
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
+    openrouter_model_mini: str = "meta-llama/llama-3.3-70b-instruct"
+
+    # ── Guest Quotas ─────────────────────────────────────────────────────────
+    rate_limit_guest_run_per_day: str = "3/day"
+    rate_limit_exempt_emails: str = ""
+
     # ── Tavily (web search tool) ──────────────────────────────────────────────
     tavily_api_key: str = ""
     # Free-tier monthly cap is 1000 queries. The tool tracks invocations and
