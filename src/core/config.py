@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     # ── Pinecone ──────────────────────────────────────────────────────────────
     pinecone_api_key: str = ""
     pinecone_index: str = "brd-knowledge-base"
-    rag_top_k: int = 4
+    rag_top_k: int = 6
     rag_similarity_threshold: float = 0.45
 
     # ── LangSmith (observability - primary for demo day) ──────────────────────
