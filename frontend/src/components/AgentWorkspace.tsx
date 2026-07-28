@@ -836,7 +836,7 @@ export const AgentWorkspace: React.FC = () => {
               {longRunningWarning && (
                 <div className="bg-warning/20 border-l-4 border-warning py-3 px-4 rounded-lg shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-sm select-none inline-block animate-spin" style={{ animationDuration: '2 s' }}>⏳</span>
+                    <span className="text-sm select-none inline-block animate-spin" style={{ animationDuration: '2s' }}>⏳</span>
                     <div>
                       <h4 className="font-bold text-warning text-xs">Processing Update</h4>
                       <p className="text-warning/80 mt-0.5 text-[11px] leading-snug">
