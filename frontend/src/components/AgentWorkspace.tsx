@@ -163,6 +163,16 @@ export const AgentWorkspace: React.FC = () => {
     }
   }, [user, modelFamily]);
 
+  // Returning signed-in users who already accepted the current Terms/Privacy
+  // version (per the server-side consent record) shouldn't be re-prompted on
+  // every relogin. Seed sessionStorage from that server truth so the existing
+  // consent check in triggerPipeline() picks it up unchanged.
+  useEffect(() => {
+    if (user?.hasConsented) {
+      sessionStorage.setItem("em_copilot_consent_accepted", "true");
+    }
+  }, [user]);
+
 
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
@@ -442,20 +452,30 @@ export const AgentWorkspace: React.FC = () => {
                 <span className="text-xs text-primary font-semibold">
                   {user?.isGuest ? 'Guest Mode:' : 'Signed in:'}
                 </span>
-                <button
-                  onClick={user?.isGuest ? login : logout}
-                  className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
-                >
-                  {user?.isGuest ? (
-                    <>
-                      Sign in <LogIn size={12} />
-                    </>
-                  ) : (
-                    <>
-                      Sign out <LogOut size={12} />
-                    </>
+                <div className="flex items-center gap-3">
+                  {user?.isGuest && (
+                    <button
+                      onClick={logout}
+                      className="text-xs text-muted-foreground hover:text-foreground hover:underline flex items-center gap-0.5"
+                    >
+                      Exit <LogOut size={12} />
+                    </button>
                   )}
-                </button>
+                  <button
+                    onClick={user?.isGuest ? login : logout}
+                    className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
+                  >
+                    {user?.isGuest ? (
+                      <>
+                        Sign in <LogIn size={12} />
+                      </>
+                    ) : (
+                      <>
+                        Sign out <LogOut size={12} />
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="text-sm font-semibold text-foreground truncate">
                 {user?.isGuest ? 'Anonymous Guest' : (user?.name || user?.email)}

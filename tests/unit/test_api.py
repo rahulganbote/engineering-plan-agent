@@ -664,6 +664,62 @@ def test_guest_pipeline_run_override(client):
             assert args[5] == "llama"
 
 
+def test_guest_run_never_persists_consent():
+    """Guests never get a persisted consent record - /auth/me must keep
+    reporting has_consented=False for them even after a successful run."""
+    from src.api.consent import _consent_index
+
+    _consent_index.local_dict.clear()
+
+    with patch("src.api.routes.runs._run_pipeline_task"):
+        with patch("src.security.google_auth.is_configured", return_value=True):
+            client = TestClient(app)
+            client.post("/auth/guest")
+
+            response = client.post(
+                "/run-pipeline",
+                data={"model_family": "openai", "enable_fallback": True, "consent_accepted": True},
+                files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+            )
+            assert response.status_code == 200
+
+            resp_me = client.get("/auth/me")
+            data_me = resp_me.json()
+            assert data_me["is_guest"] is True
+            assert data_me["has_consented"] is False
+
+
+def test_signed_in_consent_persists_across_relogin():
+    """A signed-in user who accepts consent on one run should not be
+    re-prompted on a later /auth/me check (simulating a relogin) - verifies
+    the fast Redis/in-memory consent index actually gets updated end-to-end
+    through the real /run-pipeline route, not just the consent.py unit."""
+    from src.api.consent import _consent_index
+
+    _consent_index.local_dict.clear()
+
+    with patch("src.api.routes.runs._run_pipeline_task"):
+        with patch("src.security.google_auth.is_configured", return_value=False):
+            client = TestClient(app)
+
+            # Before any run: consent not yet recorded for this session.
+            resp_me = client.get("/auth/me")
+            assert resp_me.json()["has_consented"] is False
+
+            response = client.post(
+                "/run-pipeline",
+                data={"model_family": "openai", "enable_fallback": True, "consent_accepted": True},
+                files={"file": ("brd.txt", b"Mock BRD contents", "text/plain")},
+            )
+            assert response.status_code == 200
+
+            # Simulate a relogin: a fresh /auth/me check (new TestClient = new
+            # session cookie, same underlying email) should now report consented.
+            fresh_client = TestClient(app)
+            resp_me_after = fresh_client.get("/auth/me")
+            assert resp_me_after.json()["has_consented"] is True
+
+
 def test_rate_limit_exemptions():
     from src.api.routes.approval import get_approve_limit
     from src.api.routes.runs import get_daily_limit, get_weekly_limit

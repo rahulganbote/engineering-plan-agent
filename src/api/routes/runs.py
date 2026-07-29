@@ -13,6 +13,7 @@ from collections.abc import AsyncGenerator
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
+from src.api.consent import record_consent
 from src.api.dependencies import get_current_user_email, verify_run_ownership
 from src.api.limiter import is_rate_limit_exempt, limiter
 from src.api.models import PipelineRunResponse
@@ -72,24 +73,7 @@ async def trigger_pipeline(
 
     brd_hash = hashlib.sha256(content).hexdigest()
 
-    # Log user consent acceptance to logs/consent.jsonl
-    import datetime
-    from pathlib import Path
-
-    consent_dir = Path("logs")
-    consent_dir.mkdir(exist_ok=True)
-    consent_file = consent_dir / "consent.jsonl"
-
-    consent_record = {
-        "email": "guest" if is_guest else user_email,
-        "is_guest": is_guest,
-        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "brd_hash": brd_hash,
-        "terms_version": "2026-07-01",
-    }
-
-    with open(consent_file, "a", encoding="utf-8") as f:
-        f.write(json.dumps(consent_record) + "\n")
+    record_consent(email=user_email, is_guest=is_guest, brd_hash=brd_hash)
 
     run_id = f"{brd_hash[:8]}-{uuid.uuid4().hex[:4]}"
 

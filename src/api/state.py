@@ -79,13 +79,23 @@ class RedisDictProxy:
     Gracefully degrades to local in-memory storage if Redis operations fail.
     """
 
-    def __init__(self, key_prefix: str, serializer=None, deserializer=None, return_sub_proxy: bool = False):
+    def __init__(
+        self,
+        key_prefix: str,
+        serializer=None,
+        deserializer=None,
+        return_sub_proxy: bool = False,
+        ttl_seconds: int = _RUN_TTL_SECONDS,
+    ):
         self.key_prefix = key_prefix
         self.serializer = serializer or (lambda x: json.dumps(x))
         self.deserializer = deserializer or (lambda x: json.loads(x))
         self.return_sub_proxy = return_sub_proxy
         self.redis = _REDIS_CLIENT
         self.local_dict: dict = {}
+        # Per-instance TTL override - most proxies use the default 24h run TTL,
+        # but longer-lived state (e.g. consent records) needs its own value.
+        self.ttl_seconds = ttl_seconds
 
     def _full_key(self, key: str) -> str:
         return f"state:{self.key_prefix}:{key}"
@@ -120,9 +130,9 @@ class RedisDictProxy:
                     if isinstance(value, dict) and value:
                         payload = {k: json.dumps(v) for k, v in value.items()}
                         self.redis.hset(full_k, mapping=payload)
-                        self.redis.expire(full_k, _RUN_TTL_SECONDS)
+                        self.redis.expire(full_k, self.ttl_seconds)
                 else:
-                    self.redis.set(full_k, self.serializer(value), ex=_RUN_TTL_SECONDS)
+                    self.redis.set(full_k, self.serializer(value), ex=self.ttl_seconds)
                 return
             except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict set failed ({type(e).__name__}); degrading to memory: {e}")

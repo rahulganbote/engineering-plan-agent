@@ -13,6 +13,8 @@ import requests
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
+from src.api.consent import CURRENT_TERMS_VERSION, has_consented
+
 router = APIRouter(tags=["auth"])
 
 
@@ -99,12 +101,15 @@ async def get_current_user(request: Request):
     if not is_configured():
         if request.session.get("local_logout"):
             return {"authenticated": False}
+        dev_email = request.session.get("auth_email") or "local-dev@example.com"
         return {
             "authenticated": True,
             "is_guest": is_guest,
-            "email": request.session.get("auth_email") or "local-dev@example.com",
+            "email": dev_email,
             "name": request.session.get("auth_name") or "Local Developer",
             "message": "Auth disabled (local dev mode)",
+            "has_consented": (not is_guest) and has_consented(dev_email),
+            "terms_version": CURRENT_TERMS_VERSION,
         }
 
     email = request.session.get("auth_email")
@@ -114,6 +119,8 @@ async def get_current_user(request: Request):
             "is_guest": is_guest,
             "email": email,
             "name": request.session.get("auth_name", ""),
+            "has_consented": (not is_guest) and has_consented(email),
+            "terms_version": CURRENT_TERMS_VERSION,
         }
     return {"authenticated": False}
 
