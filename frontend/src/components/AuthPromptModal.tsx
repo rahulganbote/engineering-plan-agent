@@ -5,7 +5,7 @@ interface AuthPromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: () => void;
-  // Both nav CTAs ("Sign in" and "Get started") open this same modal and
+  // Both nav CTAs ("Sign in" and "Get Started") open this same modal and
   // same Google OAuth flow — there's only one auth path. This just varies
   // the headline copy so the two buttons don't feel like true duplicates.
   variant?: 'signin' | 'signup';
@@ -16,7 +16,7 @@ export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 's
 
   if (!isOpen) return null;
 
-  const headline = variant === 'signin' ? 'Welcome back' : 'Get started with EM Copilot';
+  const headline = variant === 'signin' ? 'Welcome back' : 'Get Started with EM Copilot';
 
   const handleGuestLogin = async () => {
     await loginAsGuest();
@@ -50,7 +50,7 @@ export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 's
 
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">{headline}</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Free to use. Your email is only used to track & limit usage.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Free to use. We use your email solely to manage usage limits and ensure fair access.</p>
           </div>
 
           <div className="text-left bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 space-y-1.5">
@@ -87,7 +87,7 @@ export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 's
               onClick={handleGuestLogin}
               className="w-full py-2.5 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold text-xs sm:text-sm border border-border transition"
             >
-              Try it free as a guest (runs on Llama 3.3 70B)
+              Try it free as a guest (Model: Llama 3.3)
             </button>
           </div>
 

@@ -35,8 +35,8 @@ const PULSE_ICONS = [Upload, Search, FileText, Scale, UserCheck, Rocket];
 
 const PERKS = [
   'Upload complex BRDs (PDF, DOCX, or TXT)',
-  'Watch the Agentic Pipeline run and review Engineering Plan artifacts with a confidence score',
-  'Download or sync your approved Engineering Plan directly into a Jira Epic',
+  'Watch the Agentic AI Pipeline run and review Engineering Plan artifacts with a quality score',
+  'Download artifacts or Approve to create Epic using generated Engineering Plan directly into Jira',
 ];
 
 export const IngestionLanding: React.FC<IngestionLandingProps> = ({
@@ -70,14 +70,14 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           CTA is shown once authenticated. */}
       <div className="space-y-3 text-center max-w-4xl mx-auto pt-2 sm:pt-6">
         <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
-          Transform a Business Requirements Document (BRD) into your organization's standard Engineering Plan in{' '}
+          Transform a Business Requirements Document into your organization's standard Engineering Plan in{' '}
           <span className="text-primary">minutes</span>
         </h2>
         <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          EM Copilot transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's own architectural patterns, web search and approved tech stack. Artifacts are presented for your review; available to download as PDF; and on your approval, pushed to Jira.
+          EM Copilot, the <span className="text-primary font-bold">Engineering Plan Agent</span>, transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's standards, allowed tech stack, and own architectural patterns.
         </p>
         {!isAuthenticated && (
-          <div className="space-y-4 max-w-xl mx-auto pt-2">
+          <div className="space-y-4 max-w-2xl mx-auto pt-2">
             <ul className="text-sm sm:text-sm text-muted-foreground space-y-2.5 text-left bg-secondary/40 border border-border/50 rounded-lg p-4">
               {PERKS.map((perk) => (
                 <li key={perk} className="flex items-start gap-2">
@@ -88,7 +88,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             </ul>
             <button
               onClick={onLogin}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-bold text-sm shadow-md transition"
+              className="inline-flex items-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base md:text-lg shadow-lg transition"
             >
               Sign in with Google to Get Started
             </button>
@@ -120,7 +120,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             </button>
           ) : (
             <span className="text-xs text-muted-foreground font-semibold tracking-wider">
-              LIVE GLIMPSE
+              SNEEK PEEK
             </span>
           )}
         </div>
@@ -193,7 +193,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 active:scale-[0.99] rounded-lg font-bold text-sm text-white shadow-md transition-all duration-150 cursor-pointer"
                 >
                   <Play size={16} fill="currentColor" />
-                  Watch the 97s Walkthrough Video
+                  Watch &lt;1min Walkthrough Video
                 </button>
               </div>
             ) : (
@@ -229,7 +229,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           moved to the About page for engineers/technical evaluators who want
           the plumbing view. */}
       <div id="how-it-works" className="w-full max-w-4xl mx-auto scroll-mt-20">
-        <LandingWorkflow title="The Engineering Planning Workflow" />
+        <LandingWorkflow title="Engineering Plan Agent Workflow" />
       </div>
     </div>
   );

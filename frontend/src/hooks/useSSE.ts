@@ -203,12 +203,14 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     seenSeqs.current.clear();
   }, []);
 
-  if (runId !== prevRunId) {
-    setPrevRunId(runId);
-    if (runId) {
-      clearRun(PIPELINE_STATUS.INITIALIZING);
+  useEffect(() => {
+    if (runId !== prevRunId) {
+      setPrevRunId(runId);
+      if (runId) {
+        clearRun(PIPELINE_STATUS.INITIALIZING);
+      }
     }
-  }
+  }, [runId, prevRunId, clearRun]);
 
   const completedAgents = useMemo(() => {
     const s = new Set<string>();
@@ -267,10 +269,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       setLogs((prev) => [...prev, data]);
 
       switch (data.type) {
-        case 'canceled': {
-          setPipelineStatus(PIPELINE_STATUS.CANCELED);
-          break;
-        }
+
         case 'status':
         case 'pipeline_status': {
           const status = data.status || (data.payload as Record<string, string>)?.status;

@@ -57,7 +57,7 @@ export default function ConsentModal({ isOpen, onClose, onAccept }: ConsentModal
             <div className="bg-warning/10 border border-warning/30 p-3 rounded-lg text-warning flex gap-2">
               <ShieldAlert size={18} className="shrink-0 mt-0.5" />
               <p className="text-xs">
-                EM Copilot is a <strong>sandbox demonstration environment</strong>. Uploaded files flow through foundation model provider APIs (OpenAI/Anthropic).
+                EM Copilot is a <strong>sandbox demonstration environment</strong>. Uploaded files flow through LLM model provider APIs (OpenAI/Anthropic/Llama).
               </p>
             </div>
 

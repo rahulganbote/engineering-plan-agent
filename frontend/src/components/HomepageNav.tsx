@@ -79,7 +79,7 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackCl
               onClick={() => onSignIn('signup')}
               className="text-sm font-bold text-white bg-primary hover:bg-primary/90 transition px-4 py-1.5 rounded-lg shadow-sm"
             >
-              Get started
+              Get Started
             </button>
           </div>
         </div>

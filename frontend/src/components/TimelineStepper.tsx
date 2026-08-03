@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield, Cpu, UserCheck, Check, Loader2, X,
   Wrench, GitPullRequest,
@@ -56,13 +56,24 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     setTooltipState(null);
   };
 
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const getTooltipPosition = () => {
-    if (!tooltipState || !containerRef.current) return { left: 0, top: 0 };
+    if (!tooltipState) return { left: 0, top: 0 };
     const tooltipWidth = 256;
-    const containerWidth = containerRef.current.getBoundingClientRect().width;
+    const safeContainerWidth = containerWidth || 1000;
     const leftX = Math.max(
       12 + tooltipWidth / 2,
-      Math.min(tooltipState.x, containerWidth - tooltipWidth / 2 - 12)
+      Math.min(tooltipState.x, safeContainerWidth - tooltipWidth / 2 - 12)
     );
     return {
       left: `${leftX}px`,
