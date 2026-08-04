@@ -1325,7 +1325,7 @@ export const AgentWorkspace: React.FC = () => {
                             {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
 
                             <span>
-                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Recording Decision & Syncing Plan..."}
+                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && (approvalResult?.decision === 'rejected' ? "Recording Your Decision & Rejection note..." : "Recording Your Decision & Syncing Plan...")}
                               {!([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
                             </span>
                           </h3>

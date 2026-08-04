@@ -77,7 +77,7 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackCl
           <div className="flex items-center gap-2">
             <button
               onClick={() => onSignIn('signin')}
-              className="text-sm font-bold text-foreground/80 border border-border hover:border-primary/50 hover:text-primary transition px-4 py-1.5 rounded-lg hover:bg-secondary/50"
+              className="text-sm font-bold text-primary border border-border hover:border-primary/50 transition px-4 py-1.5 rounded-lg hover:bg-secondary/50"
             >
               Sign In
             </button>
