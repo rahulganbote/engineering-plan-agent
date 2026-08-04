@@ -442,20 +442,36 @@ export const AgentWorkspace: React.FC = () => {
                 <span className="text-xs text-primary font-semibold">
                   {user?.isGuest ? 'Guest Mode:' : 'Signed in:'}
                 </span>
-                <button
-                  onClick={user?.isGuest ? login : logout}
-                  className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
-                >
-                  {user?.isGuest ? (
-                    <>
+                {user?.isGuest ? (
+                  // Two distinct actions for guests: "Sign in" upgrades the
+                  // guest session to a real account (calls login, same as
+                  // before); "Exit" just ends the guest session and returns
+                  // to the marketing homepage (calls logout). Previously only
+                  // "Sign in" existed here, so a guest had no way to leave
+                  // guest mode without upgrading.
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={login}
+                      className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
+                    >
                       Sign in <LogIn size={12} />
-                    </>
-                  ) : (
-                    <>
-                      Sign out <LogOut size={12} />
-                    </>
-                  )}
-                </button>
+                    </button>
+                    <span className="text-border" aria-hidden="true">|</span>
+                    <button
+                      onClick={logout}
+                      className="text-xs text-muted-foreground hover:text-danger hover:underline font-semibold"
+                    >
+                      Exit
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={logout}
+                    className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
+                  >
+                    Sign out <LogOut size={12} />
+                  </button>
+                )}
               </div>
               <div className="text-sm font-semibold text-foreground truncate">
                 {user?.isGuest ? 'Anonymous Guest' : (user?.name || user?.email)}
@@ -481,8 +497,8 @@ export const AgentWorkspace: React.FC = () => {
                       the reason so the user knows WHY an option is greyed out. */}
                   {[
                     { key: 'openai', label: 'OpenAI (Default: GPT-4o)' },
-                    { key: 'anthropic', label: 'Anthropic (Default: Claude 4.5 Sonnet)' },
-                    { key: 'llama', label: 'Llama 3.3 (OpenRouter)' },
+                    { key: 'anthropic', label: 'Anthropic (Default: Claude Sonnet 4.5)' },
+                    { key: 'llama', label: 'Meta (Llama 3.3 70B)' },
                     { key: 'mistral', label: 'Mistral' },
                   ].map(({ key, label }) => {
                     // Default to "available" if we haven't received the providers
@@ -652,9 +668,17 @@ export const AgentWorkspace: React.FC = () => {
           {runId && (
             <div className="border-t border-border pt-4 space-y-2">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Run</h4>
-              <div className="flex items-center gap-1.5">
-                <div className="flex-1 bg-background p-2 rounded font-sans text-[10px] text-foreground border border-border truncate" title={runId}>
-                  Run #{runId.slice(0, 5)}: {selectedFile ? selectedFile.name : 'BRD Pipeline'}
+              <div className="flex items-start gap-1.5">
+                {/* Run ID and BRD filename split into separate rows - a single
+                    truncated line cramped both together with no room to
+                    breathe. Each line truncates independently now. */}
+                <div className="flex-1 min-w-0 bg-background p-2 rounded border border-border space-y-0.5">
+                  <div className="font-mono text-[10px] text-primary font-bold break-all" title={runId}>
+                    Run #{runId}
+                  </div>
+                  <div className="text-xs font-semibold text-foreground break-words" title={selectedFile ? selectedFile.name : undefined}>
+                    {selectedFile ? selectedFile.name : 'BRD Pipeline'}
+                  </div>
                 </div>
                 <button
                   onClick={() => {
@@ -951,7 +975,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="space-y-4 border border-border rounded-xl p-5 bg-card shadow-md">
                     <div className="flex items-center justify-between border-b border-border/60 pb-3">
                       <div className="space-y-0.5">
-                        <h3 className="text-xs font-black text-primary uppercase tracking-wider">Independent Critic Score</h3>
+                        <h3 className="text-xs font-black text-primary uppercase tracking-wider">Independent Quality Score</h3>
                         <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
                           <span>Evaluation Score:</span>
                           <span className={`font-semibold tabular-nums ${

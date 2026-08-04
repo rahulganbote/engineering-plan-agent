@@ -64,19 +64,21 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
       {/* Capped at max-w-5xl (1024px) — tightened from max-w-6xl per
           feedback that even the industry-standard 1152px column felt too
           big on a wide monitor. */}
-      {/* Welcome & Subtitle Section — big, centered hero (Figma-style type
-          scale) with a single primary CTA for signed-out visitors. Signed-in
-          users already have Upload/Generate in the sidebar, so no duplicate
-          CTA is shown once authenticated. */}
-      <div className="space-y-2 text-center max-w-4xl mx-auto pt-0 sm:pt-2">
-        <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
-          Transform a Business Requirements Document into your organization's standard Engineering Plan in{' '}
-          <span className="text-primary">minutes</span>
-        </h2>
-        <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          EM Copilot, the <span className="text-primary font-bold">Engineering Plan Agent</span>, transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's standards, allowed tech stack, and own architectural patterns.
-        </p>
-        {!isAuthenticated && (
+      {/* Welcome & Subtitle Section — full marketing hero (Figma-style type
+          scale, perks, CTA) is for convincing a stranger to sign up, so it's
+          signed-out only. Authenticated users already have Upload/Generate
+          in the sidebar (their "I'm in the app" home base) - they don't need
+          re-pitching every time they land here, so they get a compact
+          acknowledgement instead of the full pitch. */}
+      {!isAuthenticated ? (
+        <div className="space-y-2 text-center max-w-4xl mx-auto pt-0 sm:pt-2">
+          <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
+            Transform a Business Requirements Document into your organization's standard Engineering Plan in{' '}
+            <span className="text-primary">minutes</span>
+          </h2>
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            EM Copilot, the <span className="text-primary font-bold">Engineering Plan Agent</span>, transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's standards, allowed tech stack, and own architectural patterns.
+          </p>
           <div className="space-y-3 max-w-2xl mx-auto pt-1">
             <ul className="text-sm sm:text-sm text-muted-foreground space-y-1.5 text-left bg-secondary/40 border border-border/50 rounded-lg px-4 py-3">
               {PERKS.map((perk) => (
@@ -93,8 +95,15 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
               Sign in with Google to Get Started
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="text-center max-w-2xl mx-auto pt-0 sm:pt-2 space-y-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">Ready when you are</h2>
+          <p className="text-sm text-muted-foreground">
+            Upload a BRD from the panel on the left to generate your Engineering Plan.
+          </p>
+        </div>
+      )}
 
       <style>{`
         @keyframes pipelinePulse {
@@ -103,134 +112,161 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           30% { opacity: 0.3; transform: scale(0.9); }
         }
       `}</style>
-      {/* max-w-4xl matches the H1 hero's width above, and How It Works below
-          — all three now share one column so the page reads as a single
-          aligned layout instead of cards of differing widths. */}
-      <div id="see-it-in-action" className="w-full max-w-4xl mx-auto bg-card border border-border rounded-xl p-3 md:p-4 shadow-lg space-y-3 scroll-mt-20">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black text-primary uppercase tracking-wider">
-            How it works
-          </h3>
-          {showVideo ? (
-            <button
-              onClick={() => setShowVideo(false)}
-              className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-            >
-              <ChevronLeft size={13} /> Back to glimpse
-            </button>
-          ) : (
-            <span className="text-xs text-muted-foreground font-semibold tracking-wider">
-              SNEAK PEEK
-            </span>
-          )}
-        </div>
-
-        {showVideo ? (
-          <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
-            <iframe
-              src="https://www.loom.com/embed/b45c127069f84573b0a713a241155214?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
-              className="absolute inset-0 w-full h-full"
-              allowFullScreen
-              allow="autoplay; fullscreen; picture-in-picture"
-              title="EM Copilot demo — BRD to Engineering Plan in minutes"
-            />
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {hasSlides ? (
-              // Screenshot carousel — cross-fading through real pipeline states.
-              <div className="space-y-3">
-                {/* Interactive Preview Container with Full-Card Play Overlay */}
-                <div
-                  onClick={() => setShowVideo(true)}
-                  className="group relative w-full aspect-video bg-slate-950 rounded-xl border border-border/60 overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
-                >
-                  {slides.map((slide, i) => (
-                    <img
-                      key={slide.src}
-                      src={slide.src}
-                      alt={slide.caption}
-                      onError={() => setFailedSrcs((prev) => new Set(prev).add(slide.src))}
-                      className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 group-hover:scale-[1.01] transform ${i === activeIndex ? 'opacity-90 group-hover:opacity-75' : 'opacity-0'
-                        }`}
-                    />
-                  ))}
-
-                  {/* Centered Play Button Overlay */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/20 group-hover:bg-slate-950/40 transition-colors duration-300 z-20">
-                    {/* Glowing Primary Play Circle */}
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
-                      <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white translate-x-0.5" />
-                    </div>
-                  </div>
-
-                  {/* Caption bar */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-8 pb-2.5 z-10">
-                    <p className="text-xs sm:text-sm font-semibold text-white text-center">
-                      {slides[activeIndex]?.caption}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Progress dots */}
-                {slides.length > 1 && (
-                  <div className="flex items-center justify-center gap-1.5">
-                    {slides.map((slide, i) => (
-                      <button
-                        key={slide.src}
-                        onClick={() => setSlideIndex(i)}
-                        aria-label={`Show step ${i + 1}`}
-                        className={`h-1.5 rounded-full transition-all ${i === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground'
-                          }`}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Persistent solid CTA */}
+      {/* max-w-4xl matches the H1 hero's width above for signed-out visitors.
+          For authenticated users the hero above is compact, so this card is
+          narrowed and de-emphasized (smaller shadow) too - it's optional
+          discovery content sitting below the fold-relevant sidebar action,
+          not the dominant visual it is on the marketing page. */}
+      {(() => {
+        const demoCard = (
+          <div id="see-it-in-action" className={`w-full mx-auto bg-card border border-border rounded-xl p-3 md:p-4 space-y-3 scroll-mt-20 ${isAuthenticated ? 'max-w-2xl shadow-sm' : 'max-w-4xl shadow-lg'}`}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-primary uppercase tracking-wider">
+                How it works
+              </h3>
+              {showVideo ? (
                 <button
-                  onClick={() => setShowVideo(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 active:scale-[0.99] rounded-lg font-bold text-sm text-white shadow-md transition-all duration-150 cursor-pointer"
+                  onClick={() => setShowVideo(false)}
+                  className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                 >
-                  <Play size={16} fill="currentColor" />
-                  Watch &lt;1min Walkthrough Video
+                  <ChevronLeft size={13} /> Back to glimpse
                 </button>
+              ) : (
+                <span className="text-xs text-muted-foreground font-semibold tracking-wider">
+                  SNEAK PEEK
+                </span>
+              )}
+            </div>
+
+            {showVideo ? (
+              <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
+                <iframe
+                  src="https://www.loom.com/embed/b45c127069f84573b0a713a241155214?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
+                  className="absolute inset-0 w-full h-full"
+                  allowFullScreen
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  title="EM Copilot demo — BRD to Engineering Plan in minutes"
+                />
               </div>
             ) : (
-              // Fallback: ambient icon pulse when no screenshots are present.
               <div className="space-y-3">
-                <div
-                  onClick={() => setShowVideo(true)}
-                  className="group relative flex items-center justify-center gap-3 sm:gap-5 py-8 rounded-xl border border-border/60 bg-card cursor-pointer hover:shadow-md transition-all duration-300"
-                >
-                  {PULSE_ICONS.map((Icon, i) => (
+                {hasSlides ? (
+                  // Screenshot carousel — cross-fading through real pipeline states.
+                  <div className="space-y-3">
+                    {/* Interactive Preview Container with Full-Card Play Overlay */}
                     <div
-                      key={i}
-                      className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 text-primary"
-                      style={{ animation: 'pipelinePulse 3.6s ease-in-out infinite', animationDelay: `${i * 0.6}s` }}
+                      onClick={() => setShowVideo(true)}
+                      className="group relative w-full aspect-video bg-slate-950 rounded-xl border border-border/60 overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
                     >
-                      <Icon size={20} />
+                      {slides.map((slide, i) => (
+                        <img
+                          key={slide.src}
+                          src={slide.src}
+                          alt={slide.caption}
+                          onError={() => setFailedSrcs((prev) => new Set(prev).add(slide.src))}
+                          className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-300 group-hover:scale-[1.01] transform ${i === activeIndex ? 'opacity-90 group-hover:opacity-75' : 'opacity-0'
+                            }`}
+                        />
+                      ))}
+
+                      {/* Centered Play Button Overlay */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/20 group-hover:bg-slate-950/40 transition-colors duration-300 z-20">
+                        {/* Glowing Primary Play Circle */}
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
+                          <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-white translate-x-0.5" />
+                        </div>
+                      </div>
+
+                      {/* Caption bar */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-8 pb-2.5 z-10">
+                        <p className="text-xs sm:text-sm font-semibold text-white text-center">
+                          {slides[activeIndex]?.caption}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/10 group-hover:bg-slate-950/20 transition-colors duration-300 rounded-xl">
-                    <div className="w-12 h-12 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-all duration-300">
-                      <Play className="w-5 h-5 fill-white translate-x-0.5" />
+
+                    {/* Progress dots */}
+                    {slides.length > 1 && (
+                      <div className="flex items-center justify-center gap-1.5">
+                        {slides.map((slide, i) => (
+                          <button
+                            key={slide.src}
+                            onClick={() => setSlideIndex(i)}
+                            aria-label={`Show step ${i + 1}`}
+                            className={`h-1.5 rounded-full transition-all ${i === activeIndex ? 'w-5 bg-primary' : 'w-1.5 bg-border hover:bg-muted-foreground'
+                              }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Persistent solid CTA */}
+                    <button
+                      onClick={() => setShowVideo(true)}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 active:scale-[0.99] rounded-lg font-bold text-sm text-white shadow-md transition-all duration-150 cursor-pointer"
+                    >
+                      <Play size={16} fill="currentColor" />
+                      Watch &lt;1min Walkthrough Video
+                    </button>
+                  </div>
+                ) : (
+                  // Fallback: ambient icon pulse when no screenshots are present.
+                  <div className="space-y-3">
+                    <div
+                      onClick={() => setShowVideo(true)}
+                      className="group relative flex items-center justify-center gap-3 sm:gap-5 py-8 rounded-xl border border-border/60 bg-card cursor-pointer hover:shadow-md transition-all duration-300"
+                    >
+                      {PULSE_ICONS.map((Icon, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 text-primary"
+                          style={{ animation: 'pipelinePulse 3.6s ease-in-out infinite', animationDelay: `${i * 0.6}s` }}
+                        >
+                          <Icon size={20} />
+                        </div>
+                      ))}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/10 group-hover:bg-slate-950/20 transition-colors duration-300 rounded-xl">
+                        <div className="w-12 h-12 rounded-full bg-[#4f46e5] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-all duration-300">
+                          <Play className="w-5 h-5 fill-white translate-x-0.5" />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
+        );
 
-      {/* User-journey workflow diagram — story-first, non-technical audience.
-          The technical System Architecture diagram (was TimelineStepper) has
-          moved to the About page for engineers/technical evaluators who want
-          the plumbing view. */}
-      <div id="how-it-works" className="w-full max-w-4xl mx-auto scroll-mt-20">
-        <LandingWorkflow title="Engineering Plan Agent Workflow" />
-      </div>
+        // User-journey workflow diagram — story-first, non-technical audience.
+        // The technical System Architecture diagram (was TimelineStepper) has
+        // moved to the About page for engineers/technical evaluators who want
+        // the plumbing view. Narrowed for authenticated users for the same
+        // reason as the demo card above - secondary discovery content, not
+        // the focal point once someone's already signed in.
+        const workflowSection = (
+          <div id="how-it-works" className={`w-full mx-auto scroll-mt-20 ${isAuthenticated ? 'max-w-2xl' : 'max-w-4xl'}`}>
+            <LandingWorkflow title="Engineering Plan Agent Workflow" />
+          </div>
+        );
+
+        // Authenticated users see the conceptual overview (workflow diagram)
+        // before the concrete demo - orient first, then show detail. Signed-out
+        // visitors keep demo-first: a skeptical stranger deciding whether to
+        // sign up is better convinced by "watch it actually work" before an
+        // architecture diagram, which lands better once they're already sold.
+        return isAuthenticated ? (
+          <>
+            {workflowSection}
+            {demoCard}
+          </>
+        ) : (
+          <>
+            {demoCard}
+            {workflowSection}
+          </>
+        );
+      })()}
     </div>
   );
 };
