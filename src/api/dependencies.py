@@ -65,4 +65,5 @@ def verify_run_ownership(run_id: str, request: Request, allow_voice_agent: bool 
     # 3. Check session user
     current_user = get_current_user_email(request)
     if owner_email != current_user:
+        log.warning(f"[{run_id}] Ownership mismatch: owner='{owner_email}' vs current='{current_user}'")
         raise HTTPException(status_code=403, detail="Forbidden: You do not own this run.")
