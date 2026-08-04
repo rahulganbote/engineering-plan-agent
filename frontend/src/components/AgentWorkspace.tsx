@@ -464,7 +464,7 @@ export const AgentWorkspace: React.FC = () => {
           )}
 
           {/* Model Selection Section */}
-          {isAuthenticated && (
+          {isAuthenticated && !runId && (
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-primary flex items-center justify-center uppercase tracking-wider">Model Selection</h3>
               <div className="relative">
@@ -520,7 +520,7 @@ export const AgentWorkspace: React.FC = () => {
           )}
 
           {/* Upload BRD Section */}
-          {isAuthenticated && (
+          {isAuthenticated && !runId && (
             <div className="space-y-3">
               <div className="flex items-center justify-center">
                 <h3 className="text-sm font-bold text-primary uppercase tracking-wider text-center">Upload BRD</h3>
@@ -590,37 +590,39 @@ export const AgentWorkspace: React.FC = () => {
           {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
             <div>
-              <div
-                className="relative group/btn w-full"
-                title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
-              >
-                <button
-                  onClick={() => triggerPipeline()}
-                  disabled={!selectedFile || !!runId || isStartingPipeline}
-                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
-                    ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                    : selectedFile
-                      ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
-                      : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                    }`}
+              {!runId && (
+                <div
+                  className="relative group/btn w-full"
+                  title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
                 >
-                  {isStartingPipeline ? (
-                    <>
-                      <Loader2 className="animate-spin text-primary" size={16} />
-                      <span>Starting Pipeline...</span>
-                    </>
-                  ) : (
-                    <span>Generate Engineering Plan</span>
-                  )}
-                </button>
+                  <button
+                    onClick={() => triggerPipeline()}
+                    disabled={!selectedFile || !!runId || isStartingPipeline}
+                    className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
+                      ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                      : selectedFile
+                        ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
+                        : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                      }`}
+                  >
+                    {isStartingPipeline ? (
+                      <>
+                        <Loader2 className="animate-spin text-primary" size={16} />
+                        <span>Starting Pipeline...</span>
+                      </>
+                    ) : (
+                      <span>Generate Engineering Plan</span>
+                    )}
+                  </button>
 
-                {!selectedFile && !runId && !isStartingPipeline && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-popover border border-border text-popover-foreground text-[11px] rounded-md shadow-md pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-150 z-20 text-center font-medium w-[220px]">
-                    Please upload or drag a BRD file first
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 -mt-1 rotate-45 bg-popover border-r border-b border-border" />
-                  </div>
-                )}
-              </div>
+                  {!selectedFile && !runId && !isStartingPipeline && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-popover border border-border text-popover-foreground text-[11px] rounded-md shadow-md pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-150 z-20 text-center font-medium w-[220px]">
+                      Please upload or drag a BRD file first
+                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 -mt-1 rotate-45 bg-popover border-r border-b border-border" />
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Runtime expectation - sits with the action surface so the user
                   knows what to expect at the moment they're about to commit. */}
               {!runId && (

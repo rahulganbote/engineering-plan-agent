@@ -68,7 +68,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           scale) with a single primary CTA for signed-out visitors. Signed-in
           users already have Upload/Generate in the sidebar, so no duplicate
           CTA is shown once authenticated. */}
-      <div className="space-y-3 text-center max-w-4xl mx-auto pt-2 sm:pt-6">
+      <div className="space-y-2 text-center max-w-4xl mx-auto pt-0 sm:pt-2">
         <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
           Transform a Business Requirements Document into your organization's standard Engineering Plan in{' '}
           <span className="text-primary">minutes</span>
@@ -77,8 +77,8 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           EM Copilot, the <span className="text-primary font-bold">Engineering Plan Agent</span>, transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's standards, allowed tech stack, and own architectural patterns.
         </p>
         {!isAuthenticated && (
-          <div className="space-y-4 max-w-2xl mx-auto pt-2">
-            <ul className="text-sm sm:text-sm text-muted-foreground space-y-2.5 text-left bg-secondary/40 border border-border/50 rounded-lg p-4">
+          <div className="space-y-3 max-w-2xl mx-auto pt-1">
+            <ul className="text-sm sm:text-sm text-muted-foreground space-y-1.5 text-left bg-secondary/40 border border-border/50 rounded-lg px-4 py-3">
               {PERKS.map((perk) => (
                 <li key={perk} className="flex items-start gap-2">
                   <span className="text-success font-bold shrink-0">✓</span>
@@ -120,7 +120,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             </button>
           ) : (
             <span className="text-xs text-muted-foreground font-semibold tracking-wider">
-              SNEEK PEEK
+              SNEAK PEEK
             </span>
           )}
         </div>

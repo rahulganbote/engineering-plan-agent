@@ -59,7 +59,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
   const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(entries => {
       setContainerWidth(entries[0].contentRect.width);
     });

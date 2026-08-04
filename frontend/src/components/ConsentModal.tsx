@@ -47,8 +47,8 @@ export default function ConsentModal({ isOpen, onClose, onAccept }: ConsentModal
               <FileText size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold tracking-tight">Upload Consent Required</h2>
-              <p className="text-xs text-muted-foreground">Please review sandbox upload terms</p>
+              <h2 className="text-lg font-bold tracking-tight">User Consent Required</h2>
+              <p className="text-xs text-muted-foreground">Please review this sandbox terms & conditions</p>
             </div>
           </div>
 

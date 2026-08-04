@@ -30,8 +30,8 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackCl
         <a href="#/" className="flex items-center gap-2 shrink-0">
           <img src="/favicon.svg" alt="" aria-hidden="true" className="w-6 h-6" />
           <span className="flex flex-col leading-tight">
-            <span className="text-base font-extrabold tracking-tight text-primary">EM Copilot</span>
-            <span className="hidden sm:block text-[10px] font-semibold text-muted-foreground tracking-wide">
+            <span className="text-2xl font-extrabold tracking-tight text-primary">EM Copilot</span>
+            <span className="hidden sm:block text-[12px] font-semibold text-muted-foreground tracking-wide">
               Next Gen Software Engineering Planning
             </span>
           </span>
@@ -76,10 +76,10 @@ export const HomepageNav: React.FC<HomepageNavProps> = ({ onSignIn, onFeedbackCl
           <div className="border-r border-border h-4 hidden sm:block" />
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onSignIn('signup')}
-              className="text-sm font-bold text-white bg-primary hover:bg-primary/90 transition px-4 py-1.5 rounded-lg shadow-sm"
+              onClick={() => onSignIn('signin')}
+              className="text-sm font-bold text-foreground/80 border border-border hover:border-primary/50 hover:text-primary transition px-4 py-1.5 rounded-lg hover:bg-secondary/50"
             >
-              Get Started
+              Sign In
             </button>
           </div>
         </div>
