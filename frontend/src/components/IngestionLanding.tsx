@@ -119,7 +119,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
           not the dominant visual it is on the marketing page. */}
       {(() => {
         const demoCard = (
-          <div id="see-it-in-action" className={`w-full mx-auto bg-card border border-border rounded-xl p-3 md:p-4 space-y-3 scroll-mt-20 ${isAuthenticated ? 'max-w-2xl shadow-sm' : 'max-w-4xl shadow-lg'}`}>
+          <div id="see-it-in-action" className={`w-full mx-auto bg-card border border-border rounded-xl p-3 md:p-4 space-y-3 scroll-mt-20 ${isAuthenticated ? 'max-w-3xl shadow-sm' : 'max-w-4xl shadow-lg'}`}>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black text-primary uppercase tracking-wider">
                 How it works
@@ -245,7 +245,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
         // reason as the demo card above - secondary discovery content, not
         // the focal point once someone's already signed in.
         const workflowSection = (
-          <div id="how-it-works" className={`w-full mx-auto scroll-mt-20 ${isAuthenticated ? 'max-w-2xl' : 'max-w-4xl'}`}>
+          <div id="how-it-works" className={`w-full mx-auto scroll-mt-20 ${isAuthenticated ? 'max-w-3xl' : 'max-w-4xl'}`}>
             <LandingWorkflow title="Engineering Plan Agent Workflow" />
           </div>
         );

@@ -355,7 +355,7 @@ def _build_markdown_description(state: PipelineState) -> str:
     lines.append("")
 
     if critic:
-        lines.append("h3. Independent Critic Score")
+        lines.append("h3. Independent Quality Score")
         lines.append(f"*Badge:* {critic.badge.value.upper()}  ·  *Overall:* {critic.overall_score:.2f} / 5.0")
         for name, dim in [
             ("Groundedness", critic.groundedness),

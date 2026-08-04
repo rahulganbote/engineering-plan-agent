@@ -144,7 +144,7 @@ export const AboutPage: React.FC = () => {
                 Guest Mode
               </h3>
               <p className="text-xs leading-relaxed text-foreground">
-                No signup required to try it. Anonymous "Continue as guest" sessions run on Llama 3.3 70B (via OpenRouter with cost caps, free to the user) and are rate-limited by IP, not account — cold traffic can never spend paid OpenAI/Anthropic credit.
+                No signup required to try it. Anonymous "Continue as guest" sessions run on Meta's Llama 3.3 70B (via OpenRouter with cost caps, free to the user) and are rate-limited by IP, not account — cold traffic can never spend paid OpenAI/Anthropic credit.
               </p>
             </div>
           </div>

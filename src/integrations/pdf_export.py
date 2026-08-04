@@ -205,7 +205,7 @@ def _add_critic(story, styles, state: PipelineState) -> None:
     critic = state.critic_output
     if not critic:
         return
-    story.append(Paragraph("1. Independent Critic Score", styles["H2"]))
+    story.append(Paragraph("1. Independent Quality Score", styles["H2"]))
 
     dims = [
         ("Groundedness", critic.groundedness),
