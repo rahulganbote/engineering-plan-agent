@@ -141,7 +141,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             {showVideo ? (
               <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
                 <iframe
-                  src="https://www.loom.com/share/87011a3f1088454da6bfb6278bcb61bb?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
+                  src="https://www.loom.com/embed/87011a3f1088454da6bfb6278bcb61bb?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
                   className="absolute inset-0 w-full h-full"
                   allowFullScreen
                   allow="autoplay; fullscreen; picture-in-picture"
