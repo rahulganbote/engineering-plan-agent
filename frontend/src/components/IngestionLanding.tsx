@@ -22,11 +22,11 @@ interface IngestionLandingProps {
 // falls back to the ambient icon pulse (PULSE_ICONS) below — nothing breaks.
 const GLIMPSE_SLIDES = [
   { src: '/glimpse/01-upload.png', caption: 'Upload your BRD to kick off the pipeline' },
-  { src: '/glimpse/02-orchestrator.png', caption: 'The Orchestrator parses it and routes to specialists' },
-  { src: '/glimpse/03-drafting.png', caption: '5 specialist agents draft the plan in parallel' },
+  { src: '/glimpse/02-orchestrator.png', caption: 'The Orchestrator parses it and routes to 5 Agents' },
+  { src: '/glimpse/03-drafting.png', caption: '5 Specialist Agents draft the plan in parallel' },
   { src: '/glimpse/04-evaluating.png', caption: 'An independent Critic grades the output' },
   { src: '/glimpse/05-decision.png', caption: 'You approve at the Decision Gate' },
-  { src: '/glimpse/06-jira.png', caption: 'The approved plan ships to a Jira Epic — audit trail preserved' },
+  { src: '/glimpse/06-jira.png', caption: 'The approved plan ships to a Jira Epic' },
 ];
 
 // Ambient fallback — mirrors the Tier 1 workflow chain in LandingWorkflow so
@@ -141,7 +141,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             {showVideo ? (
               <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-border bg-muted/30">
                 <iframe
-                  src="https://www.loom.com/embed/b45c127069f84573b0a713a241155214?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
+                  src="https://www.loom.com/share/87011a3f1088454da6bfb6278bcb61bb?hide_owner=true&hide_title=true&hideEmbedTopBar=true&autoplay=true"
                   className="absolute inset-0 w-full h-full"
                   allowFullScreen
                   allow="autoplay; fullscreen; picture-in-picture"
@@ -206,7 +206,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                       className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 active:scale-[0.99] rounded-lg font-bold text-sm text-white shadow-md transition-all duration-150 cursor-pointer"
                     >
                       <Play size={16} fill="currentColor" />
-                      Watch &lt;1min Walkthrough Video
+                      Watch 1 min Walkthrough Video
                     </button>
                   </div>
                 ) : (
