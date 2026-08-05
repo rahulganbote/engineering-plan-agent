@@ -239,6 +239,7 @@ export const AgentWorkspace: React.FC = () => {
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const hasShownToastForRunId = useRef<string | null>(null);
+  const workstationBodyRef = useRef<HTMLDivElement>(null);
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
@@ -317,6 +318,7 @@ export const AgentWorkspace: React.FC = () => {
     clearRun();
     setRunId(null);
     setStartupError(null);
+    workstationBodyRef.current?.scrollTo({ top: 0 });
   };
 
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
@@ -480,7 +482,7 @@ export const AgentWorkspace: React.FC = () => {
           )}
 
           {/* Model Selection Section */}
-          {isAuthenticated && !runId && (
+          {isAuthenticated && (
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-primary flex items-center justify-center uppercase tracking-wider">Model Selection</h3>
               <div className="relative">
@@ -816,7 +818,7 @@ export const AgentWorkspace: React.FC = () => {
         </header>
         )}
         {/* Scrollable Workstation Body */}
-        <div className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
+        <div ref={workstationBodyRef} className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
           {!runId ? (
             <div className="space-y-6">
               {startupError && (

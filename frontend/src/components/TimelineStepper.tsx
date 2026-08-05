@@ -822,7 +822,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             {tooltipState.id === 'hitl' && <UserCheck size={12} className="text-success" />}
             {tooltipState.id === 'export' && <Wrench size={12} className="text-success" />}
             {tooltipState.id === 'rag' && <Database size={12} className="text-amber-500" />}
-            {tooltipState.id === 'loop' && <Loader2 size={12} className="text-warning animate-spin" />}
+            {tooltipState.id === 'loop' && <Loader2 size={12} className={`text-warning ${pipelineStatus === PIPELINE_STATUS.REVISING ? 'animate-spin' : ''}`} />}
             {tooltipState.id.includes('tools') && <Wrench size={12} className="text-primary" />}
             {tooltipState.title}
           </div>
