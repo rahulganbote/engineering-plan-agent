@@ -143,9 +143,10 @@ def test_arbitration_skipped_on_zero_conflicts():
     """Verify that node_arbitrate skips LLM arbitration when check_cross_agent_consistency finds no issues."""
     from src.agents.pipeline import node_arbitrate
     from src.core.models import PipelineState
+    from src.core.pipeline_status import PipelineStatus
 
     state_obj = PipelineState(
-        run_id="test-run-skip", brd_raw_hash="hash", brd_name="test.txt", pipeline_status="arbitrating"
+        run_id="test-run-skip", brd_raw_hash="hash", brd_name="test.txt", pipeline_status=PipelineStatus.ARBITRATING
     )
     state_dict = state_obj.model_dump()
     state_dict["_brd_text"] = "Dummy BRD"

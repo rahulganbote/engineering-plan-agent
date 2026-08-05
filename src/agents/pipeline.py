@@ -224,7 +224,7 @@ def node_orchestrator_hub(state: dict) -> dict:
     log.info(f"[{ps.run_id}] NODE orchestrator_hub")
     _safe_emit("agent_start", agent="orchestrator")
     _set_status(ps, PipelineStatus.RUNNING)
-    _set_status(ps, PipelineStatus.ORCHESTRATOR_PARSING)
+    _set_status(ps, PipelineStatus.ORCHESTRATOR_ROUTING)
 
     if not brd_text:
         ps.errors.append("No BRD text provided")

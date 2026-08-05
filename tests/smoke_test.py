@@ -485,11 +485,12 @@ def _():
 # Keeps each test small and avoids constructing fields the function doesn't read.
 def _scope_creep_state(brd_text: str, **outputs):
     from src.core.models import BRDSection, PipelineState
+    from src.core.pipeline_status import PipelineStatus
 
     return PipelineState(
         run_id="scope-test",
         brd_raw_hash="0" * 64,
-        pipeline_status="critic_scoring",
+        pipeline_status=PipelineStatus.EVALUATING,
         brd_sections=[
             BRDSection(
                 section_name="Requirements",
@@ -1513,12 +1514,12 @@ def _():
     assert isinstance(p, AnthropicProvider)
 
 
-@test("Providers: get_provider('llama') raises ValueError (coming soon)", group="providers")
+@test("Providers: get_provider('mistral') raises ValueError (coming soon)", group="providers")
 def _():
     from src.core.providers import get_provider
 
     try:
-        get_provider("llama")
+        get_provider("mistral")
         assert False, "Expected ValueError"
     except ValueError as e:
         assert "coming soon" in str(e).lower()

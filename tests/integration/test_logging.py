@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 def seed_mock_run(run_id: str):
     from src.api.main import _runs
     from src.core.models import CriticOutput, DimensionScore, PipelineState, QualityBadge
+    from src.core.pipeline_status import PipelineStatus
 
     dim_score = DimensionScore(
         score=3.5, threshold=3.0, passed=True, evidence="Good quality", improvement_suggestion="None"
@@ -37,7 +38,7 @@ def seed_mock_run(run_id: str):
         run_id=run_id,
         brd_raw_hash="mock_hash",
         brd_name="mock_test.txt",
-        pipeline_status="awaiting_hitl",
+        pipeline_status=PipelineStatus.AWAITING_HITL,
         critic_output=critic,
     )
 
@@ -135,11 +136,12 @@ def test_forced_local_sheets_export():
     from unittest.mock import patch
 
     from src.core.models import CriticOutput, DimensionScore, HITLDecision, PipelineState, QualityBadge
+    from src.core.pipeline_status import PipelineStatus
     from src.integrations.sheets import write_artifacts_to_sheet
 
     run_id = f"test-run-direct-{uuid.uuid4().hex[:6]}"
     state = PipelineState(run_id=run_id, brd_raw_hash="directhash", brd_name="test_direct.txt")
-    state.pipeline_status = "awaiting_hitl"
+    state.pipeline_status = PipelineStatus.AWAITING_HITL
     dim_score = DimensionScore(
         score=3.5, threshold=3.0, passed=True, evidence="Good quality", improvement_suggestion="None"
     )

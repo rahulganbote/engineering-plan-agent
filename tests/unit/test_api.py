@@ -5,13 +5,14 @@ from fastapi.testclient import TestClient
 
 from src.api.main import _run_owner, _runs, app
 from src.core.models import HITLDecision, PipelineState
+from src.core.pipeline_status import PipelineStatus
 
 
 @pytest.fixture
 def mock_run():
     run_id = "test-run-api-123"
     state = PipelineState(run_id=run_id, brd_raw_hash="hash", brd_name="test.txt")
-    state.pipeline_status = "awaiting_hitl"
+    state.pipeline_status = PipelineStatus.AWAITING_HITL
     _runs[run_id] = state
     _run_owner[run_id] = "local-dev@example.com"
     yield run_id

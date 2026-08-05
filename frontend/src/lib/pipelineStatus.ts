@@ -5,7 +5,7 @@ export const PIPELINE_STATUS = {
   DRAFTING: 'drafting',
   ARBITRATING: 'arbitrating',
   ALIGNING: 'aligning',
-  ORCHESTRATOR_PARSING: 'orchestrator_parsing',
+  ORCHESTRATOR_ROUTING: 'orchestrator_routing',
   EVALUATING: 'evaluating',
   REVISING: 'revising',
   AWAITING_HITL: 'awaiting_hitl',
@@ -31,7 +31,7 @@ export type PipelineStatus = typeof PIPELINE_STATUS[keyof typeof PIPELINE_STATUS
 export const CANCELLABLE_STATES: PipelineStatus[] = [
   PIPELINE_STATUS.SECURITY_CHECK,
   PIPELINE_STATUS.RUNNING,
-  PIPELINE_STATUS.ORCHESTRATOR_PARSING,
+  PIPELINE_STATUS.ORCHESTRATOR_ROUTING,
   PIPELINE_STATUS.DRAFTING,
   PIPELINE_STATUS.ARBITRATING,
   PIPELINE_STATUS.ALIGNING,

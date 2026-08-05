@@ -24,6 +24,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.core.pipeline_status import PipelineStatus
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared Enums
 # ──────────────────────────────────────────────────────────────────────────────
@@ -604,7 +606,7 @@ class PipelineState(BaseModel):
             "Method 5 eval: {rejection_count, decision, reviewer, em_rating(1-5), notes}"
         ),
     )
-    pipeline_status: str = "initializing"
+    pipeline_status: PipelineStatus = PipelineStatus.INITIALIZING
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 

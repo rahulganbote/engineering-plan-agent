@@ -8,7 +8,7 @@ roughly 16:9, ~1600×900.
 | Filename | Pipeline state to capture |
 |---|---|
 | `01-upload.png` | Upload BRD panel / file ready |
-| `02-orchestrator.png` | Status: EXECUTING: ORCHESTRATOR PARSING |
+| `02-orchestrator.png` | Status: EXECUTING: ORCHESTRATOR ROUTING |
 | `03-drafting.png` | Status: EXECUTING: DRAFTING (specialists active) |
 | `04-evaluating.png` | Status: EXECUTING: EVALUATING (Critic active) |
 | `05-decision.png` | Status: AWAITING YOUR DECISION (HITL gate) |

@@ -115,7 +115,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     ];
     if (PAST_PARALLEL.includes(pipelineStatus)) return 'completed';
 
-    // Pre-parallel states (INITIALIZING, STARTED, SECURITY_CHECK, ORCHESTRATOR_PARSING,
+    // Pre-parallel states (INITIALIZING, STARTED, SECURITY_CHECK, ORCHESTRATOR_ROUTING,
     // CANCELED, ERROR): specialists haven't started yet — do NOT mark them completed.
     return 'pending';
   };
@@ -146,7 +146,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     orchestrator: {
       label: 'Orchestrator Agent',
       desc: 'Parses the BRD sections, evaluates structure completeness, and distributes tasks to 5 specialists Agents.',
-      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING || pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING,
+      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_ROUTING || pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING,
       isCompleted: ([PIPELINE_STATUS.DRAFTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'orchestrator'),
     },
@@ -426,7 +426,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               pipelineStatus !== PIPELINE_STATUS.INITIALIZING && 
               pipelineStatus !== PIPELINE_STATUS.STARTED && 
               pipelineStatus !== PIPELINE_STATUS.RUNNING && 
-              pipelineStatus !== PIPELINE_STATUS.ORCHESTRATOR_PARSING;
+              pipelineStatus !== PIPELINE_STATUS.ORCHESTRATOR_ROUTING;
 
             const isRagAnimating = 
               nodes.orchestrator.isActive || 
