@@ -614,7 +614,7 @@ export const AgentWorkspace: React.FC = () => {
                 <div className="flex items-center justify-between p-2 bg-background rounded border border-border text-xs">
                   <button
                     onClick={handleDownloadBRD}
-                    className="truncate max-w-[180px] font-medium text-primary hover:underline text-left cursor-pointer"
+                    className="truncate max-w-[180px] font-medium text-foreground hover:underline text-left cursor-pointer"
                     title="Click to download and view this BRD"
                   >
                     {selectedFile.name}
@@ -708,7 +708,7 @@ export const AgentWorkspace: React.FC = () => {
                   {selectedFile ? (
                     <button
                       onClick={handleDownloadBRD}
-                      className="text-xs font-semibold text-primary hover:underline text-left break-all cursor-pointer block w-full"
+                      className="text-xs font-semibold text-foreground hover:underline text-left break-all cursor-pointer block w-full"
                       title="Click to download and view this BRD"
                     >
                       {selectedFile.name}
