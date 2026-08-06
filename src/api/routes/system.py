@@ -112,7 +112,7 @@ async def get_example_brd():
     """
     from pathlib import Path
 
-    brd_path = Path("eval/test_brd_simple.txt")
+    brd_path = Path("eval/sample_brd_simple.txt")
     if not brd_path.exists():
         # Fallback to general base template if golden doesn't exist
         brd_path = Path("knowledge_base/Engineering_Plan_Template.txt")
@@ -122,6 +122,6 @@ async def get_example_brd():
 
     try:
         content = brd_path.read_text(encoding="utf-8")
-        return {"filename": "test_brd_simple.txt", "content": content}
+        return {"filename": "sample_brd_simple.txt", "content": content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read example BRD: {e}")

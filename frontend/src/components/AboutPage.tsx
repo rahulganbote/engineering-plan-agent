@@ -75,9 +75,9 @@ export const AboutPage: React.FC = () => {
         {/* About EM Copilot */}
         <section className="space-y-6 border-b border-border/40 pb-6">
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight">About EM Copilot</h1>
+            <h1 className="text-2xl font-bold tracking-tight">About EM Copilot AI</h1>
             <p className="text-sm text-muted-foreground">
-              EM Copilot is built with enterprise requirements in mind. Below is a structural overview of its core features and capabilities.
+              EM Copilot AI is built with enterprise-grade requirements in mind. Below is a structural overview of its core features and capabilities.
             </p>
           </div>
 

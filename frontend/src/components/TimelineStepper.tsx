@@ -406,6 +406,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             fill="none"
             stroke={nodes.orchestrator.isCompleted ? "#10B981" : (nodes.critic.isActive ? "#6366F1" : "#94A3B8")}
             strokeWidth="2"
+            markerStart={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
             markerEnd={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
           />
 

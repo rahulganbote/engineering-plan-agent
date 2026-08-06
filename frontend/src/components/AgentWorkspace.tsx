@@ -432,6 +432,18 @@ export const AgentWorkspace: React.FC = () => {
     window.location.href = `${apiBaseUrl}/download/${runId}`;
   };
 
+  const handleDownloadBRD = () => {
+    if (!selectedFile) return;
+    const url = URL.createObjectURL(selectedFile);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = selectedFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col md:flex-row min-h-[100dvh] md:h-[100dvh] bg-background text-foreground md:overflow-hidden font-sans">
       {/* Left Sidebar Control Panel — only mounts once the user is signed in
@@ -600,7 +612,13 @@ export const AgentWorkspace: React.FC = () => {
 
               {selectedFile && (
                 <div className="flex items-center justify-between p-2 bg-background rounded border border-border text-xs">
-                  <span className="truncate max-w-[180px] font-medium text-foreground">{selectedFile.name}</span>
+                  <button
+                    onClick={handleDownloadBRD}
+                    className="truncate max-w-[180px] font-medium text-primary hover:underline text-left cursor-pointer"
+                    title="Click to download and view this BRD"
+                  >
+                    {selectedFile.name}
+                  </button>
                   <span className="text-muted-foreground text-[10px] ml-2">{(selectedFile.size / 1024).toFixed(1)}KB</span>
                   <button
                     onClick={handleRemoveFileWithConfirm}
@@ -687,9 +705,19 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="font-mono text-[10px] text-primary font-bold break-all" title={runId}>
                     Run #{runId}
                   </div>
-                  <div className="text-xs font-semibold text-foreground break-words" title={selectedFile ? selectedFile.name : undefined}>
-                    {selectedFile ? selectedFile.name : 'BRD Pipeline'}
-                  </div>
+                  {selectedFile ? (
+                    <button
+                      onClick={handleDownloadBRD}
+                      className="text-xs font-semibold text-primary hover:underline text-left break-all cursor-pointer block w-full"
+                      title="Click to download and view this BRD"
+                    >
+                      {selectedFile.name}
+                    </button>
+                  ) : (
+                    <div className="text-xs font-semibold text-foreground break-words">
+                      BRD Pipeline
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => {
@@ -1433,7 +1461,7 @@ export const AgentWorkspace: React.FC = () => {
                                       : 'border-primary text-primary hover:bg-primary/10'
                                     }`}
                                 >
-                                  Open Google Sheet
+                                  Open Dashboard
                                 </a>
                               </div>
                             ) : approvalResult?.export_status === 'local_fallback' ? (

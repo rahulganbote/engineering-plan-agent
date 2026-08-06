@@ -29,7 +29,7 @@ The evaluation suite runs 5 distinct validation methods, targeting specific BRD 
 ### Method 1: Rule-Based Evaluation (Deterministic Checks)
 *   **Purpose:** Deterministic assertions checking schema completeness, milestone counts, risk citations, and 100% presence of milestone owners.
 *   **Test BRDs Executed On:**
-    *   `test_brd_simple.txt` (Employee Directory App)
+    *   `sample_brd_simple.txt` (Employee Directory App)
     *   `test_brd_medium.txt` (Customer Analytics Platform)
     *   `test_brd_complex.txt` (Real-Time Risk Compliance Platform)
     *   `test_brd_missing_nfrs.txt` (Edge case: missing NFRs)
@@ -40,7 +40,7 @@ The evaluation suite runs 5 distinct validation methods, targeting specific BRD 
 ### Method 2: LLM-as-Judge (Anchored Calibration)
 *   **Purpose:** GPT-4o-mini rates Groundedness, Completeness, Consistency, and Actionability. Anchored via a standard calibration set in `eval/critic_calibration_set.json` to prevent rating drift.
 *   **Test BRDs Executed On:**
-    *   `test_brd_simple.txt`
+    *   `sample_brd_simple.txt`
     *   `test_brd_medium.txt`
     *   `test_brd_complex.txt`
     *   `test_brd_ambiguous.txt`
@@ -50,14 +50,14 @@ The evaluation suite runs 5 distinct validation methods, targeting specific BRD 
 ### Method 3: Execution-Based Evaluation (System Telemetry)
 *   **Purpose:** Measure Pydantic schema parse rates, end-to-end graph completion success, third-party tool call reliability (GitHub API, Kroki SVG API), and execution wall-clock time (<300s SLA).
 *   **Test BRDs Executed On:**
-    *   `test_brd_simple.txt`
+    *   `sample_brd_simple.txt`
     *   `test_brd_medium.txt`
     *   `test_brd_complex.txt`
 
 ### Method 4: Reference-Based Evaluation (BERTScore Semantics)
 *   **Purpose:** Evaluate semantic similarity (BERTScore F1) of narrative fields (reflection notes, architect justification, PoC hypothesis) against golden baselines (`expected_output_simple.json`, `expected_output_medium.json`).
 *   **Test BRDs Executed On:**
-    *   `test_brd_simple.txt`
+    *   `sample_brd_simple.txt`
     *   `test_brd_medium.txt`
 
 ### Method 5: Human HITL (Feedback & Approvals)

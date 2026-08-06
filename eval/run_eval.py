@@ -32,7 +32,7 @@ METHOD 5 - Human HITL ratings:
 
 Usage:
     python eval/run_eval.py                          # all methods, all BRDs
-    python eval/run_eval.py --brd eval/test_brd_simple.txt
+    python eval/run_eval.py --brd eval/sample_brd_simple.txt
     python eval/run_eval.py --method rule            # fast, free
     python eval/run_eval.py --method llm             # uses OpenAI
     python eval/run_eval.py --method execution       # schema + tool checks
@@ -71,7 +71,7 @@ PIPELINE_TESTS = [
     {
         "test_id":       "EVAL-001",
         "name":          "Simple BRD - Employee Directory App",
-        "brd_file":      EVAL_DIR / "test_brd_simple.txt",
+        "brd_file":      EVAL_DIR / "sample_brd_simple.txt",
         "expected_file": EVAL_DIR / "expected_output_simple.json",
         "complexity":    "simple",
         "expect_badge":  "green",

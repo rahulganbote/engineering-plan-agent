@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "brd_file": "test_brd_simple.txt",
+    "brd_file": "sample_brd_simple.txt",
     "brd_name": "Employee Directory Mobile App",
     "complexity": "simple",
     "purpose": "Golden expected output for evaluation \u2014 compare agent outputs against these",

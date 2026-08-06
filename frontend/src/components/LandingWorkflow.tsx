@@ -413,7 +413,7 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title, default
             className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-primary-foreground bg-primary hover:bg-primary/90 shadow-[0_0_15px_rgba(79,70,229,0.4)] border border-primary/50 rounded-full px-6 py-2.5 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
           >
             <Users size={16} />
-            {AGENT_ROSTER.length} Agents
+            Meet The {AGENT_ROSTER.length} Agents
             {showRoster ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>
