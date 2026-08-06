@@ -120,6 +120,14 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     return 'pending';
   };
 
+  const revisionCount = logs.filter(l => l.type === 'revision_start').length;
+  const isRevising = pipelineStatus === PIPELINE_STATUS.REVISING ||
+    (revisionCount > 0 && (
+      pipelineStatus === PIPELINE_STATUS.ALIGNING ||
+      pipelineStatus === PIPELINE_STATUS.EVALUATING ||
+      pipelineStatus === PIPELINE_STATUS.DRAFTING
+    ));
+
   const nodes = {
     upload: {
       label: 'BRD Ingestion',
@@ -504,7 +512,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               onMouseLeave={handleMouseLeave}
             >
               <div className={getStyleClasses(nodes.security, 'rect')}>
-                <Shield size={16} className="mr-2 shrink-0" />
+                {nodes.security.isActive ? (
+                  <Loader2 size={16} className="animate-spin mr-2 shrink-0" />
+                ) : (
+                  <Shield size={16} className="mr-2 shrink-0" />
+                )}
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">Security</span>
                   <span className="text-[8.5px] leading-tight">Validator</span>
@@ -626,9 +638,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               onMouseLeave={handleMouseLeave}
             >
               {(() => {
-                const isRevising = pipelineStatus === PIPELINE_STATUS.REVISING;
-                const revisionCount = logs.filter(l => l.type === 'revision_start').length;
-
                 if (isRevising) {
                   return (
                     <div className="w-8 h-8 rounded-full border border-warning/40 bg-warning/5 flex items-center justify-center shadow-sm text-warning">
@@ -822,7 +831,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             {tooltipState.id === 'hitl' && <UserCheck size={12} className="text-success" />}
             {tooltipState.id === 'export' && <Wrench size={12} className="text-success" />}
             {tooltipState.id === 'rag' && <Database size={12} className="text-amber-500" />}
-            {tooltipState.id === 'loop' && <Loader2 size={12} className={`text-warning ${pipelineStatus === PIPELINE_STATUS.REVISING ? 'animate-spin' : ''}`} />}
+            {tooltipState.id === 'loop' && <Loader2 size={12} className={`text-warning ${isRevising ? 'animate-spin' : ''}`} />}
             {tooltipState.id.includes('tools') && <Wrench size={12} className="text-primary" />}
             {tooltipState.title}
           </div>

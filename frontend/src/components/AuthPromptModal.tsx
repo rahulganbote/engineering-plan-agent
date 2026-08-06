@@ -50,7 +50,7 @@ export default function AuthPromptModal({ isOpen, onClose, onLogin, variant = 's
 
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">{headline}</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Free to use. We use your email solely to manage usage limits and ensure fair access.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Free to use. We use your email solely for data isolation, to manage usage limits and ensure fair access.</p>
           </div>
 
           <div className="text-left bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 space-y-1.5">

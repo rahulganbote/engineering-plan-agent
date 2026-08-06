@@ -129,7 +129,7 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
                   onClick={() => setShowVideo(false)}
                   className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                 >
-                  <ChevronLeft size={13} /> Back to glimpse
+                  <ChevronLeft size={13} /> Back to glimpses
                 </button>
               ) : (
                 <span className="text-xs text-muted-foreground font-semibold tracking-wider">

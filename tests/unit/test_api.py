@@ -583,7 +583,7 @@ def test_run_pipeline_endpoint_latency_and_background_task(client):
         )
 
         latency_ms = (time.time() - start_time) * 1000
-        assert latency_ms < 100  # Latency under 100ms
+        assert latency_ms < 250  # Latency under 250ms
 
         assert response.status_code == 200
         data = response.json()

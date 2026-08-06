@@ -152,6 +152,7 @@ export const AgentWorkspace: React.FC = () => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isConfirmResetModalOpen, setIsConfirmResetModalOpen] = useState(false);
   // Which nav/hero CTA opened the modal — varies the modal headline only;
   // both paths use the same Google OAuth flow (see AuthPromptModal).
   const [authModalVariant, setAuthModalVariant] = useState<'signin' | 'signup'>('signup');
@@ -319,6 +320,14 @@ export const AgentWorkspace: React.FC = () => {
     setRunId(null);
     setStartupError(null);
     workstationBodyRef.current?.scrollTo({ top: 0 });
+  };
+
+  const handleRemoveFileWithConfirm = () => {
+    if (runId) {
+      setIsConfirmResetModalOpen(true);
+    } else {
+      handleReset();
+    }
   };
 
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
@@ -594,7 +603,7 @@ export const AgentWorkspace: React.FC = () => {
                   <span className="truncate max-w-[180px] font-medium text-foreground">{selectedFile.name}</span>
                   <span className="text-muted-foreground text-[10px] ml-2">{(selectedFile.size / 1024).toFixed(1)}KB</span>
                   <button
-                    onClick={() => setSelectedFile(null)}
+                    onClick={handleRemoveFileWithConfirm}
                     className="text-muted-foreground hover:text-danger ml-2"
                     aria-label="Remove selected file"
                   >
@@ -835,7 +844,7 @@ export const AgentWorkspace: React.FC = () => {
               <IngestionLanding
                 selectedFile={selectedFile}
                 onFileSelect={setSelectedFile}
-                onRemoveFile={() => setSelectedFile(null)}
+                onRemoveFile={handleRemoveFileWithConfirm}
                 onTrigger={triggerPipeline}
                 isLoading={pipelineStatus === PIPELINE_STATUS.INITIALIZING}
                 isAuthenticated={isAuthenticated}
@@ -893,19 +902,19 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Pipeline Error Alert Banner */}
               {pipelineStatus === PIPELINE_STATUS.ERROR && (
-                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                <div className="bg-danger/10 dark:bg-danger border border-danger/30 dark:border-danger/30 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
                   <div className="flex items-start justify-between gap-4">
-                    <h4 className="text-sm font-bold text-danger flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-danger dark:text-white flex items-center gap-2">
                       <span>❌</span> Agentic Workflow Execution Failed
                     </h4>
                     <button
                       onClick={handleReset}
-                      className="shrink-0 px-3 py-1.5 bg-danger/20 hover:bg-danger/40 border border-danger/50 text-danger text-xs font-bold rounded transition"
+                      className="shrink-0 px-3 py-1.5 bg-danger/15 hover:bg-danger/30 border border-danger/30 text-danger dark:bg-white/20 dark:hover:bg-white/30 dark:border-white/30 dark:text-white text-xs font-bold rounded transition"
                     >
                       Clear & Try Again
                     </button>
                   </div>
-                  <p className="text-xs text-danger/90 leading-relaxed font-semibold">
+                  <p className="text-xs text-danger/90 dark:text-[#fee2e2] leading-relaxed font-semibold">
                     {errorMessage || "An unexpected error occurred during execution. Please check the logs."}
                   </p>
                 </div>
@@ -1315,7 +1324,11 @@ export const AgentWorkspace: React.FC = () => {
                 PIPELINE_STATUS.REJECTED
               ] as string[]).includes(pipelineStatus)) && (
                   <div ref={exportResultsRef} className="border-t border-border pt-5 mt-4">
-                    <div className="max-w-4xl mx-auto p-5 bg-card border border-border rounded-xl shadow-lg transition-all duration-300">
+                    <div className={`max-w-4xl mx-auto p-5 rounded-xl transition-all duration-300 border ${
+                      pipelineStatus === PIPELINE_STATUS.EXPORTING
+                        ? 'border-primary/50 shadow-[0_0_20px_rgba(79,70,229,0.15)] bg-gradient-to-b from-card to-primary/5'
+                        : 'bg-card border-border shadow-lg'
+                    }`}>
 
                       {/* 1. DYNAMIC SYSTEM ACTION STATE HEADER */}
                       {pipelineStatus !== PIPELINE_STATUS.AWAITING_HITL && (
@@ -1367,15 +1380,15 @@ export const AgentWorkspace: React.FC = () => {
                             Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure.
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] font-bold text-muted-foreground">
-                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
-                              <span className="text-success">✓</span>
+                            <div className="flex items-center gap-2 p-2.5 bg-success/5 border border-success/30 text-success/90 rounded-lg">
+                              <span className="text-success font-black">✓</span>
                               <span>Google Sheets Log</span>
                             </div>
-                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/30 text-foreground rounded-lg animate-pulse">
                               <Loader2 className="animate-spin text-primary shrink-0" size={11} />
                               <span>Creating Jira Epic</span>
                             </div>
-                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/30 text-foreground rounded-lg animate-pulse">
                               <Loader2 className="animate-spin text-primary shrink-0" size={11} />
                               <span>Pinecone Indexing</span>
                             </div>
@@ -1592,6 +1605,53 @@ export const AgentWorkspace: React.FC = () => {
         onLogin={login}
         variant={authModalVariant}
       />
+
+      {/* Reset Confirmation Dialog */}
+      {isConfirmResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsConfirmResetModalOpen(false)}
+          />
+          <div className="bg-card border border-border shadow-2xl rounded-2xl max-w-md w-full relative z-10 flex flex-col overflow-hidden animate-scale-in text-foreground">
+            <button
+              onClick={() => setIsConfirmResetModalOpen(false)}
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition p-1.5 rounded-lg hover:bg-secondary/80"
+              aria-label="Close confirmation dialog"
+            >
+              <X size={18} />
+            </button>
+            <div className="px-6 pt-8 pb-6 text-center space-y-4">
+              <div className="mx-auto h-12 w-12 rounded-full bg-danger/10 text-danger flex items-center justify-center">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-xl font-extrabold tracking-tight">Reset Workspace?</h2>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to cancel the active pipeline run and clear the selected file? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setIsConfirmResetModalOpen(false)}
+                  className="flex-1 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold text-sm border border-border transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleReset();
+                    setIsConfirmResetModalOpen(false);
+                  }}
+                  className="flex-1 py-2.5 bg-danger hover:bg-danger/90 text-white rounded-xl font-bold text-sm shadow-md transition"
+                >
+                  Confirm Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

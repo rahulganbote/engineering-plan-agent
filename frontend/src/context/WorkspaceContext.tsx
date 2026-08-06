@@ -35,7 +35,8 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== 'undefined') {
       return window.location.origin;
     }
-    return 'http://localhost:8000';
+    // Fallback to 127.0.0.1 instead of localhost to bypass macOS IPv6 resolution delays.
+    return 'http://127.0.0.1:8000';
   });
   const [elevenlabsAgentId, setElevenlabsAgentId] = useState<string>('');
 
