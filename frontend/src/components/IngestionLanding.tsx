@@ -77,10 +77,10 @@ export const IngestionLanding: React.FC<IngestionLandingProps> = ({
             <span className="text-primary">minutes</span>
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            EM Copilot, the <span className="text-primary font-bold">Engineering Plan Agent</span>, transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in your organization's standards, allowed tech stack, and own architectural patterns.
+            EM Copilot, the <span className="text-primary font-bold">Engineering Plan Agent</span>, transforms your raw BRD into an audit-ready engineering plan, grounded via <span className="text-primary font-bold">RAG</span> (Retrieval-Augmented Generation) in <span className="text-primary font-bold">your organization's standards</span>, allowed tech stack, and architectural patterns.
           </p>
           <div className="space-y-3 max-w-2xl mx-auto pt-1">
-            <ul className="text-sm sm:text-sm text-muted-foreground space-y-1.5 text-left bg-secondary/40 border border-border/50 rounded-lg px-4 py-3">
+            <ul className="text-sm sm:text-sm text-muted-foreground space-y-2 text-left bg-secondary/40 border border-border/50 rounded-lg px-4 py-3">
               {PERKS.map((perk) => (
                 <li key={perk} className="flex items-start gap-2">
                   <span className="text-success font-bold shrink-0">✓</span>
