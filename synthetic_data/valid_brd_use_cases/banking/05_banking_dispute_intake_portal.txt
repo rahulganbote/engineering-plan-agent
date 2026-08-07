@@ -1,0 +1,68 @@
+# Business Requirements Document
+# Project: Card Dispute Intake Portal
+# Domain: Banking
+# Complexity: Medium
+# Synthetic Valid BRD Dataset Version: 1.0
+
+## Background and Business Context
+Contact center agents manually capture card dispute details across several forms. Missing evidence and inconsistent reason codes cause rework and delayed provisional credit decisions.
+
+The current operating model relies on manual review, fragmented status tracking, and delayed reporting. The new product capability must improve speed, consistency, and audit readiness while staying within approved enterprise technology and compliance controls.
+
+## Objectives
+1. Standardize dispute intake across contact center and digital channels.
+2. Reduce incomplete dispute submissions by 50%.
+3. Create a traceable handoff to the card processor workflow.
+
+## Stakeholders
+- Product Owner: Banking Product Manager
+- Business Sponsor: Senior Business Owner
+- Technical Lead: Platform Engineering Lead
+- Primary Users: Operations analysts, managers, compliance reviewers, and business specialists
+- Compliance and Security: Information Security, Privacy, Audit, and Risk teams
+- External Partners: Approved vendors and enterprise platform teams
+
+## Scope Boundaries
+In Scope:
+- Core workflow intake, tracking, review, and reporting for the named use case.
+- Integration with approved internal source systems and enterprise identity.
+- Audit evidence for key business decisions, user actions, and exported outputs.
+
+Out of Scope:
+- Replacement of upstream systems of record.
+- Fully autonomous business decisions without approved human review.
+- Production migration beyond the pilot population.
+
+## Functional Requirements
+FR-01: The portal shall capture transaction selection, dispute reason, customer statement, supporting documents, and requested resolution.
+FR-02: The portal shall validate required fields based on dispute reason code.
+FR-03: The portal shall create a processor case and store the external reference ID.
+FR-04: The portal shall show customers and agents the current dispute status and next action.
+
+## Non-Functional Requirements
+NFR-01 Performance: Intake submission shall complete within 4 seconds at P95 excluding upload time.
+NFR-02 Security: Customer and card data shall be masked according to PCI scope rules.
+NFR-03 Recoverability: Failed processor submissions shall be retryable without duplicate cases.
+
+## Constraints
+- Use existing card processor API, document storage, and customer notification channels.
+- No changes to chargeback adjudication logic.
+- MVP must support English language forms only.
+- The solution shall use approved enterprise monitoring, logging, secrets management, and deployment controls.
+- The first release shall prioritize audit-ready workflow visibility over broad feature expansion.
+
+## Risks
+- RISK-01 (HIGH): Source data quality may reduce workflow accuracy. Mitigation: profile pilot data early and expose confidence or exception states.
+- RISK-02 (MEDIUM): Users may continue using spreadsheets if adoption is not managed. Mitigation: include pilot users in demos and retire duplicate reports after launch.
+- RISK-03 (MEDIUM): Integration delays may affect the MVP timeline. Mitigation: build sandbox adapters and test source contracts during discovery.
+
+## Acceptance Criteria
+- All functional requirements are demonstrated with representative synthetic data.
+- The objectives, requirements, constraints, risks, and acceptance criteria are traceable in the final plan.
+- Role-based access, audit logging, and primary NFR evidence are reviewed before pilot launch.
+- Business owner signs off on dashboard, workflow, and export outputs.
+
+## Success Criteria Post Launch
+- The primary cycle-time or productivity objective is measured for pilot users.
+- At least 80% of pilot users complete required workflows in the new capability.
+- Audit or compliance reviewers accept the generated evidence package for pilot records.

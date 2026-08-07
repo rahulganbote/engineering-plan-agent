@@ -1,0 +1,68 @@
+# Business Requirements Document
+# Project: KYC Refresh Queue Optimization
+# Domain: Banking
+# Complexity: Simple
+# Synthetic Valid BRD Dataset Version: 1.0
+
+## Background and Business Context
+Compliance analysts work from static KYC refresh spreadsheets and cannot easily prioritize high-risk customer reviews. The current approach causes overdue reviews and inconsistent escalation.
+
+The current operating model relies on manual review, fragmented status tracking, and delayed reporting. The new product capability must improve speed, consistency, and audit readiness while staying within approved enterprise technology and compliance controls.
+
+## Objectives
+1. Prioritize KYC refresh cases by customer risk and due date.
+2. Reduce overdue high-risk reviews by 40%.
+3. Give supervisors daily visibility into analyst queues and blockers.
+
+## Stakeholders
+- Product Owner: Banking Product Manager
+- Business Sponsor: Senior Business Owner
+- Technical Lead: Platform Engineering Lead
+- Primary Users: Operations analysts, managers, compliance reviewers, and business specialists
+- Compliance and Security: Information Security, Privacy, Audit, and Risk teams
+- External Partners: Approved vendors and enterprise platform teams
+
+## Scope Boundaries
+In Scope:
+- Core workflow intake, tracking, review, and reporting for the named use case.
+- Integration with approved internal source systems and enterprise identity.
+- Audit evidence for key business decisions, user actions, and exported outputs.
+
+Out of Scope:
+- Replacement of upstream systems of record.
+- Fully autonomous business decisions without approved human review.
+- Production migration beyond the pilot population.
+
+## Functional Requirements
+FR-01: The platform shall import customer risk tier, last review date, due date, and missing document status.
+FR-02: The platform shall rank refresh cases using risk tier, regulatory deadline, and document readiness.
+FR-03: The platform shall assign cases to analyst queues and track status changes.
+FR-04: The platform shall generate supervisor reports for overdue, blocked, and completed reviews.
+
+## Non-Functional Requirements
+NFR-01 Performance: Queue dashboard shall load 20,000 active cases in under 3 seconds.
+NFR-02 Availability: Analyst queue views shall provide 99.5% uptime.
+NFR-03 Auditability: Queue assignment and status changes shall be retained for 5 years.
+
+## Constraints
+- Use existing KYC system exports and enterprise SSO.
+- No customer outreach automation in MVP.
+- Initial release must be delivered within 8 weeks.
+- The solution shall use approved enterprise monitoring, logging, secrets management, and deployment controls.
+- The first release shall prioritize audit-ready workflow visibility over broad feature expansion.
+
+## Risks
+- RISK-01 (HIGH): Source data quality may reduce workflow accuracy. Mitigation: profile pilot data early and expose confidence or exception states.
+- RISK-02 (MEDIUM): Users may continue using spreadsheets if adoption is not managed. Mitigation: include pilot users in demos and retire duplicate reports after launch.
+- RISK-03 (MEDIUM): Integration delays may affect the MVP timeline. Mitigation: build sandbox adapters and test source contracts during discovery.
+
+## Acceptance Criteria
+- All functional requirements are demonstrated with representative synthetic data.
+- The objectives, requirements, constraints, risks, and acceptance criteria are traceable in the final plan.
+- Role-based access, audit logging, and primary NFR evidence are reviewed before pilot launch.
+- Business owner signs off on dashboard, workflow, and export outputs.
+
+## Success Criteria Post Launch
+- The primary cycle-time or productivity objective is measured for pilot users.
+- At least 80% of pilot users complete required workflows in the new capability.
+- Audit or compliance reviewers accept the generated evidence package for pilot records.
