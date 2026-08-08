@@ -561,6 +561,13 @@ class PipelineState(BaseModel):
 
     run_id: str
     brd_name: str = ""
+    # ── BRD business identity (populated by src/agents/brd_context.py) ────────
+    # Answers "what is being built and why" so artifacts, the UI subtitle, the
+    # exported PDF, and the Jira issue all describe the actual project instead
+    # of generic engineering boilerplate. All three degrade to "" safely.
+    brd_project_title: str = ""  # e.g. "Checkout Incident Detection Agent"
+    brd_objective_summary: str = ""  # one-sentence business goal
+    brd_domain: str = ""  # e.g. "E-commerce operations"
     processing_time_sec: float = 0.0
     total_input_tokens: int = 0  # Sum across all LLM calls in this run
     total_output_tokens: int = 0  # ── displayed alongside processing time

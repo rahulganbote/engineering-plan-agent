@@ -69,7 +69,12 @@ Rules:
      `graph LR\\n  …` text inside the JSON string field.
    - Avoid characters that break Mermaid: parentheses inside labels, smart
      quotes, or unescaped colons. Prefer hyphens.
-7. Output ONLY valid JSON - no markdown fences around the JSON, no explanation."""
+7. Ground your output in the BRD's SPECIFIC business context: component names,
+   responsibilities, data_flow steps, and pattern_justification must reference
+   the actual product domain (e.g. "Order Service" not "Application Service",
+   "Menu API" not "Data API"). A reader should understand what system this
+   architecture serves without needing the original BRD.
+8. Output ONLY valid JSON - no markdown fences around the JSON, no explanation."""
 
 SCHEMA = """{
   "pattern": "string",
@@ -136,7 +141,9 @@ class SolutionArchitectAgent(BaseAgent):
             if not web_results.used_fallback:
                 citation_ids = ["tavily_web_grounding"] + web_results.sources
 
-        raw = self._generate(brd_text, context_str, citation_ids, feedback, poc_veto_reason)
+        raw = self._generate(
+            brd_text, context_str, citation_ids, feedback, poc_veto_reason, self.project_context(state)
+        )
         output = self._parse(raw, state.run_id, citation_ids)
 
         # Render Mermaid → SVG via Kroki. Non-blocking: SVG stays None on failure,
@@ -170,6 +177,7 @@ class SolutionArchitectAgent(BaseAgent):
         citation_ids: list[str],
         feedback: str,
         poc_veto_reason: str | None = None,
+        proj_ctx: str = "",
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         veto_block = (
@@ -184,6 +192,7 @@ class SolutionArchitectAgent(BaseAgent):
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
+                f"{proj_ctx}"
                 f"{feedback_block}"
                 f"{veto_block}"
                 f"AVAILABLE CITATION IDs:\n{cites}\n\n"
