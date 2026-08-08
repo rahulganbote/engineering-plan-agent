@@ -1,0 +1,68 @@
+# Business Requirements Document
+# Project: Policy Renewal Risk Dashboard
+# Domain: Insurance
+# Complexity: Simple
+# Synthetic Valid BRD Dataset Version: 1.0
+
+## Background and Business Context
+Underwriting managers review renewal risk through static reports that arrive too late for proactive outreach. They need a simple dashboard showing policies at risk before renewal windows close.
+
+The current operating model relies on manual review, fragmented status tracking, and delayed reporting. The new product capability must improve speed, consistency, and audit readiness while staying within approved enterprise technology and compliance controls.
+
+## Objectives
+1. Identify high-risk renewals 60 days before policy expiration.
+2. Prioritize underwriting review and customer outreach.
+3. Reduce avoidable non-renewal churn by 10% in pilot lines.
+
+## Stakeholders
+- Product Owner: Insurance Product Manager
+- Business Sponsor: Senior Business Owner
+- Technical Lead: Platform Engineering Lead
+- Primary Users: Operations analysts, managers, compliance reviewers, and business specialists
+- Compliance and Security: Information Security, Privacy, Audit, and Risk teams
+- External Partners: Approved vendors and enterprise platform teams
+
+## Scope Boundaries
+In Scope:
+- Core workflow intake, tracking, review, and reporting for the named use case.
+- Integration with approved internal source systems and enterprise identity.
+- Audit evidence for key business decisions, user actions, and exported outputs.
+
+Out of Scope:
+- Replacement of upstream systems of record.
+- Fully autonomous business decisions without approved human review.
+- Production migration beyond the pilot population.
+
+## Functional Requirements
+FR-01: The platform shall import policy details, renewal date, claims history, premium change, risk tier, and customer segment.
+FR-02: The platform shall rank renewals by churn risk and underwriting review urgency.
+FR-03: The platform shall provide filters by product, state, agent, risk tier, and renewal window.
+FR-04: The platform shall export outreach lists for approved users.
+
+## Non-Functional Requirements
+NFR-01 Performance: Dashboard filters shall respond within 2 seconds for 100,000 policies.
+NFR-02 Availability: Dashboard shall provide 99.5% uptime during business hours.
+NFR-03 Privacy: Customer contact data shall be masked in exports unless role permits access.
+
+## Constraints
+- Use existing policy admin extracts and CRM outreach process.
+- No automated premium changes or underwriting decisions.
+- Pilot scope is two insurance products and three states.
+- The solution shall use approved enterprise monitoring, logging, secrets management, and deployment controls.
+- The first release shall prioritize audit-ready workflow visibility over broad feature expansion.
+
+## Risks
+- RISK-01 (HIGH): Source data quality may reduce workflow accuracy. Mitigation: profile pilot data early and expose confidence or exception states.
+- RISK-02 (MEDIUM): Users may continue using spreadsheets if adoption is not managed. Mitigation: include pilot users in demos and retire duplicate reports after launch.
+- RISK-03 (MEDIUM): Integration delays may affect the MVP timeline. Mitigation: build sandbox adapters and test source contracts during discovery.
+
+## Acceptance Criteria
+- All functional requirements are demonstrated with representative synthetic data.
+- The objectives, requirements, constraints, risks, and acceptance criteria are traceable in the final plan.
+- Role-based access, audit logging, and primary NFR evidence are reviewed before pilot launch.
+- Business owner signs off on dashboard, workflow, and export outputs.
+
+## Success Criteria Post Launch
+- The primary cycle-time or productivity objective is measured for pilot users.
+- At least 80% of pilot users complete required workflows in the new capability.
+- Audit or compliance reviewers accept the generated evidence package for pilot records.

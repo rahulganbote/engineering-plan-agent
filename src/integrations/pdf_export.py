@@ -133,7 +133,7 @@ def build_artifacts_pdf(state: PipelineState) -> bytes:
         leftMargin=36,
         topMargin=42,
         bottomMargin=36,
-        title=f"EM Copilot - {state.run_id}",
+        title=f"EM Copilot - {state.brd_project_title or state.run_id}",
         author="EM Copilot",
     )
     styles = _styles()
@@ -162,7 +162,12 @@ def _add_header(story, styles, state: PipelineState) -> None:
     badge = state.critic_output.badge.value.upper() if state.critic_output else "N/A"
     overall = state.critic_output.overall_score if state.critic_output else 0.0
 
-    story.append(Paragraph("EM Copilot - Engineering Artifacts", styles["Title"]))
+    # Use BRD project title in the PDF header when available
+    project_title = state.brd_project_title or ""
+    if project_title:
+        story.append(Paragraph(f"EM Copilot - {project_title}", styles["Title"]))
+    else:
+        story.append(Paragraph("EM Copilot - Engineering Artifacts", styles["Title"]))
     story.append(
         Paragraph(
             "<font color='#6B7280'>Multi-agent BRD-to-engineering-plan pipeline</font>",
@@ -171,15 +176,35 @@ def _add_header(story, styles, state: PipelineState) -> None:
     )
     story.append(Spacer(1, 6))
 
+    # Business context first - a reader opening this PDF cold should learn what
+    # the plan is for before seeing run metadata. Prefer the LLM-written
+    # one-sentence goal; fall back to the parsed Objectives section.
+    from src.core.brd_utils import extract_objectives
+
+    objective = state.brd_objective_summary or " · ".join(extract_objectives(state.brd_sections)[:5])
+
+    meta_rows: list[list[str]] = []
+    if project_title:
+        meta_rows.append(["Project", project_title])
+    if state.brd_domain:
+        meta_rows.append(["Domain", state.brd_domain])
+    if objective:
+        meta_rows.append(["Business goal", objective])
+    if state.brd_name:
+        meta_rows.append(["Source BRD", state.brd_name])
+    meta_rows += [
+        ["Run ID", state.run_id],
+        ["Exported", ts],
+        ["Pipeline status", state.pipeline_status],
+        ["Critic badge", f"{badge}  ·  {overall:.2f} / 5.0"],
+        ["Revisions", str(state.revision_count)],
+        ["HITL decision", state.hitl_decision.value],
+    ]
+    # Long goal text must wrap inside its cell rather than overflow the page.
+    meta_rows = [[label, Paragraph(str(value), styles["Small"])] for label, value in meta_rows]
+
     meta_table = Table(
-        [
-            ["Run ID", state.run_id],
-            ["Exported", ts],
-            ["Pipeline status", state.pipeline_status],
-            ["Critic badge", f"{badge}  ·  {overall:.2f} / 5.0"],
-            ["Revisions", str(state.revision_count)],
-            ["HITL decision", state.hitl_decision.value],
-        ],
+        meta_rows,
         colWidths=[1.4 * inch, 5.6 * inch],
     )
     meta_table.setStyle(
@@ -205,7 +230,7 @@ def _add_critic(story, styles, state: PipelineState) -> None:
     critic = state.critic_output
     if not critic:
         return
-    story.append(Paragraph("1. Independent Critic Score", styles["H2"]))
+    story.append(Paragraph("1. Independent Quality Score", styles["H2"]))
 
     dims = [
         ("Groundedness", critic.groundedness),

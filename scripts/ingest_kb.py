@@ -103,28 +103,13 @@ DOCUMENTS = [
         "complexity":  "medium",
         "tags":        ["tech-stack", "database", "framework", "decision", "rationale"],
     },
-    {
-        "filename": "expected_output_complex.json",
-        "source_type": "expected_output",
-        "domain": "generic",
-        "complexity": "complex",
-        "tags": ["expected-output", "json", "complex", "schema", "example"],
-    },
-    {
-        "filename": "expected_output_medium.json",
-        "source_type": "expected_output",
-        "domain": "generic",
-        "complexity": "medium",
-        "tags": ["expected-output", "json", "medium", "schema", "example"],
-    },
-    {
-        "filename": "expected_output_simple.json",
-        "source_type": "expected_output",
-        "domain": "generic",
-        "complexity": "simple",
-        "tags": ["expected-output", "json", "simple", "schema", "example"],
-    }
 ]
+
+# expected_output_{simple,medium,complex}.json intentionally NOT ingested:
+# these are the eval suite's answer keys (eval/run_eval.py compares agent
+# output against them). Indexing them into the KB would let a live BRD run's
+# RAG retrieval surface ground-truth eval answers as "context", leaking the
+# answer key into production grounding. Keep them out of DOCUMENTS.
 
 # ── NEW DOCUMENTS (added from Project 1 PFRA training data) ──────────────────
 NEW_DOCUMENTS = [
@@ -275,7 +260,7 @@ DOCUMENTS.extend(STANDARDS_DOCUMENTS)
 TECH_STACK_RECOMMENDATION_DOCUMENTS = [
     {
         "filename":    "Tech_Stack_Recommender_Microservices_WebApp.txt",
-        "source_type": "tech_log",
+        "source_type": "standard",
         "domain":      "Microservices or WebApp",
         "complexity":  "complex",
         "tags":        ["example", "tech-stack", "options", "Microservices", "WebApp", "Frotend", "Backend",
@@ -283,7 +268,7 @@ TECH_STACK_RECOMMENDATION_DOCUMENTS = [
     },
        {
         "filename":    "Tech_Stack_Recommender_AIML_DataScience.txt",
-        "source_type": "tech_log",
+        "source_type": "standard",
         "domain":      "AIML and Data Science Engineering",
         "complexity":  "complex",
         "tags":        ["example", "tech-stack", "options", "AIML", "Data Science","MLOps",

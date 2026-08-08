@@ -98,6 +98,8 @@ export interface ArtifactsState {
   stack_output?: unknown;
   brd_sections?: unknown;
   critic_output?: unknown;
+  brd_project_title?: string;
+  brd_objective_summary?: string;
   errors?: string[];
   warnings?: string[];
   pass_number?: number;
@@ -111,6 +113,8 @@ export interface ArtifactsState {
 
 interface ArtifactsResponse {
   brd_sections?: unknown[];
+  brd_project_title?: string;
+  brd_objective_summary?: string;
   plan_output?: unknown;
   schedule_output?: unknown;
   arch_output?: unknown;
@@ -203,12 +207,14 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
     seenSeqs.current.clear();
   }, []);
 
-  if (runId !== prevRunId) {
-    setPrevRunId(runId);
-    if (runId) {
-      clearRun(PIPELINE_STATUS.INITIALIZING);
+  useEffect(() => {
+    if (runId !== prevRunId) {
+      setPrevRunId(runId);
+      if (runId) {
+        clearRun(PIPELINE_STATUS.INITIALIZING);
+      }
     }
-  }
+  }, [runId, prevRunId, clearRun]);
 
   const completedAgents = useMemo(() => {
     const s = new Set<string>();
@@ -267,10 +273,7 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
       setLogs((prev) => [...prev, data]);
 
       switch (data.type) {
-        case 'canceled': {
-          setPipelineStatus(PIPELINE_STATUS.CANCELED);
-          break;
-        }
+
         case 'status':
         case 'pipeline_status': {
           const status = data.status || (data.payload as Record<string, string>)?.status;
@@ -464,6 +467,8 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           poc_output: data.poc_output || undefined,
           stack_output: data.stack_output || undefined,
           brd_sections: data.brd_sections || undefined,
+          brd_project_title: data.brd_project_title || undefined,
+          brd_objective_summary: data.brd_objective_summary || undefined,
           errors: data.errors || undefined,
           warnings: data.warnings || undefined,
           pass_number: data.pass_number || undefined,

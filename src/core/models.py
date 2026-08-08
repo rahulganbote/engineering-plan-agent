@@ -24,6 +24,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.core.pipeline_status import PipelineStatus
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Shared Enums
 # ──────────────────────────────────────────────────────────────────────────────
@@ -559,6 +561,13 @@ class PipelineState(BaseModel):
 
     run_id: str
     brd_name: str = ""
+    # ── BRD business identity (populated by src/agents/brd_context.py) ────────
+    # Answers "what is being built and why" so artifacts, the UI subtitle, the
+    # exported PDF, and the Jira issue all describe the actual project instead
+    # of generic engineering boilerplate. All three degrade to "" safely.
+    brd_project_title: str = ""  # e.g. "Checkout Incident Detection Agent"
+    brd_objective_summary: str = ""  # one-sentence business goal
+    brd_domain: str = ""  # e.g. "E-commerce operations"
     processing_time_sec: float = 0.0
     total_input_tokens: int = 0  # Sum across all LLM calls in this run
     total_output_tokens: int = 0  # ── displayed alongside processing time
@@ -604,7 +613,7 @@ class PipelineState(BaseModel):
             "Method 5 eval: {rejection_count, decision, reviewer, em_rating(1-5), notes}"
         ),
     )
-    pipeline_status: str = "initializing"
+    pipeline_status: PipelineStatus = PipelineStatus.INITIALIZING
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 

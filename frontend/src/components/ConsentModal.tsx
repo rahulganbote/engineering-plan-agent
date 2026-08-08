@@ -47,8 +47,8 @@ export default function ConsentModal({ isOpen, onClose, onAccept }: ConsentModal
               <FileText size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold tracking-tight">Upload Consent Required</h2>
-              <p className="text-xs text-muted-foreground">Please review sandbox upload terms</p>
+              <h2 className="text-lg font-bold tracking-tight">User Consent Required</h2>
+              <p className="text-xs text-muted-foreground">Please review this sandbox terms & conditions</p>
             </div>
           </div>
 
@@ -57,7 +57,7 @@ export default function ConsentModal({ isOpen, onClose, onAccept }: ConsentModal
             <div className="bg-warning/10 border border-warning/30 p-3 rounded-lg text-warning flex gap-2">
               <ShieldAlert size={18} className="shrink-0 mt-0.5" />
               <p className="text-xs">
-                EM Copilot is a <strong>sandbox demonstration environment</strong>. Uploaded files flow through foundation model provider APIs (OpenAI/Anthropic).
+                EM Copilot is a <strong>sandbox demonstration environment</strong>. Uploaded files flow through LLM model provider APIs (OpenAI/Anthropic/Llama).
               </p>
             </div>
 

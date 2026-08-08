@@ -1,0 +1,68 @@
+# Business Requirements Document
+# Project: Subrogation Recovery Workbench
+# Domain: Insurance
+# Complexity: Medium
+# Synthetic Valid BRD Dataset Version: 1.0
+
+## Background and Business Context
+Claims teams miss subrogation recovery opportunities because liability indicators, police reports, repair notes, and third-party information are reviewed manually after claim closure.
+
+The current operating model relies on manual review, fragmented status tracking, and delayed reporting. The new product capability must improve speed, consistency, and audit readiness while staying within approved enterprise technology and compliance controls.
+
+## Objectives
+1. Identify likely subrogation opportunities earlier in the claim lifecycle.
+2. Increase referred recovery cases by 15%.
+3. Track recovery status and evidence completeness in one workbench.
+
+## Stakeholders
+- Product Owner: Insurance Product Manager
+- Business Sponsor: Senior Business Owner
+- Technical Lead: Platform Engineering Lead
+- Primary Users: Operations analysts, managers, compliance reviewers, and business specialists
+- Compliance and Security: Information Security, Privacy, Audit, and Risk teams
+- External Partners: Approved vendors and enterprise platform teams
+
+## Scope Boundaries
+In Scope:
+- Core workflow intake, tracking, review, and reporting for the named use case.
+- Integration with approved internal source systems and enterprise identity.
+- Audit evidence for key business decisions, user actions, and exported outputs.
+
+Out of Scope:
+- Replacement of upstream systems of record.
+- Fully autonomous business decisions without approved human review.
+- Production migration beyond the pilot population.
+
+## Functional Requirements
+FR-01: The platform shall ingest claim details, accident narratives, liability indicators, third-party details, and repair estimates.
+FR-02: The platform shall flag claims with possible recovery potential using rules and evidence signals.
+FR-03: The platform shall create subrogation referral tasks with required evidence checklist.
+FR-04: The platform shall track referral outcome, recovery amount, and closure reason.
+
+## Non-Functional Requirements
+NFR-01 Performance: Claim scoring shall complete within 2 seconds at P95 for claim updates.
+NFR-02 Security: Claim and claimant information shall be restricted by role and region.
+NFR-03 Maintainability: Recovery rules shall be configurable by claims operations.
+
+## Constraints
+- Use existing claim core and document repository.
+- No automated third-party demand letter generation in MVP.
+- Pilot must use three historical claim categories.
+- The solution shall use approved enterprise monitoring, logging, secrets management, and deployment controls.
+- The first release shall prioritize audit-ready workflow visibility over broad feature expansion.
+
+## Risks
+- RISK-01 (HIGH): Source data quality may reduce workflow accuracy. Mitigation: profile pilot data early and expose confidence or exception states.
+- RISK-02 (MEDIUM): Users may continue using spreadsheets if adoption is not managed. Mitigation: include pilot users in demos and retire duplicate reports after launch.
+- RISK-03 (MEDIUM): Integration delays may affect the MVP timeline. Mitigation: build sandbox adapters and test source contracts during discovery.
+
+## Acceptance Criteria
+- All functional requirements are demonstrated with representative synthetic data.
+- The objectives, requirements, constraints, risks, and acceptance criteria are traceable in the final plan.
+- Role-based access, audit logging, and primary NFR evidence are reviewed before pilot launch.
+- Business owner signs off on dashboard, workflow, and export outputs.
+
+## Success Criteria Post Launch
+- The primary cycle-time or productivity objective is measured for pilot users.
+- At least 80% of pilot users complete required workflows in the new capability.
+- Audit or compliance reviewers accept the generated evidence package for pilot records.

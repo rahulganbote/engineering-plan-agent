@@ -141,11 +141,12 @@ const PHASES = [
 
 interface LandingWorkflowProps {
   title?: string;
+  defaultCollapsed?: boolean;
 }
 
-export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
+export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title, defaultCollapsed = false }) => {
   const [tooltipState, setTooltipState] = useState<{ id: NodeId; x: number; y: number } | null>(null);
-  const [showRoster, setShowRoster] = useState(false);
+  const [showRoster, setShowRoster] = useState(!defaultCollapsed);
   const rosterContainerRef = useRef<HTMLDivElement>(null);
   const prevShowRoster = useRef<boolean | null>(null);
 
@@ -409,10 +410,10 @@ export const LandingWorkflow: React.FC<LandingWorkflowProps> = ({ title }) => {
           <button
             onClick={() => setShowRoster((s) => !s)}
             aria-expanded={showRoster}
-            className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wider text-[#4f46e5] bg-[#4f46e5]/5 hover:bg-[#4f46e5]/10 border border-[#4f46e5]/30 rounded-full px-4 py-1.5 transition-colors"
+            className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-primary-foreground bg-primary hover:bg-primary/90 shadow-[0_0_15px_rgba(79,70,229,0.4)] border border-primary/50 rounded-full px-6 py-2.5 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
           >
             <Users size={16} />
-            {AGENT_ROSTER.length} Specialist Agents
+            Meet The {AGENT_ROSTER.length} Agents
             {showRoster ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>

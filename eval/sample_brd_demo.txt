@@ -1,0 +1,35 @@
+# Business Requirements Document
+# Project: Coffee Shop Mobile Ordering App
+# Domain: Consumer Retail | Complexity: Simple
+
+## Background
+Corner Café has one location and a line out the door every morning. Customers
+often skip the shop entirely because the wait is too long. The owner wants a
+mobile app so customers can order and pay ahead, then just walk in and grab
+their drink.
+
+## Objectives
+1. Let customers order and pay from their phone before arriving
+2. Reduce average in-store wait time during the morning rush
+3. Build repeat visits with a simple loyalty rewards program
+
+## Functional Requirements
+FR-01: Customers can browse the menu and customize drinks (size, milk, shots)
+FR-02: Customers can place an order and pay with a saved card or Apple Pay
+FR-03: Customers receive a push notification when their order is ready
+FR-04: Customers earn 1 point per dollar spent; 100 points = free drink
+FR-05: Baristas see incoming orders on a tablet in pickup order
+
+## Non-Functional Requirements
+NFR-01: Order confirmation screen loads in < 2 seconds
+NFR-02: Available on iOS 15+ and Android 11+
+NFR-03: 99.5% uptime during store hours (6am-7pm)
+
+## Constraints
+- Team: 2 engineers, 8 weeks, no new infrastructure budget
+- Must integrate with Square (existing point-of-sale system)
+- Card payment data must never touch our own servers (PCI compliance)
+
+## Risks
+- RISK-01 (LOW): Square API rate limits during morning rush
+- RISK-02 (LOW): Customers arriving before order is actually ready

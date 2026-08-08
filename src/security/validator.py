@@ -136,13 +136,15 @@ MAX_FILE_SIZE_BYTES = settings.max_brd_file_size_mb * 1024 * 1024
 MIN_BRD_WORDS = 50
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 
-# BRD sections that must be present for pipeline to proceed
-REQUIRED_BRD_SECTIONS = ["objective", "requirement", "constraint"]
+# BRD sections that must be present for pipeline to proceed.
+# Constraints are intentionally OPTIONAL - real-world business stakeholders
+# typically write goals/objectives and requirements/features but rarely
+# include an explicit constraints section.
+REQUIRED_BRD_SECTIONS = ["objective", "requirement"]
 
 MIN_SECTION_WORDS = {
     "objective": 5,
     "requirement": 10,
-    "constraint": 5,
 }
 
 PLACEHOLDER_PATTERNS = [
@@ -416,10 +418,16 @@ class SecurityValidator:
         elif ext == ".pdf" or "pdf" in content_type:
             from pypdf import PdfReader
 
+            from src.core.brd_utils import normalize_pdf_text
+
             reader = PdfReader(io.BytesIO(file_bytes))
             if reader.is_encrypted:
                 raise ValueError("PDF is password-protected")
-            return "\n".join(page.extract_text() or "" for page in reader.pages)
+            raw = "\n".join(page.extract_text() or "" for page in reader.pages)
+            # pypdf often shatters justified PDFs into one word per line, which
+            # breaks heading detection downstream. Reflow before returning.
+            # No-ops when the extraction came out clean.
+            return normalize_pdf_text(raw)
 
         elif ext == ".docx" or "wordprocessingml" in content_type:
             from docx import Document
@@ -444,7 +452,7 @@ class SecurityValidator:
                 status=ValidationStatus.BLOCKED,
                 user_message=(
                     f"📋 Your BRD is too short ({word_count} words). "
-                    "A valid BRD needs at minimum: objectives, requirements, and constraints. "
+                    "A valid BRD needs at minimum: objectives/goals and requirements/features. "
                     "Please expand the document and re-upload."
                 ),
                 technical_detail=f"TOO_SHORT word_count={word_count} min={MIN_BRD_WORDS}",
@@ -749,8 +757,7 @@ Respond ONLY with valid JSON:
                     f"📋 Your BRD is missing required sections:\n{checklist}\n\n"
                     "A valid BRD must include at least:\n"
                     "  • Objectives section - Must be present (min 5 words) and contain no placeholders (e.g., TBD, N/A).\n"
-                    "  • Requirements section - Must be present (min 10 words) and contain at least 2 distinct requirements (use tags like FR-X, NFR-X, REQ-X, or statements like 'The system shall...').\n"
-                    "  • Constraints section - Must be present (min 5 words) and contain no placeholders."
+                    "  • Requirements section - Must be present (min 10 words) and contain at least 2 distinct requirements (use tags like FR-X, NFR-X, REQ-X, or statements like 'The system shall...')."
                 ),
                 technical_detail=f"INCOMPLETE_BRD missing={llm_missing}",
                 missing_sections=llm_missing,
@@ -790,9 +797,7 @@ IMPORTANT - treat these as SEMANTIC concepts, not literal headings:
     business goals, primary goals, or what the project must achieve. The word "objective"
     does NOT need to appear literally.
   - "requirement" is present if the BRD describes functional requirements, non-functional
-    requirements, features, capabilities, or any "shall"/"must" statements.
-  - "constraint" is present if the BRD describes budget, timeline, scope limits, technical
-    limitations, out-of-scope items, or SLAs (latency, uptime, etc.).
+    requirements, features, capabilities, expectations, or any "shall"/"must" statements.
 
 Default: if the BRD has substantive content describing the concept in ANY wording,
 mark it FALSE (i.e. NOT missing). Only mark TRUE (missing) when the concept is genuinely absent.

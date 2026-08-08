@@ -128,6 +128,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from src.api.limiter import limiter
 
 app.state.limiter = limiter
+limiter.enabled = settings.rate_limiting_enabled
 app.add_middleware(SlowAPIMiddleware)
 
 secret_key = _os.environ.get("SESSION_SECRET_KEY")

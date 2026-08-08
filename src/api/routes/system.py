@@ -112,9 +112,13 @@ async def get_example_brd():
     """
     from pathlib import Path
 
-    brd_path = Path("eval/test_brd_simple.txt")
+    # Deliberately separate from eval/sample_brd_simple.txt, which is paired
+    # with eval/expected_output_simple.json as the eval suite's golden
+    # regression input - changing its content would require re-authoring that
+    # golden file. This is a standalone, UI-only demo BRD.
+    brd_path = Path("eval/sample_brd_demo.txt")
     if not brd_path.exists():
-        # Fallback to general base template if golden doesn't exist
+        # Fallback to general base template if the demo file doesn't exist
         brd_path = Path("knowledge_base/Engineering_Plan_Template.txt")
 
     if not brd_path.exists():
@@ -122,6 +126,6 @@ async def get_example_brd():
 
     try:
         content = brd_path.read_text(encoding="utf-8")
-        return {"filename": "test_brd_simple.txt", "content": content}
+        return {"filename": "sample_brd_demo.txt", "content": content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read example BRD: {e}")

@@ -1,0 +1,68 @@
+# Business Requirements Document
+# Project: Property Claim Intake and Triage
+# Domain: Insurance
+# Complexity: Medium
+# Synthetic Valid BRD Dataset Version: 1.0
+
+## Background and Business Context
+Property claim first notice of loss is handled through call center notes, web forms, and email attachments. Adjuster assignment is delayed when loss details and photos are incomplete.
+
+The current operating model relies on manual review, fragmented status tracking, and delayed reporting. The new product capability must improve speed, consistency, and audit readiness while staying within approved enterprise technology and compliance controls.
+
+## Objectives
+1. Reduce claim intake-to-assignment time from 36 hours to 2 hours.
+2. Auto-classify simple claims with high precision.
+3. Give supervisors visibility into surge volume and blocked claims.
+
+## Stakeholders
+- Product Owner: Insurance Product Manager
+- Business Sponsor: Senior Business Owner
+- Technical Lead: Platform Engineering Lead
+- Primary Users: Operations analysts, managers, compliance reviewers, and business specialists
+- Compliance and Security: Information Security, Privacy, Audit, and Risk teams
+- External Partners: Approved vendors and enterprise platform teams
+
+## Scope Boundaries
+In Scope:
+- Core workflow intake, tracking, review, and reporting for the named use case.
+- Integration with approved internal source systems and enterprise identity.
+- Audit evidence for key business decisions, user actions, and exported outputs.
+
+Out of Scope:
+- Replacement of upstream systems of record.
+- Fully autonomous business decisions without approved human review.
+- Production migration beyond the pilot population.
+
+## Functional Requirements
+FR-01: The platform shall capture loss details, policy number, location, damage type, photos, and claimant contact preference.
+FR-02: The platform shall validate policy status and coverage indicators through the policy administration service.
+FR-03: The platform shall classify claim severity and recommend adjuster assignment queue.
+FR-04: The platform shall notify claimants when more information is required.
+
+## Non-Functional Requirements
+NFR-01 Performance: Triage result shall be available within 5 seconds excluding upload time.
+NFR-02 Scalability: Intake shall handle 10x normal volume during catastrophe events.
+NFR-03 Auditability: Triage decisions and user overrides shall be retained for 7 years.
+
+## Constraints
+- Use existing claim core, policy admin, document storage, and notification tools.
+- No automated settlement offers in MVP.
+- State-specific claim handling rules must be reviewed.
+- The solution shall use approved enterprise monitoring, logging, secrets management, and deployment controls.
+- The first release shall prioritize audit-ready workflow visibility over broad feature expansion.
+
+## Risks
+- RISK-01 (HIGH): Source data quality may reduce workflow accuracy. Mitigation: profile pilot data early and expose confidence or exception states.
+- RISK-02 (MEDIUM): Users may continue using spreadsheets if adoption is not managed. Mitigation: include pilot users in demos and retire duplicate reports after launch.
+- RISK-03 (MEDIUM): Integration delays may affect the MVP timeline. Mitigation: build sandbox adapters and test source contracts during discovery.
+
+## Acceptance Criteria
+- All functional requirements are demonstrated with representative synthetic data.
+- The objectives, requirements, constraints, risks, and acceptance criteria are traceable in the final plan.
+- Role-based access, audit logging, and primary NFR evidence are reviewed before pilot launch.
+- Business owner signs off on dashboard, workflow, and export outputs.
+
+## Success Criteria Post Launch
+- The primary cycle-time or productivity objective is measured for pilot users.
+- At least 80% of pilot users complete required workflows in the new capability.
+- Audit or compliance reviewers accept the generated evidence package for pilot records.

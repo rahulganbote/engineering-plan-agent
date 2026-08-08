@@ -150,7 +150,7 @@ Four architectural patterns matter more than the rest:
 * **Deterministic Quality Caps over LLM-Judge**: LLM judges are systematically optimistic. Three deterministic rules (uncited claims, hallucinated citations, sentinel fallbacks) cap the overall score independent of the LLM's self-rating to guarantee audit quality.
 * **L1/L2 Caching & External Tool Boundaries**: To optimize costs and latency, all external LLM calls, semantic Pinecone search queries, and external Tavily web lookups are intercepted by a unified caching layer (L1 in-process memory with thread-safe TTL/LRU, or L2 Redis Cache). Cache hits bypass network boundaries and external rate-limiters completely.
 
-The full architecture diagram with security boundaries, observability events, and integration channels lives at [docs/Design.md](./docs/Design.md).
+The full architecture diagram with security boundaries, observability events, and integration channels lives at [docs/Design.md](./docs/Design.md). Every timeout, retry budget, circuit-breaker threshold, and cache TTL in the system is catalogued in [docs/TIMEOUTS.md](./docs/TIMEOUTS.md).
 
 ---
 
@@ -233,6 +233,14 @@ Result of Critic revision loop (v0 → v1): overall **3.38 → 4.33** on the gol
 
 ## Rate Limiter and Security
 The API enforces rate limits to prevent runaway LLM costs and protect against abuse. Powered by `slowapi`, the `/run-pipeline` endpoint applies dual limits per user (`x/day` and `y/week`). Limits are keyed by the authenticated user's email and return a standard `429 Too Many Requests` response with a configurable `Retry-After` header (defaulting to 3600 seconds). Additionally, a hard budget cap of `$2.00` per run (`MAX_PIPELINE_RUN_BUDGET_USD`) is enforced to immediately abort any run exceeding this financial threshold. These parameters can be customized in production via environment variables.
+
+### Valid BRD Criteria
+To initiate the planning pipeline, an uploaded BRD must satisfy the 7-step Security Validation Gate:
+*   **Format & Size:** Must be an uncorrupted PDF, DOCX, TXT, or MD file under 5.0 MB.
+*   **Content Length:** The document must contain at least 50 words overall to be processed.
+*   **Essential Sections:** Must address Objectives (≥5 words) and Requirements (≥10 words). Constraints are optional.
+*   **AI Safety:** Passes dual regex and LLM semantic scans to block prompt injection or jailbreak attempts.
+*   **PII Sanitization:** Automatically detects and redacts sensitive info (emails, phones, cards, SSNs) and runs fail-safe.
 
 ## Screenshots of Demo
 A full gallery of the operational React UI workspace, stepper progress runs, and LangSmith observability dashboards is available in [docs/screenshots/README.md](docs/screenshots/README.md).

@@ -135,6 +135,7 @@ class Settings(BaseSettings):
     # Retry-After header value (seconds) returned with every 429.
     # Conservative default: 1 hour. Operators can tune via env.
     rate_limit_retry_after_sec: int = 3600
+    rate_limiting_enabled: bool = True
     voice_webhook_secret: str = ""  # Token used by ElevenLabs webhook to authenticate voice approvals
     max_pipeline_run_budget_usd: float = 2.00  # Hard budget limit per pipeline run (dollars)
     # Gate for diagnostic routes like GET /debug/config-status. False in

@@ -32,18 +32,20 @@ export default defineConfig({
     proxy: {
       // During dev, proxy /api, /run-pipeline, /status, /approve, /download, /auth
       // to FastAPI so the React app can call them without CORS headaches.
-      '/api': 'http://localhost:8000',
-      '/run-pipeline': 'http://localhost:8000',
+      // Note: We use 127.0.0.1 instead of localhost to prevent macOS IPv6 (::1) resolution
+      // delays when connecting to the IPv4-bound Uvicorn server.
+      '/api': 'http://127.0.0.1:8000',
+      '/run-pipeline': 'http://127.0.0.1:8000',
 
-      '/status': { target: 'http://localhost:8000', changeOrigin: true },
-      '/events': 'http://localhost:8000',
-      '/approve': 'http://localhost:8000',
-      '/cancel': 'http://localhost:8000',
-      '/download': 'http://localhost:8000',
-      '/auth': 'http://localhost:8000',
-      '/results': 'http://localhost:8000',
-      '/artifacts': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
+      '/status': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/events': 'http://127.0.0.1:8000',
+      '/approve': 'http://127.0.0.1:8000',
+      '/cancel': 'http://127.0.0.1:8000',
+      '/download': 'http://127.0.0.1:8000',
+      '/auth': 'http://127.0.0.1:8000',
+      '/results': 'http://127.0.0.1:8000',
+      '/artifacts': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
     },
   },
   test: {

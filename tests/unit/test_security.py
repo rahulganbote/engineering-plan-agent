@@ -182,10 +182,29 @@ class TestBRDCompleteness:
         assert result.missing_sections
 
     def test_missing_sections_listed_in_message(self):
-        text_no_constraints = "## Objectives\nBuild something.\n## Requirements\nDo stuff."
-        result = validator._check_brd_completeness(text_no_constraints)
-        if result.status == ValidationStatus.BLOCKED:
-            assert "constraint" in result.user_message.lower()
+        incomplete = "## Objectives\nBuild something.\n## Requirements\nDo stuff."
+        result = validator._check_brd_completeness(incomplete)
+        assert result.status == ValidationStatus.BLOCKED
+        # Every flagged section must be named in the user-facing message so the
+        # uploader knows what to fix.
+        for section in result.missing_sections:
+            assert section.lower() in result.user_message.lower()
+
+    def test_constraints_are_optional(self):
+        """
+        Business stakeholders write goals and requirements but rarely a
+        Constraints section, so its absence must not block the pipeline.
+        """
+        no_constraints = (
+            "## Objectives\n"
+            "Reduce checkout abandonment by alerting on payment failures quickly.\n"
+            "## Requirements\n"
+            "FR-01: The system shall read new checkout events every five minutes.\n"
+            "FR-02: The system shall publish one ALERT or LOG command per run.\n"
+        )
+        result = validator._check_brd_completeness(no_constraints)
+        assert result.status == ValidationStatus.PASSED
+        assert "constraint" not in result.user_message.lower()
 
     def test_placeholder_sections_blocked(self):
         text = """

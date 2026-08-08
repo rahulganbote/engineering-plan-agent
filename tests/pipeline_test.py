@@ -107,11 +107,11 @@ def _run_brd(brd_path: Path):
 
 def test_simple_brd_pipeline():
     """
-    Full pipeline on test_brd_simple.txt.
+    Full pipeline on sample_brd_simple.txt.
     Validates: all agents ran, Pydantic contracts satisfied, badge assigned.
     """
     print(f"\n  {cyan('SUITE 1: Simple BRD - happy path')}")
-    brd_path = ROOT / "eval" / "test_brd_simple.txt"
+    brd_path = ROOT / "eval" / "sample_brd_simple.txt"
     if not brd_path.exists():
         print(f"  ⚠️  {brd_path} not found - skipping")
         return
@@ -237,7 +237,7 @@ def test_critic_scores():
     Also verifies revision loop triggered when score is low.
     """
     print(f"\n  {cyan('SUITE 3: Critic scores + revision loop')}")
-    brd_path = ROOT / "eval" / "test_brd_simple.txt"
+    brd_path = ROOT / "eval" / "sample_brd_simple.txt"
     if not brd_path.exists():
         print(f"  ⚠️  {brd_path} not found - skipping")
         return
@@ -478,7 +478,7 @@ def test_logging():
 
     from src.core.logger import JSONL_LOG
 
-    brd_path = ROOT / "eval" / "test_brd_simple.txt"
+    brd_path = ROOT / "eval" / "sample_brd_simple.txt"
     if not brd_path.exists():
         print("  ⚠️  Simple BRD not found - skipping")
         return {}

@@ -38,7 +38,11 @@ Rules:
 4. buffer_weeks: 0 for simple (<4 weeks), 1 for medium, 2+ for complex/AI
 5. critical_path: list in dependency order - what blocks what
 6. AI/LLM workloads: add 15-20% buffer for prompt engineering iteration
-7. Output ONLY valid JSON - no markdown, no explanation"""
+7. Ground your output in the BRD's SPECIFIC business context: sprint deliverables
+   and critical_path items must name the actual features/integrations being built
+   (e.g. "Square payment integration" not "third-party integration"). A reader
+   should understand what project this schedule is for without the original BRD.
+8. Output ONLY valid JSON - no markdown, no explanation"""
 
 SCHEMA = """{
   "sprints": [
@@ -168,6 +172,7 @@ class ScheduleEstimatorAgent(BaseAgent):
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
+                f"{self.project_context(state)}"
                 f"{feedback_block}"
                 f"PLAN SUMMARY:\n{self._plan_summary(plan_output)}\n\n"
                 f"UPSTREAM POC DETAILS:\n{poc_summary}\n\n"

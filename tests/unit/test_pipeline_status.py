@@ -7,13 +7,14 @@ def test_pipeline_status_values_are_stable():
     Any addition or rename must update this test intentionally.
     """
     assert set(PipelineStatus) == {
+        "initializing",
         "idle",
         "security_check",
         "running",
         "drafting",
         "arbitrating",
         "aligning",
-        "orchestrator_parsing",
+        "orchestrator_routing",
         "evaluating",
         "revising",
         "awaiting_hitl",

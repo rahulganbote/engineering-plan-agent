@@ -5,6 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Warm the connection to Loom ahead of time - the "How it works" demo
+         video's iframe doesn't mount until the user clicks it, so without
+         this the click triggers a cold DNS+TLS handshake before the player
+         even starts loading, showing as a several-second blank delay. -->
+    <link rel="preconnect" href="https://www.loom.com" />
+    <link rel="preconnect" href="https://cdn.loom.com" crossorigin />
+
     <!-- ─── SEO + Social sharing ───────────────────────────────────────
          The visible landing header stays "EM Copilot: BRD → Engineering
          Plan" for descriptive impact. Below are the SEO / social preview

@@ -1,0 +1,68 @@
+# Business Requirements Document
+# Project: Commercial Loan Covenant Monitoring
+# Domain: Banking
+# Complexity: Complex
+# Synthetic Valid BRD Dataset Version: 1.0
+
+## Background and Business Context
+Commercial lending teams manually review borrower financial statements and covenant clauses. Reviews are late, covenant exceptions are scattered across email, and audit teams lack a single evidence trail.
+
+The current operating model relies on manual review, fragmented status tracking, and delayed reporting. The new product capability must improve speed, consistency, and audit readiness while staying within approved enterprise technology and compliance controls.
+
+## Objectives
+1. Reduce covenant review cycle time by 60%.
+2. Detect upcoming covenant breaches before quarterly review meetings.
+3. Create an auditable evidence package for each borrower review.
+
+## Stakeholders
+- Product Owner: Banking Product Manager
+- Business Sponsor: Senior Business Owner
+- Technical Lead: Platform Engineering Lead
+- Primary Users: Operations analysts, managers, compliance reviewers, and business specialists
+- Compliance and Security: Information Security, Privacy, Audit, and Risk teams
+- External Partners: Approved vendors and enterprise platform teams
+
+## Scope Boundaries
+In Scope:
+- Core workflow intake, tracking, review, and reporting for the named use case.
+- Integration with approved internal source systems and enterprise identity.
+- Audit evidence for key business decisions, user actions, and exported outputs.
+
+Out of Scope:
+- Replacement of upstream systems of record.
+- Fully autonomous business decisions without approved human review.
+- Production migration beyond the pilot population.
+
+## Functional Requirements
+FR-01: The platform shall ingest borrower financial statements, covenant definitions, loan metadata, and relationship manager notes.
+FR-02: The platform shall calculate covenant ratios and compare results to approved thresholds.
+FR-03: The platform shall route potential breaches to credit officers for review and approval.
+FR-04: The platform shall export borrower-level covenant evidence, calculations, comments, and approvals.
+
+## Non-Functional Requirements
+NFR-01 Performance: Quarterly batch calculation shall process 10,000 borrowers in under 2 hours.
+NFR-02 Auditability: Calculation inputs, formula versions, and approvals shall be retained for 7 years.
+NFR-03 Security: Borrower financial data shall be isolated by portfolio and role.
+
+## Constraints
+- Use existing loan servicing data, document repository, and credit workflow tools.
+- No automated default declaration or customer notification in MVP.
+- Credit policy owners must approve formula configuration before launch.
+- The solution shall use approved enterprise monitoring, logging, secrets management, and deployment controls.
+- The first release shall prioritize audit-ready workflow visibility over broad feature expansion.
+
+## Risks
+- RISK-01 (HIGH): Source data quality may reduce workflow accuracy. Mitigation: profile pilot data early and expose confidence or exception states.
+- RISK-02 (MEDIUM): Users may continue using spreadsheets if adoption is not managed. Mitigation: include pilot users in demos and retire duplicate reports after launch.
+- RISK-03 (MEDIUM): Integration delays may affect the MVP timeline. Mitigation: build sandbox adapters and test source contracts during discovery.
+
+## Acceptance Criteria
+- All functional requirements are demonstrated with representative synthetic data.
+- The objectives, requirements, constraints, risks, and acceptance criteria are traceable in the final plan.
+- Role-based access, audit logging, and primary NFR evidence are reviewed before pilot launch.
+- Business owner signs off on dashboard, workflow, and export outputs.
+
+## Success Criteria Post Launch
+- The primary cycle-time or productivity objective is measured for pilot users.
+- At least 80% of pilot users complete required workflows in the new capability.
+- Audit or compliance reviewers accept the generated evidence package for pilot records.

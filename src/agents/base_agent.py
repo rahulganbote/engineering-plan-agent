@@ -272,6 +272,28 @@ class BaseAgent:
         """True if citations indicate no RAG context was retrieved."""
         return not citation_ids or citation_ids == [NO_RAG_SENTINEL]
 
+    # ── BRD grounding ─────────────────────────────────────────────────────────
+
+    def project_context(self, state) -> str:
+        """
+        PROJECT CONTEXT preamble naming the product, domain, and business goal
+        that src/agents/brd_context.py identified for this run.
+
+        Prepended to every specialist's user prompt. Telling an agent to "be
+        specific to the BRD" is not enough when the BRD is long or awkwardly
+        parsed - stating the project identity up front is what makes phase
+        names, component names, and rationales come out domain-specific.
+
+        Returns "" when the identity is unknown, leaving the prompt unchanged.
+        """
+        from src.agents.brd_context import build_context_block
+
+        return build_context_block(
+            getattr(state, "brd_project_title", "") or "",
+            getattr(state, "brd_objective_summary", "") or "",
+            getattr(state, "brd_domain", "") or "",
+        )
+
     # ── LLM Call with Retry ───────────────────────────────────────────────────
 
     def _call_llm_with_retry(

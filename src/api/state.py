@@ -105,12 +105,13 @@ class RedisDictProxy:
             try:
                 full_k = self._full_key(key)
                 if self.return_sub_proxy:
-                    # Return the proxy even if empty so setters can lazily create fields.
                     return RedisSubDictProxy(self, key)
                 if not self.redis.exists(full_k):
+                    if key in self.local_dict:
+                        return self.local_dict[key]
                     raise KeyError(key)
                 raw = self.redis.get(full_k)
-                return self.deserializer(raw)
+                return self.deserializer(raw.decode("utf-8"))
             except KeyError:
                 raise
             except redis.RedisError as e:
@@ -119,6 +120,8 @@ class RedisDictProxy:
         # In-memory path
         if self.return_sub_proxy:
             return LocalSubDictProxy(self.local_dict, key)
+        if key not in self.local_dict:
+            raise KeyError(key)
         return self.local_dict[key]
 
     def __setitem__(self, key: str, value):
@@ -157,7 +160,10 @@ class RedisDictProxy:
     def __contains__(self, key: str) -> bool:
         if self.redis:
             try:
-                return bool(self.redis.exists(self._full_key(key)))
+                exists = bool(self.redis.exists(self._full_key(key)))
+                if not exists and key in self.local_dict:
+                    return True
+                return exists
             except redis.RedisError as e:
                 log.warning(f"[state:redis] Dict contains failed ({type(e).__name__}); degrading to memory: {e}")
 
@@ -171,7 +177,9 @@ class RedisDictProxy:
                     snap = sub._hgetall()
                     return snap if snap else default
                 except redis.RedisError as e:
-                    log.warning(f"[state:redis] Dict get sub-proxy failed ({type(e).__name__}); degrading: {e}")
+                    log.warning(
+                        f"[state:redis] Dict get sub-proxy failed ({type(e).__name__}); degrading to memory: {e}"
+                    )
             snap = self.local_dict.get(key)
             if not snap:
                 return default
@@ -259,12 +267,10 @@ class RedisSubDictProxy:
             try:
                 raw = self._parent.redis.hget(self._hash_key, item)
                 if raw is None:
+                    if self._key in self._parent.local_dict and item in self._parent.local_dict[self._key]:
+                        return self._parent.local_dict[self._key][item]
                     raise KeyError(item)
-                raw_str = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
-                try:
-                    return json.loads(raw_str)
-                except (TypeError, ValueError):
-                    return raw_str
+                return json.loads(raw.decode("utf-8"))
             except KeyError:
                 raise
             except redis.RedisError as e:
@@ -290,7 +296,10 @@ class RedisSubDictProxy:
     def __contains__(self, item) -> bool:
         if self._parent.redis:
             try:
-                return bool(self._parent.redis.hexists(self._hash_key, item))
+                exists = bool(self._parent.redis.hexists(self._hash_key, item))
+                if not exists and self._key in self._parent.local_dict and item in self._parent.local_dict[self._key]:
+                    return True
+                return exists
             except redis.RedisError as e:
                 log.warning(f"[state:redis] SubDict hexists failed ({type(e).__name__}); degrading to memory: {e}")
 

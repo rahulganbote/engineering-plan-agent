@@ -152,6 +152,7 @@ export const AgentWorkspace: React.FC = () => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isConfirmResetModalOpen, setIsConfirmResetModalOpen] = useState(false);
   // Which nav/hero CTA opened the modal — varies the modal headline only;
   // both paths use the same Google OAuth flow (see AuthPromptModal).
   const [authModalVariant, setAuthModalVariant] = useState<'signin' | 'signup'>('signup');
@@ -249,6 +250,7 @@ export const AgentWorkspace: React.FC = () => {
   const exportResultsRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const hasShownToastForRunId = useRef<string | null>(null);
+  const workstationBodyRef = useRef<HTMLDivElement>(null);
 
   // ── Issue 2 fix: Sonner toast when a provider fallback kicks in ──────────
   // The inline banner (further down in JSX) persists for the rest of the run,
@@ -327,6 +329,15 @@ export const AgentWorkspace: React.FC = () => {
     clearRun();
     setRunId(null);
     setStartupError(null);
+    workstationBodyRef.current?.scrollTo({ top: 0 });
+  };
+
+  const handleRemoveFileWithConfirm = () => {
+    if (runId) {
+      setIsConfirmResetModalOpen(true);
+    } else {
+      handleReset();
+    }
   };
 
   const handleDecisionSubmitted = (data: ApprovalResponse) => {
@@ -431,6 +442,18 @@ export const AgentWorkspace: React.FC = () => {
     window.location.href = `${apiBaseUrl}/download/${runId}`;
   };
 
+  const handleDownloadBRD = () => {
+    if (!selectedFile) return;
+    const url = URL.createObjectURL(selectedFile);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = selectedFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col md:flex-row min-h-[100dvh] md:h-[100dvh] bg-background text-foreground md:overflow-hidden font-sans">
       {/* Left Sidebar Control Panel — only mounts once the user is signed in
@@ -452,30 +475,36 @@ export const AgentWorkspace: React.FC = () => {
                 <span className="text-xs text-primary font-semibold">
                   {user?.isGuest ? 'Guest Mode:' : 'Signed in:'}
                 </span>
-                <div className="flex items-center gap-3">
-                  {user?.isGuest && (
+                {user?.isGuest ? (
+                  // Two distinct actions for guests: "Sign in" upgrades the
+                  // guest session to a real account (calls login, same as
+                  // before); "Exit" just ends the guest session and returns
+                  // to the marketing homepage (calls logout). Previously only
+                  // "Sign in" existed here, so a guest had no way to leave
+                  // guest mode without upgrading.
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={login}
+                      className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
+                    >
+                      Sign in <LogIn size={12} />
+                    </button>
+                    <span className="text-border" aria-hidden="true">|</span>
                     <button
                       onClick={logout}
-                      className="text-xs text-muted-foreground hover:text-foreground hover:underline flex items-center gap-0.5"
+                      className="text-xs text-muted-foreground hover:text-danger hover:underline font-semibold"
                     >
-                      Exit <LogOut size={12} />
+                      Exit
                     </button>
-                  )}
+                  </div>
+                ) : (
                   <button
-                    onClick={user?.isGuest ? login : logout}
+                    onClick={logout}
                     className="text-xs text-primary hover:text-primary hover:underline flex items-center gap-1 font-semibold"
                   >
-                    {user?.isGuest ? (
-                      <>
-                        Sign in <LogIn size={12} />
-                      </>
-                    ) : (
-                      <>
-                        Sign out <LogOut size={12} />
-                      </>
-                    )}
+                    Sign out <LogOut size={12} />
                   </button>
-                </div>
+                )}
               </div>
               <div className="text-sm font-semibold text-foreground truncate">
                 {user?.isGuest ? 'Anonymous Guest' : (user?.name || user?.email)}
@@ -501,8 +530,8 @@ export const AgentWorkspace: React.FC = () => {
                       the reason so the user knows WHY an option is greyed out. */}
                   {[
                     { key: 'openai', label: 'OpenAI (Default: GPT-4o)' },
-                    { key: 'anthropic', label: 'Anthropic (Default: Claude 4.5 Sonnet)' },
-                    { key: 'llama', label: 'Llama 3.3 (OpenRouter)' },
+                    { key: 'anthropic', label: 'Anthropic (Default: Claude Sonnet 4.5)' },
+                    { key: 'llama', label: 'Meta (Llama 3.3 70B)' },
                     { key: 'mistral', label: 'Mistral' },
                   ].map(({ key, label }) => {
                     // Default to "available" if we haven't received the providers
@@ -540,7 +569,7 @@ export const AgentWorkspace: React.FC = () => {
           )}
 
           {/* Upload BRD Section */}
-          {isAuthenticated && (
+          {isAuthenticated && !runId && (
             <div className="space-y-3">
               <div className="flex items-center justify-center">
                 <h3 className="text-sm font-bold text-primary uppercase tracking-wider text-center">Upload BRD</h3>
@@ -593,10 +622,16 @@ export const AgentWorkspace: React.FC = () => {
 
               {selectedFile && (
                 <div className="flex items-center justify-between p-2 bg-background rounded border border-border text-xs">
-                  <span className="truncate max-w-[180px] font-medium text-foreground">{selectedFile.name}</span>
+                  <button
+                    onClick={handleDownloadBRD}
+                    className="truncate max-w-[180px] font-medium text-foreground hover:underline text-left cursor-pointer"
+                    title="Click to download and view this BRD"
+                  >
+                    {selectedFile.name}
+                  </button>
                   <span className="text-muted-foreground text-[10px] ml-2">{(selectedFile.size / 1024).toFixed(1)}KB</span>
                   <button
-                    onClick={() => setSelectedFile(null)}
+                    onClick={handleRemoveFileWithConfirm}
                     className="text-muted-foreground hover:text-danger ml-2"
                     aria-label="Remove selected file"
                   >
@@ -610,37 +645,39 @@ export const AgentWorkspace: React.FC = () => {
           {/* Trigger Button + runtime expectation hint */}
           {isAuthenticated && (
             <div>
-              <div
-                className="relative group/btn w-full"
-                title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
-              >
-                <button
-                  onClick={() => triggerPipeline()}
-                  disabled={!selectedFile || !!runId || isStartingPipeline}
-                  className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
-                    ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                    : selectedFile
-                      ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
-                      : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
-                    }`}
+              {!runId && (
+                <div
+                  className="relative group/btn w-full"
+                  title={!selectedFile ? "Please upload a BRD file to enable generation." : ""}
                 >
-                  {isStartingPipeline ? (
-                    <>
-                      <Loader2 className="animate-spin text-primary" size={16} />
-                      <span>Starting Pipeline...</span>
-                    </>
-                  ) : (
-                    <span>Generate Engineering Plan</span>
-                  )}
-                </button>
+                  <button
+                    onClick={() => triggerPipeline()}
+                    disabled={!selectedFile || !!runId || isStartingPipeline}
+                    className={`w-full py-2.5 rounded-lg font-bold text-sm transition-all duration-150 flex items-center justify-center gap-2 transform ${runId || isStartingPipeline
+                      ? 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                      : selectedFile
+                        ? 'bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-[0_4px_14px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.4)] cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
+                        : 'bg-secondary/40 text-muted-foreground/60 border border-border/50 cursor-not-allowed shadow-none'
+                      }`}
+                  >
+                    {isStartingPipeline ? (
+                      <>
+                        <Loader2 className="animate-spin text-primary" size={16} />
+                        <span>Starting Pipeline...</span>
+                      </>
+                    ) : (
+                      <span>Generate Engineering Plan</span>
+                    )}
+                  </button>
 
-                {!selectedFile && !runId && !isStartingPipeline && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-popover border border-border text-popover-foreground text-[11px] rounded-md shadow-md pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-150 z-20 text-center font-medium w-[220px]">
-                    Please upload or drag a BRD file first
-                    <span className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 -mt-1 rotate-45 bg-popover border-r border-b border-border" />
-                  </div>
-                )}
-              </div>
+                  {!selectedFile && !runId && !isStartingPipeline && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-popover border border-border text-popover-foreground text-[11px] rounded-md shadow-md pointer-events-none opacity-0 group-hover/btn:opacity-100 transition-opacity duration-150 z-20 text-center font-medium w-[220px]">
+                      Please upload or drag a BRD file first
+                      <span className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 -mt-1 rotate-45 bg-popover border-r border-b border-border" />
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Runtime expectation - sits with the action surface so the user
                   knows what to expect at the moment they're about to commit. */}
               {!runId && (
@@ -670,9 +707,27 @@ export const AgentWorkspace: React.FC = () => {
           {runId && (
             <div className="border-t border-border pt-4 space-y-2">
               <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Current Run</h4>
-              <div className="flex items-center gap-1.5">
-                <div className="flex-1 bg-background p-2 rounded font-sans text-[10px] text-foreground border border-border truncate" title={runId}>
-                  Run #{runId.slice(0, 5)}: {selectedFile ? selectedFile.name : 'BRD Pipeline'}
+              <div className="flex items-start gap-1.5">
+                {/* Run ID and BRD filename split into separate rows - a single
+                    truncated line cramped both together with no room to
+                    breathe. Each line truncates independently now. */}
+                <div className="flex-1 min-w-0 bg-background p-2 rounded border border-border space-y-0.5">
+                  <div className="font-mono text-[10px] text-primary font-bold break-all" title={runId}>
+                    Run #{runId}
+                  </div>
+                  {selectedFile ? (
+                    <button
+                      onClick={handleDownloadBRD}
+                      className="text-xs font-semibold text-foreground hover:underline text-left break-all cursor-pointer block w-full"
+                      title="Click to download and view this BRD"
+                    >
+                      {selectedFile.name}
+                    </button>
+                  ) : (
+                    <div className="text-xs font-semibold text-foreground break-words">
+                      BRD Pipeline
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => {
@@ -810,7 +865,7 @@ export const AgentWorkspace: React.FC = () => {
         </header>
         )}
         {/* Scrollable Workstation Body */}
-        <div className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
+        <div ref={workstationBodyRef} className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
           {!runId ? (
             <div className="space-y-6">
               {startupError && (
@@ -827,7 +882,7 @@ export const AgentWorkspace: React.FC = () => {
               <IngestionLanding
                 selectedFile={selectedFile}
                 onFileSelect={setSelectedFile}
-                onRemoveFile={() => setSelectedFile(null)}
+                onRemoveFile={handleRemoveFileWithConfirm}
                 onTrigger={triggerPipeline}
                 isLoading={pipelineStatus === PIPELINE_STATUS.INITIALIZING}
                 isAuthenticated={isAuthenticated}
@@ -885,19 +940,19 @@ export const AgentWorkspace: React.FC = () => {
 
               {/* Pipeline Error Alert Banner */}
               {pipelineStatus === PIPELINE_STATUS.ERROR && (
-                <div className="bg-danger/30 border border-danger/50 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
+                <div className="bg-danger/10 dark:bg-danger border border-danger/30 dark:border-danger/30 p-5 rounded-xl shadow-lg flex flex-col gap-3 animate-fade-in">
                   <div className="flex items-start justify-between gap-4">
-                    <h4 className="text-sm font-bold text-danger flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-danger dark:text-white flex items-center gap-2">
                       <span>❌</span> Agentic Workflow Execution Failed
                     </h4>
                     <button
                       onClick={handleReset}
-                      className="shrink-0 px-3 py-1.5 bg-danger/20 hover:bg-danger/40 border border-danger/50 text-danger text-xs font-bold rounded transition"
+                      className="shrink-0 px-3 py-1.5 bg-danger/15 hover:bg-danger/30 border border-danger/30 text-danger dark:bg-white/20 dark:hover:bg-white/30 dark:border-white/30 dark:text-white text-xs font-bold rounded transition"
                     >
                       Clear & Try Again
                     </button>
                   </div>
-                  <p className="text-xs text-danger/90 leading-relaxed font-semibold">
+                  <p className="text-xs text-danger/90 dark:text-[#fee2e2] leading-relaxed font-semibold">
                     {errorMessage || "An unexpected error occurred during execution. Please check the logs."}
                   </p>
                 </div>
@@ -969,7 +1024,7 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="space-y-4 border border-border rounded-xl p-5 bg-card shadow-md">
                     <div className="flex items-center justify-between border-b border-border/60 pb-3">
                       <div className="space-y-0.5">
-                        <h3 className="text-xs font-black text-primary uppercase tracking-wider">Independent Critic Score</h3>
+                        <h3 className="text-xs font-black text-primary uppercase tracking-wider">Independent Quality Score</h3>
                         <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
                           <span>Evaluation Score:</span>
                           <span className={`font-semibold tabular-nums ${
@@ -1242,7 +1297,19 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <div className="space-y-0.5">
                       <h3 className="text-xs font-black text-primary uppercase tracking-wider">Generated Artifacts</h3>
-                      <p className="text-[12px] text-muted-foreground">Review individual planning deliverables</p>
+                      <p
+                        className="text-[12px] text-muted-foreground"
+                        title={artifacts.brd_objective_summary || undefined}
+                      >
+                        {artifacts.brd_project_title
+                          ? <>Planning deliverables for <span className="font-semibold text-foreground">{artifacts.brd_project_title}</span></>
+                          : 'Review individual planning deliverables'}
+                      </p>
+                      {artifacts.brd_objective_summary && (
+                        <p className="text-[11px] text-muted-foreground/80 max-w-2xl leading-snug">
+                          {artifacts.brd_objective_summary}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={handleDownloadPDF}
@@ -1307,7 +1374,11 @@ export const AgentWorkspace: React.FC = () => {
                 PIPELINE_STATUS.REJECTED
               ] as string[]).includes(pipelineStatus)) && (
                   <div ref={exportResultsRef} className="border-t border-border pt-5 mt-4">
-                    <div className="max-w-4xl mx-auto p-5 bg-card border border-border rounded-xl shadow-lg transition-all duration-300">
+                    <div className={`max-w-4xl mx-auto p-5 rounded-xl transition-all duration-300 border ${
+                      pipelineStatus === PIPELINE_STATUS.EXPORTING
+                        ? 'border-primary/50 shadow-[0_0_20px_rgba(79,70,229,0.15)] bg-gradient-to-b from-card to-primary/5'
+                        : 'bg-card border-border shadow-lg'
+                    }`}>
 
                       {/* 1. DYNAMIC SYSTEM ACTION STATE HEADER */}
                       {pipelineStatus !== PIPELINE_STATUS.AWAITING_HITL && (
@@ -1319,7 +1390,7 @@ export const AgentWorkspace: React.FC = () => {
                             {pipelineStatus === PIPELINE_STATUS.EXPORT_FAILED && <span className="text-warning text-sm">⚠️</span>}
 
                             <span>
-                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && "Recording Decision & Syncing Plan..."}
+                              {pipelineStatus === PIPELINE_STATUS.EXPORTING && (approvalResult?.decision === 'rejected' ? "Recording Your Decision & Rejection note..." : "Recording Your Decision & Syncing Plan...")}
                               {!([PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING] as string[]).includes(pipelineStatus) && "Export Results & Audit Trace"}
                             </span>
                           </h3>
@@ -1359,15 +1430,15 @@ export const AgentWorkspace: React.FC = () => {
                             Please wait. EM Copilot is writing the decision log to your Google Sheets dashboard, indexing plan chunks into your Pinecone vector database, and creating the Jira Epic + Task structure.
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] font-bold text-muted-foreground">
-                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
-                              <span className="text-success">✓</span>
+                            <div className="flex items-center gap-2 p-2.5 bg-success/5 border border-success/30 text-success/90 rounded-lg">
+                              <span className="text-success font-black">✓</span>
                               <span>Google Sheets Log</span>
                             </div>
-                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/30 text-foreground rounded-lg animate-pulse">
                               <Loader2 className="animate-spin text-primary shrink-0" size={11} />
                               <span>Creating Jira Epic</span>
                             </div>
-                            <div className="flex items-center gap-2 p-2.5 bg-secondary/10 border border-border rounded-lg">
+                            <div className="flex items-center gap-2 p-2.5 bg-primary/5 border border-primary/30 text-foreground rounded-lg animate-pulse">
                               <Loader2 className="animate-spin text-primary shrink-0" size={11} />
                               <span>Pinecone Indexing</span>
                             </div>
@@ -1412,7 +1483,7 @@ export const AgentWorkspace: React.FC = () => {
                                       : 'border-primary text-primary hover:bg-primary/10'
                                     }`}
                                 >
-                                  Open Google Sheet
+                                  Open Dashboard
                                 </a>
                               </div>
                             ) : approvalResult?.export_status === 'local_fallback' ? (
@@ -1584,6 +1655,53 @@ export const AgentWorkspace: React.FC = () => {
         onLogin={login}
         variant={authModalVariant}
       />
+
+      {/* Reset Confirmation Dialog */}
+      {isConfirmResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsConfirmResetModalOpen(false)}
+          />
+          <div className="bg-card border border-border shadow-2xl rounded-2xl max-w-md w-full relative z-10 flex flex-col overflow-hidden animate-scale-in text-foreground">
+            <button
+              onClick={() => setIsConfirmResetModalOpen(false)}
+              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition p-1.5 rounded-lg hover:bg-secondary/80"
+              aria-label="Close confirmation dialog"
+            >
+              <X size={18} />
+            </button>
+            <div className="px-6 pt-8 pb-6 text-center space-y-4">
+              <div className="mx-auto h-12 w-12 rounded-full bg-danger/10 text-danger flex items-center justify-center">
+                <span className="text-xl">⚠️</span>
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-xl font-extrabold tracking-tight">Reset Workspace?</h2>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to cancel the active pipeline run and clear the selected file? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setIsConfirmResetModalOpen(false)}
+                  className="flex-1 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground rounded-xl font-bold text-sm border border-border transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleReset();
+                    setIsConfirmResetModalOpen(false);
+                  }}
+                  className="flex-1 py-2.5 bg-danger hover:bg-danger/90 text-white rounded-xl font-bold text-sm shadow-md transition"
+                >
+                  Confirm Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield, Cpu, UserCheck, Check, Loader2, X,
   Wrench, GitPullRequest,
@@ -56,13 +56,24 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     setTooltipState(null);
   };
 
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!containerRef.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(entries => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const getTooltipPosition = () => {
-    if (!tooltipState || !containerRef.current) return { left: 0, top: 0 };
+    if (!tooltipState) return { left: 0, top: 0 };
     const tooltipWidth = 256;
-    const containerWidth = containerRef.current.getBoundingClientRect().width;
+    const safeContainerWidth = containerWidth || 1000;
     const leftX = Math.max(
       12 + tooltipWidth / 2,
-      Math.min(tooltipState.x, containerWidth - tooltipWidth / 2 - 12)
+      Math.min(tooltipState.x, safeContainerWidth - tooltipWidth / 2 - 12)
     );
     return {
       left: `${leftX}px`,
@@ -104,10 +115,18 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     ];
     if (PAST_PARALLEL.includes(pipelineStatus)) return 'completed';
 
-    // Pre-parallel states (INITIALIZING, STARTED, SECURITY_CHECK, ORCHESTRATOR_PARSING,
+    // Pre-parallel states (INITIALIZING, STARTED, SECURITY_CHECK, ORCHESTRATOR_ROUTING,
     // CANCELED, ERROR): specialists haven't started yet — do NOT mark them completed.
     return 'pending';
   };
+
+  const revisionCount = logs.filter(l => l.type === 'revision_start').length;
+  const isRevising = pipelineStatus === PIPELINE_STATUS.REVISING ||
+    (revisionCount > 0 && (
+      pipelineStatus === PIPELINE_STATUS.ALIGNING ||
+      pipelineStatus === PIPELINE_STATUS.EVALUATING ||
+      pipelineStatus === PIPELINE_STATUS.DRAFTING
+    ));
 
   const nodes = {
     upload: {
@@ -135,7 +154,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
     orchestrator: {
       label: 'Orchestrator Agent',
       desc: 'Parses the BRD sections, evaluates structure completeness, and distributes tasks to 5 specialists Agents.',
-      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_PARSING || pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING,
+      isActive: pipelineStatus === PIPELINE_STATUS.RUNNING || pipelineStatus === PIPELINE_STATUS.ORCHESTRATOR_ROUTING || pipelineStatus === PIPELINE_STATUS.ARBITRATING || pipelineStatus === PIPELINE_STATUS.ALIGNING,
       isCompleted: ([PIPELINE_STATUS.DRAFTING, PIPELINE_STATUS.EVALUATING, PIPELINE_STATUS.REVISING, PIPELINE_STATUS.AWAITING_HITL, PIPELINE_STATUS.EXPORTING, PIPELINE_STATUS.EXPORTED, PIPELINE_STATUS.REJECTED] as string[]).includes(pipelineStatus),
       isFailed: pipelineStatus === PIPELINE_STATUS.ERROR && !logs.some(l => l.type === 'agent_complete' && l.agent === 'orchestrator'),
     },
@@ -387,6 +406,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             fill="none"
             stroke={nodes.orchestrator.isCompleted ? "#10B981" : (nodes.critic.isActive ? "#6366F1" : "#94A3B8")}
             strokeWidth="2"
+            markerStart={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
             markerEnd={`url(#${nodes.orchestrator.isCompleted ? 'arrow-success' : (nodes.critic.isActive ? 'arrow-primary' : 'arrow-gray')})`}
           />
 
@@ -415,7 +435,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               pipelineStatus !== PIPELINE_STATUS.INITIALIZING && 
               pipelineStatus !== PIPELINE_STATUS.STARTED && 
               pipelineStatus !== PIPELINE_STATUS.RUNNING && 
-              pipelineStatus !== PIPELINE_STATUS.ORCHESTRATOR_PARSING;
+              pipelineStatus !== PIPELINE_STATUS.ORCHESTRATOR_ROUTING;
 
             const isRagAnimating = 
               nodes.orchestrator.isActive || 
@@ -493,7 +513,11 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               onMouseLeave={handleMouseLeave}
             >
               <div className={getStyleClasses(nodes.security, 'rect')}>
-                <Shield size={16} className="mr-2 shrink-0" />
+                {nodes.security.isActive ? (
+                  <Loader2 size={16} className="animate-spin mr-2 shrink-0" />
+                ) : (
+                  <Shield size={16} className="mr-2 shrink-0" />
+                )}
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] md:text-[11px] font-bold leading-tight">Security</span>
                   <span className="text-[8.5px] leading-tight">Validator</span>
@@ -615,9 +639,6 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
               onMouseLeave={handleMouseLeave}
             >
               {(() => {
-                const isRevising = pipelineStatus === PIPELINE_STATUS.REVISING;
-                const revisionCount = logs.filter(l => l.type === 'revision_start').length;
-
                 if (isRevising) {
                   return (
                     <div className="w-8 h-8 rounded-full border border-warning/40 bg-warning/5 flex items-center justify-center shadow-sm text-warning">
@@ -811,7 +832,7 @@ export const TimelineStepper: React.FC<TimelineStepperProps> = ({
             {tooltipState.id === 'hitl' && <UserCheck size={12} className="text-success" />}
             {tooltipState.id === 'export' && <Wrench size={12} className="text-success" />}
             {tooltipState.id === 'rag' && <Database size={12} className="text-amber-500" />}
-            {tooltipState.id === 'loop' && <Loader2 size={12} className="text-warning animate-spin" />}
+            {tooltipState.id === 'loop' && <Loader2 size={12} className={`text-warning ${isRevising ? 'animate-spin' : ''}`} />}
             {tooltipState.id.includes('tools') && <Wrench size={12} className="text-primary" />}
             {tooltipState.title}
           </div>
