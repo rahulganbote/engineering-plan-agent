@@ -88,6 +88,39 @@ _PREFIX_STRIP = re.compile(
     r"(?:\d{1,2}(?:\.\d{1,2}){0,3}|[A-Z]|[IVX]{1,4})[\.\)][ \t]+)"  # numbered/lettered
 )
 
+# ── Heading quality filter ───────────────────────────────────────────────────
+# The pattern list above is tried in order and the first pattern producing
+# enough headings wins. Without a quality gate that ordering misfires: a body
+# paragraph containing an enumerated sentence ("2. Smart Triage: The agent
+# correctly identifies high-value Payment failures as ...") satisfies the
+# numbered-heading pattern, hits the threshold, and suppresses the pattern that
+# would have found the document's real headings (Background / Goal / Data
+# Architecture). Filtering sentence-shaped matches out before counting keeps
+# the ordering preference while preventing prose from masquerading as structure.
+# A rejected match is not lost - it stays as content of the preceding section.
+_MAX_HEADING_WORDS = 8
+_MAX_HEADING_CHARS = 80
+
+
+def _is_heading_like(name: str) -> bool:
+    """
+    True when a matched line plausibly names a section rather than being prose.
+
+    Deliberately permissive: it only rejects lines that are clearly sentences.
+    "Project: Coffee Shop Mobile Ordering App" and "Phase 1: Discovery" stay
+    valid headings, while "Connectivity: The Webhook fires successfully with a
+    valid JSON payload for every run" does not.
+    """
+    text = name.strip()
+    if not text or len(text) > _MAX_HEADING_CHARS:
+        return False
+    if len(text.split()) > _MAX_HEADING_WORDS:
+        return False
+    # Headings do not end in sentence punctuation.
+    if text[-1] in ".,;":
+        return False
+    return True
+
 
 class OrchestratorAgent:
     """
@@ -199,7 +232,9 @@ class OrchestratorAgent:
 
         best_sections: list[BRDSection] = []
         for pat in _HEADING_PATTERNS:
-            headings = list(pat.finditer(normalized))
+            headings = [
+                m for m in pat.finditer(normalized) if _is_heading_like(self._clean_heading(m.group(0).strip()))
+            ]
             if len(headings) < 3:
                 continue
 

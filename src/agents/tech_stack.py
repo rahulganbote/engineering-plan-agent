@@ -27,7 +27,10 @@ Rules:
 3. Each option must include components, scalability_rating, team_familiarity_rating,
    integration_risk, estimated_monthly_cost_usd, pros, cons, and citation.
 4. recommendation_rationale must reference team familiarity, cost, and risk.
-5. Output ONLY valid JSON - no markdown fences, no explanation."""
+5. Ground your output in the BRD's SPECIFIC business context: option names, pros,
+   cons, and recommendation_rationale must reference the actual product domain and
+   its constraints (e.g. "handles peak morning rush orders" not "handles high load").
+6. Output ONLY valid JSON - no markdown fences, no explanation."""
 
 SCHEMA = """{
   "options": [
@@ -129,6 +132,7 @@ class TechStackAgent(BaseAgent):
             github_signal,
             arch_context=arch_context,
             veto_block=veto_block,
+            proj_ctx=self.project_context(state),
         )
         output = self._parse(raw, state.run_id, citation_ids)
 
@@ -158,12 +162,14 @@ class TechStackAgent(BaseAgent):
         github_signal: str,
         arch_context: str = "",
         veto_block: str = "",
+        proj_ctx: str = "",
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
+                f"{proj_ctx}"
                 f"{feedback_block}"
                 f"{arch_context}"
                 f"{veto_block}"

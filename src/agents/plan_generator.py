@@ -48,7 +48,12 @@ Rules:
 3. total_duration_weeks MUST equal the exact sum of all phase.duration_weeks
 4. reflection_notes MUST document what you improved between draft and final
 5. When BRD is ambiguous, choose the CONSERVATIVE interpretation and document it
-6. Output ONLY valid JSON - no markdown fences, no explanation"""
+6. Ground your output in the BRD's SPECIFIC business context: use the project name,
+   domain, and stated objectives throughout. Phase names, milestone deliverables,
+   and risk descriptions must reference the actual product/system being built - not
+   generic software engineering terms. A reader should understand WHAT is being
+   built from the plan alone without needing the original BRD.
+7. Output ONLY valid JSON - no markdown fences, no explanation"""
 
 SCHEMA = """{
   "phases": [
@@ -118,15 +123,17 @@ class PlanGeneratorAgent(BaseAgent):
 
         _family = (_current_model_family() or "openai").lower()
 
+        proj_ctx = self.project_context(state)
+
         if _family == "anthropic":
             log.info(f"[{state.run_id}] PlanGenerator using optimized single-turn generation for Anthropic")
-            raw = self._generate_direct(brd_text, context_str, feedback, citation_ids, poc_context)
+            raw = self._generate_direct(brd_text, context_str, feedback, citation_ids, poc_context, proj_ctx)
         else:
             # ── Reflection Step 1: Draft ──────────────────────────────────────────
-            draft = self._draft(brd_text, context_str, feedback, poc_context)
+            draft = self._draft(brd_text, context_str, feedback, poc_context, proj_ctx)
 
             # ── Reflection Step 2+3: Critique + Final JSON ────────────────────────
-            raw = self._reflect_and_finalize(brd_text, draft, context_str, citation_ids, poc_context)
+            raw = self._reflect_and_finalize(brd_text, draft, context_str, citation_ids, poc_context, proj_ctx)
 
         # ── Parse + validate ──────────────────────────────────────────────────
         output = self._parse(raw, state.run_id, citation_ids)
@@ -152,11 +159,19 @@ class PlanGeneratorAgent(BaseAgent):
     def _brd_text(self, state: PipelineState) -> str:
         return "\n\n".join(f"## {s.section_name}\n{s.content}" for s in state.brd_sections)
 
-    def _draft(self, brd_text: str, context_str: str, feedback: str, poc_context: str = "") -> str:
+    def _draft(
+        self,
+        brd_text: str,
+        context_str: str,
+        feedback: str,
+        poc_context: str = "",
+        proj_ctx: str = "",
+    ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         return self._call_llm_with_retry(
             system_prompt="You are a senior Engineering Manager. Draft an engineering plan.",
             user_prompt=(
+                f"{proj_ctx}"
                 f"{feedback_block}"
                 f"{poc_context}"
                 f"KNOWLEDGE BASE:\n{context_str}\n\n"
@@ -172,11 +187,13 @@ class PlanGeneratorAgent(BaseAgent):
         context_str: str,
         citation_ids: list[str],
         poc_context: str = "",
+        proj_ctx: str = "",
     ) -> str:
         cites = "\n".join(f"  - {c}" for c in citation_ids)
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
+                f"{proj_ctx}"
                 f"DRAFT:\n{draft}\n\n"
                 f"AVAILABLE CITATION IDs (use for risk.citation):\n{cites}\n\n"
                 f"{poc_context}"
@@ -190,7 +207,13 @@ class PlanGeneratorAgent(BaseAgent):
         )
 
     def _generate_direct(
-        self, brd_text: str, context_str: str, feedback: str, citation_ids: list[str], poc_context: str = ""
+        self,
+        brd_text: str,
+        context_str: str,
+        feedback: str,
+        citation_ids: list[str],
+        poc_context: str = "",
+        proj_ctx: str = "",
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
@@ -204,8 +227,13 @@ Rules:
 3. total_duration_weeks MUST equal the exact sum of all phase.duration_weeks
 4. reflection_notes MUST document how you optimized the plan structure and risks
 5. When BRD is ambiguous, choose the CONSERVATIVE interpretation and document it
-6. Output ONLY valid JSON - no markdown fences, no explanation""",
+6. Ground your output in the BRD's SPECIFIC business context: use the project name,
+   domain, and stated objectives throughout. Phase names, milestone deliverables,
+   and risk descriptions must reference the actual product/system being built - not
+   generic software engineering terms.
+7. Output ONLY valid JSON - no markdown fences, no explanation""",
             user_prompt=(
+                f"{proj_ctx}"
                 f"{feedback_block}"
                 f"{poc_context}"
                 f"AVAILABLE CITATION IDs (use for risk.citation):\n{cites}\n\n"

@@ -29,7 +29,11 @@ Rules:
 4. duration_weeks must be realistic and conservative.
 5. Flag ambiguous requirements instead of guessing silently.
 6. Evaluate the tech stack recommended by the Tech Stack agent and the components designed by the Architect. If there are severe alignment issues, high integration risks, or if the stack is unviable for the PoC/hypothesis, set "requires_tech_stack_revision" to true and provide a detailed "tech_stack_veto_reason" (string). Otherwise, set "requires_tech_stack_revision" to false and "tech_stack_veto_reason" to null.
-7. Output ONLY valid JSON - no markdown fences, no explanation."""
+7. Ground your output in the BRD's SPECIFIC business context: poc_hypothesis,
+   scope_in/out items, and success_criteria must reference the actual product
+   domain and features (e.g. "Validate Square API order throughput under 50
+   concurrent orders" not "Validate third-party API performance").
+8. Output ONLY valid JSON - no markdown fences, no explanation."""
 
 SCHEMA = """{
   "poc_hypothesis": "string",
@@ -76,6 +80,7 @@ class PoCPlannerAgent(BaseAgent):
             feedback,
             state.arch_output,
             state.stack_output,
+            proj_ctx=self.project_context(state),
         )
         output = self._parse(raw, state.run_id, citation_ids)
 
@@ -104,6 +109,7 @@ class PoCPlannerAgent(BaseAgent):
         feedback: str,
         arch_output,
         stack_output,
+        proj_ctx: str = "",
     ) -> str:
         feedback_block = f"\nCRITIC FEEDBACK - address all points:\n{feedback}\n" if feedback else ""
         cites = "\n".join(f"  - {c}" for c in citation_ids)
@@ -128,6 +134,7 @@ class PoCPlannerAgent(BaseAgent):
         return self._call_llm_with_retry(
             system_prompt=SYSTEM_PROMPT,
             user_prompt=(
+                f"{proj_ctx}"
                 f"{feedback_block}"
                 f"{arch_summary}\n\n"
                 f"{stack_summary}\n\n"

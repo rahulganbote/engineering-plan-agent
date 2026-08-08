@@ -233,6 +233,18 @@ def node_orchestrator_hub(state: dict) -> dict:
 
     output, sections = OrchestratorAgent().run(brd_text, ps.run_id)
     ps.brd_sections = sections
+
+    # Identify what this BRD is actually about. Feeds the UI subtitle, the PDF
+    # header, the Jira issue, and the PROJECT CONTEXT block every specialist
+    # agent receives. Never raises - degrades to regex extraction.
+    from src.agents.brd_context import extract_brd_context
+
+    (
+        ps.brd_project_title,
+        ps.brd_objective_summary,
+        ps.brd_domain,
+    ) = extract_brd_context(brd_text, sections, model_family=ps.model_family, run_id=ps.run_id)
+
     _set_status(ps, PipelineStatus.DRAFTING if output.validation_passed else PipelineStatus.ERROR)
     state["_routing_plan"] = output.routing_plan
     state["_revision_targets"] = ALL_SPECIALIST_AGENTS.copy()
