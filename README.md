@@ -238,7 +238,7 @@ The API enforces rate limits to prevent runaway LLM costs and protect against ab
 To initiate the planning pipeline, an uploaded BRD must satisfy the 7-step Security Validation Gate:
 *   **Format & Size:** Must be an uncorrupted PDF, DOCX, TXT, or MD file under 5.0 MB.
 *   **Content Length:** The document must contain at least 50 words overall to be processed.
-*   **Essential Sections:** Must address Objectives (≥5 words), Requirements (≥10 words), and Constraints (≥5 words).
+*   **Essential Sections:** Must address Objectives (≥5 words) and Requirements (≥10 words). Constraints are optional.
 *   **AI Safety:** Passes dual regex and LLM semantic scans to block prompt injection or jailbreak attempts.
 *   **PII Sanitization:** Automatically detects and redacts sensitive info (emails, phones, cards, SSNs) and runs fail-safe.
 
