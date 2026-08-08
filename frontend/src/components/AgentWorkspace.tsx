@@ -1287,7 +1287,19 @@ export const AgentWorkspace: React.FC = () => {
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <div className="space-y-0.5">
                       <h3 className="text-xs font-black text-primary uppercase tracking-wider">Generated Artifacts</h3>
-                      <p className="text-[12px] text-muted-foreground">Review individual planning deliverables</p>
+                      <p
+                        className="text-[12px] text-muted-foreground"
+                        title={artifacts.brd_objective_summary || undefined}
+                      >
+                        {artifacts.brd_project_title
+                          ? <>Planning deliverables for <span className="font-semibold text-foreground">{artifacts.brd_project_title}</span></>
+                          : 'Review individual planning deliverables'}
+                      </p>
+                      {artifacts.brd_objective_summary && (
+                        <p className="text-[11px] text-muted-foreground/80 max-w-2xl leading-snug">
+                          {artifacts.brd_objective_summary}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={handleDownloadPDF}

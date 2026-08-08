@@ -249,72 +249,12 @@ def _build_summary(state: PipelineState) -> str:
 
 
 def _project_name_from_brd(state: PipelineState) -> str:
-    """
-    Best-effort extraction of the BRD project name. Tries, in order:
-      1. The first BRD section heading, if it's not a generic placeholder
-         like "Project Overview" / "Background" / "Introduction".
-      2. An explicit "Project:" / "Project Name:" line in any of the first
-         three sections - common in template-driven BRDs.
-      3. The leading proper-noun phrase of the first section's content:
-         e.g. "FoodHub is a food-aggregator platform…" → "FoodHub".
-         Catches the very common "<Name> is/provides/enables…" opening.
-      4. The first short headline-style line of the first section's content.
-      5. Final fallback: "BRD run".
-    """
-    generic = {
-        "project overview",
-        "overview",
-        "background",
-        "introduction",
-        "executive summary",
-        "full brd",
-    }
+    """Delegate to shared utility. Prefers pre-computed state field if available."""
+    if state.brd_project_title:
+        return state.brd_project_title
+    from src.core.brd_utils import extract_project_name
 
-    if not state.brd_sections:
-        return "BRD run"
-
-    first = state.brd_sections[0]
-    name = (first.section_name or "").strip()
-
-    # 1. Non-generic first heading wins
-    if name and name.lower() not in generic:
-        return name[:80]
-
-    # 2. Look for explicit "Project:" / "Project Name:" markers in the first
-    #    three sections (covers template-style BRDs and metadata tables)
-    project_marker = re.compile(
-        r"^\s*(?:project(?:\s+name)?|product|system)\s*[:|]\s*(.+?)\s*$",
-        re.IGNORECASE | re.MULTILINE,
-    )
-    for sec in state.brd_sections[:3]:
-        m = project_marker.search(sec.content or "")
-        if m:
-            candidate = m.group(1).strip()
-            # Strip trailing meta like "| Version: 1.0"
-            candidate = re.split(r"\s*[|·]\s*", candidate, 1)[0].strip()
-            if candidate:
-                return candidate[:80]
-
-    # 3. Leading proper-noun phrase: "FoodHub is a …" → "FoodHub"
-    #    Matches 1–4 capitalized words followed by a copula/predicate verb
-    leading_pn = re.match(
-        r"^\s*([A-Z][\w\-]+(?:\s+[A-Z][\w\-]+){0,3})\s+"
-        r"(?:is|are|will|shall|provides?|enables?|offers?|delivers?|connects?)\b",
-        (first.content or "").strip(),
-    )
-    if leading_pn:
-        return leading_pn.group(1).strip()
-
-    # 4. First short headline-style line of content
-    for line in (first.content or "").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if 4 <= len(line) <= 80 and not line.endswith("."):
-            return line
-        return line[:80].rstrip(".,;:") + ("…" if len(line) > 80 else "")
-
-    return name or "BRD run"
+    return extract_project_name(state.brd_sections)
 
 
 def _build_labels(state: PipelineState) -> list[str]:
@@ -363,7 +303,8 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
     blocks: list[dict[str, Any]] = []
 
     # ── Header ───────────────────────────────────────────────────────────────
-    blocks.append(_heading(2, "EM Copilot Pipeline Run"))
+    project_name = _project_name_from_brd(state)
+    blocks.append(_heading(2, f"EM Copilot – {project_name}"))
     blocks.append(
         _paragraph(
             _text("Run ID: ", bold=True),
@@ -376,6 +317,24 @@ def _build_adf_description(state: PipelineState) -> dict[str, Any]:
             _text(str(state.revision_count)),
         )
     )
+
+    # ── What this is for ────────────────────────────────────────────────────
+    # Without this, an epic reader sees scores and phases but never learns what
+    # is being built. Prefer the LLM-written goal; fall back to the parsed
+    # Objectives/Goals section.
+    from src.core.brd_utils import extract_objectives
+
+    if state.brd_domain:
+        blocks.append(_paragraph(_text("Domain: ", bold=True), _text(state.brd_domain)))
+    if state.brd_objective_summary:
+        blocks.append(_heading(3, "Business goal"))
+        blocks.append(_paragraph(_text(state.brd_objective_summary)))
+    else:
+        objectives = extract_objectives(state.brd_sections)
+        if objectives:
+            blocks.append(_heading(3, "BRD objectives"))
+            for obj in objectives[:5]:
+                blocks.append(_paragraph(_text(f"• {obj}")))
 
     # ── Critic scores ────────────────────────────────────────────────────────
     critic = state.critic_output

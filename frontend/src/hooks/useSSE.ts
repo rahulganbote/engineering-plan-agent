@@ -98,6 +98,8 @@ export interface ArtifactsState {
   stack_output?: unknown;
   brd_sections?: unknown;
   critic_output?: unknown;
+  brd_project_title?: string;
+  brd_objective_summary?: string;
   errors?: string[];
   warnings?: string[];
   pass_number?: number;
@@ -111,6 +113,8 @@ export interface ArtifactsState {
 
 interface ArtifactsResponse {
   brd_sections?: unknown[];
+  brd_project_title?: string;
+  brd_objective_summary?: string;
   plan_output?: unknown;
   schedule_output?: unknown;
   arch_output?: unknown;
@@ -463,6 +467,8 @@ export const useSSE = (runId: string | null, apiBaseUrl: string) => {
           poc_output: data.poc_output || undefined,
           stack_output: data.stack_output || undefined,
           brd_sections: data.brd_sections || undefined,
+          brd_project_title: data.brd_project_title || undefined,
+          brd_objective_summary: data.brd_objective_summary || undefined,
           errors: data.errors || undefined,
           warnings: data.warnings || undefined,
           pass_number: data.pass_number || undefined,
