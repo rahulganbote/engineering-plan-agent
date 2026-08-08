@@ -5,6 +5,7 @@ export interface User {
   name: string;
   message?: string;
   isGuest?: boolean;
+  hasConsented?: boolean;
 }
 
 interface AuthContextType {
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               name: data.name,
               message: data.message,
               isGuest: data.is_guest,
+              hasConsented: data.has_consented,
             });
           } else {
             setUser(null);

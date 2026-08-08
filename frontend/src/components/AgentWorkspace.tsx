@@ -164,6 +164,16 @@ export const AgentWorkspace: React.FC = () => {
     }
   }, [user, modelFamily]);
 
+  // Returning signed-in users who already accepted the current Terms/Privacy
+  // version (per the server-side consent record) shouldn't be re-prompted on
+  // every relogin. Seed sessionStorage from that server truth so the existing
+  // consent check in triggerPipeline() picks it up unchanged.
+  useEffect(() => {
+    if (user?.hasConsented) {
+      sessionStorage.setItem("em_copilot_consent_accepted", "true");
+    }
+  }, [user]);
+
 
   // Provider availability map - populated at mount from /api/providers so the
   // dropdown reflects whichever API keys are configured on this deployment.
